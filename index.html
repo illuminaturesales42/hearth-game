@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#221208" />
+  <title>Hearth: Merge &amp; Mystery</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <div id="app" aria-live="polite">
+    <header id="hud">
+      <div class="hud-left">
+        <h1 class="brand">Hearth</h1>
+        <span class="chapter" id="hud-chapter">Chapter 1 · The Letter</span>
+      </div>
+      <div class="hud-right">
+        <div class="stat coins" title="Coins"><span class="stat-ico coin-ico" aria-hidden="true"></span><b id="hud-coins">0</b></div>
+      </div>
+    </header>
+
+    <section id="energy-bar" aria-label="Hearth energy">
+      <div class="flame" aria-hidden="true"></div>
+      <div class="energy-text">
+        <b>Hearth energy <span id="energy-count">0</span></b>
+        <span id="energy-sub">Earned from your day. Never sold.</span>
+      </div>
+      <div class="energy-timer" id="energy-timer" title="Next ember"></div>
+    </section>
+
+    <main id="board-wrap">
+      <div id="board" role="grid" aria-label="Merge board"></div>
+    </main>
+
+    <section id="order-panel" aria-label="Current order">
+      <div class="order-face" id="order-face" aria-hidden="true"></div>
+      <p id="order-text"></p>
+      <button id="deliver-btn" disabled>Deliver</button>
+    </section>
+
+    <section id="quests" aria-label="Life quests">
+      <button class="quest" data-quest="steps"><span class="q-ico">👟</span><b>4,200 steps</b><span class="q-sub">+6 energy</span></button>
+      <button class="quest" data-quest="sleep"><span class="q-ico">😴</span><b>7.5h sleep</b><span class="q-sub">+8 energy</span></button>
+      <button class="quest" data-quest="water"><span class="q-ico">💧</span><b>Glass of water</b><span class="q-sub">+2 energy</span></button>
+    </section>
+  </div>
+
+  <div id="story-modal" class="modal" role="dialog" aria-modal="true" hidden>
+    <div class="modal-card">
+      <div class="modal-flame" aria-hidden="true"></div>
+      <p id="story-text"></p>
+      <p class="story-reward" id="story-reward"></p>
+      <button id="story-continue">Continue</button>
+    </div>
+  </div>
+
+  <div id="toast" role="status"></div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
