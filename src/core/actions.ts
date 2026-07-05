@@ -5,6 +5,7 @@
  */
 import type { ActionState } from './types';
 import { ACTIONS } from '../data/actions';
+import { LOG_MEDITATION, MEDITATIONS } from '../data/meditations';
 import { localDayKey } from './energy';
 
 export const CHEST_EVERY = 3;
@@ -12,6 +13,21 @@ export const CHEST_COINS = 100;
 
 export function findAction(id: string) {
   return ACTIONS.find((a) => a.id === id);
+}
+
+export interface Earnable {
+  energy: number;
+  timesPerDay: number;
+}
+
+/** Resolve an earnable's reward + cap from any catalogue (actions, meditations, logging). */
+export function earnableById(id: string): Earnable | undefined {
+  const a = ACTIONS.find((x) => x.id === id);
+  if (a) return { energy: a.energy, timesPerDay: a.timesPerDay };
+  const m = MEDITATIONS.find((x) => x.id === id);
+  if (m) return { energy: m.energy, timesPerDay: m.timesPerDay };
+  if (id === LOG_MEDITATION.id) return { energy: 0, timesPerDay: 1 }; // energy is passed in per log
+  return undefined;
 }
 
 export function initialActionState(now: number): ActionState {
@@ -29,9 +45,9 @@ export function doneCount(state: ActionState, id: string): number {
 }
 
 export function canDoAction(state: ActionState, id: string, now: number): boolean {
-  const a = findAction(id);
-  if (!a) return false;
-  return doneCount(rolloverActions(state, now), id) < a.timesPerDay;
+  const e = earnableById(id);
+  if (!e) return false;
+  return doneCount(rolloverActions(state, now), id) < e.timesPerDay;
 }
 
 function dayGap(a: string, b: string): number {
@@ -48,12 +64,15 @@ export interface RecordResult {
  * Record one completion of an action. Enforces the per-day cap, updates the
  * streak (only grows; a missed day resets to 1 with no penalty screen) and
  * advances chest progress on the first action of each new active day.
+ * `energyOverride` supplies the reward for variable earnables (logged
+ * meditation minutes); otherwise the catalogue value is used.
  */
-export function recordAction(state: ActionState, id: string, now: number): RecordResult {
-  const a = findAction(id);
+export function recordAction(state: ActionState, id: string, now: number, energyOverride?: number): RecordResult {
+  const e = earnableById(id);
   const s = rolloverActions(state, now);
-  if (!a || doneCount(s, id) >= a.timesPerDay) return { state: s, energy: 0, chestCoins: 0 };
+  if (!e || doneCount(s, id) >= e.timesPerDay) return { state: s, energy: 0, chestCoins: 0 };
 
+  const energy = energyOverride ?? e.energy;
   const today = localDayKey(now);
   let { streak, chestProgress } = s;
   let lastActiveDay = s.lastActiveDay;
@@ -70,7 +89,7 @@ export function recordAction(state: ActionState, id: string, now: number): Recor
   }
 
   const counts = { ...s.counts, [id]: doneCount(s, id) + 1 };
-  return { state: { day: s.day, counts, streak, lastActiveDay, chestProgress }, energy: a.energy, chestCoins };
+  return { state: { day: s.day, counts, streak, lastActiveDay, chestProgress }, energy, chestCoins };
 }
 
 export function chestDaysLeft(state: ActionState): number {

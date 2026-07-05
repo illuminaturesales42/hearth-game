@@ -8,6 +8,8 @@ import {
   rolloverActions,
 } from '../src/core/actions';
 import { isWithinWindow, sunTimes, sunWindow } from '../src/core/sun';
+import { LOG_MEDITATION, loggedMinutesToEnergy } from '../src/data/meditations';
+import { earnableById } from '../src/core/actions';
 
 const T0 = new Date('2026-07-05T09:00:00').getTime();
 
@@ -59,6 +61,41 @@ describe('action ledger', () => {
     const third = recordAction(s, 'water', day(2));
     expect(third.chestCoins).toBe(CHEST_COINS);
     expect(third.state.chestProgress).toBe(0);
+  });
+});
+
+describe('meditation', () => {
+  it('resolves guided-session energy from the meditation catalogue', () => {
+    expect(earnableById('med-morning')?.energy).toBe(10);
+    expect(earnableById('med-box')?.timesPerDay).toBe(2);
+  });
+
+  it('completing a guided session grants its energy and caps per day', () => {
+    const s0 = initialActionState(T0);
+    const r1 = recordAction(s0, 'med-morning', T0);
+    expect(r1.energy).toBe(10);
+    expect(recordAction(r1.state, 'med-morning', T0 + 1000).energy).toBe(0);
+  });
+
+  it('box breathing can be done twice a day', () => {
+    let s = initialActionState(T0);
+    expect(recordAction(s, 'med-box', T0).energy).toBe(8);
+    s = recordAction(s, 'med-box', T0).state;
+    expect(recordAction(s, 'med-box', T0).energy).toBe(8);
+    s = recordAction(s, 'med-box', T0).state;
+    expect(recordAction(s, 'med-box', T0).energy).toBe(0);
+  });
+
+  it('logged minutes convert to energy and clamp at the max', () => {
+    expect(loggedMinutesToEnergy(10)).toBe(5);
+    expect(loggedMinutesToEnergy(60)).toBe(LOG_MEDITATION.maxEnergy);
+  });
+
+  it('logging uses the energy override and is once per day', () => {
+    const s0 = initialActionState(T0);
+    const first = recordAction(s0, LOG_MEDITATION.id, T0, loggedMinutesToEnergy(20));
+    expect(first.energy).toBe(10);
+    expect(recordAction(first.state, LOG_MEDITATION.id, T0 + 1000, loggedMinutesToEnergy(20)).energy).toBe(0);
   });
 });
 

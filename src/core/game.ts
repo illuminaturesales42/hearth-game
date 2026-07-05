@@ -10,6 +10,8 @@ import { loadState, saveState } from './save';
 import { applySnapshot, initialLedger } from '../health/health-energy';
 import type { HealthSnapshot } from '../health/health-provider';
 import { canDoAction, initialActionState, recordAction, rolloverActions } from './actions';
+import type { RecordResult } from './actions';
+import { LOG_MEDITATION, loggedMinutesToEnergy } from '../data/meditations';
 import type { ActionState } from './types';
 
 export type GameEvent =
@@ -191,12 +193,21 @@ export class Game {
   }
 
   /**
-   * Complete a real-world action (photo, movement, self-report). Sensor
-   * actions (steps/sleep) come through syncHealth instead. Grants energy,
-   * advances streak, and opens a chest every few active days.
+   * Complete a real-world action (photo, movement, self-report, guided
+   * meditation). Sensor actions (steps/stairs/sleep) come through syncHealth.
+   * Grants energy, advances streak, and opens a chest every few active days.
    */
   completeAction(actionId: string, now = Date.now()): void {
-    const res = recordAction(this.state.actions, actionId, now);
+    this.applyRecord(recordAction(this.state.actions, actionId, now), actionId);
+  }
+
+  /** Log a meditation the player did outside a guided session. Once per day, capped. */
+  logMeditation(minutes: number, now = Date.now()): void {
+    const energy = loggedMinutesToEnergy(minutes);
+    this.applyRecord(recordAction(this.state.actions, LOG_MEDITATION.id, now, energy), LOG_MEDITATION.id);
+  }
+
+  private applyRecord(res: RecordResult, actionId: string): void {
     if (res.energy <= 0) {
       this.emit({ type: 'action', actionId, energy: 0 });
       return;

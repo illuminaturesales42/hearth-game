@@ -7,6 +7,7 @@ import { BoardView } from './board-view';
 import { Home } from './home';
 import { EnergyPanel } from './energy-panel';
 import { Screens } from './screens';
+import { MeditationUI } from './meditation';
 
 type ScreenId = 'home' | 'map' | 'villagers' | 'journal' | 'shop';
 
@@ -23,12 +24,15 @@ export class AppShell {
     new Home(game);
     this.energy = new EnergyPanel(game);
     this.screens = new Screens(game);
+    const meditation = new MeditationUI(game);
 
     document.querySelectorAll<HTMLButtonElement>('.nav-btn').forEach((btn) => {
       btn.addEventListener('click', () => this.go((btn.dataset.screen as ScreenId) ?? 'home'));
     });
     const pill = document.getElementById('energy-pill');
     if (pill) pill.addEventListener('click', () => this.energy.open());
+    const medOpen = document.getElementById('med-open');
+    if (medOpen) medOpen.addEventListener('click', () => meditation.openMenu());
   }
 
   private go(id: ScreenId): void {

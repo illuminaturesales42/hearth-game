@@ -45,9 +45,45 @@ async function impact(style: ImpactStyle): Promise<void> {
   }
 }
 
+let drone: { osc1: OscillatorNode; osc2: OscillatorNode; gain: GainNode } | null = null;
+
 export const feedback = {
   setMuted(m: boolean): void {
     muted = m;
+  },
+  /** Soft low ambient pad for meditation sessions. Idempotent on/off. */
+  ambient(on: boolean): void {
+    const ac = audio();
+    if (on) {
+      if (drone || !ac) return;
+      const gain = ac.createGain();
+      gain.gain.setValueAtTime(0, ac.currentTime);
+      gain.gain.linearRampToValueAtTime(0.06, ac.currentTime + 2);
+      const osc1 = ac.createOscillator();
+      const osc2 = ac.createOscillator();
+      osc1.type = 'sine';
+      osc2.type = 'sine';
+      osc1.frequency.value = 110;
+      osc2.frequency.value = 110 * 1.5 + 0.4; // gentle detune/beat
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ac.destination);
+      osc1.start();
+      osc2.start();
+      drone = { osc1, osc2, gain };
+    } else if (drone && ac) {
+      const d = drone;
+      drone = null;
+      d.gain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.8);
+      setTimeout(() => {
+        d.osc1.stop();
+        d.osc2.stop();
+      }, 900);
+    }
+  },
+  /** Soft bell to mark a breath phase. */
+  chime(freq = 528): void {
+    tone(freq, 420, 'sine', 0.08);
   },
   /** Merge pop: quick rising blip. The signature sound; keep it under 150ms. */
   merge(level: number): void {

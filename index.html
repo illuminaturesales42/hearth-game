@@ -91,6 +91,11 @@
         <div class="echip"><span>Day streak</span><b><span id="energy-streak">0</span> days</b></div>
         <div class="echip"><span>Next chest in</span><b><span id="energy-chest">3</span> days</b></div>
       </div>
+      <button id="med-open" class="med-cta">
+        <span class="med-cta-ico">🧘</span>
+        <span class="med-cta-body"><b>Meditate</b><span>Guided sessions &amp; logging</span></span>
+        <span class="med-cta-go">›</span>
+      </button>
       <p class="earn-label">Today’s energy</p>
       <div id="energy-list" class="earn-list"></div>
       <button id="energy-more" class="earn-more">More ways to earn energy ▼</button>
@@ -115,6 +120,22 @@
     <p id="motion-title" class="motion-title"></p>
     <div id="motion-count" class="motion-count"></div>
     <button id="motion-btn" class="motion-btn"></button>
+  </div>
+
+  <!-- ================= MEDITATION MENU ================= -->
+  <div id="med-menu" class="sheet" role="dialog" aria-modal="true" aria-label="Meditation" hidden>
+    <div class="sheet-card">
+      <button id="med-menu-close" class="sheet-close" aria-label="Close">✕</button>
+      <div id="med-menu-body"></div>
+    </div>
+  </div>
+
+  <!-- ================= MEDITATION PLAYER ================= -->
+  <div id="med-player" class="capture med-session" role="dialog" aria-modal="true" aria-label="Guided meditation" hidden>
+    <button id="med-close" class="capture-close" aria-label="End session">✕</button>
+    <p id="med-phase" class="med-phase"></p>
+    <div class="med-ring-wrap"><div id="med-ring" class="med-ring"></div></div>
+    <div id="med-timer" class="med-timer"></div>
   </div>
 
   <!-- ================= STORY MODAL ================= -->

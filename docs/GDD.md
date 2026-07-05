@@ -29,10 +29,14 @@ Energy comes only from the player's real day. Full catalogue in `src/data/action
 | Morning stretch | +8 | 1 | motion | guided |
 | Four slow breaths | +6 | 2 | motion | guided |
 | Note one good thing | +5 | 1 | self-report | journal |
+| **Guided meditation** | +8 to +16 | 1 (box breathing 2) | meditation | in-app breath pacer + ambient tone |
+| **Log a meditation you did** | 0.5/min, cap +15 | 1 | meditation | duration picker, honour system |
 | Passive regen | 1 per 3 min | cap 30 | timer | client clock (server-validated M3) |
 | Order rewards | 3–10 | — | — | economy table |
 
 Sun-gated photos use the SunCalc algorithm (`src/core/sun.ts`) against optional device location — a gate a clock change can't beat. Captured images stay on device, never uploaded.
+
+**Meditation:** a menu of guided breathing sessions (Morning Calm, Box Breathing, 4·7·8 Wind-down, Body Scan) played through an in-app pacer — an animated breath ring, countdown, phase cues, and a low ambient tone (`src/ui/meditation.ts`, `src/data/meditations.ts`). Completing a session grants energy through the same ledger (caps, streak, chest). Players can also log a meditation they did elsewhere via a duration picker (0.5 energy/min, cap +15, once/day). Narrated audio tracks are an M2 audio-pass stub; the pacer + tone carry it for now.
 
 **Sleep-app connections:** the game reads sleep from HealthKit (iOS) / Health Connect (Android), which already aggregate third-party trackers — Apple Watch, Oura, Whoop, Samsung Health, Sleep Cycle, Google Fit. No per-app integrations to maintain; the platform is the connector. `sleepSourceApp` is surfaced in the UI ("via Oura") when the platform exposes it. All conversion is on-device and tiered/idempotent (`src/health/health-energy.ts`).
 
