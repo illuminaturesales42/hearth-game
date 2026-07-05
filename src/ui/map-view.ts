@@ -1,31 +1,24 @@
 /**
- * Emberhollow harbour, rendered on canvas so the player can *see* the town grow.
- * Buildings rise and light up, the lighthouse kindles and sweeps, and the water
- * shimmers — all driven by orders delivered. Gentle ambient motion, paused when
- * the screen isn't visible and reduced under prefers-reduced-motion.
+ * Emberhollow homestead, rendered on canvas so the player can *see* it grow —
+ * following the concept art's five-stage progression from a storm-wrecked frame
+ * to the Beacon of Emberhollow. A single central cottage gains walls, a roof,
+ * lit windows, a garden, and finally a beacon as orders are delivered. Gentle
+ * ambient motion, paused when hidden and reduced under prefers-reduced-motion.
+ *
+ * This is the shippable procedural stand-in; the painted stage art swaps in
+ * behind the same `stage()` data during the M2 art pass.
  */
 import type { Game } from '../core/game';
 import { MAP_LOCATIONS } from '../data/world';
-import { ORDERS, ZONE_STAGES } from '../data/economy';
+import { ORDERS } from '../data/economy';
 
-interface Building {
-  x: number; // 0..1 across the shore
-  w: number;
-  h: number; // 0..1 of town band height
-  hue: string;
-}
-
-// A fixed skyline; how many are "restored" scales with progress.
-const BUILDINGS: readonly Building[] = [
-  { x: 0.06, w: 34, h: 0.62, hue: '#c98a4a' },
-  { x: 0.17, w: 30, h: 0.82, hue: '#b56b3c' },
-  { x: 0.27, w: 40, h: 0.5, hue: '#d29a58' },
-  { x: 0.38, w: 28, h: 0.72, hue: '#a85a34' },
-  { x: 0.48, w: 44, h: 0.9, hue: '#c4803f' },
-  { x: 0.6, w: 30, h: 0.6, hue: '#bd7440' },
-  { x: 0.7, w: 36, h: 0.78, hue: '#d0954f' },
-  { x: 0.82, w: 26, h: 0.55, hue: '#b0602f' },
-];
+const STAGE_NAMES = [
+  'Storm-Wrecked',
+  'Rebuilding Begins',
+  'A Place to Call Home',
+  'A Flourishing Haven',
+  'Beacon of Emberhollow',
+] as const;
 
 export class MapView {
   private canvas: HTMLCanvasElement | null = null;
@@ -45,6 +38,10 @@ export class MapView {
 
   private progress(): number {
     return Math.min(1, this.game.snapshot.orderIndex / ORDERS.length);
+  }
+  /** 0..4 stage, thresholds at 0/3/6/9/12 orders. */
+  private stage(): number {
+    return Math.min(4, Math.floor(this.game.snapshot.orderIndex / 3));
   }
 
   setVisible(v: boolean): void {
@@ -77,7 +74,7 @@ export class MapView {
     if (!this.canvas) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = this.canvas.clientWidth || 360;
-    const h = 240;
+    const h = 260;
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(h * dpr);
     this.ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -96,116 +93,213 @@ export class MapView {
     const cv = this.canvas;
     if (!ctx || !cv) return;
     const W = cv.clientWidth || 360;
-    const H = 240;
+    const H = 260;
     const prog = this.progress();
+    const stage = this.stage();
     ctx.clearRect(0, 0, W, H);
 
-    // sky (sunset warms as the town is restored)
-    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.7);
-    sky.addColorStop(0, '#2a3358');
-    sky.addColorStop(0.55, mix('#5a4a6a', '#8a5a4a', prog));
-    sky.addColorStop(1, mix('#8a5540', '#e0894f', prog));
+    // --- sky: dawn warms into golden hour as the homestead is restored ---
+    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.72);
+    sky.addColorStop(0, mix('#20284a', '#3a4a72', prog));
+    sky.addColorStop(0.5, mix('#5a4a68', '#c98a5a', prog));
+    sky.addColorStop(1, mix('#7a5548', '#f0b070', prog));
     ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, W, H * 0.7);
+    ctx.fillRect(0, 0, W, H * 0.72);
 
-    // sun, rising with progress
-    const sunY = H * (0.52 - prog * 0.18);
-    const sun = ctx.createRadialGradient(W * 0.5, sunY, 4, W * 0.5, sunY, 46);
-    sun.addColorStop(0, '#ffe6a8');
-    sun.addColorStop(1, 'rgba(255,176,74,0)');
-    ctx.fillStyle = sun;
+    // sun rises with progress
+    const sunX = W * 0.72;
+    const sunY = H * (0.5 - prog * 0.24);
+    const glow = ctx.createRadialGradient(sunX, sunY, 6, sunX, sunY, 70);
+    glow.addColorStop(0, 'rgba(255,236,180,0.95)');
+    glow.addColorStop(0.5, 'rgba(255,190,110,0.35)');
+    glow.addColorStop(1, 'rgba(255,190,110,0)');
+    ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(W * 0.5, sunY, 46, 0, Math.PI * 2);
+    ctx.arc(sunX, sunY, 70, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,240,200,0.95)';
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, 20, 0, Math.PI * 2);
     ctx.fill();
 
-    // town band
-    const bandTop = H * 0.44;
-    const bandH = H * 0.28;
-    const built = Math.round(prog * BUILDINGS.length);
-    BUILDINGS.forEach((b, i) => {
-      const isBuilt = i < built;
-      const bx = b.x * W;
-      const bh = bandH * b.h;
-      const by = bandTop + (bandH - bh);
-      if (isBuilt) {
-        ctx.fillStyle = b.hue;
-        ctx.fillRect(bx, by, b.w, bh);
-        // roof
-        ctx.fillStyle = shade(b.hue, -0.25);
-        ctx.beginPath();
-        ctx.moveTo(bx - 3, by);
-        ctx.lineTo(bx + b.w / 2, by - 10);
-        ctx.lineTo(bx + b.w + 3, by);
-        ctx.closePath();
-        ctx.fill();
-        // warm windows, gently flickering
-        const rows = Math.max(1, Math.floor(bh / 16));
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < 2; c++) {
-            const flick = this.reduce ? 1 : 0.75 + 0.25 * Math.sin(t / 500 + i * 2 + r + c);
-            ctx.fillStyle = `rgba(255,214,140,${(0.35 + 0.5 * flick).toFixed(3)})`;
-            ctx.fillRect(bx + 6 + c * (b.w - 16), by + 8 + r * 16, 7, 8);
-          }
-        }
-      } else {
-        // scaffolded / storm-struck: faint outline
-        ctx.strokeStyle = 'rgba(180,160,150,0.3)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(bx, by + bh * 0.3, b.w, bh * 0.7);
-      }
-    });
+    // distant headland
+    ctx.fillStyle = mix('#26314e', '#4a5a5a', prog);
+    ctx.beginPath();
+    ctx.moveTo(0, H * 0.5);
+    ctx.quadraticCurveTo(W * 0.3, H * 0.42, W * 0.6, H * 0.5);
+    ctx.lineTo(W, H * 0.52);
+    ctx.lineTo(W, H * 0.62);
+    ctx.lineTo(0, H * 0.62);
+    ctx.closePath();
+    ctx.fill();
 
-    // lighthouse (kindles once the harbour is coming back)
-    const lit = prog >= 3 / ORDERS.length;
-    const lx = W * 0.92;
-    const ly = bandTop - 6;
-    ctx.fillStyle = '#e9e2d0';
-    ctx.fillRect(lx - 5, ly, 10, H * 0.24);
-    ctx.fillStyle = lit ? '#ffe6a8' : '#3a4152';
-    ctx.fillRect(lx - 7, ly - 9, 14, 9);
-    if (lit) {
-      const ang = this.reduce ? -0.2 : Math.sin(t / 1400) * 0.5;
-      const beam = ctx.createLinearGradient(lx, ly - 4, lx - 120 * Math.cos(ang), ly - 4 - 60 * Math.sin(ang));
-      beam.addColorStop(0, 'rgba(255,230,160,0.5)');
-      beam.addColorStop(1, 'rgba(255,230,160,0)');
-      ctx.fillStyle = beam;
-      ctx.beginPath();
-      ctx.moveTo(lx, ly - 4);
-      ctx.lineTo(lx - 130 * Math.cos(ang - 0.12), ly - 4 - 90 * Math.sin(ang - 0.12));
-      ctx.lineTo(lx - 130 * Math.cos(ang + 0.12), ly - 4 - 90 * Math.sin(ang + 0.12));
-      ctx.closePath();
-      ctx.fill();
+    // --- ground the homestead sits on ---
+    const groundY = H * 0.62;
+    const grass = stage >= 3;
+    ctx.fillStyle = grass ? '#3a5a34' : '#4a4030';
+    ctx.fillRect(0, groundY, W, H * 0.2);
+    if (grass) {
+      ctx.fillStyle = '#2f4d2a';
+      ctx.fillRect(0, groundY, W, 4);
     }
 
-    // sea with shimmer
-    const seaTop = bandTop + bandH;
+    this.drawHomestead(ctx, W * 0.4, groundY, stage, t);
+
+    // --- sea foreground with shimmer ---
+    const seaTop = H * 0.82;
     const sea = ctx.createLinearGradient(0, seaTop, 0, H);
     sea.addColorStop(0, '#1c3b4a');
-    sea.addColorStop(1, '#0c1c2a');
+    sea.addColorStop(1, '#0a1a28');
     ctx.fillStyle = sea;
     ctx.fillRect(0, seaTop, W, H - seaTop);
-    ctx.strokeStyle = 'rgba(255,220,150,0.16)';
+    ctx.strokeStyle = 'rgba(255,220,150,0.18)';
     ctx.lineWidth = 1;
-    for (let y = seaTop + 8; y < H; y += 12) {
-      const off = this.reduce ? 0 : Math.sin(t / 700 + y) * 6;
+    for (let y = seaTop + 6; y < H; y += 10) {
       ctx.beginPath();
       ctx.moveTo(0, y);
-      for (let x = 0; x <= W; x += 24) ctx.lineTo(x, y + Math.sin(x / 30 + t / 600 + off) * 1.6);
+      const ph = this.reduce ? 0 : t / 600;
+      for (let x = 0; x <= W; x += 22) ctx.lineTo(x, y + Math.sin(x / 26 + ph + y) * 1.5);
       ctx.stroke();
     }
 
-    this.updateBar(prog);
+    this.updateBar(prog, stage);
   }
 
-  private updateBar(prog: number): void {
+  private drawHomestead(ctx: CanvasRenderingContext2D, cx: number, groundY: number, stage: number, t: number): void {
+    const built = stage >= 2;
+    const w = 96;
+    const h = 60;
+    const left = cx - w / 2;
+    const top = groundY - h;
+
+    // debris / rubble at the earliest stages
+    if (stage <= 1) {
+      ctx.fillStyle = '#5a4a38';
+      for (let i = 0; i < 7; i++) {
+        const rx = left + 6 + i * 13 + (i % 2) * 4;
+        ctx.fillRect(rx, groundY - 6 - (i % 3) * 2, 10, 5);
+      }
+    }
+
+    // stage 0: bare storm-struck frame
+    if (stage === 0) {
+      ctx.strokeStyle = '#6b5a42';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(left + 10, top + 18, w - 20, h - 18);
+      ctx.beginPath();
+      ctx.moveTo(left + 6, top + 18);
+      ctx.lineTo(cx, top - 4);
+      ctx.lineTo(left + w - 6, top + 18);
+      ctx.stroke();
+      return;
+    }
+
+    // stage 1: partial walls + scaffolding
+    if (stage === 1) {
+      ctx.fillStyle = '#7a5a3a';
+      ctx.fillRect(left + 10, top + 26, w - 20, h - 26);
+      ctx.strokeStyle = 'rgba(210,180,140,0.6)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(left + 6, top + 6, w - 12, h - 6);
+      ctx.beginPath();
+      ctx.moveTo(left + 2, top + 20);
+      ctx.lineTo(cx, top - 6);
+      ctx.lineTo(left + w - 2, top + 20);
+      ctx.stroke();
+      return;
+    }
+
+    // stage 2+: a real cottage
+    if (built) {
+      // walls
+      ctx.fillStyle = stage >= 3 ? '#d6b483' : '#c39a68';
+      ctx.fillRect(left, top, w, h);
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.fillRect(left, top + h - 8, w, 8);
+      // roof
+      ctx.fillStyle = stage >= 4 ? '#3d5a6b' : '#7a4a34';
+      ctx.beginPath();
+      ctx.moveTo(left - 8, top);
+      ctx.lineTo(cx, top - 26);
+      ctx.lineTo(left + w + 8, top);
+      ctx.closePath();
+      ctx.fill();
+      // chimney with smoke at cosy stages
+      ctx.fillStyle = '#5a4030';
+      ctx.fillRect(left + w - 22, top - 20, 10, 16);
+      if (stage >= 3 && !this.reduce) {
+        for (let i = 0; i < 3; i++) {
+          const sy = top - 22 - i * 9 - ((t / 200) % 9);
+          ctx.fillStyle = `rgba(230,220,205,${0.28 - i * 0.07})`;
+          ctx.beginPath();
+          ctx.arc(left + w - 17 + Math.sin(t / 500 + i) * 3, sy, 4 + i, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      // door
+      ctx.fillStyle = '#5a3a22';
+      ctx.fillRect(cx - 9, top + h - 24, 18, 24);
+      // windows, lit and gently flickering
+      const win = (wx: number) => {
+        const flick = this.reduce ? 1 : 0.75 + 0.25 * Math.sin(t / 400 + wx);
+        ctx.fillStyle = `rgba(255,214,140,${(0.55 + 0.4 * flick).toFixed(3)})`;
+        ctx.fillRect(wx, top + 14, 16, 14);
+        ctx.strokeStyle = '#5a3a22';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(wx, top + 14, 16, 14);
+      };
+      win(left + 12);
+      win(left + w - 28);
+
+      // garden + path at flourishing stages
+      if (stage >= 3) {
+        ctx.fillStyle = '#c9b48a';
+        ctx.fillRect(cx - 7, top + h, 14, groundY - (top + h) + 2);
+        for (let i = 0; i < 5; i++) {
+          const fx = left - 10 + i * (w + 20) / 4;
+          ctx.fillStyle = ['#e6739a', '#ffd27a', '#e6739a', '#a06be0', '#ffd27a'][i] ?? '#ffd27a';
+          ctx.beginPath();
+          ctx.arc(fx, groundY - 4, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#3a5a2a';
+          ctx.beginPath();
+          ctx.moveTo(fx, groundY - 1);
+          ctx.lineTo(fx, groundY - 7);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // stage 4: the beacon
+    if (stage >= 4) {
+      const lx = left + w + 26;
+      const ly = groundY - 70;
+      ctx.fillStyle = '#e9e2d0';
+      ctx.fillRect(lx - 6, ly, 12, 70);
+      ctx.fillStyle = '#b04a3a';
+      ctx.fillRect(lx - 6, ly + 22, 12, 8);
+      // lantern glow + sweeping beam
+      ctx.fillStyle = '#ffe6a8';
+      ctx.fillRect(lx - 8, ly - 10, 16, 10);
+      const ang = this.reduce ? -0.2 : Math.sin(t / 1400) * 0.5;
+      const beam = ctx.createLinearGradient(lx, ly - 5, lx - 130 * Math.cos(ang), ly - 5 - 70 * Math.sin(ang));
+      beam.addColorStop(0, 'rgba(255,230,160,0.55)');
+      beam.addColorStop(1, 'rgba(255,230,160,0)');
+      ctx.fillStyle = beam;
+      ctx.beginPath();
+      ctx.moveTo(lx, ly - 5);
+      ctx.lineTo(lx - 140 * Math.cos(ang - 0.13), ly - 5 - 100 * Math.sin(ang - 0.13));
+      ctx.lineTo(lx - 140 * Math.cos(ang + 0.13), ly - 5 - 100 * Math.sin(ang + 0.13));
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  private updateBar(prog: number, stage: number): void {
     const fill = document.getElementById('map-bar-fill');
     if (fill) fill.style.width = `${Math.round(prog * 100)}%`;
     const label = document.getElementById('map-progress');
-    if (label) {
-      const delivered = this.game.snapshot.orderIndex;
-      const stage = [...ZONE_STAGES].reverse().find((z) => delivered >= z.at) ?? ZONE_STAGES[0]!;
-      label.textContent = `${stage.label} · ${Math.round(prog * 100)}% restored`;
-    }
+    if (label) label.textContent = `${STAGE_NAMES[stage]} · ${Math.round(prog * 100)}% restored`;
   }
 
   private renderList(): void {
@@ -229,18 +323,15 @@ export class MapView {
   }
 }
 
-// ---- small colour helpers ----
+// ---- colour helpers ----
 function hexToRgb(h: string): [number, number, number] {
   const n = parseInt(h.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
-function mix(a: string, b: string, t: number): string {
+function mix(a: string, b: string, tt: number): string {
   const ca = hexToRgb(a);
   const cb = hexToRgb(b);
+  const t = Math.max(0, Math.min(1, tt));
   const c = ca.map((v, i) => Math.round(v + (cb[i]! - v) * t));
-  return `rgb(${c[0]},${c[1]},${c[2]})`;
-}
-function shade(hex: string, amt: number): string {
-  const c = hexToRgb(hex).map((v) => Math.max(0, Math.min(255, Math.round(v * (1 + amt)))));
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }

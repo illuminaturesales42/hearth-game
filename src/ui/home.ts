@@ -51,6 +51,16 @@ export class Home {
         case 'help':
           toast(`${ev.from} sent ${ev.count} to your gifts. Place them on the board to help your task.`);
           break;
+        case 'daily':
+          toast(`Day ${ev.streak} at the hearth — +${ev.energy} energy for showing up.`);
+          break;
+        case 'gratitude':
+          if (ev.energy > 0) toast(`+${ev.energy} energy (×${ev.multiplier.toFixed(1)} streak). A good day, written down.`);
+          break;
+        case 'flashback':
+          feedback.chime(660);
+          toast(`+${ev.energy} energy. Remember: “${ev.text.slice(0, 60)}${ev.text.length > 60 ? '…' : ''}”`);
+          break;
         case 'health': {
           const parts = [
             ev.fromSteps > 0 ? `+${ev.fromSteps} from steps` : '',

@@ -33,6 +33,9 @@ Energy comes only from the player's real day. Full catalogue in `src/data/action
 | **Log a meditation you did** | 0.5/min, cap +15 | 1 | meditation | duration picker, honour system |
 | **Log a cold plunge** | 3/min, cap +12 | 1 | recovery | duration picker, honour system |
 | **Log a sauna** | 0.7/min, cap +15 | 1 | recovery | duration picker, honour system |
+| **Journal: one good thing** | base 6 × streak multiplier (→ ~+10) | 1 | gratitude | Journal "Good Days" tab |
+| **Gratitude flashback** | +5 | 1 | gratitude | resurfaced past entry, once/day |
+| **Daily bonus (any first action)** | 2 + min(streak,10) → +3…+12 | auto | streak | first action of each day |
 | Passive regen | 1 per 3 min | cap 30 | timer | client clock (server-validated M3) |
 | Order rewards | 3–10 | — | — | economy table |
 
@@ -44,7 +47,11 @@ Sun-gated photos use the SunCalc algorithm (`src/core/sun.ts`) against optional 
 
 **Sleep-app connections:** the game reads sleep from HealthKit (iOS) / Health Connect (Android), which already aggregate third-party trackers — Apple Watch, Oura, Whoop, Samsung Health, Sleep Cycle, Google Fit. No per-app integrations to maintain; the platform is the connector. `sleepSourceApp` is surfaced in the UI ("via Oura") when the platform exposes it. All conversion is on-device and tiered/idempotent (`src/health/health-energy.ts`).
 
-**Streak & chest:** a positive-only "day streak" (grows on consecutive active days; a missed day resets to 1 with no penalty screen — honouring the no-punishment pillar) and a chest every 3 active days (+100 coins). Matches concept screen #2.
+**Streak & chest:** a positive-only "day streak" (grows on consecutive active days; a missed day resets to 1 with no penalty screen — honouring the no-punishment pillar) and a chest every 3 active days (+100 coins). Matches concept screen #2. The streak now drives two bonuses: a **daily energy bonus** paid on the first action each day (2 + min(streak,10)), and a **journal multiplier** (1.0→1.7× at a 7-day streak) applied to gratitude entries.
+
+**Gratitude journal ("Good Days" tab):** write one good thing about your day for streak-multiplied energy; entries are kept and later **resurface as flashbacks** — an old good day, older than 3 days, resurfaces once a day for a +5 boost ("the game reminding you of a good day you'd half-forgotten"). Data `src/data/gratitude.ts`, logic in `Game.writeGratitude/pendingFlashback/claimFlashback`, UI in the Journal screen. Two seed entries ship so a flashback is available immediately.
+
+**Map art:** the canvas homestead now follows the concept art's five-stage progression — Storm-Wrecked → Rebuilding Begins → A Place to Call Home → A Flourishing Haven → Beacon of Emberhollow — a single central cottage that gains walls, roof, lit windows, chimney smoke, a flower garden, and finally a swept beacon as orders are delivered, with a dawn-to-golden-hour sky. Painted stage PNGs (e.g. from the ComfyUI/SDXL pipeline) swap in behind the same `stage()` data at the M2 art pass.
 
 Rules: energy never purchasable; regen never accrues past cap but life energy may exceed it; action counts reset at local midnight; sleep rewarded, never penalized.
 

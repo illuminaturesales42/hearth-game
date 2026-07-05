@@ -9,12 +9,14 @@ import { BOARD_COLS, BOARD_ROWS, ENERGY, ORDERS, PRODUCER_INDEX, SPAWN_TABLE } f
 import { loadState, saveState } from './save';
 import { applySnapshot, initialLedger } from '../health/health-energy';
 import type { HealthSnapshot } from '../health/health-provider';
-import { canDoAction, initialActionState, recordAction, rolloverActions } from './actions';
+import { canDoAction, initialActionState, recordAction, rolloverActions, streakMultiplier } from './actions';
 import type { RecordResult } from './actions';
+import { localDayKey } from './energy';
 import { LOG_MEDITATION, loggedMinutesToEnergy } from '../data/meditations';
 import { findRecovery, recoveryEnergy } from '../data/recovery';
+import { GRATITUDE, initialGratitude } from '../data/gratitude';
 import { askFriend, canAsk, initialSocial, invite, joinFriend, pickInviteName, takeGift } from './social';
-import type { ActionState, ChainId, SocialState } from './types';
+import type { ActionState, ChainId, GratitudeEntry, GratitudeState, SocialState } from './types';
 
 export type GameEvent =
   | { type: 'state' }
@@ -28,6 +30,9 @@ export type GameEvent =
   | { type: 'social' }
   | { type: 'friendJoined'; name: string; energy: number }
   | { type: 'help'; from: string; count: number }
+  | { type: 'daily'; energy: number; streak: number }
+  | { type: 'gratitude'; energy: number; multiplier: number }
+  | { type: 'flashback'; text: string; energy: number }
   | { type: 'chapterComplete' };
 
 type Listener = (ev: GameEvent) => void;
@@ -57,11 +62,12 @@ export class Game {
     let uid = 1;
     for (const s of seeds) board = withItem(board, s.i, { chain: s.chain, level: s.level, uid: uid++ });
     return {
-      version: 4,
+      version: 5,
       board,
       energy: initialEnergy(now),
       actions: initialActionState(now),
       social: initialSocial(now),
+      gratitude: initialGratitude(now),
       coins: 0,
       xp: 0,
       orderIndex: 0,
@@ -286,18 +292,80 @@ export class Game {
   }
 
   private applyRecord(res: RecordResult, actionId: string): void {
-    if (res.energy <= 0) {
+    const total = res.energy + res.dailyBonus;
+    if (total <= 0 && res.chestCoins <= 0) {
       this.emit({ type: 'action', actionId, energy: 0 });
       return;
     }
     this.state = {
       ...this.state,
       actions: res.state,
-      energy: grant(this.state.energy, res.energy),
+      energy: grant(this.state.energy, total),
       coins: this.state.coins + res.chestCoins,
     };
     this.emit({ type: 'action', actionId, energy: res.energy });
+    if (res.dailyBonus > 0) this.emit({ type: 'daily', energy: res.dailyBonus, streak: res.state.streak });
     if (res.chestCoins > 0) this.emit({ type: 'chest', coins: res.chestCoins });
+  }
+
+  // ---------- gratitude journal ----------
+
+  get gratitudeState(): GratitudeState {
+    return this.state.gratitude;
+  }
+
+  /** Preview the energy a journal entry would earn right now (base × streak multiplier). */
+  gratitudePreview(): { energy: number; multiplier: number } {
+    const mult = streakMultiplier(Math.max(1, this.state.actions.streak));
+    return { energy: Math.round(GRATITUDE.baseEnergy * mult), multiplier: mult };
+  }
+
+  canWriteGratitude(now = Date.now()): boolean {
+    return canDoAction(this.state.actions, GRATITUDE.id, now);
+  }
+
+  /** Write one good thing about today. Streak-multiplied energy; kept for flashbacks. */
+  writeGratitude(text: string, now = Date.now()): void {
+    const clean = text.trim().slice(0, GRATITUDE.maxLen);
+    if (!clean) return;
+    const { energy, multiplier } = this.gratitudePreview();
+    const res = recordAction(this.state.actions, GRATITUDE.id, now, energy);
+    if (res.energy <= 0 && res.dailyBonus <= 0) {
+      this.emit({ type: 'gratitude', energy: 0, multiplier });
+      return;
+    }
+    const entry: GratitudeEntry = { id: `grat-${now}`, day: localDayKey(now), text: clean, createdAt: now };
+    this.state = {
+      ...this.state,
+      actions: res.state,
+      gratitude: { ...this.state.gratitude, entries: [entry, ...this.state.gratitude.entries] },
+      energy: grant(this.state.energy, res.energy + res.dailyBonus),
+      coins: this.state.coins + res.chestCoins,
+    };
+    this.emit({ type: 'gratitude', energy: res.energy, multiplier });
+    if (res.dailyBonus > 0) this.emit({ type: 'daily', energy: res.dailyBonus, streak: res.state.streak });
+    if (res.chestCoins > 0) this.emit({ type: 'chest', coins: res.chestCoins });
+  }
+
+  /** A past entry (older than the min age) ready to resurface today, or undefined. */
+  pendingFlashback(now = Date.now()): GratitudeEntry | undefined {
+    const g = this.state.gratitude;
+    if (g.lastFlashbackDay === localDayKey(now)) return undefined;
+    const cutoff = now - GRATITUDE.flashbackMinDays * 86_400_000;
+    const eligible = g.entries.filter((e) => e.createdAt <= cutoff);
+    return eligible.length ? eligible[eligible.length - 1] : undefined; // the oldest, remembered
+  }
+
+  /** Claim today's flashback boost for a resurfaced good day. */
+  claimFlashback(now = Date.now()): void {
+    const entry = this.pendingFlashback(now);
+    if (!entry) return;
+    this.state = {
+      ...this.state,
+      gratitude: { ...this.state.gratitude, lastFlashbackDay: localDayKey(now) },
+      energy: grant(this.state.energy, GRATITUDE.flashbackBoost),
+    };
+    this.emit({ type: 'flashback', text: entry.text, energy: GRATITUDE.flashbackBoost });
   }
 
   itemAt(index: number): Item | null {

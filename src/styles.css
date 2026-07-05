@@ -259,6 +259,25 @@ body {
 .jentry p { margin: 5px 0 0; font-size: 12px; color: var(--cream-dim); line-height: 1.45; }
 .jnew { position: absolute; top: 12px; right: 14px; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: #3a2408; background: var(--ember-hi); padding: 2px 7px; border-radius: 999px; }
 
+/* ---------- Good Days (gratitude) ---------- */
+.good-days { display: flex; flex-direction: column; gap: 10px; }
+.flashback { padding: 14px 16px; border-radius: var(--r-card); background: linear-gradient(120deg, rgba(244, 166, 59, 0.2), rgba(255, 210, 122, 0.08)); border: 1px solid rgba(255, 210, 122, 0.45); }
+.flash-eyebrow { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ember-hi); }
+.flashback p { margin: 8px 0 12px; font-family: var(--serif); font-size: 16px; line-height: 1.5; color: var(--cream); }
+.gd-writer { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: var(--r-card); background: var(--panel); border: 1px solid rgba(255, 210, 122, 0.16); }
+.gd-writer label { font-family: var(--serif); font-size: 16px; }
+.gd-writer textarea { width: 100%; resize: none; border-radius: 10px; border: 1px solid rgba(255, 210, 122, 0.25); background: rgba(0, 0, 0, 0.28); color: var(--cream); font-family: var(--sans); font-size: 13.5px; line-height: 1.5; padding: 10px 12px; }
+.gd-writer textarea:focus { outline: none; border-color: var(--ember-hi); box-shadow: 0 0 0 2px rgba(255, 210, 122, 0.2); }
+.gd-writer textarea::placeholder { color: var(--cream-dim); }
+.gd-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gd-preview { font-size: 12px; color: var(--cream-dim); }
+.gd-preview b { color: var(--ember-hi); }
+.gd-done { padding: 14px; border-radius: var(--r-card); background: rgba(159, 206, 138, 0.1); border: 1px solid rgba(159, 206, 138, 0.4); font-size: 13px; color: var(--cream); text-align: center; }
+.gd-list { display: flex; flex-direction: column; gap: 8px; }
+.gd-entry { padding: 11px 14px; border-radius: var(--r-card); background: var(--panel); border: 1px solid rgba(255, 210, 122, 0.1); }
+.gd-when { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cream-dim); }
+.gd-entry p { margin: 5px 0 0; font-family: var(--serif); font-size: 14px; line-height: 1.5; color: var(--cream); }
+
 .coll { padding: 12px 14px; border-radius: var(--r-card); background: var(--panel); border: 1px solid rgba(255, 210, 122, 0.12); }
 .coll b { font-family: var(--serif); font-size: 15px; }
 .coll span { float: right; font-size: 12px; color: var(--cream-dim); font-variant-numeric: tabular-nums; }

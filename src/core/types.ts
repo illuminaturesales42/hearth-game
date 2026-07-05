@@ -114,6 +114,19 @@ export interface SocialState {
   nextId: number;
 }
 
+export interface GratitudeEntry {
+  id: string;
+  day: string; // YYYY-MM-DD local
+  text: string;
+  createdAt: number;
+}
+
+export interface GratitudeState {
+  entries: readonly GratitudeEntry[];
+  /** local day key of the last flashback claimed, so it resurfaces once a day. */
+  lastFlashbackDay: string | null;
+}
+
 export interface GameState {
   version: number;
   healthLedger?: HealthLedgerState;
@@ -121,6 +134,7 @@ export interface GameState {
   energy: EnergyState;
   actions: ActionState;
   social: SocialState;
+  gratitude: GratitudeState;
   coins: number;
   xp: number;
   orderIndex: number;

@@ -10,7 +10,8 @@ import {
 import { isWithinWindow, sunTimes, sunWindow } from '../src/core/sun';
 import { LOG_MEDITATION, loggedMinutesToEnergy } from '../src/data/meditations';
 import { COLD_PLUNGE, SAUNA, recoveryEnergy } from '../src/data/recovery';
-import { earnableById } from '../src/core/actions';
+import { GRATITUDE } from '../src/data/gratitude';
+import { dailyBonus, earnableById, streakMultiplier } from '../src/core/actions';
 
 const T0 = new Date('2026-07-05T09:00:00').getTime();
 
@@ -97,6 +98,44 @@ describe('meditation', () => {
     const first = recordAction(s0, LOG_MEDITATION.id, T0, loggedMinutesToEnergy(20));
     expect(first.energy).toBe(10);
     expect(recordAction(first.state, LOG_MEDITATION.id, T0 + 1000, loggedMinutesToEnergy(20)).energy).toBe(0);
+  });
+});
+
+describe('streak bonuses', () => {
+  it('streak multiplier climbs to 1.7x and caps at a 7-day streak', () => {
+    expect(streakMultiplier(1)).toBeCloseTo(1.1);
+    expect(streakMultiplier(7)).toBeCloseTo(1.7);
+    expect(streakMultiplier(20)).toBeCloseTo(1.7);
+  });
+
+  it('daily bonus scales with streak and caps', () => {
+    expect(dailyBonus(1)).toBe(3);
+    expect(dailyBonus(10)).toBe(12);
+    expect(dailyBonus(99)).toBe(12);
+  });
+
+  it('recordAction pays the daily bonus only on the first action of a new day', () => {
+    const s0 = initialActionState(T0);
+    const first = recordAction(s0, 'water', T0);
+    expect(first.dailyBonus).toBe(dailyBonus(first.state.streak));
+    const second = recordAction(first.state, 'squats', T0 + 1000);
+    expect(second.dailyBonus).toBe(0); // same day, second action
+    const nextDay = recordAction(first.state, 'water', T0 + 24 * 3600_000);
+    expect(nextDay.dailyBonus).toBeGreaterThan(0);
+  });
+});
+
+describe('gratitude journal', () => {
+  it('gratitude id is registered as a once-per-day earnable', () => {
+    expect(earnableById(GRATITUDE.id)?.timesPerDay).toBe(1);
+  });
+
+  it('writing (via override) is once per day and streak-multiplied', () => {
+    const s0 = initialActionState(T0);
+    const energy = Math.round(GRATITUDE.baseEnergy * streakMultiplier(1));
+    const first = recordAction(s0, GRATITUDE.id, T0, energy);
+    expect(first.energy).toBe(energy);
+    expect(recordAction(first.state, GRATITUDE.id, T0 + 1000, energy).energy).toBe(0);
   });
 });
 

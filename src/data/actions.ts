@@ -70,10 +70,8 @@ export const ACTIONS: readonly EnergyAction[] = [
     icon: '🌬️', energy: 6, timesPerDay: 2, kind: 'motion', featured: false,
     motionReps: 4, motionVerb: 'Breathe',
   },
-  {
-    id: 'gratitude', label: 'Note one good thing', sublabel: 'Kept in your Journal',
-    icon: '📖', energy: 5, timesPerDay: 1, kind: 'selfReport', featured: false,
-  },
+  // Note: "write one good thing" now lives in the Journal's Good Days tab with a
+  // streak multiplier + flashbacks, not as a flat self-report action here.
 ] as const;
 
 export function featuredActions(): EnergyAction[] {

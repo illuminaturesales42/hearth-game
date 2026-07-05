@@ -48,6 +48,15 @@ game.subscribe((ev) => {
     case 'help':
       track('friend_help', { count: ev.count });
       break;
+    case 'daily':
+      track('daily_bonus', { energy: ev.energy, streak: ev.streak });
+      break;
+    case 'gratitude':
+      if (ev.energy > 0) track('gratitude_written', { energy: ev.energy });
+      break;
+    case 'flashback':
+      track('flashback_claimed', { energy: ev.energy });
+      break;
     case 'health':
       track('health_grant', {
         energy: ev.energy,
@@ -74,7 +83,7 @@ declare global {
   }
 }
 window.hearthReset = () => {
-  localStorage.removeItem('hearth:save:v4');
+  localStorage.removeItem('hearth:save:v5');
   location.reload();
 };
 window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {
