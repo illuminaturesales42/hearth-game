@@ -4,65 +4,16 @@
  * story. Rendered once on first view and refreshed on story progress.
  */
 import type { Game } from '../core/game';
-import { COLLECTIONS, EVENTS, JOURNAL, MAP_LOCATIONS, VILLAGERS } from '../data/world';
+import { COLLECTIONS, EVENTS, JOURNAL } from '../data/world';
 import type { JournalEntry } from '../data/world';
 import { toast } from './toast';
 
 const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
-const hearts = (n: number) => '♥'.repeat(n) + '♡'.repeat(Math.max(0, 5 - n));
 
 export class Screens {
   private journalTab: JournalEntry['tab'] = 'Clues';
 
-  constructor(private game: Game) {
-    game.subscribe((ev) => {
-      if (ev.type === 'delivered' || ev.type === 'chapterComplete') this.renderMap();
-    });
-  }
-
-  renderAll(): void {
-    this.renderMap();
-    this.renderVillagers();
-    this.renderJournal();
-    this.renderShop();
-  }
-
-  renderMap(): void {
-    const host = byId('map-body');
-    if (!host) return;
-    const delivered = this.game.snapshot.orderIndex;
-    host.innerHTML =
-      `<h2 class="screen-title">Emberhollow Harbour</h2>` +
-      `<p class="screen-sub">Restore the village, one order at a time.</p>` +
-      `<div class="scene-banner map-scene" role="img" aria-label="Illustration placeholder: painted harbour town"></div>` +
-      `<div class="loc-list">` +
-      MAP_LOCATIONS.map((l) => {
-        const locked = delivered < l.unlockAt;
-        return (
-          `<div class="loc ${locked ? 'locked' : ''}">` +
-          `<div class="loc-main"><b>${l.name}</b>` +
-          (locked ? `<span class="loc-lock">Locked · ${l.unlockAt} orders</span>` : `<span class="loc-lvl">Level ${l.level}</span>`) +
-          `</div><p>${locked ? 'Keep restoring the harbour to reach it.' : l.blurb}</p></div>`
-        );
-      }).join('') +
-      `</div>`;
-  }
-
-  renderVillagers(): void {
-    const host = byId('villagers-body');
-    if (!host) return;
-    host.innerHTML =
-      `<h2 class="screen-title">Villagers</h2>` +
-      `<p class="screen-sub">Warm the hearts of Emberhollow.</p>` +
-      `<div class="vill-list">` +
-      VILLAGERS.map(
-        (v) =>
-          `<div class="vill"><div class="vill-face" aria-hidden="true"></div>` +
-          `<div class="vill-body"><b>${v.name}</b><span>${v.role}</span></div>` +
-          `<span class="vill-hearts">${hearts(v.affinity)}</span></div>`,
-      ).join('') +
-      `</div>`;
-  }
+  constructor(private game: Game) {}
 
   renderJournal(): void {
     const host = byId('journal-body');

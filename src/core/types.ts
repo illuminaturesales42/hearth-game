@@ -90,12 +90,37 @@ export interface HealthLedgerState {
   sleepGranted: number;
 }
 
+export interface Friend {
+  id: string;
+  name: string;
+  avatar: number; // 1-6, selects a palette for the placeholder portrait
+  status: 'pending' | 'joined';
+  /** local day key of the last "ask for help", for the once-per-day cooldown. */
+  askedDay?: string;
+}
+
+export interface Gift {
+  id: string;
+  from: string;
+  chain: ChainId;
+  level: number;
+}
+
+export interface SocialState {
+  friends: readonly Friend[];
+  gifts: readonly Gift[];
+  /** friend ids that have already paid their one-time join bonus. */
+  joinBonusGiven: readonly string[];
+  nextId: number;
+}
+
 export interface GameState {
   version: number;
   healthLedger?: HealthLedgerState;
   board: BoardState;
   energy: EnergyState;
   actions: ActionState;
+  social: SocialState;
   coins: number;
   xp: number;
   orderIndex: number;

@@ -1,0 +1,6 @@
+/** Name pool for simulated friend invites (stands in for the real invite backend). */
+export const FRIEND_NAMES: readonly string[] = [
+  'Alina', 'Bo', 'Cai', 'Dara', 'Esme', 'Finn', 'Goro', 'Hana',
+  'Iris', 'Jonah', 'Kit', 'Lena', 'Milo', 'Nadia', 'Oskar', 'Priya',
+  'Quinn', 'Rafa', 'Suki', 'Tariq', 'Uma', 'Vero', 'Wren', 'Yusuf',
+];

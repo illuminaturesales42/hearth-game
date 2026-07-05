@@ -50,7 +50,15 @@
       </section>
 
       <!-- ================= MAP ================= -->
-      <section class="screen" id="screen-map"><div class="screen-body" id="map-body"></div></section>
+      <section class="screen" id="screen-map">
+        <div class="map-head">
+          <h2 class="screen-title">Emberhollow Harbour</h2>
+          <span id="map-progress" class="map-progress"></span>
+        </div>
+        <canvas id="map-canvas" class="map-canvas" role="img" aria-label="Your harbour town, growing as you restore it"></canvas>
+        <div class="map-bar"><i id="map-bar-fill"></i></div>
+        <div class="screen-body" id="map-body"></div>
+      </section>
 
       <!-- ================= VILLAGERS ================= -->
       <section class="screen" id="screen-villagers"><div class="screen-body" id="villagers-body"></div></section>

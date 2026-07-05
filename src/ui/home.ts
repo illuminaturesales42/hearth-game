@@ -44,6 +44,13 @@ export class Home {
         case 'chest':
           toast(`A chest opens: +${ev.coins} coins for tending the hearth.`);
           break;
+        case 'friendJoined':
+          feedback.chapter();
+          toast(ev.energy > 0 ? `${ev.name} joined your village! +${ev.energy} energy for you both.` : `${ev.name} is back in the village.`);
+          break;
+        case 'help':
+          toast(`${ev.from} sent ${ev.count} to your gifts. Place them on the board to help your task.`);
+          break;
         case 'health': {
           const parts = [
             ev.fromSteps > 0 ? `+${ev.fromSteps} from steps` : '',

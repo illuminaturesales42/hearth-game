@@ -42,6 +42,12 @@ game.subscribe((ev) => {
     case 'chest':
       track('chest_opened', { coins: ev.coins });
       break;
+    case 'friendJoined':
+      track('friend_joined', { energy: ev.energy });
+      break;
+    case 'help':
+      track('friend_help', { count: ev.count });
+      break;
     case 'health':
       track('health_grant', {
         energy: ev.energy,
@@ -68,7 +74,7 @@ declare global {
   }
 }
 window.hearthReset = () => {
-  localStorage.removeItem('hearth:save:v3');
+  localStorage.removeItem('hearth:save:v4');
   location.reload();
 };
 window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {

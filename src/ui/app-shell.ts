@@ -9,6 +9,8 @@ import { EnergyPanel } from './energy-panel';
 import { Screens } from './screens';
 import { MeditationUI } from './meditation';
 import { RecoveryUI } from './recovery';
+import { MapView } from './map-view';
+import { SocialScreen } from './social-screen';
 
 type ScreenId = 'home' | 'map' | 'villagers' | 'journal' | 'shop';
 
@@ -16,6 +18,8 @@ export class AppShell {
   private active: ScreenId = 'home';
   private energy: EnergyPanel;
   private screens: Screens;
+  private map: MapView;
+  private social: SocialScreen;
   private rendered = new Set<ScreenId>(['home']);
 
   constructor(private game: Game) {
@@ -25,6 +29,8 @@ export class AppShell {
     new Home(game);
     this.energy = new EnergyPanel(game);
     this.screens = new Screens(game);
+    this.map = new MapView(game);
+    this.social = new SocialScreen(game);
     const meditation = new MeditationUI(game);
     const recovery = new RecoveryUI(game);
 
@@ -47,10 +53,12 @@ export class AppShell {
     document.querySelectorAll<HTMLElement>('.nav-btn').forEach((b) => {
       b.classList.toggle('on', b.dataset.screen === id);
     });
+    // Map animates only while visible.
+    this.map.setVisible(id === 'map');
+    // Social/villagers re-renders on every view (friend + gift state changes).
+    if (id === 'villagers') this.social.render();
     if (!this.rendered.has(id)) {
       this.rendered.add(id);
-      if (id === 'map') this.screens.renderMap();
-      if (id === 'villagers') this.screens.renderVillagers();
       if (id === 'journal') this.screens.renderJournal();
       if (id === 'shop') this.screens.renderShop();
     }

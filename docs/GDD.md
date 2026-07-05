@@ -49,7 +49,11 @@ Sun-gated photos use the SunCalc algorithm (`src/core/sun.ts`) against optional 
 Rules: energy never purchasable; regen never accrues past cap but life energy may exceed it; action counts reset at local midnight; sleep rewarded, never penalized.
 
 ### 3.1b Screens (concept-matched)
-Bottom nav: Shop · Map · Home · Villagers · Journal. Home = merge board + order card + harbour banner. Energy panel opens from the HUD energy pill. Map = Emberhollow harbour with order-gated locations. Journal = Clues/Letters/People/Places. Villagers = cast + affinity. Shop = collections + events (decor arrives with M2 art).
+Bottom nav: Shop · Map · Home · Villagers · Journal. Home = merge board + order card + harbour banner. Energy panel opens from the HUD energy pill. Journal = Clues/Letters/People/Places. Shop = collections + events (decor arrives with M2 art).
+
+**Map — visible town growth.** A canvas-rendered Emberhollow harbour (`src/ui/map-view.ts`) that grows with orders delivered: buildings rise and light warm windows, the lighthouse kindles and sweeps its beam, the sun rises and the sky warms, water shimmers. A restoration % bar + stage label + order-gated location list sit below. Ambient motion pauses when the screen is hidden and reduces under `prefers-reduced-motion`. This is the "progress you can see and feel" pillar.
+
+**Villagers — the social layer** (`src/core/social.ts`, `src/ui/social-screen.ts`). Invite friends to your village; when a friend joins, **both of you get +15 energy** (once per friend). Ask a joined friend for help and they send starter items of your *current task's chain* to a Gifts inbox — tap to place on the board, directly helping the order you're on (once/day per friend). Story NPCs (Wren/Bran/Sorin/Marta) sit below as "Village folk" with affinity. Backend is a client-side simulation stub; the Game API (`inviteFriend`, `markFriendJoined`, `askFriendForHelp`, `claimGift`) is the real contract for the M3 multiplayer service — no per-friend integration, invites flow through a share link.
 
 ### 3.2 Chains (M1 set)
 - **Timberline** (7 levels): Sapling → Cottage

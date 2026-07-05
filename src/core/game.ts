@@ -13,7 +13,8 @@ import { canDoAction, initialActionState, recordAction, rolloverActions } from '
 import type { RecordResult } from './actions';
 import { LOG_MEDITATION, loggedMinutesToEnergy } from '../data/meditations';
 import { findRecovery, recoveryEnergy } from '../data/recovery';
-import type { ActionState } from './types';
+import { askFriend, canAsk, initialSocial, invite, joinFriend, pickInviteName, takeGift } from './social';
+import type { ActionState, ChainId, SocialState } from './types';
 
 export type GameEvent =
   | { type: 'state' }
@@ -24,6 +25,9 @@ export type GameEvent =
   | { type: 'action'; actionId: string; energy: number }
   | { type: 'chest'; coins: number }
   | { type: 'health'; energy: number; fromSteps: number; fromStairs: number; fromSleep: number; sleepFullNight: boolean }
+  | { type: 'social' }
+  | { type: 'friendJoined'; name: string; energy: number }
+  | { type: 'help'; from: string; count: number }
   | { type: 'chapterComplete' };
 
 type Listener = (ev: GameEvent) => void;
@@ -53,10 +57,11 @@ export class Game {
     let uid = 1;
     for (const s of seeds) board = withItem(board, s.i, { chain: s.chain, level: s.level, uid: uid++ });
     return {
-      version: 3,
+      version: 4,
       board,
       energy: initialEnergy(now),
       actions: initialActionState(now),
+      social: initialSocial(now),
       coins: 0,
       xp: 0,
       orderIndex: 0,
@@ -71,6 +76,71 @@ export class Game {
 
   get actionState(): ActionState {
     return this.state.actions;
+  }
+
+  get socialState(): SocialState {
+    return this.state.social;
+  }
+
+  // ---------- social ----------
+
+  /** Invite a friend. Returns a shareable code; a pending friend is added. */
+  inviteFriend(now = Date.now()): { code: string; name: string } {
+    void now;
+    const name = pickInviteName(this.state.social);
+    const res = invite(this.state.social, name);
+    this.state = { ...this.state, social: res.state };
+    this.emit({ type: 'social' });
+    return { code: res.friend.id.toUpperCase() + Math.abs(hashCode(res.friend.id)).toString(36).slice(0, 4).toUpperCase(), name };
+  }
+
+  /** Simulate a friend accepting the invite (real backend fires this on their join). */
+  markFriendJoined(id: string): void {
+    const res = joinFriend(this.state.social, id);
+    this.state = { ...this.state, social: res.state };
+    if (res.bonus > 0) this.state = { ...this.state, energy: grant(this.state.energy, res.bonus) };
+    this.emit({ type: 'friendJoined', name: res.name, energy: res.bonus });
+    this.emit({ type: 'social' });
+  }
+
+  canAskFriend(id: string, now = Date.now()): boolean {
+    return canAsk(this.state.social, id, now);
+  }
+
+  /** Ask a friend for help; they send starter items of the current task's chain. */
+  askFriendForHelp(id: string, now = Date.now()): void {
+    const order = ORDERS[this.state.orderIndex];
+    const chain: ChainId = order ? order.need.chain : 'wood';
+    const res = askFriend(this.state.social, id, chain, now);
+    if (res.gifts.length === 0) {
+      this.emit({ type: 'social' });
+      return;
+    }
+    this.state = { ...this.state, social: res.state };
+    this.emit({ type: 'help', from: res.name, count: res.gifts.length });
+    this.emit({ type: 'social' });
+  }
+
+  /** Place a received gift onto the first empty board cell. */
+  claimGift(giftId: string): void {
+    const gift = this.state.social.gifts.find((g) => g.id === giftId);
+    if (!gift) return;
+    const empties = emptyIndices(this.state.board);
+    if (empties.length === 0) {
+      this.emit({ type: 'reject', index: -1, reason: 'full' });
+      return;
+    }
+    const res = takeGift(this.state.social, giftId);
+    const index = empties[0]!;
+    const item: Item = { chain: gift.chain, level: gift.level, uid: this.state.nextUid };
+    this.state = {
+      ...this.state,
+      social: res.state,
+      board: withItem(this.state.board, index, item),
+      nextUid: this.state.nextUid + 1,
+    };
+    this.emit({ type: 'spawn', index });
+    this.emit({ type: 'social' });
   }
 
   subscribe(fn: Listener): () => void {
@@ -238,6 +308,12 @@ export class Game {
     this.state = Game.freshState(now);
     this.emit({ type: 'state' });
   }
+}
+
+function hashCode(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  return h;
 }
 
 export function pickSpawnChain(rand: () => number): Item['chain'] {
