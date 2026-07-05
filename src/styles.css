@@ -507,3 +507,61 @@ body {
 #toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%) translateY(8px); z-index: 80; max-width: 320px; padding: 11px 16px; border-radius: var(--r-card); background: rgba(12, 8, 4, 0.94); border: 1px solid rgba(255, 210, 150, 0.5); color: var(--cream); font-size: 12.5px; line-height: 1.45; text-align: center; opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.25s; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 @media (prefers-reduced-motion: reduce) { #toast { transition: none; } .gauge-track i { transition: none; } }
+
+/* ============================================================
+   STYLE-GUIDE RICH TREATMENT (overrides — kept last so it wins)
+   Gold-rimmed icon medallions, crafted panels, parchment popups.
+   Pure CSS stand-in for the painted asset system; swaps out for
+   real art per docs/art-bible.md without touching these rules.
+   ============================================================ */
+
+/* --- gold-rimmed icon medallions (the "iconography style" row) --- */
+.earn-ico, .med-cta-ico, .gift-ico {
+  width: 42px; height: 42px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; font-size: 21px; text-align: center;
+  background: radial-gradient(circle at 40% 30%, #2b3450 0%, #141b2e 82%);
+  box-shadow: inset 0 0 0 2px var(--ember), inset 0 1.5px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.med-cta-ico { font-size: 22px; }
+.gift-ico { box-shadow: inset 0 0 0 2px var(--ember-hi), inset 0 1.5px 0 rgba(255, 255, 255, 0.25), 0 2px 6px rgba(0, 0, 0, 0.4); }
+
+/* --- bottom nav as painted medallions --- */
+#bottom-nav .nav-btn span {
+  width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 19px; filter: none; margin-bottom: 1px;
+  background: radial-gradient(circle at 40% 30%, #1e2740, #10162a 85%);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 210, 122, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+#bottom-nav .nav-btn.on span {
+  background: radial-gradient(circle at 40% 30%, #4a3416, #241a0e 85%);
+  box-shadow: inset 0 0 0 2px var(--ember-hi), 0 0 12px rgba(244, 166, 59, 0.5);
+}
+
+/* --- currency tokens get a struck-coin rim --- */
+.coin-ico { box-shadow: inset 0 0 0 1.5px #b06a1e, inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -2px 0 rgba(0, 0, 0, 0.3); }
+.energy-pill .pip { box-shadow: inset 0 0 0 1.5px rgba(255, 210, 122, 0.7), 0 0 12px rgba(244, 166, 59, 0.6); }
+
+/* --- crafted panels: warm depth + inset gold hairline --- */
+.earn-row, .friend, .loc, .jentry, .coll, .event, .gift, .echip, .med-log-btn {
+  background: linear-gradient(180deg, rgba(42, 50, 74, 0.5), rgba(20, 26, 44, 0.55));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 0 0 1px rgba(255, 210, 122, 0.16), 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* --- parchment wood-framed popups (the "popup window") --- */
+.modal-card, .duel-results-card, .newday-card {
+  background: linear-gradient(180deg, var(--parch) 0%, var(--parch-2) 100%);
+  border: 3px solid var(--wood);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 245, 210, 0.5);
+  color: var(--ink);
+}
+.modal-card #story-text, .duel-results-card h3, .duel-results-card p,
+.newday-sub, .newday-reward span { color: var(--ink); }
+#newday-title, #duel-result-title { color: #6b3f14; }
+.newday-eyebrow { color: var(--terracotta); }
+.story-reward, .duel-results-card .duel-hint, .newday-streak { color: #3a6b2f; }
+.newday-reward { background: rgba(107, 74, 42, 0.12); border-color: rgba(107, 74, 42, 0.4); }
+.newday-reward b { color: #b06a1e; }
+.newday-body { background: transparent; }
+/* modal flame reads on parchment */
+.modal-flame, .newday-flame { box-shadow: 0 0 20px rgba(229, 118, 30, 0.5), inset 0 0 0 1.5px rgba(107, 74, 42, 0.3); }
