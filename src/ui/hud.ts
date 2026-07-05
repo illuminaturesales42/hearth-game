@@ -4,7 +4,8 @@
 import type { Game } from '../core/game';
 import { chainDef } from '../core/board';
 import { msToNextTick } from '../core/energy';
-import { ENERGY, ORDERS } from '../data/economy';
+import { ENERGY, ORDERS, ZONE_STAGES } from '../data/economy';
+import { feedback } from './feedback';
 
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
@@ -18,14 +19,28 @@ export class Hud {
   constructor(private game: Game) {
     game.subscribe((ev) => {
       if (ev.type === 'state') this.render();
-      if (ev.type === 'delivered') this.showStory(ev.resolution, ev.rewardEnergy, ev.rewardCoins);
-      if (ev.type === 'chapterComplete') this.showChapterEnd();
-      if (ev.type === 'quest') this.onQuest(ev.questId, ev.granted);
-      if (ev.type === 'reject' && ev.reason === 'energy') {
-        this.toast('The hearth burns low. A life quest below relights it.');
+      if (ev.type === 'merge') feedback.merge(ev.item.level);
+      if (ev.type === 'spawn') feedback.spawn();
+      if (ev.type === 'delivered') {
+        feedback.deliver();
+        this.showStory(ev.resolution, ev.rewardEnergy, ev.rewardCoins);
       }
-      if (ev.type === 'reject' && ev.reason === 'full') {
-        this.toast('The board is full. Merge something first.');
+      if (ev.type === 'chapterComplete') {
+        feedback.chapter();
+        this.showChapterEnd();
+      }
+      if (ev.type === 'quest') this.onQuest(ev.questId, ev.granted);
+      if (ev.type === 'health') {
+        const parts = [
+          ev.fromSteps > 0 ? `+${ev.fromSteps} from steps` : '',
+          ev.fromSleep > 0 ? `+${ev.fromSleep} from a good night's sleep` : '',
+        ].filter(Boolean);
+        this.toast(`The hearth brightens: ${parts.join(', ')}.`);
+      }
+      if (ev.type === 'reject') {
+        feedback.reject();
+        if (ev.reason === 'energy') this.toast('The hearth burns low. A life quest below relights it.');
+        if (ev.reason === 'full') this.toast('The board is full. Merge something first.');
       }
     });
 
@@ -70,7 +85,25 @@ export class Hud {
       if (done) btn.querySelector('.q-sub')!.textContent = 'Done today ✓';
     });
 
+    this.renderZone();
     this.renderTimer();
+  }
+
+  private renderZone(): void {
+    const delivered = this.game.snapshot.orderIndex;
+    const stage = [...ZONE_STAGES].reverse().find((z) => delivered >= z.at) ?? ZONE_STAGES[0]!;
+    $('zone-label').textContent = `${stage.label} · ${delivered}/${ORDERS.length} orders`;
+    const dots = $('zone-dots');
+    if (dots.childElementCount === 0) {
+      for (let i = 0; i < ZONE_STAGES.length; i++) {
+        const d = document.createElement('span');
+        d.className = 'zone-dot';
+        dots.appendChild(d);
+      }
+    }
+    Array.from(dots.children).forEach((d, i) => {
+      (d as HTMLElement).classList.toggle('lit', delivered >= (ZONE_STAGES[i]?.at ?? Infinity));
+    });
   }
 
   private renderTimer(): void {

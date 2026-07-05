@@ -56,8 +56,15 @@ export interface EnergyState {
   questDay: string; // YYYY-MM-DD local
 }
 
+export interface HealthLedgerState {
+  day: string;
+  stepsGranted: number;
+  sleepGranted: boolean;
+}
+
 export interface GameState {
   version: number;
+  healthLedger?: HealthLedgerState;
   board: BoardState;
   energy: EnergyState;
   coins: number;

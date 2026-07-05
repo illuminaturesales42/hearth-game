@@ -54,41 +54,102 @@ export const LIFE_QUESTS: readonly LifeQuestDef[] = [
   { id: 'water', label: 'Drink a glass of water', energy: 2, source: 'self-report' },
 ] as const;
 
-/** Chapter 1: The Letter. Order chain doubles as the story spine. */
+/**
+ * Chapter 1: The Letter. 12 orders; the order chain doubles as the story
+ * spine, and every 3rd delivery advances a village restoration stage.
+ */
 export const ORDERS: readonly OrderDef[] = [
   {
     id: 'c1-01', who: 'Bran the baker',
+    need: { chain: 'wood', level: 2 },
+    text: 'Welcome to Emberhollow. The storm took half the square and the post office took the other half. Cut me planks and we’ll start with the notice board.',
+    resolution: 'The notice board goes up. Pinned dead centre: a letter addressed to nobody, postmarked seventeen years ago.',
+    rewardEnergy: 3, rewardCoins: 15,
+  },
+  {
+    id: 'c1-02', who: 'Bran the baker',
     need: { chain: 'wood', level: 3 },
-    text: 'The bakery oven died the night Marta’s letter arrived. Bring me a hammer and I’ll show you what she hid inside it.',
+    text: 'That letter is Marta’s hand, I’d swear it on my ovens. Speaking of which, mine died the night it arrived. Bring a hammer and I’ll show you what it was hiding.',
     resolution: 'Inside the oven flue: a brass key, and a note. "Don’t trust the lighthouse keeper."',
     rewardEnergy: 4, rewardCoins: 20,
   },
   {
-    id: 'c1-02', who: 'Bran the baker',
+    id: 'c1-03', who: 'Wren the postmistress',
+    need: { chain: 'hearthfire', level: 1 },
+    text: 'A letter with no name wants reading by proper light. Bring me a lantern and keep your voice down.',
+    resolution: 'Wren reads twice, then folds it fast. "It’s dated three days from now. That’s not possible."',
+    rewardEnergy: 4, rewardCoins: 25,
+  },
+  {
+    id: 'c1-04', who: 'Bran the baker',
     need: { chain: 'harvest', level: 2 },
     text: 'The keeper won’t talk to strangers. Everyone talks over pie. Bake one.',
     resolution: 'The keeper eats in silence, then whispers: "Marta didn’t drown. She rowed north."',
     rewardEnergy: 5, rewardCoins: 30,
   },
   {
-    id: 'c1-03', who: 'Old Keeper Sorin',
+    id: 'c1-05', who: 'Old Keeper Sorin',
+    need: { chain: 'wood', level: 4 },
+    text: 'You want the rest of it, you sit like a guest. My last chair went into the stove the winter the light went out.',
+    resolution: 'Sorin sits, finally. "The light didn’t fail that night. Somebody shuttered it. I kept the bolt they used."',
+    rewardEnergy: 5, rewardCoins: 35,
+  },
+  {
+    id: 'c1-06', who: 'Old Keeper Sorin',
     need: { chain: 'hearthfire', level: 2 },
     text: 'If she rowed north she followed the old light. Kindle a hearthfire so she can find her way back.',
-    resolution: 'The fire takes. Far out on the water, something answers with a flash.',
+    resolution: 'The fire takes. Far out on the water, something answers with a flash. The square lamps come on for the first time in years.',
     rewardEnergy: 6, rewardCoins: 40,
   },
   {
-    id: 'c1-04', who: 'Old Keeper Sorin',
-    need: { chain: 'wood', level: 6 },
-    text: 'She’ll need a roof when she lands. The old cottage went to ruin the year she left. Build it back.',
-    resolution: 'At dawn, smoke rises from the cottage chimney. Someone is home. Chapter 2 unlocked.',
-    rewardEnergy: 8, rewardCoins: 80,
+    id: 'c1-07', who: 'Wren the postmistress',
+    need: { chain: 'harvest', level: 4 },
+    text: 'Half the village saw that flash and now they’re all in my post office asking questions. Feed them. A full basket buys us an hour of quiet.',
+    resolution: 'Over bread and quiet, Wren lays out the letters. Nine of them. All Marta’s hand. All dated after she vanished.',
+    rewardEnergy: 6, rewardCoins: 45,
   },
   {
-    id: 'c1-05', who: 'Marta',
+    id: 'c1-08', who: 'Bran the baker',
+    need: { chain: 'wood', level: 5 },
+    text: 'The bakery cellar has a door I nailed shut the year she left. I’m ready to open it. Build me a new one first, so I can close it again if I’m wrong.',
+    resolution: 'Behind the old door: an oilskin chart of the northern shoals, marked in Marta’s ink. One cove is circled twice.',
+    rewardEnergy: 7, rewardCoins: 55,
+  },
+  {
+    id: 'c1-09', who: 'Old Keeper Sorin',
+    need: { chain: 'hearthfire', level: 3 },
+    text: 'That cove sits behind the black rocks. A hearthfire won’t reach it. Build me a beacon and I’ll aim it myself.',
+    resolution: 'The beacon sweeps the shoals. On the third pass it catches a rowboat, hauled above the tideline. Recently.',
+    rewardEnergy: 8, rewardCoins: 65,
+  },
+  {
+    id: 'c1-10', who: 'Wren the postmistress',
+    need: { chain: 'harvest', level: 5 },
+    text: 'If she’s coming in off that water she’ll be hungrier than pride allows. Set a proper feast. We’ll do the asking after.',
+    resolution: 'Nobody comes to the feast. But in the morning a tenth letter is on the notice board. It says: "Fix the cottage. Please."',
+    rewardEnergy: 8, rewardCoins: 75,
+  },
+  {
+    id: 'c1-11', who: 'Old Keeper Sorin',
+    need: { chain: 'wood', level: 6 },
+    text: 'She’ll need a roof when she lands. The old cottage went to ruin the year she left. Build it back.',
+    resolution: 'At dawn, smoke rises from the cottage chimney. Someone is home.',
+    rewardEnergy: 9, rewardCoins: 90,
+  },
+  {
+    id: 'c1-12', who: 'Marta',
     need: { chain: 'harvest', level: 3 },
     text: 'Seventeen missed birthdays. We are fixing one of them tonight. Make a cake.',
-    resolution: 'End of Chapter 1. Marta sets a slice by the window, "for whoever is still out there."',
+    resolution: 'End of Chapter 1. Marta sets a slice by the window, "for whoever is still out there." Behind her, unread, the eleventh letter.',
     rewardEnergy: 10, rewardCoins: 120,
   },
+] as const;
+
+/** Village restoration stages, unlocked by delivered-order count. */
+export const ZONE_STAGES: readonly { at: number; label: string }[] = [
+  { at: 0, label: 'Storm-struck square' },
+  { at: 3, label: 'Notice board and lamplight' },
+  { at: 6, label: 'Bakery breathing again' },
+  { at: 9, label: 'Beacon on the shoals' },
+  { at: 12, label: 'Emberhollow, restored' },
 ] as const;

@@ -7,6 +7,8 @@ import { createBoard, dropItem, emptyIndices, findItem, itemAt, withEmpty, withI
 import { accrueRegen, canSpend, completeQuest, grant, initialEnergy, spend } from './energy';
 import { BOARD_COLS, BOARD_ROWS, ENERGY, ORDERS, PRODUCER_INDEX, SPAWN_TABLE } from '../data/economy';
 import { loadState, saveState } from './save';
+import { applySnapshot, initialLedger } from '../health/health-energy';
+import type { HealthSnapshot } from '../health/health-provider';
 
 export type GameEvent =
   | { type: 'state' }
@@ -15,6 +17,7 @@ export type GameEvent =
   | { type: 'reject'; index: number; reason: 'energy' | 'full' | 'invalid' }
   | { type: 'delivered'; orderId: string; resolution: string; rewardEnergy: number; rewardCoins: number }
   | { type: 'quest'; questId: string; granted: number }
+  | { type: 'health'; energy: number; fromSteps: number; fromSleep: number }
   | { type: 'chapterComplete' };
 
 type Listener = (ev: GameEvent) => void;
@@ -146,6 +149,22 @@ export class Game {
       rewardCoins: order.rewardCoins,
     });
     if (this.state.orderIndex >= ORDERS.length) this.emit({ type: 'chapterComplete' });
+  }
+
+  /**
+   * Sync a health snapshot into energy. Idempotent per day; safe to call on
+   * every app foreground. Emits 'health' only when something was granted.
+   */
+  syncHealth(snap: HealthSnapshot, now = Date.now()): void {
+    const ledger = this.state.healthLedger ?? initialLedger(now);
+    const res = applySnapshot(ledger, snap, now);
+    this.state = { ...this.state, healthLedger: res.ledger };
+    if (res.energy > 0) {
+      this.state = { ...this.state, energy: grant(this.state.energy, res.energy) };
+      this.emit({ type: 'health', energy: res.energy, fromSteps: res.fromSteps, fromSleep: res.fromSleep });
+    } else {
+      saveState(this.state);
+    }
   }
 
   doLifeQuest(questId: string, now = Date.now()): void {

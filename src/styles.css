@@ -69,6 +69,21 @@ body {
 #energy-sub { display: block; font-size: 11px; color: var(--ink-dim); }
 .energy-timer { font-size: 11px; color: var(--ink-dim); font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; }
 
+/* ---------- Zone restoration strip ---------- */
+#zone-strip {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(245, 200, 130, 0.12);
+  font-size: 11px; color: var(--ink-dim);
+}
+.zone-dots { display: flex; gap: 5px; }
+.zone-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.14); }
+.zone-dot.lit {
+  background: radial-gradient(circle at 40% 35%, var(--ember-hi), var(--ember) 80%);
+  box-shadow: 0 0 8px rgba(245, 169, 75, 0.6);
+}
+
 /* ---------- Board ---------- */
 #board-wrap { flex: 1; display: flex; align-items: center; }
 #board {
