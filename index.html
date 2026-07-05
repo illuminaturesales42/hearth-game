@@ -25,17 +25,12 @@
           <div class="coinpill" title="Coins"><span class="coin-ico" aria-hidden="true"></span><b id="hud-coins">0</b></div>
         </header>
 
-        <div class="harbour-banner" role="img" aria-label="Illustration placeholder: Emberhollow harbour at sunset">
-          <div class="hb-sky"></div>
-          <div class="hb-sun"></div>
-          <div class="hb-sea"></div>
-          <div class="hb-lighthouse"><span class="hb-beam"></span></div>
-          <div class="hb-town"></div>
-        </div>
-
-        <section class="zone-strip" aria-label="Village restoration">
-          <div class="zone-dots" id="zone-dots"></div>
-          <span id="zone-label"></span>
+        <section class="home-map" aria-label="Your Emberhollow, growing as you play">
+          <canvas id="map-canvas" class="map-canvas" role="img" aria-label="Your harbour town"></canvas>
+          <div class="home-map-overlay">
+            <span id="map-progress" class="map-progress"></span>
+            <div class="map-bar"><i id="map-bar-fill"></i></div>
+          </div>
         </section>
 
         <section class="tools-bar" aria-label="Board tools">
@@ -57,17 +52,6 @@
         </section>
       </section>
 
-      <!-- ================= MAP ================= -->
-      <section class="screen" id="screen-map">
-        <div class="map-head">
-          <h2 class="screen-title">Emberhollow Harbour</h2>
-          <span id="map-progress" class="map-progress"></span>
-        </div>
-        <canvas id="map-canvas" class="map-canvas" role="img" aria-label="Your harbour town, growing as you restore it"></canvas>
-        <div class="map-bar"><i id="map-bar-fill"></i></div>
-        <div class="screen-body" id="map-body"></div>
-      </section>
-
       <!-- ================= VILLAGERS ================= -->
       <section class="screen" id="screen-villagers"><div class="screen-body" id="villagers-body"></div></section>
 
@@ -81,7 +65,6 @@
 
     <nav id="bottom-nav" aria-label="Main navigation">
       <button class="nav-btn" data-screen="shop"><span>🛍️</span>Shop</button>
-      <button class="nav-btn" data-screen="map"><span>🗺️</span>Map</button>
       <button class="nav-btn on" data-screen="home"><span>🔥</span>Home</button>
       <button class="nav-btn" data-screen="villagers"><span>👥</span>Villagers</button>
       <button class="nav-btn" data-screen="journal"><span>📖</span>Journal</button>
@@ -120,6 +103,11 @@
       <button id="star-open" class="med-cta stargaze-cta">
         <span class="med-cta-ico">🌙</span>
         <span class="med-cta-body"><b>Stargaze</b><span>Stare at the moon after dark</span></span>
+        <span class="med-cta-go">›</span>
+      </button>
+      <button id="kind-open" class="med-cta kindness-cta">
+        <span class="med-cta-ico">💬</span>
+        <span class="med-cta-body"><b>Warm a Stranger</b><span>Give a compliment · selfie bonus</span></span>
         <span class="med-cta-go">›</span>
       </button>
       <p class="earn-label">Today’s energy</p>
@@ -173,6 +161,21 @@
           <button id="duel-rematch" class="btn-primary">Rematch</button>
           <button id="duel-done" class="btn-ghost">Done</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= WARM A STRANGER ================= -->
+  <div id="kind-overlay" class="modal" role="dialog" aria-modal="true" aria-label="Warm a stranger" hidden>
+    <div class="kind-card">
+      <button id="kind-close" class="sheet-close" aria-label="Close">✕</button>
+      <div class="kind-glow" aria-hidden="true">💬</div>
+      <span class="kind-eyebrow">A kind word</span>
+      <p id="kind-prompt" class="kind-prompt"></p>
+      <button id="kind-another" class="btn-ghost">Another idea</button>
+      <div class="kind-actions">
+        <button id="kind-did" class="btn-primary">I did it</button>
+        <button id="kind-selfie" class="btn-secondary">…and took a selfie</button>
       </div>
     </div>
   </div>

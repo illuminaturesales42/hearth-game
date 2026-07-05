@@ -150,6 +150,19 @@ body {
 /* ---------- stargaze ---------- */
 .stargaze-cta { background: linear-gradient(120deg, rgba(90, 110, 200, 0.26), rgba(30, 40, 80, 0.2)); border-color: rgba(150, 170, 230, 0.4); }
 .stargaze-cta .med-cta-go { color: #b9c6f0; }
+.kindness-cta { background: linear-gradient(120deg, rgba(224, 136, 95, 0.26), rgba(125, 138, 79, 0.18)); border-color: rgba(255, 170, 130, 0.4); }
+.kindness-cta .med-cta-go { color: #f0b090; }
+
+/* ---------- warm a stranger ---------- */
+.kind-card { max-width: 340px; width: 100%; padding: 26px 24px 22px; border-radius: 20px; text-align: center; position: relative;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid rgba(255, 210, 122, 0.35); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6); }
+.kind-glow { width: 52px; height: 52px; margin: 0 auto 12px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px;
+  background: radial-gradient(circle at 40% 32%, #e0885f, #7d8a4f 80%); box-shadow: 0 0 22px rgba(224, 136, 95, 0.5); }
+.kind-eyebrow { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--terracotta); }
+.kind-prompt { font-family: var(--serif); font-size: 18px; line-height: 1.5; color: var(--cream); margin: 8px 0 14px; text-wrap: balance; }
+.kind-card .btn-ghost { margin: 0 auto 14px; display: inline-block; }
+.kind-actions { display: flex; flex-direction: column; gap: 8px; }
+.kind-actions .btn-primary, .kind-actions .btn-secondary { width: 100%; }
 .stargaze-session { background: radial-gradient(120% 100% at 50% 20%, #1a2350, #0b1030 60%, #060814); flex-direction: column; gap: 6px; overflow: hidden; }
 .star-field { position: absolute; inset: 0; z-index: 1; }
 .star { position: absolute; border-radius: 50%; background: #fff; opacity: 0.8; }
@@ -236,7 +249,7 @@ body {
 /* ---------- bottom nav ---------- */
 #bottom-nav {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 30;
-  display: grid; grid-template-columns: repeat(5, 1fr);
+  display: grid; grid-template-columns: repeat(4, 1fr);
   padding: 8px 8px max(8px, env(safe-area-inset-bottom));
   background: linear-gradient(180deg, rgba(13, 19, 34, 0.6), var(--navy-0) 60%);
   border-top: 1px solid rgba(255, 210, 122, 0.12); backdrop-filter: blur(8px);
@@ -254,11 +267,14 @@ body {
 .screen-title { font-family: var(--serif); font-size: 26px; margin: 6px 0 0; color: var(--cream); text-wrap: balance; }
 .screen-sub { margin: 0; font-size: 12.5px; color: var(--cream-dim); }
 .screen-h3 { font-family: var(--serif); font-size: 18px; margin: 8px 0 0; }
-/* ---------- map (canvas town) ---------- */
-.map-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-top: 4px; }
-.map-progress { font-size: 11px; color: var(--ember-hi); letter-spacing: 0.04em; text-align: right; }
-.map-canvas { width: 100%; height: 240px; display: block; border-radius: var(--r-panel); margin: 8px 0 0; box-shadow: inset 0 0 0 1px rgba(255, 210, 122, 0.18), 0 10px 26px rgba(0, 0, 0, 0.4); }
-.map-bar { height: 8px; border-radius: 5px; background: rgba(255, 255, 255, 0.08); overflow: hidden; margin: 10px 0 12px; }
+/* ---------- home map hero (the town, front and centre) ---------- */
+.home-map { position: relative; margin: 6px 0 8px; border-radius: var(--r-panel); overflow: hidden;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 210, 122, 0.22), 0 10px 26px rgba(0, 0, 0, 0.45); }
+.map-canvas { width: 100%; height: 200px; display: block; }
+.home-map-overlay { position: absolute; left: 0; right: 0; bottom: 0; padding: 20px 12px 8px;
+  background: linear-gradient(180deg, transparent, rgba(8, 10, 18, 0.75)); }
+.map-progress { display: block; font-size: 11px; color: var(--ember-hi); letter-spacing: 0.04em; margin-bottom: 5px; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); }
+.map-bar { height: 8px; border-radius: 5px; background: rgba(0, 0, 0, 0.4); overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255, 210, 122, 0.2); }
 .map-bar i { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--sea), var(--ember-hi)); box-shadow: 0 0 12px rgba(255, 210, 122, 0.5); transition: width 0.6s ease; }
 
 .loc-list, .coll-list, .event-list, .jentries, .friend-list, .gift-list { display: flex; flex-direction: column; gap: 8px; }

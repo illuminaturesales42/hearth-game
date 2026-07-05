@@ -63,6 +63,9 @@ game.subscribe((ev) => {
     case 'stargaze':
       if (ev.energy > 0) track('stargaze', { energy: ev.energy, moon: ev.moon });
       break;
+    case 'kindness':
+      if (ev.energy > 0) track('kindness', { energy: ev.energy, selfie: ev.selfie });
+      break;
     case 'duelEnd':
       track('duel_end', { won: ev.won, streak: ev.streak, coins: ev.coins, items: ev.itemCount });
       break;

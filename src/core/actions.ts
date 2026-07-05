@@ -9,6 +9,7 @@ import { LOG_MEDITATION, MEDITATIONS } from '../data/meditations';
 import { RECOVERY } from '../data/recovery';
 import { GRATITUDE } from '../data/gratitude';
 import { STARGAZE } from '../data/moon';
+import { KINDNESS } from '../data/kindness';
 import { localDayKey } from './energy';
 
 export const CHEST_EVERY = 3;
@@ -32,6 +33,7 @@ export function earnableById(id: string): Earnable | undefined {
   if (id === LOG_MEDITATION.id) return { energy: 0, timesPerDay: 1 }; // energy is passed in per log
   if (id === GRATITUDE.id) return { energy: 0, timesPerDay: 1 }; // energy is streak-scaled, passed in
   if (id === STARGAZE.id) return { energy: 0, timesPerDay: 1 }; // energy is moon-scaled, passed in
+  if (id === KINDNESS.id) return { energy: 0, timesPerDay: 1 }; // energy depends on the selfie bonus, passed in
   const r = RECOVERY.find((x) => x.id === id);
   if (r) return { energy: 0, timesPerDay: r.timesPerDay }; // energy is passed in per log
   return undefined;

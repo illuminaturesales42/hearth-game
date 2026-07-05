@@ -15,6 +15,7 @@ import { localDayKey } from './energy';
 import { LOG_MEDITATION, loggedMinutesToEnergy } from '../data/meditations';
 import { findRecovery, recoveryEnergy } from '../data/recovery';
 import { GRATITUDE, initialGratitude } from '../data/gratitude';
+import { KINDNESS } from '../data/kindness';
 import { askFriend, canAsk, initialSocial, invite, joinFriend, pickInviteName, takeGift } from './social';
 import { STARGAZE, fullMoonBonus, phaseName } from '../data/moon';
 import { isNight } from './sun';
@@ -39,6 +40,7 @@ export type GameEvent =
   | { type: 'gratitude'; energy: number; multiplier: number }
   | { type: 'flashback'; text: string; energy: number }
   | { type: 'stargaze'; energy: number; moon: string }
+  | { type: 'kindness'; energy: number; selfie: boolean }
   | { type: 'settings' }
   | { type: 'duelEnd'; won: boolean; streak: number; multiplier: number; coins: number; itemCount: number }
   | { type: 'chapterComplete' };
@@ -479,6 +481,31 @@ export class Game {
       rewardCoins: order.rewardCoins,
     });
     if (this.state.orderIndex >= ORDERS.length) this.emit({ type: 'chapterComplete' });
+  }
+
+  // ---------- kindness to a stranger ----------
+
+  canDoKindness(now = Date.now()): boolean {
+    return canDoAction(this.state.actions, KINDNESS.id, now);
+  }
+
+  /** Log a real-world compliment to a stranger; selfie with the new friend adds a bonus. */
+  doKindness(withSelfie: boolean, now = Date.now()): void {
+    const energy = KINDNESS.baseEnergy + (withSelfie ? KINDNESS.selfieBonus : 0);
+    const res = recordAction(this.state.actions, KINDNESS.id, now, energy);
+    if (res.energy <= 0 && res.dailyBonus <= 0) {
+      this.emit({ type: 'kindness', energy: 0, selfie: withSelfie });
+      return;
+    }
+    this.state = {
+      ...this.state,
+      actions: res.state,
+      energy: grant(this.state.energy, res.energy + res.dailyBonus),
+      coins: this.state.coins + res.chestCoins,
+    };
+    this.emit({ type: 'kindness', energy: res.energy, selfie: withSelfie });
+    if (res.dailyBonus > 0) this.emit({ type: 'daily', energy: res.dailyBonus, streak: res.state.streak });
+    if (res.chestCoins > 0) this.emit({ type: 'chest', coins: res.chestCoins });
   }
 
   // ---------- gratitude journal ----------

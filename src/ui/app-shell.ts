@@ -14,9 +14,10 @@ import { SocialScreen } from './social-screen';
 import { AutoMergeController } from './auto-merge';
 import { StargazeUI } from './stargaze';
 import { DuelUI } from './duel';
+import { KindnessUI } from './kindness';
 import { NewDayUI } from './new-day';
 
-type ScreenId = 'home' | 'map' | 'villagers' | 'journal' | 'shop';
+type ScreenId = 'home' | 'villagers' | 'journal' | 'shop';
 
 export class AppShell {
   private active: ScreenId = 'home';
@@ -39,8 +40,11 @@ export class AppShell {
     const meditation = new MeditationUI(game);
     const recovery = new RecoveryUI(game);
     const stargaze = new StargazeUI(game);
+    const kindness = new KindnessUI(game);
     new AutoMergeController(game);
     new NewDayUI(game).maybeShow();
+    // The town map now lives on the Home screen; animate it while Home is active.
+    this.map.setVisible(true);
 
     document.querySelectorAll<HTMLButtonElement>('.nav-btn').forEach((btn) => {
       btn.addEventListener('click', () => this.go((btn.dataset.screen as ScreenId) ?? 'home'));
@@ -53,6 +57,8 @@ export class AppShell {
     if (recoveryOpen) recoveryOpen.addEventListener('click', () => recovery.open());
     const starOpen = document.getElementById('star-open');
     if (starOpen) starOpen.addEventListener('click', () => stargaze.open());
+    const kindOpen = document.getElementById('kind-open');
+    if (kindOpen) kindOpen.addEventListener('click', () => kindness.open());
   }
 
   private go(id: ScreenId): void {
@@ -63,8 +69,8 @@ export class AppShell {
     document.querySelectorAll<HTMLElement>('.nav-btn').forEach((b) => {
       b.classList.toggle('on', b.dataset.screen === id);
     });
-    // Map animates only while visible.
-    this.map.setVisible(id === 'map');
+    // The map (on Home) animates only while Home is showing.
+    this.map.setVisible(id === 'home');
     // Social/villagers re-renders on every view (friend + gift state changes).
     if (id === 'villagers') this.social.render();
     if (!this.rendered.has(id)) {

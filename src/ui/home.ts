@@ -67,6 +67,12 @@ export class Home {
             toast(`${ev.moon} · +${ev.energy} energy. The night keeps watch.`);
           }
           break;
+        case 'kindness':
+          if (ev.energy > 0) {
+            feedback.chime(587);
+            toast(ev.selfie ? `+${ev.energy} energy — a compliment and a new friend. 💛` : `+${ev.energy} energy. A kindness ripples out.`);
+          }
+          break;
         case 'duelEnd':
           if (ev.won) {
             feedback.chapter();
@@ -116,20 +122,24 @@ export class Home {
       deliver.disabled = true;
     }
 
-    const delivered = s.orderIndex;
-    const stage = [...ZONE_STAGES].reverse().find((z) => delivered >= z.at) ?? ZONE_STAGES[0]!;
-    $('zone-label').textContent = `${stage.label} · ${delivered}/${ORDERS.length} orders`;
-    const dots = $('zone-dots');
-    if (dots.childElementCount === 0) {
-      for (let i = 0; i < ZONE_STAGES.length; i++) {
-        const d = document.createElement('span');
-        d.className = 'zone-dot';
-        dots.appendChild(d);
+    // Zone strip is optional (the Home map now shows restoration progress).
+    const zoneLabel = document.getElementById('zone-label');
+    const dots = document.getElementById('zone-dots');
+    if (zoneLabel && dots) {
+      const delivered = s.orderIndex;
+      const stage = [...ZONE_STAGES].reverse().find((z) => delivered >= z.at) ?? ZONE_STAGES[0]!;
+      zoneLabel.textContent = `${stage.label} · ${delivered}/${ORDERS.length} orders`;
+      if (dots.childElementCount === 0) {
+        for (let i = 0; i < ZONE_STAGES.length; i++) {
+          const d = document.createElement('span');
+          d.className = 'zone-dot';
+          dots.appendChild(d);
+        }
       }
+      Array.from(dots.children).forEach((d, i) => {
+        (d as HTMLElement).classList.toggle('lit', delivered >= (ZONE_STAGES[i]?.at ?? Infinity));
+      });
     }
-    Array.from(dots.children).forEach((d, i) => {
-      (d as HTMLElement).classList.toggle('lit', delivered >= (ZONE_STAGES[i]?.at ?? Infinity));
-    });
   }
 
   private showStory(body: string, reward: string): void {
