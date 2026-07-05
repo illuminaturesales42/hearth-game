@@ -57,8 +57,8 @@ game.subscribe((ev) => {
     case 'flashback':
       track('flashback_claimed', { energy: ev.energy });
       break;
-    case 'match':
-      track('match_joined', { energy: ev.energy });
+    case 'stargaze':
+      if (ev.energy > 0) track('stargaze', { energy: ev.energy, moon: ev.moon });
       break;
     case 'health':
       track('health_grant', {
@@ -86,7 +86,7 @@ declare global {
   }
 }
 window.hearthReset = () => {
-  localStorage.removeItem('hearth:save:v6');
+  localStorage.removeItem('hearth:save:v7');
   location.reload();
 };
 window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {

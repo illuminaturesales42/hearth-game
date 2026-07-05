@@ -11,7 +11,8 @@ import { MeditationUI } from './meditation';
 import { RecoveryUI } from './recovery';
 import { MapView } from './map-view';
 import { SocialScreen } from './social-screen';
-import { MatchesController } from './matches';
+import { AutoMergeController } from './auto-merge';
+import { StargazeUI } from './stargaze';
 
 type ScreenId = 'home' | 'map' | 'villagers' | 'journal' | 'shop';
 
@@ -34,7 +35,8 @@ export class AppShell {
     this.social = new SocialScreen(game);
     const meditation = new MeditationUI(game);
     const recovery = new RecoveryUI(game);
-    new MatchesController(game);
+    const stargaze = new StargazeUI(game);
+    new AutoMergeController(game);
 
     document.querySelectorAll<HTMLButtonElement>('.nav-btn').forEach((btn) => {
       btn.addEventListener('click', () => this.go((btn.dataset.screen as ScreenId) ?? 'home'));
@@ -45,6 +47,8 @@ export class AppShell {
     if (medOpen) medOpen.addEventListener('click', () => meditation.openMenu());
     const recoveryOpen = document.getElementById('recovery-open');
     if (recoveryOpen) recoveryOpen.addEventListener('click', () => recovery.open());
+    const starOpen = document.getElementById('star-open');
+    if (starOpen) starOpen.addEventListener('click', () => stargaze.open());
   }
 
   private go(id: ScreenId): void {

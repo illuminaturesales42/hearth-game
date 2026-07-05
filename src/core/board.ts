@@ -85,3 +85,17 @@ export function dropItem(board: BoardState, from: number, to: number, nextUid: n
 export function findItem(board: BoardState, chain: ChainId, level: number): number {
   return board.cells.findIndex((c) => c.kind === 'item' && c.item.chain === chain && c.item.level === level);
 }
+
+/** First mergeable pair on the board as [keepIndex, consumeIndex], or null. */
+export function findMergePair(board: BoardState): [number, number] | null {
+  const items: { i: number; item: Item }[] = [];
+  board.cells.forEach((c, i) => {
+    if (c.kind === 'item') items.push({ i, item: c.item });
+  });
+  for (let a = 0; a < items.length; a++) {
+    for (let b = a + 1; b < items.length; b++) {
+      if (canMerge(items[a]!.item, items[b]!.item)) return [items[a]!.i, items[b]!.i];
+    }
+  }
+  return null;
+}

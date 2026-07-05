@@ -87,6 +87,16 @@ export function isWithinWindow(kind: SunKind, now: number, coords?: Coords): boo
   return now >= w.start && now <= w.end;
 }
 
+/** True after sunset or before sunrise. With coords uses the real sun; else a 20:00–05:00 clock fallback. */
+export function isNight(now: number, coords?: Coords): boolean {
+  if (coords) {
+    const t = sunTimes(now, coords);
+    if (Number.isFinite(t.sunrise) && Number.isFinite(t.sunset)) return now > t.sunset || now < t.sunrise;
+  }
+  const h = new Date(now).getHours();
+  return h >= 20 || h < 5;
+}
+
 /** Human "HH:MM" of the window opening, for the "come back at…" message. */
 export function windowOpensLabel(kind: SunKind, now: number, coords?: Coords): string {
   const w = sunWindow(kind, now, coords);

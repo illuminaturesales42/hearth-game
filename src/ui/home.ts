@@ -61,9 +61,11 @@ export class Home {
           feedback.chime(660);
           toast(`+${ev.energy} energy. Remember: “${ev.text.slice(0, 60)}${ev.text.length > 60 ? '…' : ''}”`);
           break;
-        case 'match':
-          feedback.spawn();
-          toast(`Joined ${ev.name} — +${ev.energy} energy. The harbour hums.`);
+        case 'stargaze':
+          if (ev.energy > 0) {
+            feedback.chime(587);
+            toast(`${ev.moon} · +${ev.energy} energy. The night keeps watch.`);
+          }
           break;
         case 'health': {
           const parts = [

@@ -38,11 +38,11 @@
           <span id="zone-label"></span>
         </section>
 
-        <section class="matches-bar" aria-label="Village happenings">
-          <div class="matches-info" id="matches-info"></div>
-          <label class="auto-toggle" title="Automatically join available happenings">
-            <input type="checkbox" id="auto-join" />
-            <span>Auto-join</span>
+        <section class="tools-bar" aria-label="Board tools">
+          <span class="tools-hint">Auto-merge joins matching items for you.</span>
+          <label class="auto-toggle" title="Automatically merge matching items">
+            <input type="checkbox" id="auto-merge" />
+            <span>Auto-merge</span>
           </label>
         </section>
 
@@ -117,6 +117,11 @@
         <span class="med-cta-body"><b>Recovery</b><span>Log cold plunge &amp; sauna</span></span>
         <span class="med-cta-go">›</span>
       </button>
+      <button id="star-open" class="med-cta stargaze-cta">
+        <span class="med-cta-ico">🌙</span>
+        <span class="med-cta-body"><b>Stargaze</b><span>Stare at the moon after dark</span></span>
+        <span class="med-cta-go">›</span>
+      </button>
       <p class="earn-label">Today’s energy</p>
       <div id="energy-list" class="earn-list"></div>
       <button id="energy-more" class="earn-more">More ways to earn energy ▼</button>
@@ -141,6 +146,17 @@
     <p id="motion-title" class="motion-title"></p>
     <div id="motion-count" class="motion-count"></div>
     <button id="motion-btn" class="motion-btn"></button>
+  </div>
+
+  <!-- ================= STARGAZE ================= -->
+  <div id="star-overlay" class="capture stargaze-session" role="dialog" aria-modal="true" aria-label="Stargaze" hidden>
+    <button id="star-close" class="capture-close" aria-label="Close">✕</button>
+    <div id="star-field" class="star-field" aria-hidden="true"></div>
+    <div id="star-moon" class="star-moon" aria-hidden="true"></div>
+    <p id="star-phase" class="star-phase"></p>
+    <div id="star-msg" class="star-msg"></div>
+    <div id="star-timer" class="star-timer"></div>
+    <button id="star-gaze" class="btn-primary">Gaze</button>
   </div>
 
   <!-- ================= MEDITATION MENU ================= -->

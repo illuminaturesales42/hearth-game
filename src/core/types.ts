@@ -128,9 +128,8 @@ export interface GratitudeState {
 }
 
 export interface Settings {
-  autoJoinMatches: boolean;
-  matchesJoinedToday: number;
-  matchDay: string; // YYYY-MM-DD local
+  /** Automatically merge matching items on the board. */
+  autoMerge: boolean;
 }
 
 export interface GameState {

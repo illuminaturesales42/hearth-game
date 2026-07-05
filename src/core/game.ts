@@ -3,7 +3,7 @@
  * UI layers subscribe; core stays DOM-free.
  */
 import type { GameState, Item } from './types';
-import { createBoard, dropItem, emptyIndices, findItem, itemAt, withEmpty, withItem } from './board';
+import { createBoard, dropItem, emptyIndices, findItem, findMergePair, itemAt, withEmpty, withItem } from './board';
 import { accrueRegen, canSpend, grant, initialEnergy, spend } from './energy';
 import { BOARD_COLS, BOARD_ROWS, ENERGY, ORDERS, PRODUCER_INDEX, SPAWN_TABLE } from '../data/economy';
 import { loadState, saveState } from './save';
@@ -16,7 +16,9 @@ import { LOG_MEDITATION, loggedMinutesToEnergy } from '../data/meditations';
 import { findRecovery, recoveryEnergy } from '../data/recovery';
 import { GRATITUDE, initialGratitude } from '../data/gratitude';
 import { askFriend, canAsk, initialSocial, invite, joinFriend, pickInviteName, takeGift } from './social';
-import { MATCH_DAILY_CAP, findMatch } from '../data/matches';
+import { STARGAZE, fullMoonBonus, phaseName } from '../data/moon';
+import { isNight } from './sun';
+import type { Coords } from './sun';
 import type { ActionState, ChainId, GratitudeEntry, GratitudeState, Settings, SocialState } from './types';
 
 export type GameEvent =
@@ -34,7 +36,7 @@ export type GameEvent =
   | { type: 'daily'; energy: number; streak: number }
   | { type: 'gratitude'; energy: number; multiplier: number }
   | { type: 'flashback'; text: string; energy: number }
-  | { type: 'match'; name: string; energy: number }
+  | { type: 'stargaze'; energy: number; moon: string }
   | { type: 'settings' }
   | { type: 'chapterComplete' };
 
@@ -71,7 +73,7 @@ export class Game {
       actions: initialActionState(now),
       social: initialSocial(now),
       gratitude: initialGratitude(now),
-      settings: { autoJoinMatches: false, matchesJoinedToday: 0, matchDay: localDayKey(now) },
+      settings: { autoMerge: false },
       coins: 0,
       xp: 0,
       orderIndex: 0,
@@ -312,41 +314,63 @@ export class Game {
     if (res.chestCoins > 0) this.emit({ type: 'chest', coins: res.chestCoins });
   }
 
-  // ---------- matches (village happenings) ----------
+  // ---------- auto-merge ----------
 
   get settings(): Settings {
     return this.state.settings;
   }
 
-  private rolloverSettings(s: Settings, now: number): Settings {
-    const day = localDayKey(now);
-    return day === s.matchDay ? s : { ...s, matchDay: day, matchesJoinedToday: 0 };
-  }
-
-  setAutoJoinMatches(on: boolean): void {
-    this.state = { ...this.state, settings: { ...this.state.settings, autoJoinMatches: on } };
+  setAutoMerge(on: boolean): void {
+    this.state = { ...this.state, settings: { ...this.state.settings, autoMerge: on } };
     this.emit({ type: 'settings' });
   }
 
-  canJoinMatch(now = Date.now()): boolean {
-    return this.rolloverSettings(this.state.settings, now).matchesJoinedToday < MATCH_DAILY_CAP;
+  /** Whether any mergeable pair currently exists on the board. */
+  hasMergePair(): boolean {
+    return findMergePair(this.state.board) !== null;
   }
 
-  /** Join a village happening for a little energy. Respects the daily cap. */
-  joinMatch(matchId: string, now = Date.now()): void {
-    const tpl = findMatch(matchId);
-    const s = this.rolloverSettings(this.state.settings, now);
-    if (!tpl || s.matchesJoinedToday >= MATCH_DAILY_CAP) {
-      this.state = { ...this.state, settings: s };
-      this.emit({ type: 'settings' });
+  /** Merge the first available matching pair. Returns true if a merge happened. */
+  autoMergeOnce(): boolean {
+    const pair = findMergePair(this.state.board);
+    if (!pair) return false;
+    this.drop(pair[1], pair[0]); // consume second onto first — emits 'merge'
+    return true;
+  }
+
+  // ---------- stargaze (moon-linked night action) ----------
+
+  canStargaze(now = Date.now(), coords?: Coords): boolean {
+    return isNight(now, coords) && canDoAction(this.state.actions, STARGAZE.id, now);
+  }
+
+  /** Tonight's stargaze reward: base + full-moon bonus, with the phase name. */
+  stargazePreview(now = Date.now()): { energy: number; bonus: number; moon: string } {
+    const bonus = fullMoonBonus(now);
+    return { energy: STARGAZE.baseEnergy + bonus, bonus, moon: phaseName(now) };
+  }
+
+  /** Log a completed stargaze. Night-gated, once per day, moon-bonused. */
+  doStargaze(now = Date.now(), coords?: Coords): void {
+    if (!isNight(now, coords)) {
+      this.emit({ type: 'stargaze', energy: 0, moon: phaseName(now) });
+      return;
+    }
+    const { energy, moon } = this.stargazePreview(now);
+    const res = recordAction(this.state.actions, STARGAZE.id, now, energy);
+    if (res.energy <= 0 && res.dailyBonus <= 0) {
+      this.emit({ type: 'stargaze', energy: 0, moon });
       return;
     }
     this.state = {
       ...this.state,
-      settings: { ...s, matchesJoinedToday: s.matchesJoinedToday + 1 },
-      energy: grant(this.state.energy, tpl.energy),
+      actions: res.state,
+      energy: grant(this.state.energy, res.energy + res.dailyBonus),
+      coins: this.state.coins + res.chestCoins,
     };
-    this.emit({ type: 'match', name: tpl.name, energy: tpl.energy });
+    this.emit({ type: 'stargaze', energy: res.energy, moon });
+    if (res.dailyBonus > 0) this.emit({ type: 'daily', energy: res.dailyBonus, streak: res.state.streak });
+    if (res.chestCoins > 0) this.emit({ type: 'chest', coins: res.chestCoins });
   }
 
   // ---------- gratitude journal ----------
