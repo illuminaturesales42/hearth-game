@@ -212,6 +212,24 @@
     <div id="med-timer" class="med-timer"></div>
   </div>
 
+  <!-- ================= NEW DAY (sunrise) ================= -->
+  <div id="newday-modal" class="modal" role="dialog" aria-modal="true" aria-label="A new day" hidden>
+    <div class="newday-card">
+      <div class="newday-sky" aria-hidden="true"><span class="newday-sun"></span></div>
+      <div class="newday-body">
+        <span class="newday-eyebrow">A new day dawns over Emberhollow</span>
+        <h3 id="newday-title">Day 1</h3>
+        <p class="newday-sub">A fresh start — a new chance to grow the harbour.</p>
+        <div class="newday-reward">
+          <span class="newday-flame" aria-hidden="true"></span>
+          <b id="newday-energy">+0</b><span>energy</span>
+        </div>
+        <p class="newday-streak" id="newday-streak"></p>
+        <button id="newday-claim" class="btn-primary">Welcome the day</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= STORY MODAL ================= -->
   <div id="story-modal" class="modal" role="dialog" aria-modal="true" hidden>
     <div class="modal-card">

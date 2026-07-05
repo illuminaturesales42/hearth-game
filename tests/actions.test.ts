@@ -12,6 +12,7 @@ import { LOG_MEDITATION, loggedMinutesToEnergy } from '../src/data/meditations';
 import { COLD_PLUNGE, SAUNA, recoveryEnergy } from '../src/data/recovery';
 import { GRATITUDE } from '../src/data/gratitude';
 import { dailyBonus, earnableById, streakMultiplier } from '../src/core/actions';
+import { Game } from '../src/core/game';
 
 const T0 = new Date('2026-07-05T09:00:00').getTime();
 
@@ -122,6 +123,36 @@ describe('streak bonuses', () => {
     expect(second.dailyBonus).toBe(0); // same day, second action
     const nextDay = recordAction(first.state, 'water', T0 + 24 * 3600_000);
     expect(nextDay.dailyBonus).toBeGreaterThan(0);
+  });
+});
+
+describe('sunrise new day', () => {
+  const day = (n: number) => T0 + n * 24 * 3600_000;
+
+  it('can claim once per day; claiming pays streak-scaled energy', () => {
+    const g = new Game(day(0));
+    expect(g.canClaimDaily(day(0))).toBe(true);
+    const before = g.snapshot.energy.current;
+    const preview = g.dailyRewardPreview(day(0));
+    g.claimDaily(day(0));
+    expect(g.snapshot.energy.current).toBe(before + preview.energy);
+    expect(g.canClaimDaily(day(0))).toBe(false); // already claimed today
+  });
+
+  it('an action counts as the day, so the dawn reward is not double-paid', () => {
+    const g = new Game(day(0));
+    g.completeAction('water', day(0)); // first activity of the day
+    expect(g.canClaimDaily(day(0))).toBe(false);
+  });
+
+  it('streak grows across consecutive days and resets after a gap', () => {
+    const g = new Game(day(0));
+    g.claimDaily(day(0));
+    expect(g.dailyRewardPreview(day(1)).streak).toBe(2);
+    g.claimDaily(day(1));
+    expect(g.dailyRewardPreview(day(2)).streak).toBe(3);
+    // skip day 3, claim day 4 → resets to 1
+    expect(g.dailyRewardPreview(day(4)).streak).toBe(1);
   });
 });
 

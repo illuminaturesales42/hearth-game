@@ -51,6 +51,9 @@ game.subscribe((ev) => {
     case 'daily':
       track('daily_bonus', { energy: ev.energy, streak: ev.streak });
       break;
+    case 'newDay':
+      track('new_day_claimed', { streak: ev.streak, energy: ev.energy, coins: ev.chestCoins });
+      break;
     case 'gratitude':
       if (ev.energy > 0) track('gratitude_written', { energy: ev.energy });
       break;

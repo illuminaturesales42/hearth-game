@@ -86,31 +86,48 @@ export interface RecordResult {
  * `energyOverride` supplies the reward for variable earnables (logged
  * meditation minutes); otherwise the catalogue value is used.
  */
+export interface DayAdvance {
+  state: ActionState;
+  /** Streak-scaled reward for the first activity of a new day. */
+  dailyBonus: number;
+  chestCoins: number;
+  /** True when this call crossed into a new active day. */
+  advanced: boolean;
+}
+
+/**
+ * Advance to a new active day if today hasn't been marked yet: grow the streak
+ * (or gently reset after a gap), bump chest progress, and compute the daily
+ * bonus. Shared by recordAction and the sunrise "New Day" claim so both drive
+ * one streak. Pure — no-op (advanced:false) if the day is already active.
+ */
+export function advanceDay(state: ActionState, now: number): DayAdvance {
+  const s = rolloverActions(state, now);
+  const today = localDayKey(now);
+  if (s.lastActiveDay === today) return { state: s, dailyBonus: 0, chestCoins: 0, advanced: false };
+  const streak = s.lastActiveDay === null ? 1 : dayGap(s.lastActiveDay, today) === 1 ? s.streak + 1 : 1;
+  let chestProgress = s.chestProgress + 1;
+  let chestCoins = 0;
+  if (chestProgress >= CHEST_EVERY) {
+    chestProgress = 0;
+    chestCoins = CHEST_COINS;
+  }
+  return { state: { ...s, streak, lastActiveDay: today, chestProgress }, dailyBonus: dailyBonus(streak), chestCoins, advanced: true };
+}
+
 export function recordAction(state: ActionState, id: string, now: number, energyOverride?: number): RecordResult {
   const e = earnableById(id);
-  const s = rolloverActions(state, now);
-  if (!e || doneCount(s, id) >= e.timesPerDay) return { state: s, energy: 0, chestCoins: 0, dailyBonus: 0 };
+  const s0 = rolloverActions(state, now);
+  if (!e || doneCount(s0, id) >= e.timesPerDay) return { state: s0, energy: 0, chestCoins: 0, dailyBonus: 0 };
 
-  const energy = energyOverride ?? e.energy;
-  const today = localDayKey(now);
-  let { streak, chestProgress } = s;
-  let lastActiveDay = s.lastActiveDay;
-  let chestCoins = 0;
-  let dailyBonusEnergy = 0;
-
-  if (lastActiveDay !== today) {
-    streak = lastActiveDay === null ? 1 : dayGap(lastActiveDay, today) === 1 ? streak + 1 : 1;
-    lastActiveDay = today;
-    chestProgress += 1;
-    dailyBonusEnergy = dailyBonus(streak);
-    if (chestProgress >= CHEST_EVERY) {
-      chestProgress = 0;
-      chestCoins = CHEST_COINS;
-    }
-  }
-
-  const counts = { ...s.counts, [id]: doneCount(s, id) + 1 };
-  return { state: { day: s.day, counts, streak, lastActiveDay, chestProgress }, energy, chestCoins, dailyBonus: dailyBonusEnergy };
+  const adv = advanceDay(s0, now);
+  const counts = { ...adv.state.counts, [id]: doneCount(adv.state, id) + 1 };
+  return {
+    state: { ...adv.state, counts },
+    energy: energyOverride ?? e.energy,
+    chestCoins: adv.chestCoins,
+    dailyBonus: adv.dailyBonus,
+  };
 }
 
 export function chestDaysLeft(state: ActionState): number {

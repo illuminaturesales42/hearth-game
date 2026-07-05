@@ -14,6 +14,7 @@ import { SocialScreen } from './social-screen';
 import { AutoMergeController } from './auto-merge';
 import { StargazeUI } from './stargaze';
 import { DuelUI } from './duel';
+import { NewDayUI } from './new-day';
 
 type ScreenId = 'home' | 'map' | 'villagers' | 'journal' | 'shop';
 
@@ -39,6 +40,7 @@ export class AppShell {
     const recovery = new RecoveryUI(game);
     const stargaze = new StargazeUI(game);
     new AutoMergeController(game);
+    new NewDayUI(game).maybeShow();
 
     document.querySelectorAll<HTMLButtonElement>('.nav-btn').forEach((btn) => {
       btn.addEventListener('click', () => this.go((btn.dataset.screen as ScreenId) ?? 'home'));

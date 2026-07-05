@@ -9,7 +9,7 @@ import { BOARD_COLS, BOARD_ROWS, ENERGY, ORDERS, PRODUCER_INDEX, SPAWN_TABLE } f
 import { loadState, saveState } from './save';
 import { applySnapshot, initialLedger } from '../health/health-energy';
 import type { HealthSnapshot } from '../health/health-provider';
-import { canDoAction, initialActionState, recordAction, rolloverActions, streakMultiplier } from './actions';
+import { advanceDay, canDoAction, initialActionState, recordAction, rolloverActions, streakMultiplier } from './actions';
 import type { RecordResult } from './actions';
 import { localDayKey } from './energy';
 import { LOG_MEDITATION, loggedMinutesToEnergy } from '../data/meditations';
@@ -35,6 +35,7 @@ export type GameEvent =
   | { type: 'friendJoined'; name: string; energy: number }
   | { type: 'help'; from: string; count: number }
   | { type: 'daily'; energy: number; streak: number }
+  | { type: 'newDay'; streak: number; energy: number; chestCoins: number }
   | { type: 'gratitude'; energy: number; multiplier: number }
   | { type: 'flashback'; text: string; energy: number }
   | { type: 'stargaze'; energy: number; moon: string }
@@ -277,6 +278,36 @@ export class Game {
 
   canDoAction(actionId: string, now = Date.now()): boolean {
     return canDoAction(this.state.actions, actionId, now);
+  }
+
+  // ---------- sunrise: a new day ----------
+
+  /** True when today's dawn reward hasn't been claimed (or earned via an action) yet. */
+  canClaimDaily(now = Date.now()): boolean {
+    return advanceDay(this.state.actions, now).advanced;
+  }
+
+  /** What claiming right now would give: streak, energy, and any milestone chest. */
+  dailyRewardPreview(now = Date.now()): { streak: number; energy: number; chestCoins: number } {
+    const adv = advanceDay(this.state.actions, now);
+    return { streak: adv.state.streak, energy: adv.dailyBonus, chestCoins: adv.chestCoins };
+  }
+
+  /**
+   * Claim the new day at sunrise: a fresh start, streak-scaled energy, and a
+   * milestone chest on the streak cadence. Marks the day active, so the first
+   * action of the day won't re-pay the bonus.
+   */
+  claimDaily(now = Date.now()): void {
+    const adv = advanceDay(this.state.actions, now);
+    if (!adv.advanced) return;
+    this.state = {
+      ...this.state,
+      actions: adv.state,
+      energy: grant(this.state.energy, adv.dailyBonus),
+      coins: this.state.coins + adv.chestCoins,
+    };
+    this.emit({ type: 'newDay', streak: adv.state.streak, energy: adv.dailyBonus, chestCoins: adv.chestCoins });
   }
 
   /**

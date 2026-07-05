@@ -453,6 +453,31 @@ body {
 #story-text { margin: 0 0 10px; font-family: var(--serif); font-size: 16px; line-height: 1.55; color: var(--cream); }
 .story-reward { margin: 0 0 18px; font-size: 12px; color: var(--good); }
 
+/* ---------- new day (sunrise) ---------- */
+.newday-card { max-width: 340px; width: 100%; border-radius: 20px; overflow: hidden; text-align: center;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid rgba(255, 210, 122, 0.35);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6); }
+.newday-sky { position: relative; height: 120px; overflow: hidden;
+  background: linear-gradient(180deg, #24305a 0%, #7a5a6a 48%, #e0a05a 100%); }
+.newday-sun { position: absolute; left: 50%; bottom: -30px; width: 90px; height: 90px; transform: translateX(-50%);
+  border-radius: 50%; background: radial-gradient(circle at 50% 40%, #fff2c8, #ffbe63 68%);
+  box-shadow: 0 0 60px rgba(255, 190, 100, 0.9); }
+@media (prefers-reduced-motion: no-preference) {
+  .newday-sun { animation: dawn 1.4s ease-out; }
+  @keyframes dawn { from { bottom: -70px; opacity: 0.4; } to { bottom: -30px; opacity: 1; } }
+}
+.newday-body { padding: 20px 24px 22px; }
+.newday-eyebrow { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ember-hi); }
+#newday-title { font-family: var(--serif); font-size: 28px; margin: 6px 0 4px; color: var(--cream); }
+.newday-sub { margin: 0 0 14px; font-size: 12.5px; color: var(--cream-dim); line-height: 1.45; }
+.newday-reward { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 999px;
+  background: rgba(244, 166, 59, 0.14); border: 1px solid rgba(255, 210, 122, 0.4); margin-bottom: 12px; }
+.newday-flame { width: 24px; height: 24px; border-radius: 50%; background: radial-gradient(circle at 50% 62%, var(--ember-hi), var(--ember-deep) 72%); box-shadow: 0 0 14px rgba(244, 166, 59, 0.7); }
+.newday-reward b { font-size: 24px; font-variant-numeric: tabular-nums; color: var(--ember-hi); }
+.newday-reward span { font-size: 12px; color: var(--cream-dim); }
+.newday-streak { margin: 0 0 18px; font-size: 12px; color: var(--good); line-height: 1.45; }
+.newday-card .btn-primary { width: 100%; }
+
 /* ---------- toast ---------- */
 #toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%) translateY(8px); z-index: 80; max-width: 320px; padding: 11px 16px; border-radius: var(--r-card); background: rgba(12, 8, 4, 0.94); border: 1px solid rgba(255, 210, 150, 0.5); color: var(--cream); font-size: 12.5px; line-height: 1.45; text-align: center; opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.25s; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
