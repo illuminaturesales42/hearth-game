@@ -17,8 +17,9 @@ Energy comes only from the player's real day. Full catalogue in `src/data/action
 
 | Action | Amount | Cap/day | Kind | Source |
 |---|---|---|---|---|
-| 4,200 steps | +20 | 1 | sensor | HealthKit / Health Connect |
-| 7.5h sleep | +20 | 1 | sensor | HealthKit / Health Connect |
+| Steps | 1 / 500, cap +20, **+5 milestone at 12k** | 1 | sensor | HealthKit / Health Connect |
+| Stairs (flights climbed) | 1 / flight, cap +10 | 1 | sensor | HealthKit / Health Connect |
+| Sleep | **7h → +10, a full 8h → +20** (tiered, pays the difference) | 1 | sensor | HealthKit / Health Connect |
 | Drink water (1.5L) | +10 | 1 | self-report | honour |
 | Take a photo outside | +10 | 1 | photo | camera |
 | 15 squats | +10 | 1 | motion | guided reps (motion sensor in M2) |
@@ -32,6 +33,8 @@ Energy comes only from the player's real day. Full catalogue in `src/data/action
 | Order rewards | 3–10 | — | — | economy table |
 
 Sun-gated photos use the SunCalc algorithm (`src/core/sun.ts`) against optional device location — a gate a clock change can't beat. Captured images stay on device, never uploaded.
+
+**Sleep-app connections:** the game reads sleep from HealthKit (iOS) / Health Connect (Android), which already aggregate third-party trackers — Apple Watch, Oura, Whoop, Samsung Health, Sleep Cycle, Google Fit. No per-app integrations to maintain; the platform is the connector. `sleepSourceApp` is surfaced in the UI ("via Oura") when the platform exposes it. All conversion is on-device and tiered/idempotent (`src/health/health-energy.ts`).
 
 **Streak & chest:** a positive-only "day streak" (grows on consecutive active days; a missed day resets to 1 with no penalty screen — honouring the no-punishment pillar) and a chest every 3 active days (+100 coins). Matches concept screen #2.
 

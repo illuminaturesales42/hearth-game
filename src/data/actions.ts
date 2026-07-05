@@ -12,11 +12,15 @@ export const DAILY_GAUGE = 100; // display target for the energy ring; energy ma
 export const ACTIONS: readonly EnergyAction[] = [
   // ---- sensor (auto from HealthKit / Health Connect) ----
   {
-    id: 'steps', label: '4,200 steps', sublabel: 'Counted while you walk',
+    id: 'steps', label: '10,000 steps', sublabel: 'Counted while you walk · +5 past 12k',
     icon: '👟', energy: 20, timesPerDay: 1, kind: 'sensor', featured: true, sensor: 'steps',
   },
   {
-    id: 'sleep', label: '7.5h sleep', sublabel: 'Rewarded when you wake',
+    id: 'stairs', label: '10 flights of stairs', sublabel: 'Every climb counts',
+    icon: '🪜', energy: 10, timesPerDay: 1, kind: 'sensor', featured: true, sensor: 'stairs',
+  },
+  {
+    id: 'sleep', label: 'A full 8 hours of sleep', sublabel: '7h earns +10 · a full 8h earns +20',
     icon: '😴', energy: 20, timesPerDay: 1, kind: 'sensor', featured: true, sensor: 'sleep',
   },
 

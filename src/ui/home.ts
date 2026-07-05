@@ -47,7 +47,8 @@ export class Home {
         case 'health': {
           const parts = [
             ev.fromSteps > 0 ? `+${ev.fromSteps} from steps` : '',
-            ev.fromSleep > 0 ? `+${ev.fromSleep} from sleep` : '',
+            ev.fromStairs > 0 ? `+${ev.fromStairs} from stairs` : '',
+            ev.fromSleep > 0 ? `+${ev.fromSleep} from ${ev.sleepFullNight ? 'a full night’s sleep' : 'sleep'}` : '',
           ].filter(Boolean);
           if (parts.length) toast(`The hearth brightens: ${parts.join(', ')}.`);
           break;

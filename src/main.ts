@@ -43,7 +43,12 @@ game.subscribe((ev) => {
       track('chest_opened', { coins: ev.coins });
       break;
     case 'health':
-      track('health_grant', { energy: ev.energy, fromSteps: ev.fromSteps, fromSleep: ev.fromSleep });
+      track('health_grant', {
+        energy: ev.energy,
+        fromSteps: ev.fromSteps,
+        fromStairs: ev.fromStairs,
+        fromSleep: ev.fromSleep,
+      });
       break;
   }
 });
@@ -58,17 +63,18 @@ void health.read();
 declare global {
   interface Window {
     hearthReset: () => void;
-    hearthHealthSim: (steps: number, sleepHours?: number) => void;
+    hearthHealthSim: (steps: number, sleepHours?: number, flights?: number) => void;
     hearthEvents: () => void;
   }
 }
 window.hearthReset = () => {
-  localStorage.removeItem('hearth:save:v2');
+  localStorage.removeItem('hearth:save:v3');
   location.reload();
 };
-window.hearthHealthSim = (steps: number, sleepHours?: number) => {
+window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {
   const snap: HealthSnapshot = {
     stepsToday: steps,
+    flightsToday: flights ?? 0,
     sleepHoursLastNight: sleepHours ?? null,
     source: 'healthkit',
   };

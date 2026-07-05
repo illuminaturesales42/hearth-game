@@ -69,7 +69,7 @@ export interface EnergyAction {
   photoWindow?: 'sunrise' | 'sunset' | 'day';
   motionReps?: number;
   motionVerb?: string;
-  sensor?: 'steps' | 'sleep';
+  sensor?: 'steps' | 'stairs' | 'sleep';
 }
 
 export interface ActionState {
@@ -84,8 +84,10 @@ export interface ActionState {
 
 export interface HealthLedgerState {
   day: string;
+  /** Energy already granted today from each source, so tiers pay only the delta. */
   stepsGranted: number;
-  sleepGranted: boolean;
+  stairsGranted: number;
+  sleepGranted: number;
 }
 
 export interface GameState {

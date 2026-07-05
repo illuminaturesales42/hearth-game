@@ -106,7 +106,9 @@ export class EnergyPanel {
     if (a.kind === 'sensor') {
       const l = s.healthLedger;
       if (!l) return false;
-      return a.sensor === 'steps' ? l.stepsGranted > 0 : l.sleepGranted;
+      if (a.sensor === 'steps') return l.stepsGranted > 0;
+      if (a.sensor === 'stairs') return l.stairsGranted > 0;
+      return l.sleepGranted > 0;
     }
     return doneCount(s.actions, a.id) >= a.timesPerDay;
   }

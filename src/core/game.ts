@@ -20,7 +20,7 @@ export type GameEvent =
   | { type: 'delivered'; orderId: string; resolution: string; rewardEnergy: number; rewardCoins: number }
   | { type: 'action'; actionId: string; energy: number }
   | { type: 'chest'; coins: number }
-  | { type: 'health'; energy: number; fromSteps: number; fromSleep: number }
+  | { type: 'health'; energy: number; fromSteps: number; fromStairs: number; fromSleep: number; sleepFullNight: boolean }
   | { type: 'chapterComplete' };
 
 type Listener = (ev: GameEvent) => void;
@@ -50,7 +50,7 @@ export class Game {
     let uid = 1;
     for (const s of seeds) board = withItem(board, s.i, { chain: s.chain, level: s.level, uid: uid++ });
     return {
-      version: 2,
+      version: 3,
       board,
       energy: initialEnergy(now),
       actions: initialActionState(now),
@@ -173,7 +173,14 @@ export class Game {
     this.state = { ...this.state, healthLedger: res.ledger };
     if (res.energy > 0) {
       this.state = { ...this.state, energy: grant(this.state.energy, res.energy) };
-      this.emit({ type: 'health', energy: res.energy, fromSteps: res.fromSteps, fromSleep: res.fromSleep });
+      this.emit({
+        type: 'health',
+        energy: res.energy,
+        fromSteps: res.fromSteps,
+        fromStairs: res.fromStairs,
+        fromSleep: res.fromSleep,
+        sleepFullNight: res.sleepFullNight,
+      });
     } else {
       saveState(this.state);
     }
