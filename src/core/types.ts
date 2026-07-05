@@ -127,6 +127,12 @@ export interface GratitudeState {
   lastFlashbackDay: string | null;
 }
 
+export interface Settings {
+  autoJoinMatches: boolean;
+  matchesJoinedToday: number;
+  matchDay: string; // YYYY-MM-DD local
+}
+
 export interface GameState {
   version: number;
   healthLedger?: HealthLedgerState;
@@ -135,6 +141,7 @@ export interface GameState {
   actions: ActionState;
   social: SocialState;
   gratitude: GratitudeState;
+  settings: Settings;
   coins: number;
   xp: number;
   orderIndex: number;

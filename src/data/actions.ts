@@ -11,62 +11,64 @@ export const DAILY_GAUGE = 100; // display target for the energy ring; energy ma
 
 export const ACTIONS: readonly EnergyAction[] = [
   // ---- sensor (auto from HealthKit / Health Connect) ----
+  // Labels are framed as helping Emberhollow (per the visual-identity direction);
+  // sublabels keep the literal real-world action clear.
   {
-    id: 'steps', label: '10,000 steps', sublabel: 'Counted while you walk · +5 past 12k',
+    id: 'steps', label: 'Walk the Coast Road', sublabel: '10,000 steps, counted as you walk · +5 past 12k',
     icon: '👟', energy: 20, timesPerDay: 1, kind: 'sensor', featured: true, sensor: 'steps',
   },
   {
-    id: 'stairs', label: '10 flights of stairs', sublabel: 'Every climb counts',
+    id: 'stairs', label: 'Climb the Cliff Steps', sublabel: 'Flights of stairs climbed',
     icon: '🪜', energy: 10, timesPerDay: 1, kind: 'sensor', featured: true, sensor: 'stairs',
   },
   {
-    id: 'sleep', label: 'A full 8 hours of sleep', sublabel: '7h earns +10 · a full 8h earns +20',
+    id: 'sleep', label: 'Rest by the Fire', sublabel: 'A full 8 hours of sleep · 7h earns +10',
     icon: '😴', energy: 20, timesPerDay: 1, kind: 'sensor', featured: true, sensor: 'sleep',
   },
 
   // ---- self-report (honour system, small caps) ----
   {
-    id: 'water', label: 'Drink water (1.5L)', sublabel: 'A glass at a time',
+    id: 'water', label: 'Fill the Well', sublabel: 'Drink water through the day (1.5L)',
     icon: '💧', energy: 10, timesPerDay: 1, kind: 'selfReport', featured: true,
   },
 
   // ---- photo (camera) ----
   {
-    id: 'photo-outside', label: 'Take a photo outside', sublabel: 'Step out, capture the day',
+    id: 'photo-outside', label: 'Find Beauty', sublabel: 'Take a photo outdoors',
     icon: '📷', energy: 10, timesPerDay: 1, kind: 'photo', featured: true,
     photoPrompt: 'Point at anything outdoors', photoWindow: 'day',
   },
 
   // ---- motion ----
   {
-    id: 'squats', label: '15 squats', sublabel: 'Wake the legs up',
+    id: 'squats', label: 'Turn the Millstone', sublabel: '15 squats',
     icon: '🏋️', energy: 10, timesPerDay: 1, kind: 'motion', featured: true,
     motionReps: 15, motionVerb: 'Squat',
   },
 
   // ---- "More ways to earn energy" ----
   {
-    id: 'sunrise-photo', label: 'Photograph the sunrise', sublabel: 'Only at first light',
+    id: 'sunrise-photo', label: 'Welcome the Morning', sublabel: 'Photograph the sunrise · only at first light',
     icon: '🌅', energy: 15, timesPerDay: 1, kind: 'photo', featured: false,
     photoPrompt: 'Catch the sunrise', photoWindow: 'sunrise',
   },
   {
-    id: 'sunset-photo', label: 'Photograph the sunset', sublabel: 'Only as the light goes',
+    id: 'sunset-photo', label: 'Bid the Sun Goodnight', sublabel: 'Photograph the sunset · only as the light goes',
     icon: '🌇', energy: 15, timesPerDay: 1, kind: 'photo', featured: false,
     photoPrompt: 'Catch the sunset', photoWindow: 'sunset',
   },
   {
-    id: 'nature-photo', label: 'Find something green', sublabel: 'A tree, a plant, the sea',
+    id: 'nature-photo', label: 'Seek the Wild', sublabel: 'Find something green — a tree, a plant, the sea',
     icon: '🌿', energy: 10, timesPerDay: 1, kind: 'photo', featured: false,
     photoPrompt: 'Point at something living', photoWindow: 'day',
   },
   {
-    id: 'stretch', label: 'Morning stretch', sublabel: 'Reach for the ceiling',
+    id: 'stretch', label: 'Wake the Garden', sublabel: 'A morning stretch',
     icon: '🧘', energy: 8, timesPerDay: 1, kind: 'motion', featured: false,
     motionReps: 5, motionVerb: 'Stretch',
   },
   {
-    id: 'breathe', label: 'Four slow breaths', sublabel: 'In for four, out for four',
+    id: 'breathe', label: 'Catch the Sea Breeze', sublabel: 'Four slow breaths, in for four out for four',
     icon: '🌬️', energy: 6, timesPerDay: 2, kind: 'motion', featured: false,
     motionReps: 4, motionVerb: 'Breathe',
   },

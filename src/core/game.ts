@@ -16,7 +16,8 @@ import { LOG_MEDITATION, loggedMinutesToEnergy } from '../data/meditations';
 import { findRecovery, recoveryEnergy } from '../data/recovery';
 import { GRATITUDE, initialGratitude } from '../data/gratitude';
 import { askFriend, canAsk, initialSocial, invite, joinFriend, pickInviteName, takeGift } from './social';
-import type { ActionState, ChainId, GratitudeEntry, GratitudeState, SocialState } from './types';
+import { MATCH_DAILY_CAP, findMatch } from '../data/matches';
+import type { ActionState, ChainId, GratitudeEntry, GratitudeState, Settings, SocialState } from './types';
 
 export type GameEvent =
   | { type: 'state' }
@@ -33,6 +34,8 @@ export type GameEvent =
   | { type: 'daily'; energy: number; streak: number }
   | { type: 'gratitude'; energy: number; multiplier: number }
   | { type: 'flashback'; text: string; energy: number }
+  | { type: 'match'; name: string; energy: number }
+  | { type: 'settings' }
   | { type: 'chapterComplete' };
 
 type Listener = (ev: GameEvent) => void;
@@ -62,12 +65,13 @@ export class Game {
     let uid = 1;
     for (const s of seeds) board = withItem(board, s.i, { chain: s.chain, level: s.level, uid: uid++ });
     return {
-      version: 5,
+      version: 6,
       board,
       energy: initialEnergy(now),
       actions: initialActionState(now),
       social: initialSocial(now),
       gratitude: initialGratitude(now),
+      settings: { autoJoinMatches: false, matchesJoinedToday: 0, matchDay: localDayKey(now) },
       coins: 0,
       xp: 0,
       orderIndex: 0,
@@ -306,6 +310,43 @@ export class Game {
     this.emit({ type: 'action', actionId, energy: res.energy });
     if (res.dailyBonus > 0) this.emit({ type: 'daily', energy: res.dailyBonus, streak: res.state.streak });
     if (res.chestCoins > 0) this.emit({ type: 'chest', coins: res.chestCoins });
+  }
+
+  // ---------- matches (village happenings) ----------
+
+  get settings(): Settings {
+    return this.state.settings;
+  }
+
+  private rolloverSettings(s: Settings, now: number): Settings {
+    const day = localDayKey(now);
+    return day === s.matchDay ? s : { ...s, matchDay: day, matchesJoinedToday: 0 };
+  }
+
+  setAutoJoinMatches(on: boolean): void {
+    this.state = { ...this.state, settings: { ...this.state.settings, autoJoinMatches: on } };
+    this.emit({ type: 'settings' });
+  }
+
+  canJoinMatch(now = Date.now()): boolean {
+    return this.rolloverSettings(this.state.settings, now).matchesJoinedToday < MATCH_DAILY_CAP;
+  }
+
+  /** Join a village happening for a little energy. Respects the daily cap. */
+  joinMatch(matchId: string, now = Date.now()): void {
+    const tpl = findMatch(matchId);
+    const s = this.rolloverSettings(this.state.settings, now);
+    if (!tpl || s.matchesJoinedToday >= MATCH_DAILY_CAP) {
+      this.state = { ...this.state, settings: s };
+      this.emit({ type: 'settings' });
+      return;
+    }
+    this.state = {
+      ...this.state,
+      settings: { ...s, matchesJoinedToday: s.matchesJoinedToday + 1 },
+      energy: grant(this.state.energy, tpl.energy),
+    };
+    this.emit({ type: 'match', name: tpl.name, energy: tpl.energy });
   }
 
   // ---------- gratitude journal ----------

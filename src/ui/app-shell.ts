@@ -11,6 +11,7 @@ import { MeditationUI } from './meditation';
 import { RecoveryUI } from './recovery';
 import { MapView } from './map-view';
 import { SocialScreen } from './social-screen';
+import { MatchesController } from './matches';
 
 type ScreenId = 'home' | 'map' | 'villagers' | 'journal' | 'shop';
 
@@ -33,6 +34,7 @@ export class AppShell {
     this.social = new SocialScreen(game);
     const meditation = new MeditationUI(game);
     const recovery = new RecoveryUI(game);
+    new MatchesController(game);
 
     document.querySelectorAll<HTMLButtonElement>('.nav-btn').forEach((btn) => {
       btn.addEventListener('click', () => this.go((btn.dataset.screen as ScreenId) ?? 'home'));

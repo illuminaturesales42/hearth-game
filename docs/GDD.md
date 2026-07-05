@@ -8,6 +8,29 @@
 3. **Story pulls you back** — a serialized cozy mystery (Marta's disappearance), one cliffhanger per zone.
 4. **Never punish absence** — no streaks, no decay. Returning players get a warm recap, not guilt.
 
+## 1.5 Emotional design & framing (source of truth)
+
+Hearth's differentiator isn't "merge + wellness" — it's that **the real world becomes part of the gameplay loop without feeling like a fitness app.** Opening Hearth should feel like coming home after a good day: "I'll relax for 15 minutes… and maybe walk afterwards because it'll help my town." Warmth is the visual language of progress — positive actions bring a forgotten harbour back to life. Full visual/emotional direction in `docs/art-bible.md` §0.
+
+**Habits are framed as helping Emberhollow** (labels in `src/data/actions.ts`; sublabels keep the literal action):
+
+| Real action | In-game label |
+|---|---|
+| Steps | Walk the Coast Road |
+| Stairs | Climb the Cliff Steps |
+| Sleep | Rest by the Fire |
+| Water | Fill the Well |
+| Photo outside | Find Beauty |
+| Sunrise / sunset photo | Welcome the Morning / Bid the Sun Goodnight |
+| Something green | Seek the Wild |
+| Squats | Turn the Millstone |
+| Stretch | Wake the Garden |
+| Breaths | Catch the Sea Breeze |
+| Meditation | Sit by the Hearth |
+| Journal | Write Today's Story (Good Days) |
+
+**Matches (village happenings):** on the game screen, co-op happenings (bonfire, hauling nets, song circle) surface over time for a little energy; an **Auto-join** toggle joins available matches automatically. Daily-capped, gentle. Simulated now (`src/data/matches.ts`, `src/ui/matches.ts`); real matchmaking slots in behind `Game.joinMatch` at M3.
+
 ## 2. Core loop
 Spend energy on producers → spawn items → merge up chains → fill villager orders → coins/XP/story beats → restore village zones → new chains and characters.
 

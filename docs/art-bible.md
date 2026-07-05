@@ -4,6 +4,22 @@ Everything the game renders, with a shared style guide and per-category prompt r
 
 ---
 
+## 0. Visual Identity & Emotional Design (north star)
+
+Hearth should not feel like a productivity app (not Habitica, not Duolingo). **It should feel like coming home after a good day.** The core idea, expressed in every asset:
+
+> **Your positive real-world actions literally bring warmth back into the world.**
+
+Warmth = progress. More Hearth Energy doesn't just fill a bar — it makes the world alive: windows glow, chimneys smoke, lanterns ignite, gardens bloom, boats return, villagers appear, the lighthouse shines brighter, evening becomes golden hour, the sea calms.
+
+- **The Hearth Energy symbol is a glowing ember** — not a lightning bolt, not fire, not electricity. A tiny warm ember from a fireplace: gentle pulse, sparks drifting up, soft golden bloom. This is the game's signature mark (`ui-energy`, app icon).
+- **The town emotionally responds** across the arc: early = broken roofs, cold colours, abandoned docks; mid = flowers, smoke, lights, villagers, fishing boats; late = festivals, lanterns, bustling harbour, children, cats, music, birds, the beam. Players should smile just opening the Map.
+- **Habits are framed as helping Emberhollow**, not tasks (applied in `src/data/actions.ts`): Drink Water → *Fill the Well*; Walk → *Walk the Coast Road*; Meditate → *Sit by the Hearth*; Journal → *Write Today's Story / Good Days*; Stretch → *Wake the Garden*; Photo → *Find Beauty*; Sunrise → *Welcome the Morning*; Sleep → *Rest by the Fire*.
+- **Characters notice the player** ("You're looking brighter today" — Bran; "The town feels lighter whenever you return" — Wren), reinforcing that real habits matter to the village. (Writing task for the narrative pass.)
+- **Earn VFX (design target):** on energy earned, embers swirl in, warm particles drift up, the UI glows, a soft bell rings, nearby windows light, the meter gently pulses — rewarding, never overstimulating.
+
+Goal: a **recognisable visual identity** — every icon, building, panel and character reads as one premium title, identifiable from a single screenshot.
+
 ## 1. Master Style Guide
 
 **One line:** cozy coastal storybook — hand-painted, warm evening light, a village worth coming home to. Think *Alto's Odyssey* warmth × *Gossip Harbor*/*Merge Mansion* readability × a painted children's-book cover.
