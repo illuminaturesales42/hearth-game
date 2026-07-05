@@ -17,7 +17,7 @@ import { DuelUI } from './duel';
 import { KindnessUI } from './kindness';
 import { NewDayUI } from './new-day';
 
-type ScreenId = 'home' | 'villagers' | 'journal' | 'shop';
+type ScreenId = 'home' | 'create' | 'villagers' | 'journal' | 'shop';
 
 export class AppShell {
   private active: ScreenId = 'home';

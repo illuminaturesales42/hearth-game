@@ -66,12 +66,15 @@ body {
   background: radial-gradient(130% 80% at 50% -10%, var(--navy-2) 0%, var(--navy-1) 50%, var(--navy-0) 100%);
 }
 
+/* global topbar (shown on every screen) */
+#app > .topbar { padding: max(8px, env(safe-area-inset-top)) 16px 6px; flex: 0 0 auto; }
+
 /* ---------- screens ---------- */
 .screens { flex: 1; position: relative; overflow: hidden; }
 .screen {
   position: absolute; inset: 0;
   display: none; flex-direction: column;
-  padding: max(8px, env(safe-area-inset-top)) 12px 84px;
+  padding: 8px 12px 84px;
   overflow-y: auto;
 }
 .screen.active { display: flex; }
@@ -249,7 +252,7 @@ body {
 /* ---------- bottom nav ---------- */
 #bottom-nav {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 30;
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid; grid-template-columns: repeat(5, 1fr);
   padding: 8px 8px max(8px, env(safe-area-inset-bottom));
   background: linear-gradient(180deg, rgba(13, 19, 34, 0.6), var(--navy-0) 60%);
   border-top: 1px solid rgba(255, 210, 122, 0.12); backdrop-filter: blur(8px);
@@ -268,9 +271,17 @@ body {
 .screen-sub { margin: 0; font-size: 12.5px; color: var(--cream-dim); }
 .screen-h3 { font-family: var(--serif); font-size: 18px; margin: 8px 0 0; }
 /* ---------- home map hero (the town, front and centre) ---------- */
-.home-map { position: relative; margin: 6px 0 8px; border-radius: var(--r-panel); overflow: hidden;
+.home-map { position: relative; margin: 4px 0 12px; border-radius: var(--r-panel); overflow: hidden;
   box-shadow: inset 0 0 0 1.5px rgba(255, 210, 122, 0.22), 0 10px 26px rgba(0, 0, 0, 0.45); }
-.map-canvas { width: 100%; height: 200px; display: block; }
+.map-canvas { width: 100%; height: 240px; display: block; }
+/* current challenge card on the town map */
+.map-challenge { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-card); margin-bottom: 10px;
+  background: linear-gradient(120deg, rgba(244, 166, 59, 0.16), rgba(125, 138, 79, 0.12)); border: 1px solid rgba(255, 210, 122, 0.32); }
+.map-challenge .mc-ico { font-size: 22px; }
+.map-challenge .mc-body { flex: 1; line-height: 1.35; }
+.map-challenge .mc-body b { font-family: var(--serif); font-size: 15px; display: block; color: var(--ember-hi); }
+.map-challenge .mc-body span { font-size: 12px; color: var(--cream-dim); }
+.map-locs-label { font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--cream-dim); margin: 4px 0 8px; }
 .home-map-overlay { position: absolute; left: 0; right: 0; bottom: 0; padding: 20px 12px 8px;
   background: linear-gradient(180deg, transparent, rgba(8, 10, 18, 0.75)); }
 .map-progress { display: block; font-size: 11px; color: var(--ember-hi); letter-spacing: 0.04em; margin-bottom: 5px; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); }

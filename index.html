@@ -10,21 +10,21 @@
 <body>
   <div id="app">
 
+    <header class="topbar">
+      <button id="energy-pill" class="energy-pill" aria-label="Open Hearth Energy">
+        <span class="pip" aria-hidden="true"></span><b id="hud-energy">0</b>
+      </button>
+      <div class="brandmark">
+        <span class="brand-title">Hearth</span>
+        <span class="brand-sub">Emberhollow</span>
+      </div>
+      <div class="coinpill" title="Coins"><span class="coin-ico" aria-hidden="true"></span><b id="hud-coins">0</b></div>
+    </header>
+
     <div class="screens">
 
-      <!-- ================= HOME ================= -->
+      <!-- ================= HOME (the town map) ================= -->
       <section class="screen active" id="screen-home">
-        <header class="topbar">
-          <button id="energy-pill" class="energy-pill" aria-label="Open Hearth Energy">
-            <span class="pip" aria-hidden="true"></span><b id="hud-energy">0</b>
-          </button>
-          <div class="brandmark">
-            <span class="brand-title">Hearth</span>
-            <span class="brand-sub">Emberhollow</span>
-          </div>
-          <div class="coinpill" title="Coins"><span class="coin-ico" aria-hidden="true"></span><b id="hud-coins">0</b></div>
-        </header>
-
         <section class="home-map" aria-label="Your Emberhollow, growing as you play">
           <canvas id="map-canvas" class="map-canvas" role="img" aria-label="Your harbour town"></canvas>
           <div class="home-map-overlay">
@@ -32,7 +32,11 @@
             <div class="map-bar"><i id="map-bar-fill"></i></div>
           </div>
         </section>
+        <div class="screen-body" id="map-body"></div>
+      </section>
 
+      <!-- ================= CREATE (the merge game) ================= -->
+      <section class="screen" id="screen-create">
         <section class="tools-bar" aria-label="Board tools">
           <span class="tools-hint">Auto-merge joins matching items for you.</span>
           <label class="auto-toggle" title="Automatically merge matching items">
@@ -40,11 +44,9 @@
             <span>Auto-merge</span>
           </label>
         </section>
-
         <main class="board-wrap">
           <div id="board" role="grid" aria-label="Merge board"></div>
         </main>
-
         <section class="order-card" aria-label="Current order">
           <div class="order-face" aria-hidden="true"></div>
           <p id="order-text"></p>
@@ -65,7 +67,8 @@
 
     <nav id="bottom-nav" aria-label="Main navigation">
       <button class="nav-btn" data-screen="shop"><span>🛍️</span>Shop</button>
-      <button class="nav-btn on" data-screen="home"><span>🔥</span>Home</button>
+      <button class="nav-btn on" data-screen="home"><span>🏘️</span>Home</button>
+      <button class="nav-btn" data-screen="create"><span>🔨</span>Create</button>
       <button class="nav-btn" data-screen="villagers"><span>👥</span>Villagers</button>
       <button class="nav-btn" data-screen="journal"><span>📖</span>Journal</button>
     </nav>

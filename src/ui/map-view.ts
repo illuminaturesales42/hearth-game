@@ -74,7 +74,7 @@ export class MapView {
     if (!this.canvas) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = this.canvas.clientWidth || 360;
-    const h = 200;
+    const h = 240;
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(h * dpr);
     this.ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -93,7 +93,7 @@ export class MapView {
     const cv = this.canvas;
     if (!ctx || !cv) return;
     const W = cv.clientWidth || 360;
-    const H = 200;
+    const H = 240;
     const prog = this.progress();
     const stage = this.stage();
     ctx.clearRect(0, 0, W, H);
@@ -306,7 +306,15 @@ export class MapView {
     const host = document.getElementById('map-body');
     if (!host) return;
     const delivered = this.game.snapshot.orderIndex;
+    const order = ORDERS[delivered];
+    const challenge = order
+      ? `<div class="map-challenge"><span class="mc-ico">📜</span>` +
+        `<div class="mc-body"><b>${order.who} needs a hand</b><span>${order.text}</span></div></div>`
+      : `<div class="map-challenge"><span class="mc-ico">✨</span>` +
+        `<div class="mc-body"><b>Chapter complete</b><span>Emberhollow shines. New challenges await in the next chapter.</span></div></div>`;
     host.innerHTML =
+      challenge +
+      `<p class="map-locs-label">Emberhollow · ${delivered}/${ORDERS.length} restored</p>` +
       `<div class="loc-list">` +
       MAP_LOCATIONS.map((l) => {
         const locked = delivered < l.unlockAt;
