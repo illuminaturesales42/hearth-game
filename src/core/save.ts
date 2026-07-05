@@ -4,7 +4,7 @@
  */
 import type { GameState } from './types';
 
-const KEY = 'hearth:save:v7';
+const KEY = 'hearth:save:v8';
 
 export function saveState(state: GameState): void {
   try {
@@ -20,13 +20,14 @@ export function loadState(): GameState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as GameState;
     if (
-      parsed.version !== 7 ||
+      parsed.version !== 8 ||
       !parsed.board ||
       !parsed.energy ||
       !parsed.actions ||
       !parsed.social ||
       !parsed.gratitude ||
-      !parsed.settings
+      !parsed.settings ||
+      !parsed.repository
     )
       return null;
     return parsed;

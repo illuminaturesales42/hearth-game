@@ -16,9 +16,12 @@ const host = () => document.getElementById('villagers-body');
 const hearts = (n: number) => '♥'.repeat(n) + '♡'.repeat(Math.max(0, 5 - n));
 
 export class SocialScreen {
-  constructor(private game: Game) {
+  constructor(
+    private game: Game,
+    private onDuel: () => void = () => undefined,
+  ) {
     game.subscribe((ev) => {
-      if (ev.type === 'social' && this.isVisible()) this.render();
+      if ((ev.type === 'social' || ev.type === 'duelEnd') && this.isVisible()) this.render();
     });
   }
 
@@ -41,6 +44,11 @@ export class SocialScreen {
       `<div class="invite-copy"><b>Invite a friend</b><span>You both get +${JOIN_BONUS} energy the moment they join.</span></div>` +
       `<button class="btn-primary" id="invite-btn">Copy invite link</button>` +
       `</div>` +
+
+      `<button class="med-cta duel-cta" id="duel-start">` +
+      `<span class="med-cta-ico">⚔️</span>` +
+      `<span class="med-cta-body"><b>Bonfire Duel</b><span>Play a friend hot-seat · win streak ×${this.game.duelStreak}</span></span>` +
+      `<span class="med-cta-go">›</span></button>` +
 
       (s.gifts.length
         ? `<p class="earn-label">Gifts waiting</p><div class="gift-list">` +
@@ -114,5 +122,7 @@ export class SocialScreen {
     el.querySelectorAll<HTMLButtonElement>('[data-gift]').forEach((b) => {
       b.onclick = () => this.game.claimGift(b.dataset.gift ?? '');
     });
+    const duel = el.querySelector<HTMLButtonElement>('#duel-start');
+    if (duel) duel.onclick = () => this.onDuel();
   }
 }

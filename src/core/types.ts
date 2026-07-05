@@ -132,6 +132,13 @@ export interface Settings {
   autoMerge: boolean;
 }
 
+/** An item held in the Repository (won from duels), usable to progress the story. */
+export interface RepositoryItem {
+  chain: ChainId;
+  level: number;
+  count: number;
+}
+
 export interface GameState {
   version: number;
   healthLedger?: HealthLedgerState;
@@ -141,6 +148,10 @@ export interface GameState {
   social: SocialState;
   gratitude: GratitudeState;
   settings: Settings;
+  /** Items won from duels, spendable to progress the story. */
+  repository: readonly RepositoryItem[];
+  /** Consecutive duel wins → reward multiplier. */
+  duelStreak: number;
   coins: number;
   xp: number;
   orderIndex: number;

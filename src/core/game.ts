@@ -19,7 +19,8 @@ import { askFriend, canAsk, initialSocial, invite, joinFriend, pickInviteName, t
 import { STARGAZE, fullMoonBonus, phaseName } from '../data/moon';
 import { isNight } from './sun';
 import type { Coords } from './sun';
-import type { ActionState, ChainId, GratitudeEntry, GratitudeState, Settings, SocialState } from './types';
+import { addToRepository, duelMultiplier } from './duel';
+import type { ActionState, ChainId, GratitudeEntry, GratitudeState, RepositoryItem, Settings, SocialState } from './types';
 
 export type GameEvent =
   | { type: 'state' }
@@ -38,6 +39,7 @@ export type GameEvent =
   | { type: 'flashback'; text: string; energy: number }
   | { type: 'stargaze'; energy: number; moon: string }
   | { type: 'settings' }
+  | { type: 'duelEnd'; won: boolean; streak: number; multiplier: number; coins: number; itemCount: number }
   | { type: 'chapterComplete' };
 
 type Listener = (ev: GameEvent) => void;
@@ -74,6 +76,8 @@ export class Game {
       social: initialSocial(now),
       gratitude: initialGratitude(now),
       settings: { autoMerge: false },
+      repository: [],
+      duelStreak: 0,
       coins: 0,
       xp: 0,
       orderIndex: 0,
@@ -371,6 +375,79 @@ export class Game {
     this.emit({ type: 'stargaze', energy: res.energy, moon });
     if (res.dailyBonus > 0) this.emit({ type: 'daily', energy: res.dailyBonus, streak: res.state.streak });
     if (res.chestCoins > 0) this.emit({ type: 'chest', coins: res.chestCoins });
+  }
+
+  // ---------- duel results, Repository & story delivery ----------
+
+  get repository(): readonly RepositoryItem[] {
+    return this.state.repository;
+  }
+  get duelStreak(): number {
+    return this.state.duelStreak;
+  }
+
+  /**
+   * Settle a finished duel. If the local player won, the board spoils are banked
+   * into the Repository, a streak-multiplied coin reward is paid, and the win
+   * streak grows. A loss or tie resets the streak (no other penalty).
+   */
+  finishDuel(playerWon: boolean, spoils: readonly { chain: ChainId; level: number }[], score: number): void {
+    if (playerWon) {
+      const streak = this.state.duelStreak + 1;
+      const mult = duelMultiplier(streak);
+      const coins = Math.round(score * mult);
+      this.state = {
+        ...this.state,
+        repository: addToRepository(this.state.repository, spoils),
+        duelStreak: streak,
+        coins: this.state.coins + coins,
+      };
+      this.emit({ type: 'duelEnd', won: true, streak, multiplier: mult, coins, itemCount: spoils.length });
+    } else {
+      this.state = { ...this.state, duelStreak: 0 };
+      this.emit({ type: 'duelEnd', won: false, streak: 0, multiplier: 1, coins: 0, itemCount: 0 });
+    }
+  }
+
+  /** Whether the Repository holds the item the current story order needs. */
+  canDeliverFromRepository(): boolean {
+    const order = ORDERS[this.state.orderIndex];
+    if (!order) return false;
+    return this.state.repository.some(
+      (r) => r.chain === order.need.chain && r.level === order.need.level && r.count > 0,
+    );
+  }
+
+  /** Spend a Repository item to complete the current order — duels feeding the story. */
+  deliverFromRepository(): void {
+    const order = ORDERS[this.state.orderIndex];
+    if (!order) return;
+    const idx = this.state.repository.findIndex(
+      (r) => r.chain === order.need.chain && r.level === order.need.level && r.count > 0,
+    );
+    if (idx < 0) {
+      this.emit({ type: 'reject', index: -1, reason: 'invalid' });
+      return;
+    }
+    const repository = this.state.repository
+      .map((r, i) => (i === idx ? { ...r, count: r.count - 1 } : r))
+      .filter((r) => r.count > 0);
+    this.state = {
+      ...this.state,
+      repository,
+      energy: grant(this.state.energy, order.rewardEnergy),
+      coins: this.state.coins + order.rewardCoins,
+      orderIndex: this.state.orderIndex + 1,
+      storySeen: [...this.state.storySeen, order.id],
+    };
+    this.emit({
+      type: 'delivered',
+      orderId: order.id,
+      resolution: order.resolution,
+      rewardEnergy: order.rewardEnergy,
+      rewardCoins: order.rewardCoins,
+    });
+    if (this.state.orderIndex >= ORDERS.length) this.emit({ type: 'chapterComplete' });
   }
 
   // ---------- gratitude journal ----------

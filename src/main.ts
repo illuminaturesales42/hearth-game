@@ -60,6 +60,9 @@ game.subscribe((ev) => {
     case 'stargaze':
       if (ev.energy > 0) track('stargaze', { energy: ev.energy, moon: ev.moon });
       break;
+    case 'duelEnd':
+      track('duel_end', { won: ev.won, streak: ev.streak, coins: ev.coins, items: ev.itemCount });
+      break;
     case 'health':
       track('health_grant', {
         energy: ev.energy,
@@ -86,7 +89,7 @@ declare global {
   }
 }
 window.hearthReset = () => {
-  localStorage.removeItem('hearth:save:v7');
+  localStorage.removeItem('hearth:save:v8');
   location.reload();
 };
 window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {

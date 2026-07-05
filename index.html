@@ -148,6 +148,35 @@
     <button id="motion-btn" class="motion-btn"></button>
   </div>
 
+  <!-- ================= BONFIRE DUEL ================= -->
+  <div id="duel-overlay" class="duel-overlay" role="dialog" aria-modal="true" aria-label="Bonfire Duel" hidden>
+    <header class="duel-head">
+      <button id="duel-close" class="sheet-close" aria-label="Leave duel">✕</button>
+      <h2 class="duel-title">Bonfire Duel</h2>
+      <div id="duel-turn" class="duel-turn"></div>
+    </header>
+    <div class="duel-scores">
+      <div class="duel-side p0"><span>You</span><b id="duel-score-0">0</b></div>
+      <div class="duel-vs">vs</div>
+      <div class="duel-side p1"><span>Friend</span><b id="duel-score-1">0</b></div>
+    </div>
+    <div id="duel-board" class="duel-board" role="grid" aria-label="Shared duel board"></div>
+    <p class="duel-tip">Tap an item, then a matching one, to merge. Take turns. Most points wins the board.</p>
+
+    <div id="duel-results" class="duel-results" hidden>
+      <div class="duel-results-card">
+        <div class="modal-flame" aria-hidden="true"></div>
+        <h3 id="duel-result-title"></h3>
+        <div id="duel-result-body"></div>
+        <button id="duel-deliver" class="btn-primary" hidden>Deliver to Emberhollow</button>
+        <div class="duel-result-actions">
+          <button id="duel-rematch" class="btn-primary">Rematch</button>
+          <button id="duel-done" class="btn-ghost">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= STARGAZE ================= -->
   <div id="star-overlay" class="capture stargaze-session" role="dialog" aria-modal="true" aria-label="Stargaze" hidden>
     <button id="star-close" class="capture-close" aria-label="Close">✕</button>

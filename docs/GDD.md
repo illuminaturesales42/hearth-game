@@ -29,7 +29,12 @@ Hearth's differentiator isn't "merge + wellness" — it's that **the real world 
 | Meditation | Sit by the Hearth |
 | Journal | Write Today's Story (Good Days) |
 
-**Matches (village happenings):** on the game screen, co-op happenings (bonfire, hauling nets, song circle) surface over time for a little energy; an **Auto-join** toggle joins available matches automatically. Daily-capped, gentle. Simulated now (`src/data/matches.ts`, `src/ui/matches.ts`); real matchmaking slots in behind `Game.joinMatch` at M3.
+**Auto-merge:** a toggle on the game screen automatically joins matching items one pair at a time (off by default; `Game.autoMergeOnce`, `src/ui/auto-merge.ts`).
+
+**Bonfire Duel (PvP):** shared-board merge battle (Match Masters model). The board starts **full**; two players take **alternating turns** making merges on the *same* board — no producers, no refill, so every merge you take may deny your opponent. Most points when no merges remain wins and takes **all board items into their Repository**. `src/core/duel.ts` (pure, seeded/deterministic), `src/ui/duel.ts` (hot-seat pass-and-play prototype). Phasing: hot-seat now → async-with-friends (M3 backend behind `Game.finishDuel`) → optional real-time later. Rewards are coins + banked items, **never energy** (energy stays earned from real life) and **no pay-to-win**.
+
+- **Repository:** items won from duels bank here (`GameState.repository`) and can be **delivered straight to the current story order** (`Game.deliverFromRepository`) — duels feed story progress.
+- **Win streak → multiplier:** consecutive duel wins raise a reward multiplier (`duelMultiplier`, +15%/win, cap 1.9×) applied to coin rewards; a loss/tie resets it (no other penalty).
 
 ## 2. Core loop
 Spend energy on producers → spawn items → merge up chains → fill villager orders → coins/XP/story beats → restore village zones → new chains and characters.

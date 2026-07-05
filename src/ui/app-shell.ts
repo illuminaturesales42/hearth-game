@@ -13,6 +13,7 @@ import { MapView } from './map-view';
 import { SocialScreen } from './social-screen';
 import { AutoMergeController } from './auto-merge';
 import { StargazeUI } from './stargaze';
+import { DuelUI } from './duel';
 
 type ScreenId = 'home' | 'map' | 'villagers' | 'journal' | 'shop';
 
@@ -32,7 +33,8 @@ export class AppShell {
     this.energy = new EnergyPanel(game);
     this.screens = new Screens(game);
     this.map = new MapView(game);
-    this.social = new SocialScreen(game);
+    const duel = new DuelUI(game);
+    this.social = new SocialScreen(game, () => duel.start());
     const meditation = new MeditationUI(game);
     const recovery = new RecoveryUI(game);
     const stargaze = new StargazeUI(game);

@@ -67,6 +67,12 @@ export class Home {
             toast(`${ev.moon} · +${ev.energy} energy. The night keeps watch.`);
           }
           break;
+        case 'duelEnd':
+          if (ev.won) {
+            feedback.chapter();
+            toast(`Duel won! ${ev.itemCount} items to your Repository · streak ×${ev.streak} · +${ev.coins} coins.`);
+          }
+          break;
         case 'health': {
           const parts = [
             ev.fromSteps > 0 ? `+${ev.fromSteps} from steps` : '',
