@@ -1,7 +1,9 @@
 /**
- * Auto-merge: when enabled, automatically joins matching items on the board,
- * one pair at a time with a short beat between each so the merge pops read.
- * Off by default (merging by hand is the core toy); this is a comfort helper.
+ * Auto-merge: when enabled, automatically joins matching items on the board and
+ * delivers any item that completes the current order — one step at a time with a
+ * short beat so the pops and story beats read. Pauses while a story modal is
+ * open so the player can read each beat. Off by default (hand-merging is the
+ * core toy); this is a comfort helper.
  */
 import type { Game } from '../core/game';
 
@@ -38,9 +40,27 @@ export class AutoMergeController {
 
   private loop(): void {
     window.setTimeout(() => {
-      const merged = this.game.settings.autoMerge && this.game.autoMergeOnce();
-      if (merged) this.loop();
-      else this.running = false;
+      if (!this.game.settings.autoMerge) {
+        this.running = false;
+        return;
+      }
+      // Let the player read each story beat before continuing.
+      const storyOpen = document.getElementById('story-modal')?.hidden === false;
+      if (storyOpen) {
+        this.loop();
+        return;
+      }
+      // Prefer delivering a completed order, then merging the next pair.
+      if (this.game.deliverableIndex() >= 0) {
+        this.game.deliver();
+        this.loop();
+        return;
+      }
+      if (this.game.autoMergeOnce()) {
+        this.loop();
+        return;
+      }
+      this.running = false;
     }, STEP_MS);
   }
 }
