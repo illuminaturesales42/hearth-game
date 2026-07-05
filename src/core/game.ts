@@ -12,6 +12,7 @@ import type { HealthSnapshot } from '../health/health-provider';
 import { canDoAction, initialActionState, recordAction, rolloverActions } from './actions';
 import type { RecordResult } from './actions';
 import { LOG_MEDITATION, loggedMinutesToEnergy } from '../data/meditations';
+import { findRecovery, recoveryEnergy } from '../data/recovery';
 import type { ActionState } from './types';
 
 export type GameEvent =
@@ -205,6 +206,13 @@ export class Game {
   logMeditation(minutes: number, now = Date.now()): void {
     const energy = loggedMinutesToEnergy(minutes);
     this.applyRecord(recordAction(this.state.actions, LOG_MEDITATION.id, now, energy), LOG_MEDITATION.id);
+  }
+
+  /** Log a recovery activity (cold plunge, sauna) by duration. Once per day each, capped. */
+  logRecovery(activityId: string, minutes: number, now = Date.now()): void {
+    const activity = findRecovery(activityId);
+    if (!activity) return;
+    this.applyRecord(recordAction(this.state.actions, activityId, now, recoveryEnergy(activity, minutes)), activityId);
   }
 
   private applyRecord(res: RecordResult, actionId: string): void {

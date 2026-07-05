@@ -293,6 +293,8 @@ body {
 .med-cta-body b { font-family: var(--serif); font-size: 16px; display: block; }
 .med-cta-body span { font-size: 11px; color: var(--cream-dim); }
 .med-cta-go { font-size: 22px; color: var(--sea); }
+.recovery-cta { background: linear-gradient(120deg, rgba(90, 150, 200, 0.26), rgba(224, 136, 95, 0.14)); border-color: rgba(150, 190, 230, 0.4); }
+.recovery-cta .med-cta-go { color: #9cc7e6; }
 .med-log { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
 .med-log-btn { padding: 10px 0; border-radius: 12px; border: 1px solid rgba(120, 190, 210, 0.35); background: rgba(79, 134, 152, 0.14); color: var(--cream); font-family: var(--sans); font-size: 13px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 1px; }
 .med-log-btn span { font-size: 10px; color: var(--sea); font-weight: 800; }

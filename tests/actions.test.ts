@@ -9,6 +9,7 @@ import {
 } from '../src/core/actions';
 import { isWithinWindow, sunTimes, sunWindow } from '../src/core/sun';
 import { LOG_MEDITATION, loggedMinutesToEnergy } from '../src/data/meditations';
+import { COLD_PLUNGE, SAUNA, recoveryEnergy } from '../src/data/recovery';
 import { earnableById } from '../src/core/actions';
 
 const T0 = new Date('2026-07-05T09:00:00').getTime();
@@ -96,6 +97,28 @@ describe('meditation', () => {
     const first = recordAction(s0, LOG_MEDITATION.id, T0, loggedMinutesToEnergy(20));
     expect(first.energy).toBe(10);
     expect(recordAction(first.state, LOG_MEDITATION.id, T0 + 1000, loggedMinutesToEnergy(20)).energy).toBe(0);
+  });
+});
+
+describe('recovery logging', () => {
+  it('cold plunge pays a high per-minute rate, capped', () => {
+    expect(recoveryEnergy(COLD_PLUNGE, 3)).toBe(9);
+    expect(recoveryEnergy(COLD_PLUNGE, 10)).toBe(COLD_PLUNGE.maxEnergy);
+    expect(earnableById(COLD_PLUNGE.id)?.timesPerDay).toBe(1);
+  });
+
+  it('sauna pays a gentler per-minute rate, capped', () => {
+    expect(recoveryEnergy(SAUNA, 20)).toBe(14);
+    expect(recoveryEnergy(SAUNA, 60)).toBe(SAUNA.maxEnergy);
+  });
+
+  it('each recovery activity logs once per day via the ledger', () => {
+    const s0 = initialActionState(T0);
+    const first = recordAction(s0, COLD_PLUNGE.id, T0, recoveryEnergy(COLD_PLUNGE, 3));
+    expect(first.energy).toBe(9);
+    expect(recordAction(first.state, COLD_PLUNGE.id, T0 + 1000, recoveryEnergy(COLD_PLUNGE, 3)).energy).toBe(0);
+    // sauna is independent of the cold-plunge cap
+    expect(recordAction(first.state, SAUNA.id, T0 + 1000, recoveryEnergy(SAUNA, 15)).energy).toBe(11);
   });
 });
 

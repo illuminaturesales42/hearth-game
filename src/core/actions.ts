@@ -6,6 +6,7 @@
 import type { ActionState } from './types';
 import { ACTIONS } from '../data/actions';
 import { LOG_MEDITATION, MEDITATIONS } from '../data/meditations';
+import { RECOVERY } from '../data/recovery';
 import { localDayKey } from './energy';
 
 export const CHEST_EVERY = 3;
@@ -27,6 +28,8 @@ export function earnableById(id: string): Earnable | undefined {
   const m = MEDITATIONS.find((x) => x.id === id);
   if (m) return { energy: m.energy, timesPerDay: m.timesPerDay };
   if (id === LOG_MEDITATION.id) return { energy: 0, timesPerDay: 1 }; // energy is passed in per log
+  const r = RECOVERY.find((x) => x.id === id);
+  if (r) return { energy: 0, timesPerDay: r.timesPerDay }; // energy is passed in per log
   return undefined;
 }
 

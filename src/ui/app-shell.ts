@@ -8,6 +8,7 @@ import { Home } from './home';
 import { EnergyPanel } from './energy-panel';
 import { Screens } from './screens';
 import { MeditationUI } from './meditation';
+import { RecoveryUI } from './recovery';
 
 type ScreenId = 'home' | 'map' | 'villagers' | 'journal' | 'shop';
 
@@ -25,6 +26,7 @@ export class AppShell {
     this.energy = new EnergyPanel(game);
     this.screens = new Screens(game);
     const meditation = new MeditationUI(game);
+    const recovery = new RecoveryUI(game);
 
     document.querySelectorAll<HTMLButtonElement>('.nav-btn').forEach((btn) => {
       btn.addEventListener('click', () => this.go((btn.dataset.screen as ScreenId) ?? 'home'));
@@ -33,6 +35,8 @@ export class AppShell {
     if (pill) pill.addEventListener('click', () => this.energy.open());
     const medOpen = document.getElementById('med-open');
     if (medOpen) medOpen.addEventListener('click', () => meditation.openMenu());
+    const recoveryOpen = document.getElementById('recovery-open');
+    if (recoveryOpen) recoveryOpen.addEventListener('click', () => recovery.open());
   }
 
   private go(id: ScreenId): void {
