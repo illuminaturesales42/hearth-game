@@ -1,10 +1,10 @@
 /**
- * Life Energy: the design core. Energy comes from time regen and from the
- * player's real day. It is never sold. Pure, timestamp-driven functions so
- * the system is fully testable and cheat-resistant enough for M1.
+ * Passive energy regen and the spend/grant primitives. Life-driven energy
+ * (steps, sleep, photos, movement) is handled by the action + health systems;
+ * this file is only the baseline timer and the arithmetic.
  */
 import type { EnergyState } from './types';
-import { ENERGY, LIFE_QUESTS } from '../data/economy';
+import { ENERGY } from '../data/economy';
 
 export function localDayKey(now: number): string {
   const d = new Date(now);
@@ -12,29 +12,16 @@ export function localDayKey(now: number): string {
 }
 
 export function initialEnergy(now: number): EnergyState {
-  return { current: ENERGY.initial, lastRegenAt: now, questsDoneToday: [], questDay: localDayKey(now) };
+  return { current: ENERGY.initial, lastRegenAt: now };
 }
 
-/** Accrue passive time regen up to the cap. Life-quest energy may sit above the cap; regen never pushes past it. */
+/** Accrue passive regen up to the cap. Life energy may sit above the cap; regen never pushes past it. */
 export function accrueRegen(state: EnergyState, now: number): EnergyState {
   const elapsed = now - state.lastRegenAt;
-  if (elapsed < ENERGY.regenMs) return rolloverDay(state, now);
+  if (elapsed < ENERGY.regenMs) return state;
   const ticks = Math.floor(elapsed / ENERGY.regenMs);
   const usable = state.current >= ENERGY.regenCap ? 0 : Math.min(ticks, ENERGY.regenCap - state.current);
-  return rolloverDay(
-    {
-      ...state,
-      current: state.current + usable,
-      lastRegenAt: state.lastRegenAt + ticks * ENERGY.regenMs,
-    },
-    now,
-  );
-}
-
-function rolloverDay(state: EnergyState, now: number): EnergyState {
-  const day = localDayKey(now);
-  if (day === state.questDay) return state;
-  return { ...state, questsDoneToday: [], questDay: day };
+  return { current: state.current + usable, lastRegenAt: state.lastRegenAt + ticks * ENERGY.regenMs };
 }
 
 export function canSpend(state: EnergyState, amount: number): boolean {
@@ -48,27 +35,6 @@ export function spend(state: EnergyState, amount: number): EnergyState {
 
 export function grant(state: EnergyState, amount: number): EnergyState {
   return { ...state, current: state.current + amount };
-}
-
-export interface QuestResult {
-  state: EnergyState;
-  granted: number;
-}
-
-/** Complete a life quest (once per day each). Returns granted=0 if already done. */
-export function completeQuest(state: EnergyState, questId: string, now: number): QuestResult {
-  const rolled = rolloverDay(state, now);
-  if (rolled.questsDoneToday.includes(questId)) return { state: rolled, granted: 0 };
-  const quest = LIFE_QUESTS.find((q) => q.id === questId);
-  if (!quest) return { state: rolled, granted: 0 };
-  return {
-    state: {
-      ...rolled,
-      current: rolled.current + quest.energy,
-      questsDoneToday: [...rolled.questsDoneToday, questId],
-    },
-    granted: quest.energy,
-  };
 }
 
 /** ms until the next passive energy tick (for the HUD countdown). */

@@ -4,11 +4,13 @@
  */
 import type { GameState, Item } from './types';
 import { createBoard, dropItem, emptyIndices, findItem, itemAt, withEmpty, withItem } from './board';
-import { accrueRegen, canSpend, completeQuest, grant, initialEnergy, spend } from './energy';
+import { accrueRegen, canSpend, grant, initialEnergy, spend } from './energy';
 import { BOARD_COLS, BOARD_ROWS, ENERGY, ORDERS, PRODUCER_INDEX, SPAWN_TABLE } from '../data/economy';
 import { loadState, saveState } from './save';
 import { applySnapshot, initialLedger } from '../health/health-energy';
 import type { HealthSnapshot } from '../health/health-provider';
+import { canDoAction, initialActionState, recordAction, rolloverActions } from './actions';
+import type { ActionState } from './types';
 
 export type GameEvent =
   | { type: 'state' }
@@ -16,7 +18,8 @@ export type GameEvent =
   | { type: 'merge'; index: number; item: Item }
   | { type: 'reject'; index: number; reason: 'energy' | 'full' | 'invalid' }
   | { type: 'delivered'; orderId: string; resolution: string; rewardEnergy: number; rewardCoins: number }
-  | { type: 'quest'; questId: string; granted: number }
+  | { type: 'action'; actionId: string; energy: number }
+  | { type: 'chest'; coins: number }
   | { type: 'health'; energy: number; fromSteps: number; fromSleep: number }
   | { type: 'chapterComplete' };
 
@@ -28,7 +31,11 @@ export class Game {
 
   constructor(now = Date.now()) {
     this.state = loadState() ?? Game.freshState(now);
-    this.state = { ...this.state, energy: accrueRegen(this.state.energy, now) };
+    this.state = {
+      ...this.state,
+      energy: accrueRegen(this.state.energy, now),
+      actions: rolloverActions(this.state.actions, now),
+    };
   }
 
   static freshState(now: number): GameState {
@@ -43,9 +50,10 @@ export class Game {
     let uid = 1;
     for (const s of seeds) board = withItem(board, s.i, { chain: s.chain, level: s.level, uid: uid++ });
     return {
-      version: 1,
+      version: 2,
       board,
       energy: initialEnergy(now),
+      actions: initialActionState(now),
       coins: 0,
       xp: 0,
       orderIndex: 0,
@@ -56,6 +64,10 @@ export class Game {
 
   get snapshot(): GameState {
     return this.state;
+  }
+
+  get actionState(): ActionState {
+    return this.state.actions;
   }
 
   subscribe(fn: Listener): () => void {
@@ -167,10 +179,29 @@ export class Game {
     }
   }
 
-  doLifeQuest(questId: string, now = Date.now()): void {
-    const res = completeQuest(this.state.energy, questId, now);
-    this.state = { ...this.state, energy: res.state };
-    this.emit({ type: 'quest', questId, granted: res.granted });
+  canDoAction(actionId: string, now = Date.now()): boolean {
+    return canDoAction(this.state.actions, actionId, now);
+  }
+
+  /**
+   * Complete a real-world action (photo, movement, self-report). Sensor
+   * actions (steps/sleep) come through syncHealth instead. Grants energy,
+   * advances streak, and opens a chest every few active days.
+   */
+  completeAction(actionId: string, now = Date.now()): void {
+    const res = recordAction(this.state.actions, actionId, now);
+    if (res.energy <= 0) {
+      this.emit({ type: 'action', actionId, energy: 0 });
+      return;
+    }
+    this.state = {
+      ...this.state,
+      actions: res.state,
+      energy: grant(this.state.energy, res.energy),
+      coins: this.state.coins + res.chestCoins,
+    };
+    this.emit({ type: 'action', actionId, energy: res.energy });
+    if (res.chestCoins > 0) this.emit({ type: 'chest', coins: res.chestCoins });
   }
 
   itemAt(index: number): Item | null {

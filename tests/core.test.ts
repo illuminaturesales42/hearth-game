@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { canMerge, createBoard, dropItem, findItem, itemAt, withItem } from '../src/core/board';
-import { accrueRegen, completeQuest, initialEnergy, msToNextTick, spend } from '../src/core/energy';
+import { accrueRegen, initialEnergy, msToNextTick, spend } from '../src/core/energy';
 import { Game, pickSpawnChain } from '../src/core/game';
 import { BOARD_COLS, BOARD_ROWS, ENERGY, ORDERS, PRODUCER_INDEX } from '../src/data/economy';
 import type { Item } from '../src/core/types';
@@ -62,16 +62,6 @@ describe('energy', () => {
     e = { ...e, current: ENERGY.regenCap + 10 };
     const after = accrueRegen(e, T0 + ENERGY.regenMs * 5);
     expect(after.current).toBe(ENERGY.regenCap + 10);
-  });
-
-  it('life quests grant once per day and reset at midnight', () => {
-    let e = initialEnergy(T0);
-    const first = completeQuest(e, 'sleep', T0);
-    expect(first.granted).toBe(8);
-    const again = completeQuest(first.state, 'sleep', T0 + 1000);
-    expect(again.granted).toBe(0);
-    const nextDay = completeQuest(first.state, 'sleep', T0 + 24 * 3600_000);
-    expect(nextDay.granted).toBe(8);
   });
 
   it('reports time to next tick', () => {

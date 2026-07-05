@@ -51,9 +51,35 @@ export interface EnergyState {
   current: number;
   /** epoch ms of last time-regen accrual. */
   lastRegenAt: number;
-  /** quest ids completed today (resets at local midnight). */
-  questsDoneToday: readonly string[];
-  questDay: string; // YYYY-MM-DD local
+}
+
+export type ActionKind = 'sensor' | 'photo' | 'motion' | 'selfReport';
+
+export interface EnergyAction {
+  id: string;
+  label: string;
+  sublabel: string;
+  icon: string;
+  energy: number;
+  timesPerDay: number;
+  kind: ActionKind;
+  /** featured actions appear in TODAY'S ENERGY; others under "More ways". */
+  featured: boolean;
+  photoPrompt?: string;
+  photoWindow?: 'sunrise' | 'sunset' | 'day';
+  motionReps?: number;
+  motionVerb?: string;
+  sensor?: 'steps' | 'sleep';
+}
+
+export interface ActionState {
+  day: string; // YYYY-MM-DD local; resets counts at midnight
+  counts: Record<string, number>;
+  /** consecutive active days. Positive framing only — never punished. */
+  streak: number;
+  lastActiveDay: string | null;
+  /** active days accrued toward the next chest. */
+  chestProgress: number;
 }
 
 export interface HealthLedgerState {
@@ -67,6 +93,7 @@ export interface GameState {
   healthLedger?: HealthLedgerState;
   board: BoardState;
   energy: EnergyState;
+  actions: ActionState;
   coins: number;
   xp: number;
   orderIndex: number;

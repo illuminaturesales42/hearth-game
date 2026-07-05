@@ -18,9 +18,12 @@ Facade: `src/analytics.ts`. M2 sink: Firebase Analytics. Privacy rule: **no raw 
 ## Life energy
 | Event | Props | Fired when |
 |---|---|---|
-| `quest_done` | `questId`, `energy` | self-report quest |
+| `action_done` | `actionId`, `energy` | a real-world action completes (photo, movement, self-report) |
+| `chest_opened` | `coins` | streak chest opens (every 3 active days) |
 | `health_grant` | `energy`, `fromSteps`, `fromSleep` | health sync pays out (amounts only, never step counts or sleep hours) |
 | `health_permission` | `granted` | permission prompt resolves |
+
+Photo actions never emit the image or any image-derived data. Sunrise/sunset gating uses on-device time + optional coarse location; location is not tracked as an event.
 
 ## KPIs derived
 - D1/D7/D30 from `session_start`

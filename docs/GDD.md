@@ -12,16 +12,33 @@
 Spend energy on producers → spawn items → merge up chains → fill villager orders → coins/XP/story beats → restore village zones → new chains and characters.
 
 ## 3. Systems
-### 3.1 Life Energy
-| Source | Amount | Cap | Production source |
-|---|---|---|---|
-| Steps | 1 per 500 | 20/day | HealthKit / Health Connect (M2) |
-| Sleep ≥7h | +10 at first morning session | 10/day | HealthKit / Health Connect (M2) |
-| Micro-quests (water, stretch, tidy) | +2 each | 3/day | self-report, honor system |
-| Passive regen | 1 per 3 min | cap 30 | client clock (server-validated M3) |
-| Order rewards | 4–10 per delivery | — | economy table |
+### 3.1 Life Energy — the action catalogue
+Energy comes only from the player's real day. Full catalogue in `src/data/actions.ts`; the Energy panel (concept screen #2) surfaces featured actions with "More ways to earn energy" beneath.
 
-Rules: never purchasable; regen never accrues past cap but quest energy may exceed it; quests reset at local midnight; sleep is rewarded, never penalized.
+| Action | Amount | Cap/day | Kind | Source |
+|---|---|---|---|---|
+| 4,200 steps | +20 | 1 | sensor | HealthKit / Health Connect |
+| 7.5h sleep | +20 | 1 | sensor | HealthKit / Health Connect |
+| Drink water (1.5L) | +10 | 1 | self-report | honour |
+| Take a photo outside | +10 | 1 | photo | camera |
+| 15 squats | +10 | 1 | motion | guided reps (motion sensor in M2) |
+| **Photograph the sunrise** | +15 | 1 | photo | camera, **gated to real local sunrise** |
+| Photograph the sunset | +15 | 1 | photo | camera, gated to real local sunset |
+| Find something green | +10 | 1 | photo | camera |
+| Morning stretch | +8 | 1 | motion | guided |
+| Four slow breaths | +6 | 2 | motion | guided |
+| Note one good thing | +5 | 1 | self-report | journal |
+| Passive regen | 1 per 3 min | cap 30 | timer | client clock (server-validated M3) |
+| Order rewards | 3–10 | — | — | economy table |
+
+Sun-gated photos use the SunCalc algorithm (`src/core/sun.ts`) against optional device location — a gate a clock change can't beat. Captured images stay on device, never uploaded.
+
+**Streak & chest:** a positive-only "day streak" (grows on consecutive active days; a missed day resets to 1 with no penalty screen — honouring the no-punishment pillar) and a chest every 3 active days (+100 coins). Matches concept screen #2.
+
+Rules: energy never purchasable; regen never accrues past cap but life energy may exceed it; action counts reset at local midnight; sleep rewarded, never penalized.
+
+### 3.1b Screens (concept-matched)
+Bottom nav: Shop · Map · Home · Villagers · Journal. Home = merge board + order card + harbour banner. Energy panel opens from the HUD energy pill. Map = Emberhollow harbour with order-gated locations. Journal = Clues/Letters/People/Places. Villagers = cast + affinity. Shop = collections + events (decor arrives with M2 art).
 
 ### 3.2 Chains (M1 set)
 - **Timberline** (7 levels): Sapling → Cottage

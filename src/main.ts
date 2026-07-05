@@ -1,19 +1,13 @@
 import { Game } from './core/game';
-import { BoardView } from './ui/board-view';
-import { Hud } from './ui/hud';
-import { track } from './analytics';
+import { AppShell } from './ui/app-shell';
+import { recentEvents, track } from './analytics';
 import { SelfReportProvider } from './health/health-provider';
 import type { HealthSnapshot } from './health/health-provider';
 
 const game = new Game();
+new AppShell(game);
 
-const boardEl = document.getElementById('board');
-if (!boardEl) throw new Error('Missing #board');
-
-new BoardView(game, boardEl);
-new Hud(game);
-
-// ---------- analytics wiring (taxonomy: docs/analytics.md) ----------
+// ---------- analytics (taxonomy: docs/analytics.md) ----------
 let firstMergeSeen = game.snapshot.xp > 0;
 let firstOrderSeen = game.snapshot.orderIndex > 0;
 track('session_start', { orderIndex: game.snapshot.orderIndex, energy: game.snapshot.energy.current });
@@ -42,8 +36,11 @@ game.subscribe((ev) => {
     case 'chapterComplete':
       track('chapter_complete', { chapter: 1 });
       break;
-    case 'quest':
-      if (ev.granted > 0) track('quest_done', { questId: ev.questId, energy: ev.granted });
+    case 'action':
+      if (ev.energy > 0) track('action_done', { actionId: ev.actionId, energy: ev.energy });
+      break;
+    case 'chest':
+      track('chest_opened', { coins: ev.coins });
       break;
     case 'health':
       track('health_grant', { energy: ev.energy, fromSteps: ev.fromSteps, fromSleep: ev.fromSleep });
@@ -52,8 +49,8 @@ game.subscribe((ev) => {
 });
 
 // ---------- health provider ----------
-// M1 web: self-report only. The Capacitor native shells swap in
-// CapacitorHealthProvider here; sync runs at startup and on app foreground.
+// M1 web: self-report only. Native shells swap CapacitorHealthProvider in here
+// and call game.syncHealth on startup + app foreground.
 const health = new SelfReportProvider();
 void health.read();
 
@@ -61,13 +58,12 @@ void health.read();
 declare global {
   interface Window {
     hearthReset: () => void;
-    /** Simulate a native health sync, e.g. hearthHealthSim(6200, 7.8) */
     hearthHealthSim: (steps: number, sleepHours?: number) => void;
     hearthEvents: () => void;
   }
 }
 window.hearthReset = () => {
-  localStorage.removeItem('hearth:save:v1');
+  localStorage.removeItem('hearth:save:v2');
   location.reload();
 };
 window.hearthHealthSim = (steps: number, sleepHours?: number) => {
@@ -78,7 +74,6 @@ window.hearthHealthSim = (steps: number, sleepHours?: number) => {
   };
   game.syncHealth(snap);
 };
-window.hearthEvents = async () => {
-  const { recentEvents } = await import('./analytics');
+window.hearthEvents = () => {
   console.table(recentEvents().map((e) => ({ name: e.name, ...e.props })));
 };

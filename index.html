@@ -3,59 +3,127 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#221208" />
+  <meta name="theme-color" content="#0f1626" />
   <title>Hearth: Merge &amp; Mystery</title>
   <link rel="stylesheet" href="/src/styles.css" />
 </head>
 <body>
-  <div id="app" aria-live="polite">
-    <header id="hud">
-      <div class="hud-left">
-        <h1 class="brand">Hearth</h1>
-        <span class="chapter" id="hud-chapter">Chapter 1 · The Letter</span>
-      </div>
-      <div class="hud-right">
-        <div class="stat coins" title="Coins"><span class="stat-ico coin-ico" aria-hidden="true"></span><b id="hud-coins">0</b></div>
-      </div>
-    </header>
+  <div id="app">
 
-    <section id="energy-bar" aria-label="Hearth energy">
-      <div class="flame" aria-hidden="true"></div>
-      <div class="energy-text">
-        <b>Hearth energy <span id="energy-count">0</span></b>
-        <span id="energy-sub">Earned from your day. Never sold.</span>
-      </div>
-      <div class="energy-timer" id="energy-timer" title="Next ember"></div>
-    </section>
+    <div class="screens">
 
-    <section id="zone-strip" aria-label="Village restoration">
-      <div class="zone-dots" id="zone-dots"></div>
-      <span id="zone-label"></span>
-    </section>
+      <!-- ================= HOME ================= -->
+      <section class="screen active" id="screen-home">
+        <header class="topbar">
+          <button id="energy-pill" class="energy-pill" aria-label="Open Hearth Energy">
+            <span class="pip" aria-hidden="true"></span><b id="hud-energy">0</b>
+          </button>
+          <div class="brandmark">
+            <span class="brand-title">Hearth</span>
+            <span class="brand-sub">Emberhollow</span>
+          </div>
+          <div class="coinpill" title="Coins"><span class="coin-ico" aria-hidden="true"></span><b id="hud-coins">0</b></div>
+        </header>
 
-    <main id="board-wrap">
-      <div id="board" role="grid" aria-label="Merge board"></div>
-    </main>
+        <div class="harbour-banner" role="img" aria-label="Illustration placeholder: Emberhollow harbour at sunset">
+          <div class="hb-sky"></div>
+          <div class="hb-sun"></div>
+          <div class="hb-sea"></div>
+          <div class="hb-lighthouse"><span class="hb-beam"></span></div>
+          <div class="hb-town"></div>
+        </div>
 
-    <section id="order-panel" aria-label="Current order">
-      <div class="order-face" id="order-face" aria-hidden="true"></div>
-      <p id="order-text"></p>
-      <button id="deliver-btn" disabled>Deliver</button>
-    </section>
+        <section class="zone-strip" aria-label="Village restoration">
+          <div class="zone-dots" id="zone-dots"></div>
+          <span id="zone-label"></span>
+        </section>
 
-    <section id="quests" aria-label="Life quests">
-      <button class="quest" data-quest="steps"><span class="q-ico">👟</span><b>4,200 steps</b><span class="q-sub">+6 energy</span></button>
-      <button class="quest" data-quest="sleep"><span class="q-ico">😴</span><b>7.5h sleep</b><span class="q-sub">+8 energy</span></button>
-      <button class="quest" data-quest="water"><span class="q-ico">💧</span><b>Glass of water</b><span class="q-sub">+2 energy</span></button>
-    </section>
+        <main class="board-wrap">
+          <div id="board" role="grid" aria-label="Merge board"></div>
+        </main>
+
+        <section class="order-card" aria-label="Current order">
+          <div class="order-face" aria-hidden="true"></div>
+          <p id="order-text"></p>
+          <button id="deliver-btn" class="btn-primary" disabled>Deliver</button>
+        </section>
+      </section>
+
+      <!-- ================= MAP ================= -->
+      <section class="screen" id="screen-map"><div class="screen-body" id="map-body"></div></section>
+
+      <!-- ================= VILLAGERS ================= -->
+      <section class="screen" id="screen-villagers"><div class="screen-body" id="villagers-body"></div></section>
+
+      <!-- ================= JOURNAL ================= -->
+      <section class="screen" id="screen-journal"><div class="screen-body" id="journal-body"></div></section>
+
+      <!-- ================= SHOP ================= -->
+      <section class="screen" id="screen-shop"><div class="screen-body" id="shop-body"></div></section>
+
+    </div>
+
+    <nav id="bottom-nav" aria-label="Main navigation">
+      <button class="nav-btn" data-screen="shop"><span>🛍️</span>Shop</button>
+      <button class="nav-btn" data-screen="map"><span>🗺️</span>Map</button>
+      <button class="nav-btn on" data-screen="home"><span>🔥</span>Home</button>
+      <button class="nav-btn" data-screen="villagers"><span>👥</span>Villagers</button>
+      <button class="nav-btn" data-screen="journal"><span>📖</span>Journal</button>
+    </nav>
   </div>
 
+  <!-- ================= ENERGY PANEL ================= -->
+  <div id="energy-panel" class="sheet" role="dialog" aria-modal="true" aria-label="Hearth Energy" hidden>
+    <div class="sheet-card">
+      <button id="energy-close" class="sheet-close" aria-label="Close">✕</button>
+      <div class="energy-head">
+        <div class="sun-badge" aria-hidden="true"></div>
+        <div>
+          <h2 class="energy-h2">Hearth Energy</h2>
+          <p class="energy-tag">Earned from your day — never sold</p>
+        </div>
+      </div>
+      <div class="energy-gauge">
+        <div class="energy-num"><b id="energy-big">0</b><span>/100</span></div>
+        <div class="gauge-track"><i id="energy-fill"></i></div>
+      </div>
+      <div class="energy-chips">
+        <div class="echip"><span>Day streak</span><b><span id="energy-streak">0</span> days</b></div>
+        <div class="echip"><span>Next chest in</span><b><span id="energy-chest">3</span> days</b></div>
+      </div>
+      <p class="earn-label">Today’s energy</p>
+      <div id="energy-list" class="earn-list"></div>
+      <button id="energy-more" class="earn-more">More ways to earn energy ▼</button>
+      <div id="energy-more-list" class="earn-list" hidden></div>
+    </div>
+  </div>
+
+  <!-- ================= PHOTO CAPTURE ================= -->
+  <div id="photo-overlay" class="capture" role="dialog" aria-modal="true" aria-label="Camera" hidden>
+    <button id="photo-close" class="capture-close" aria-label="Close">✕</button>
+    <video id="photo-video" class="capture-video" playsinline muted></video>
+    <div id="photo-gate" class="capture-gate" hidden></div>
+    <div class="capture-reticle" aria-hidden="true"></div>
+    <p id="photo-prompt" class="capture-prompt"></p>
+    <button id="photo-shutter" class="capture-shutter" aria-label="Take photo"></button>
+    <div id="photo-flash" class="capture-flash" aria-hidden="true"></div>
+  </div>
+
+  <!-- ================= MOTION ================= -->
+  <div id="motion-overlay" class="capture motion" role="dialog" aria-modal="true" aria-label="Movement" hidden>
+    <button id="motion-close" class="capture-close" aria-label="Close">✕</button>
+    <p id="motion-title" class="motion-title"></p>
+    <div id="motion-count" class="motion-count"></div>
+    <button id="motion-btn" class="motion-btn"></button>
+  </div>
+
+  <!-- ================= STORY MODAL ================= -->
   <div id="story-modal" class="modal" role="dialog" aria-modal="true" hidden>
     <div class="modal-card">
       <div class="modal-flame" aria-hidden="true"></div>
       <p id="story-text"></p>
       <p class="story-reward" id="story-reward"></p>
-      <button id="story-continue">Continue</button>
+      <button id="story-continue" class="btn-primary">Continue</button>
     </div>
   </div>
 
