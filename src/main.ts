@@ -35,7 +35,7 @@ game.subscribe((ev) => {
       track('order_delivered', { orderId: ev.orderId, rewardEnergy: ev.rewardEnergy, rewardCoins: ev.rewardCoins });
       break;
     case 'chapterComplete':
-      track('chapter_complete', { chapter: 1 });
+      track('chapter_complete', { chapter: ev.chapter });
       break;
     case 'action':
       if (ev.energy > 0) track('action_done', { actionId: ev.actionId, energy: ev.energy });

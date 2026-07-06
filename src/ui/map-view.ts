@@ -10,7 +10,7 @@
  */
 import type { Game } from '../core/game';
 import { MAP_LOCATIONS } from '../data/world';
-import { ORDERS } from '../data/economy';
+import { ORDERS, chapterFor } from '../data/economy';
 import { artUrl } from './art';
 
 const STAGE_NAMES = [
@@ -52,9 +52,13 @@ export class MapView {
   private progress(): number {
     return Math.min(1, this.game.snapshot.orderIndex / ORDERS.length);
   }
-  /** 0..4 stage, thresholds at 0/3/6/9/12 orders. */
+  /** 0..4 homestead stage, spread across the full MVP story (24 orders). */
   private stage(): number {
-    return Math.min(4, Math.floor(this.game.snapshot.orderIndex / 3));
+    const i = this.game.snapshot.orderIndex;
+    const thresholds = [0, 5, 10, 16, 22];
+    let s = 0;
+    for (let k = 0; k < thresholds.length; k++) if (i >= thresholds[k]!) s = k;
+    return s;
   }
 
   setVisible(v: boolean): void {
@@ -345,9 +349,13 @@ export class MapView {
         `<div class="mc-body"><b>${order.who} needs a hand</b><span>${order.text}</span></div></div>`
       : `<div class="map-challenge"><span class="mc-ico">✨</span>` +
         `<div class="mc-body"><b>Chapter complete</b><span>Emberhollow shines. New challenges await in the next chapter.</span></div></div>`;
+    const ch = chapterFor(Math.min(delivered, ORDERS.length - 1));
+    const inChapter = Math.min(delivered, ch.end) - ch.start;
     host.innerHTML =
       challenge +
-      `<p class="map-locs-label">Emberhollow · ${delivered}/${ORDERS.length} restored</p>` +
+      `<p class="map-locs-label">Chapter ${ch.id} · ${ch.title} · ${inChapter}/${ch.end - ch.start} orders · village ${Math.round(
+        (delivered / ORDERS.length) * 100,
+      )}% restored</p>` +
       `<div class="loc-list">` +
       MAP_LOCATIONS.map((l) => {
         const locked = delivered < l.unlockAt;

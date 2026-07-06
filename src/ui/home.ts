@@ -35,8 +35,8 @@ export class Home {
         case 'chapterComplete':
           feedback.chapter();
           this.showStory(
-            'Chapter 1 complete. Marta’s mystery runs on for 40 chapters — and every one is powered by your real day.',
-            'Thank you for playing this build.',
+            `Chapter ${ev.chapter} — ${ev.title} — is complete. ${ev.cliffhanger}`,
+            ev.hasNext ? 'The next chapter begins at the notice board.' : 'End of this build. The mystery continues soon.',
           );
           break;
         case 'action':

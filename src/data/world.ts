@@ -35,6 +35,7 @@ export const VILLAGERS: readonly Villager[] = [
   { id: 'wren', name: 'Wren', role: 'Postmistress', affinity: 4, known: true },
   { id: 'bran', name: 'Bran', role: 'Baker', affinity: 5, known: true },
   { id: 'sorin', name: 'Sorin', role: 'Old Keeper', affinity: 3, known: true },
+  { id: 'joss', name: 'Joss', role: 'Boatswain', affinity: 2, known: true },
   { id: 'marta', name: 'Marta', role: '???', affinity: 1, known: true },
 ];
 
@@ -43,16 +44,27 @@ export interface JournalEntry {
   tab: 'Clues' | 'Letters' | 'People' | 'Places';
   title: string;
   note: string;
+  /** Orders delivered before this entry appears in the Journal. */
+  at: number;
   fresh?: boolean;
 }
 
 export const JOURNAL: readonly JournalEntry[] = [
-  { id: 'j-letter11', tab: 'Letters', title: 'The Eleventh Letter', note: 'Unread. It sits on the cottage windowsill, in Marta’s hand.', fresh: true },
-  { id: 'j-future', tab: 'Letters', title: 'Nine future-dated letters', note: 'All postmarked after the day Marta vanished. One is dated three days from now.' },
-  { id: 'j-bolt', tab: 'Clues', title: 'The Lighthouse Bolt', note: 'Sorin kept the bolt used to shutter the light. The light was hidden on purpose.' },
-  { id: 'j-boat', tab: 'Clues', title: 'The Rowboat', note: 'Hauled above the tideline near the northern cove. Recently used.' },
-  { id: 'j-cove', tab: 'Places', title: 'The Northern Cove', note: 'Circled twice on Marta’s oilskin chart, behind the black rocks.' },
-  { id: 'j-marta', tab: 'People', title: 'Marta', note: 'Presumed drowned seventeen years ago. She rowed north instead. Now home — but why the letters?' },
+  { id: 'j-notice', tab: 'Places', title: 'The Notice Board', at: 1, note: 'Pinned dead centre: a letter addressed to nobody, postmarked seventeen years ago.' },
+  { id: 'j-key', tab: 'Clues', title: 'The Brass Key', at: 2, note: 'Found in the oven flue, with a warning: "Don’t trust the lighthouse keeper."' },
+  { id: 'j-future', tab: 'Letters', title: 'The Impossible Letter', at: 3, note: 'Dated three days from now. Wren read it twice and folded it fast.' },
+  { id: 'j-bolt', tab: 'Clues', title: 'The Lighthouse Bolt', at: 5, note: 'Sorin kept the bolt used to shutter the light. The light was hidden on purpose.' },
+  { id: 'j-nine', tab: 'Letters', title: 'Nine Letters in Her Hand', at: 7, note: 'All postmarked after the day Marta vanished.' },
+  { id: 'j-cove', tab: 'Places', title: 'The Northern Cove', at: 8, note: 'Circled twice on Marta’s oilskin chart, behind the black rocks.' },
+  { id: 'j-boat', tab: 'Clues', title: 'The Rowboat', at: 9, note: 'Hauled above the tideline near the northern cove. Recently used.' },
+  { id: 'j-marta', tab: 'People', title: 'Marta', at: 11, note: 'Presumed drowned seventeen years ago. She rowed north instead. Now home — but why the letters?' },
+  { id: 'j-letter11', tab: 'Letters', title: 'The Eleventh Letter', at: 12, note: 'Unread. It sits on the cottage windowsill, in Marta’s hand.', fresh: true },
+  { id: 'j-bootprints', tab: 'Clues', title: 'Bootprints in the Sand', at: 13, note: 'Lantern-light caught them leading to the north cove. Someone walks there at night.' },
+  { id: 'j-marigold', tab: 'Clues', title: 'The Marigold', at: 15, note: 'A rusted coin from a ship of that name, hidden under Sorin’s old bench.' },
+  { id: 'j-yesterday', tab: 'Letters', title: 'Postmarked Yesterday', at: 16, note: 'A letter addressed to Marta — dated after her return. Someone is still writing.' },
+  { id: 'j-joss', tab: 'People', title: 'Fisher Joss', at: 18, note: 'Boatswain of the strange tides. Pulled a torn oilskin from the nets, stitched A.V.' },
+  { id: 'j-tidechart', tab: 'Clues', title: 'The Tide Chart', at: 19, note: 'Hidden markings in the desk drawer. The shoals were mapped by someone patient.' },
+  { id: 'j-aldenvale', tab: 'People', title: 'Alden Vale', at: 22, note: 'A name in invisible ink. Payments. Silence. The letters A.V. on torn oilskin.', fresh: true },
 ];
 
 export interface Collection {

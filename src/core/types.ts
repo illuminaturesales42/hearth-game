@@ -1,6 +1,6 @@
 /** Shared domain types. Keep this file dependency-free. */
 
-export type ChainId = 'wood' | 'harvest' | 'hearthfire';
+export type ChainId = 'wood' | 'harvest' | 'hearthfire' | 'keepsake';
 
 export interface ChainDef {
   id: ChainId;

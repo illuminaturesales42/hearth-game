@@ -5,7 +5,7 @@
 import type { GameState, Item } from './types';
 import { createBoard, dropItem, emptyIndices, findItem, findMergePair, itemAt, withEmpty, withItem } from './board';
 import { accrueRegen, canSpend, grant, initialEnergy, spend } from './energy';
-import { BOARD_COLS, BOARD_ROWS, ENERGY, ORDERS, PRODUCER_INDEX, SPAWN_TABLE } from '../data/economy';
+import { BOARD_COLS, BOARD_ROWS, CHAPTERS, ENERGY, ORDERS, PRODUCER_INDEX, SPAWN_TABLE } from '../data/economy';
 import { CURRENT_VERSION, defaultPrefs, loadState, saveState } from './save';
 import { applySnapshot, initialLedger } from '../health/health-energy';
 import type { HealthSnapshot } from '../health/health-provider';
@@ -43,7 +43,7 @@ export type GameEvent =
   | { type: 'kindness'; energy: number; selfie: boolean }
   | { type: 'settings' }
   | { type: 'duelEnd'; won: boolean; streak: number; multiplier: number; coins: number; itemCount: number }
-  | { type: 'chapterComplete' };
+  | { type: 'chapterComplete'; chapter: number; title: string; cliffhanger: string; hasNext: boolean };
 
 type Listener = (ev: GameEvent) => void;
 
@@ -253,7 +253,20 @@ export class Game {
       rewardEnergy: order.rewardEnergy,
       rewardCoins: order.rewardCoins,
     });
-    if (this.state.orderIndex >= ORDERS.length) this.emit({ type: 'chapterComplete' });
+    this.emitChapterBoundary();
+  }
+
+  /** Fires chapterComplete when a delivery just crossed a chapter's end. */
+  private emitChapterBoundary(): void {
+    const done = CHAPTERS.find((c) => this.state.orderIndex === c.end);
+    if (!done) return;
+    this.emit({
+      type: 'chapterComplete',
+      chapter: done.id,
+      title: done.title,
+      cliffhanger: done.cliffhanger,
+      hasNext: CHAPTERS.some((c) => c.start === done.end),
+    });
   }
 
   /**
@@ -490,7 +503,7 @@ export class Game {
       rewardEnergy: order.rewardEnergy,
       rewardCoins: order.rewardCoins,
     });
-    if (this.state.orderIndex >= ORDERS.length) this.emit({ type: 'chapterComplete' });
+    this.emitChapterBoundary();
   }
 
   // ---------- kindness to a stranger ----------

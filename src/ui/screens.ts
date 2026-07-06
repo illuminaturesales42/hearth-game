@@ -25,7 +25,7 @@ export class Screens {
 
   constructor(private game: Game) {
     game.subscribe((ev) => {
-      if ((ev.type === 'gratitude' || ev.type === 'flashback') && this.journalVisible()) {
+      if ((ev.type === 'gratitude' || ev.type === 'flashback' || ev.type === 'delivered') && this.journalVisible()) {
         this.renderJournal();
       }
     });
@@ -55,7 +55,12 @@ export class Screens {
   }
 
   private storyEntries(): string {
-    const entries = JOURNAL.filter((e) => e.tab === this.journalTab);
+    // Entries unlock with story progress; the mystery assembles as you play.
+    const delivered = this.game.snapshot.orderIndex;
+    const entries = JOURNAL.filter((e) => e.tab === this.journalTab && delivered >= e.at).reverse();
+    if (entries.length === 0) {
+      return `<div class="gd-done">Nothing here yet. Deliver orders in Emberhollow and the ${this.journalTab.toLowerCase()} will find you.</div>`;
+    }
     return (
       `<div class="jentries">` +
       entries

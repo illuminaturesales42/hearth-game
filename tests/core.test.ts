@@ -97,7 +97,7 @@ describe('game', () => {
 
   it('spawn chain picker respects the weight table domain', () => {
     for (const r of [0, 0.2, 0.5, 0.9, 0.999]) {
-      expect(['wood', 'harvest', 'hearthfire']).toContain(pickSpawnChain(() => r));
+      expect(['wood', 'harvest', 'hearthfire', 'keepsake']).toContain(pickSpawnChain(() => r));
     }
   });
 });

@@ -23,6 +23,13 @@ export const CHAINS: readonly ChainDef[] = [
     levels: ['🕯️', '🏮', '🔥', '🌟'],
     levelNames: ['Candle', 'Lantern', 'Hearthfire', 'Beacon'],
   },
+  {
+    // Chapter 2's story props: Wren's workshop of letters and salvage.
+    id: 'keepsake',
+    name: 'Keepsakes',
+    levels: ['✉️', '📜', '🫖', '🛋️', '✒️', '🪢', '🛶'],
+    levelNames: ['Letter', 'Stack of Paper', 'Kettle', 'Bench', 'Writing Desk', 'Fishing Net', 'Rowboat'],
+  },
 ] as const;
 
 export const BOARD_COLS = 6;
@@ -31,10 +38,11 @@ export const BOARD_ROWS = 7;
 export const PRODUCER_INDEX = 21; // row 3, col 3
 
 /** Which chains the producer can spawn, with weights. */
-export const SPAWN_TABLE: readonly { chain: 'wood' | 'harvest' | 'hearthfire'; weight: number }[] = [
-  { chain: 'wood', weight: 42 },
-  { chain: 'harvest', weight: 42 },
-  { chain: 'hearthfire', weight: 16 },
+export const SPAWN_TABLE: readonly { chain: 'wood' | 'harvest' | 'hearthfire' | 'keepsake'; weight: number }[] = [
+  { chain: 'wood', weight: 34 },
+  { chain: 'harvest', weight: 34 },
+  { chain: 'hearthfire', weight: 14 },
+  { chain: 'keepsake', weight: 18 },
 ];
 
 export const ENERGY = {
@@ -140,16 +148,130 @@ export const ORDERS: readonly OrderDef[] = [
     id: 'c1-12', who: 'Marta',
     need: { chain: 'harvest', level: 3 },
     text: 'Seventeen missed birthdays. We are fixing one of them tonight. Make a cake.',
-    resolution: 'End of Chapter 1. Marta sets a slice by the window, "for whoever is still out there." Behind her, unread, the eleventh letter.',
+    resolution: 'Marta sets a slice by the window, "for whoever is still out there." Behind her, unread, the eleventh letter.',
     rewardEnergy: 10, rewardCoins: 120,
+  },
+
+  // ============================================================
+  // Chapter 2 — Shadows in the Sand (from the season-arc sheet).
+  // The villagers search the shoreline and the past for the next clues.
+  // ============================================================
+  {
+    id: 'c2-01', who: 'Wren the postmistress',
+    need: { chain: 'hearthfire', level: 1 },
+    text: 'Bring me a lantern. The square gets dark early.',
+    resolution: 'Its light reveals faint bootprints in the sand — leading to the north cove.',
+    rewardEnergy: 4, rewardCoins: 25,
+  },
+  {
+    id: 'c2-02', who: 'Bran the baker',
+    need: { chain: 'harvest', level: 1 },
+    text: 'Bake a loaf of bread. My hands are full.',
+    resolution: 'He shares that Marta used to leave notes in his flour sacks.',
+    rewardEnergy: 4, rewardCoins: 30,
+  },
+  {
+    id: 'c2-03', who: 'Old Keeper Sorin',
+    need: { chain: 'keepsake', level: 3 },
+    text: 'I’ll need a sturdy bench. The old one won’t do.',
+    resolution: 'Underneath it, he finds a rusted coin from a ship called The Marigold.',
+    rewardEnergy: 5, rewardCoins: 35,
+  },
+  {
+    id: 'c2-04', who: 'Wren the postmistress',
+    need: { chain: 'keepsake', level: 0 },
+    text: 'Sort through these letters with me.',
+    resolution: 'One is addressed to Marta… but the postmark is yesterday.',
+    rewardEnergy: 5, rewardCoins: 40,
+  },
+  {
+    id: 'c2-05', who: 'Bran the baker',
+    need: { chain: 'harvest', level: 2 },
+    text: 'Bring me a pie. Something to warm the belly.',
+    resolution: 'He remembers the night of the storm — a stranger argued with Marta.',
+    rewardEnergy: 6, rewardCoins: 45,
+  },
+  {
+    id: 'c2-06', who: 'Fisher Joss',
+    need: { chain: 'keepsake', level: 5 },
+    text: 'I need a fishing net. The tide’s been strange.',
+    resolution: 'He caught a torn scrap of oilskin with the letters A.V. stitched inside.',
+    rewardEnergy: 6, rewardCoins: 50,
+  },
+  {
+    id: 'c2-07', who: 'Wren the postmistress',
+    need: { chain: 'keepsake', level: 4 },
+    text: 'A writing desk would help.',
+    resolution: 'Inside the drawer: a tide chart with hidden markings.',
+    rewardEnergy: 7, rewardCoins: 55,
+  },
+  {
+    id: 'c2-08', who: 'Old Keeper Sorin',
+    need: { chain: 'keepsake', level: 2 },
+    text: 'A kettle. The tea here is worse than the weather.',
+    resolution: 'He softens, and admits the old keeper wasn’t alone that night.',
+    rewardEnergy: 7, rewardCoins: 60,
+  },
+  {
+    id: 'c2-09', who: 'Bran the baker',
+    need: { chain: 'harvest', level: 3 },
+    text: 'Bake a cake for the workers.',
+    resolution: 'Overheard: two men whisper about payments and silence.',
+    rewardEnergy: 8, rewardCoins: 70,
+  },
+  {
+    id: 'c2-10', who: 'Wren the postmistress',
+    need: { chain: 'keepsake', level: 1 },
+    text: 'A stack of paper. I’ll copy these letters.',
+    resolution: 'One page has invisible ink — the name Alden Vale appears.',
+    rewardEnergy: 8, rewardCoins: 80,
+  },
+  {
+    id: 'c2-11', who: 'Old Keeper Sorin',
+    need: { chain: 'keepsake', level: 6 },
+    text: 'Help me fix the rowboat.',
+    resolution: 'He shows where it was locked away — and why: someone followed her.',
+    rewardEnergy: 9, rewardCoins: 90,
+  },
+  {
+    id: 'c2-12', who: 'The whole village',
+    need: { chain: 'harvest', level: 5 },
+    text: 'Prepare a feast for the village. We’ve come far.',
+    resolution: 'Trust grows. Marta opens the eleventh letter… but not yet.',
+    rewardEnergy: 10, rewardCoins: 150,
   },
 ] as const;
 
-/** Village restoration stages, unlocked by delivered-order count. */
+/** Chapters: metadata over the flat ORDERS spine. */
+export const CHAPTERS: readonly {
+  id: number;
+  title: string;
+  start: number; // first order index
+  end: number; // one past the last order index
+  cliffhanger: string;
+}[] = [
+  {
+    id: 1, title: 'The Letter', start: 0, end: 12,
+    cliffhanger: 'A name is found in the sand — the same as on the letters.',
+  },
+  {
+    id: 2, title: 'Shadows in the Sand', start: 12, end: 24,
+    cliffhanger: 'A smuggler’s log reveals a payment made just before the storm.',
+  },
+] as const;
+
+export function chapterFor(orderIndex: number) {
+  return CHAPTERS.find((c) => orderIndex >= c.start && orderIndex < c.end) ?? CHAPTERS[CHAPTERS.length - 1]!;
+}
+
+/** Village restoration stages, unlocked by delivered-order count (spans both chapters). */
 export const ZONE_STAGES: readonly { at: number; label: string }[] = [
   { at: 0, label: 'Storm-struck square' },
   { at: 3, label: 'Notice board and lamplight' },
   { at: 6, label: 'Bakery breathing again' },
   { at: 9, label: 'Beacon on the shoals' },
   { at: 12, label: 'Emberhollow, restored' },
+  { at: 15, label: 'The workshop repaired' },
+  { at: 20, label: 'The lighthouse path cleared' },
+  { at: 24, label: 'The docks, revealed' },
 ] as const;
