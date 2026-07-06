@@ -1,5 +1,8 @@
 import { Game } from './core/game';
 import { clearSave } from './core/save';
+import { stageFor } from './data/economy';
+import { feedback } from './ui/feedback';
+import { toast } from './ui/toast';
 import { AppShell } from './ui/app-shell';
 import { recentEvents, track } from './analytics';
 import { SelfReportProvider } from './health/health-provider';
@@ -10,6 +13,28 @@ new AppShell(game);
 
 // Heartbeat: passive energy regen + midnight rollover (Chronicle writes itself).
 setInterval(() => game.tick(), 20_000);
+
+// Ambient score starts on the first gesture (browser autoplay policy) and
+// gains instruments as the village is restored.
+const startMusic = () => {
+  feedback.startMusic(stageFor(game.snapshot.orderIndex));
+  window.removeEventListener('pointerdown', startMusic);
+};
+window.addEventListener('pointerdown', startMusic);
+game.subscribe((ev) => {
+  if (ev.type === 'delivered') feedback.setMusicStage(stageFor(game.snapshot.orderIndex));
+});
+
+// Wind-down: after 90 minutes of continuous play the hearth suggests rest.
+// A softening, never a lock (anti-compulsion pillar).
+const sessionStart = Date.now();
+let windDownShown = false;
+setInterval(() => {
+  if (windDownShown || Date.now() - sessionStart < 90 * 60_000) return;
+  windDownShown = true;
+  document.body.classList.add('winddown');
+  toast('The hearth burns low and steady. Emberhollow will keep — rest is progress too.');
+}, 5 * 60_000);
 
 // Crash telemetry stays local: errors land in the diagnostics buffer only.
 window.addEventListener('error', (e) => {

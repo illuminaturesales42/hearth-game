@@ -17,6 +17,7 @@ import { DuelUI } from './duel';
 import { KindnessUI } from './kindness';
 import { SettingsUI } from './settings';
 import { artUrl } from './art';
+import { FtueUI } from './ftue';
 import { NewDayUI } from './new-day';
 
 type ScreenId = 'home' | 'create' | 'villagers' | 'journal' | 'shop';
@@ -45,7 +46,10 @@ export class AppShell {
     const kindness = new KindnessUI(game);
     new SettingsUI(game);
     new AutoMergeController(game);
-    new NewDayUI(game).maybeShow();
+    const newDay = new NewDayUI(game);
+    // New players get the welcome first; the sunrise claim follows it.
+    const ftueShown = new FtueUI(game).maybeStart(() => newDay.maybeShow());
+    if (!ftueShown) newDay.maybeShow();
     // The town map now lives on the Home screen; animate it while Home is active.
     this.map.setVisible(true);
 

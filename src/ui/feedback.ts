@@ -49,6 +49,49 @@ async function impact(style: ImpactStyle): Promise<void> {
 
 let drone: { osc1: OscillatorNode; osc2: OscillatorNode; gain: GainNode } | null = null;
 
+/**
+ * Ambient score: three synth layers that join as Emberhollow is restored
+ * (stage 0 = lone warm pad; stage 2 adds a fifth; stage 4 adds a high shimmer).
+ * Stands in for licensed stems post-MVP; same API either way.
+ */
+interface MusicLayer {
+  gain: GainNode;
+  target: number;
+}
+let music: { master: GainNode; layers: MusicLayer[] } | null = null;
+
+function buildMusic(ac: AudioContext): void {
+  const master = ac.createGain();
+  master.gain.value = 0.0001;
+  master.connect(ac.destination);
+  const defs = [
+    { freqs: [110, 110.7], type: 'sine' as OscillatorType, vol: 0.05 }, // hearth pad
+    { freqs: [165, 165.5], type: 'sine' as OscillatorType, vol: 0.028 }, // fifth, joins at stage 2
+    { freqs: [330, 331], type: 'triangle' as OscillatorType, vol: 0.012 }, // shimmer, stage 4
+  ];
+  const layers: MusicLayer[] = defs.map((d) => {
+    const gain = ac.createGain();
+    gain.gain.value = 0.0001;
+    gain.connect(master);
+    for (const f of d.freqs) {
+      const osc = ac.createOscillator();
+      osc.type = d.type;
+      osc.frequency.value = f;
+      osc.connect(gain);
+      osc.start();
+    }
+    return { gain, target: d.vol };
+  });
+  // slow breath on the master so the pad never feels static
+  const lfo = ac.createOscillator();
+  const lfoGain = ac.createGain();
+  lfo.frequency.value = 0.05;
+  lfoGain.gain.value = 0.012;
+  lfo.connect(lfoGain).connect(master.gain);
+  lfo.start();
+  music = { master, layers };
+}
+
 export const feedback = {
   setMuted(m: boolean): void {
     muted = m;
@@ -62,6 +105,7 @@ export const feedback = {
         const ac = audio();
         if (ac) drone.gain.gain.linearRampToValueAtTime(0.06 * musicVol, ac.currentTime + 0.3);
       }
+      if (music && ctx) music.master.gain.linearRampToValueAtTime(Math.max(0.0001, musicVol), ctx.currentTime + 0.3);
     }
   },
   /** Soft low ambient pad for meditation sessions. Idempotent on/off. */
@@ -97,6 +141,23 @@ export const feedback = {
   /** Soft bell to mark a breath phase. */
   chime(freq = 528): void {
     tone(freq, 420, 'sine', 0.08);
+  },
+  /** Start (idempotent) the ambient score at the given town stage. Needs a user gesture. */
+  startMusic(stage: number): void {
+    const ac = audio();
+    if (!ac) return;
+    if (!music) buildMusic(ac);
+    this.setMusicStage(stage);
+    music!.master.gain.linearRampToValueAtTime(Math.max(0.0001, musicVol), ac.currentTime + 4);
+  },
+  /** Crossfade layers as the village is restored (0, 2, 4 thresholds). */
+  setMusicStage(stage: number): void {
+    const ac = ctx;
+    if (!music || !ac) return;
+    const on = [true, stage >= 2, stage >= 4];
+    music.layers.forEach((l, i) => {
+      l.gain.gain.linearRampToValueAtTime(on[i] ? l.target : 0.0001, ac.currentTime + 3);
+    });
   },
   /** Merge pop: quick rising blip. The signature sound; keep it under 150ms. */
   merge(level: number): void {
