@@ -8,6 +8,7 @@
  */
 import type { Game } from '../core/game';
 import { chainDef } from '../core/board';
+import { portraitFor } from './art';
 import { JOIN_BONUS } from '../core/social';
 import { VILLAGERS } from '../data/world';
 import { toast } from './toast';
@@ -93,12 +94,17 @@ export class SocialScreen {
 
       `<p class="earn-label">Village folk</p>` +
       `<div class="friend-list">` +
-      VILLAGERS.map(
-        (v) =>
-          `<div class="friend"><div class="friend-face npc" aria-hidden="true"></div>` +
+      VILLAGERS.map((v) => {
+        const bust = portraitFor(v.name);
+        const face = bust
+          ? `<div class="friend-face npc has-art" style="background-image:url(${bust})" aria-hidden="true"></div>`
+          : `<div class="friend-face npc" aria-hidden="true"></div>`;
+        return (
+          `<div class="friend">${face}` +
           `<div class="friend-body"><b>${v.name}</b><span>${v.role}</span></div>` +
-          `<span class="friend-hearts">${hearts(v.affinity)}</span></div>`,
-      ).join('') +
+          `<span class="friend-hearts">${hearts(v.affinity)}</span></div>`
+        );
+      }).join('') +
       `</div>`;
 
     this.wire(el);

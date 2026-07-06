@@ -4,6 +4,7 @@
 import type { Game } from '../core/game';
 import { chainDef } from '../core/board';
 import { PRODUCER_INDEX } from '../data/economy';
+import { tileMarkup } from './art';
 
 export class BoardView {
   private root: HTMLElement;
@@ -48,8 +49,7 @@ export class BoardView {
       } else if (c.kind === 'item') {
         el.classList.add('item');
         const def = chainDef(c.item.chain);
-        const glyph = def.levels[c.item.level] ?? '❔';
-        el.innerHTML = `<span class="glyph">${glyph}</span><span class="lv">${c.item.level + 1}</span>`;
+        el.innerHTML = `${tileMarkup(c.item.chain, c.item.level)}<span class="lv">${c.item.level + 1}</span>`;
         el.setAttribute('aria-label', `${def.levelNames[c.item.level]} level ${c.item.level + 1}`);
         if (i === deliverable) el.classList.add('deliverable');
       }
@@ -74,10 +74,9 @@ export class BoardView {
       if (!item) return;
       this.dragFrom = idx;
       this.root.setPointerCapture(e.pointerId);
-      const glyph = chainDef(item.chain).levels[item.level] ?? '❔';
       this.ghost = document.createElement('div');
       this.ghost.id = 'drag-ghost';
-      this.ghost.textContent = glyph;
+      this.ghost.innerHTML = tileMarkup(item.chain, item.level);
       document.body.appendChild(this.ghost);
       this.moveGhost(e.clientX, e.clientY);
       (this.root.children[idx] as HTMLElement).style.opacity = '0.35';

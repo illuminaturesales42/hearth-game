@@ -11,6 +11,7 @@
 import type { Game } from '../core/game';
 import { MAP_LOCATIONS } from '../data/world';
 import { ORDERS } from '../data/economy';
+import { artUrl } from './art';
 
 const STAGE_NAMES = [
   'Storm-Wrecked',
@@ -26,8 +27,20 @@ export class MapView {
   private raf = 0;
   private visible = false;
   private reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /** Painted stage backdrops (sliced from the concept sheets); null until loaded. */
+  private stageArt: (HTMLImageElement | null)[] = [null, null, null, null, null];
 
   constructor(private game: Game) {
+    for (let i = 0; i < 5; i++) {
+      const url = artUrl(`stage_${i}`);
+      if (!url) continue;
+      const img = new Image();
+      img.onload = () => {
+        this.stageArt[i] = img;
+        if (this.visible && this.reduce) this.draw(0);
+      };
+      img.src = url;
+    }
     game.subscribe((ev) => {
       if ((ev.type === 'delivered' || ev.type === 'chapterComplete') && this.visible) {
         this.renderList();
@@ -97,6 +110,26 @@ export class MapView {
     const prog = this.progress();
     const stage = this.stage();
     ctx.clearRect(0, 0, W, H);
+
+    // Painted stage backdrop when available (procedural scene as fallback).
+    const art = this.stageArt[stage];
+    if (art) {
+      const scale = Math.max(W / art.width, H / art.height);
+      const dw = art.width * scale;
+      const dh = art.height * scale;
+      ctx.drawImage(art, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      if (!this.reduce) {
+        // Gentle living-world shimmer: a warm pulse that breathes with time.
+        const pulse = 0.05 + 0.03 * Math.sin(t / 1600);
+        const glow = ctx.createRadialGradient(W * 0.5, H * 0.42, 10, W * 0.5, H * 0.42, W * 0.6);
+        glow.addColorStop(0, `rgba(255, 200, 120, ${pulse.toFixed(3)})`);
+        glow.addColorStop(1, 'rgba(255, 200, 120, 0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, W, H);
+      }
+      this.updateBar(prog, stage);
+      return;
+    }
 
     // --- sky: dawn warms into golden hour as the homestead is restored ---
     const sky = ctx.createLinearGradient(0, 0, 0, H * 0.72);

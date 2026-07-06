@@ -4,6 +4,7 @@
  */
 import type { Game } from '../core/game';
 import { chainDef } from '../core/board';
+import { portraitFor } from './art';
 import { ORDERS, ZONE_STAGES } from '../data/economy';
 import { feedback } from './feedback';
 import { toast } from './toast';
@@ -111,6 +112,12 @@ export class Home {
     const order = ORDERS[s.orderIndex];
     const text = $('order-text');
     const deliver = $<HTMLButtonElement>('deliver-btn');
+    const face = document.querySelector<HTMLElement>('.order-face');
+    if (face) {
+      const bust = order ? portraitFor(order.who) : null;
+      face.style.backgroundImage = bust ? `url(${bust})` : '';
+      face.classList.toggle('has-art', !!bust);
+    }
     if (order) {
       const def = chainDef(order.need.chain);
       const glyph = def.levels[order.need.level] ?? '';

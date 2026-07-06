@@ -530,6 +530,20 @@ body {
 .newday-streak { margin: 0 0 18px; font-size: 12px; color: var(--good); line-height: 1.45; }
 .newday-card .btn-primary { width: 100%; }
 
+/* ---------- sliced art integration ---------- */
+.tile-art { width: 92%; height: 92%; object-fit: contain; pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45)); }
+#drag-ghost .tile-art { width: 44px; height: 44px; }
+.nav-art { background-size: cover; background-position: center; border-radius: 10px; }
+.pip-art { background-size: 130%; background-position: center; border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 210, 122, 0.55), 0 0 10px rgba(244, 166, 59, 0.35); }
+.pip-art::after { content: none; }
+.energy-pill .pip.pip-art { background-color: #1a1408; animation: none; }
+.coinpill .coin-ico.pip-art { background-color: #1a1408; }
+.order-face.has-art { background-size: cover; background-position: center top;
+  border-radius: 12px; box-shadow: 0 0 0 2px rgba(107, 74, 42, 0.55), 0 3px 8px rgba(0, 0, 0, 0.3); }
+.friend-face.has-art { background-size: cover; background-position: center top; border-radius: 12px; }
+
 /* ---------- settings ---------- */
 .gear-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255, 210, 122, 0.3); flex: 0 0 auto;
   background: rgba(255, 255, 255, 0.05); color: var(--cream-dim); font-size: 16px; cursor: pointer; }

@@ -16,6 +16,7 @@ import { StargazeUI } from './stargaze';
 import { DuelUI } from './duel';
 import { KindnessUI } from './kindness';
 import { SettingsUI } from './settings';
+import { artUrl } from './art';
 import { NewDayUI } from './new-day';
 
 type ScreenId = 'home' | 'create' | 'villagers' | 'journal' | 'shop';
@@ -50,7 +51,29 @@ export class AppShell {
 
     document.querySelectorAll<HTMLButtonElement>('.nav-btn').forEach((btn) => {
       btn.addEventListener('click', () => this.go((btn.dataset.screen as ScreenId) ?? 'home'));
+      // Painted nav medallions where sliced art exists (Create reuses the hammer).
+      const screen = btn.dataset.screen ?? '';
+      const art = artUrl(screen === 'create' ? 'item_wood_3' : `nav_${screen}`);
+      const ico = btn.querySelector('span');
+      if (art && ico) {
+        ico.textContent = '';
+        ico.style.backgroundImage = `url(${art})`;
+        ico.classList.add('nav-art');
+      }
     });
+    // Currency/energy pips get their painted tokens.
+    const pip = document.querySelector<HTMLElement>('.energy-pill .pip');
+    const energyArt = artUrl('res_energy');
+    if (pip && energyArt) {
+      pip.style.backgroundImage = `url(${energyArt})`;
+      pip.classList.add('pip-art');
+    }
+    const coin = document.querySelector<HTMLElement>('.coinpill .coin-ico');
+    const coinArt = artUrl('res_coin');
+    if (coin && coinArt) {
+      coin.style.backgroundImage = `url(${coinArt})`;
+      coin.classList.add('pip-art');
+    }
     const pill = document.getElementById('energy-pill');
     if (pill) pill.addEventListener('click', () => this.energy.open());
     const medOpen = document.getElementById('med-open');

@@ -8,7 +8,7 @@
 import type { Game } from '../core/game';
 import { boardSpoils, createDuel, duelMerge, duelWinner } from '../core/duel';
 import type { DuelState } from '../core/duel';
-import { chainDef } from '../core/board';
+import { tileMarkup } from './art';
 import { feedback } from './feedback';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
@@ -104,8 +104,7 @@ export class DuelUI {
       cell.className = 'duel-cell';
       if (c.kind === 'item') {
         cell.classList.add('item');
-        const glyph = chainDef(c.item.chain).levels[c.item.level] ?? '❔';
-        cell.innerHTML = `<span class="glyph">${glyph}</span>`;
+        cell.innerHTML = tileMarkup(c.item.chain, c.item.level);
         if (i === this.selected) cell.classList.add('sel');
       } else {
         cell.innerHTML = '';
