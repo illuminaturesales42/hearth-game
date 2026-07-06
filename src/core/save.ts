@@ -1,10 +1,52 @@
 /**
- * Versioned localStorage persistence. Cloud save replaces the storage
- * backend in M2; the (de)serialization contract stays.
+ * Versioned persistence with a migration chain. From v8 onward a schema bump
+ * MUST ship a migration — public testers' progress is never wiped again.
+ * Rotating backups (3 slots, refreshed at most once per hour) guard against
+ * corruption, and export/import gives players a manual lifeline.
  */
 import type { GameState } from './types';
 
-const KEY = 'hearth:save:v8';
+export const CURRENT_VERSION = 9;
+
+const KEY = 'hearth:save';
+/** Older builds wrote the version into the key. Read them once, then adopt KEY. */
+const LEGACY_KEYS = ['hearth:save:v8', 'hearth:save:v7', 'hearth:save:v6', 'hearth:save:v5'];
+const BACKUP_KEYS = ['hearth:backup:1', 'hearth:backup:2', 'hearth:backup:3'];
+const BACKUP_STAMP = 'hearth:backup:at';
+const BACKUP_EVERY_MS = 60 * 60 * 1000;
+
+export function defaultPrefs(): GameState['prefs'] {
+  return { musicVol: 0.7, sfxVol: 1, textScale: 1, highContrast: false, forceReducedMotion: false };
+}
+
+/**
+ * Migration chain: each entry upgrades exactly one version. Keep every step
+ * forever; a v8 export imported in 2027 must still climb to current.
+ */
+type LooseState = GameState & { version: number } & Record<string, unknown>;
+const MIGRATIONS: Record<number, (s: LooseState) => LooseState> = {
+  // v8 → v9: user prefs (settings screen) join the save.
+  8: (s) => ({ ...s, version: 9, prefs: defaultPrefs() }),
+};
+
+/** Upgrade any historical state to CURRENT_VERSION, or null if unrecognizable. */
+export function migrateState(raw: unknown): GameState | null {
+  if (!raw || typeof raw !== 'object') return null;
+  let s = raw as LooseState;
+  if (typeof s.version !== 'number') return null;
+  // Heal the historical stamp bug: builds that wrote `version: 6` while already
+  // carrying the v8 shape (repository + settings present).
+  if (s.version < 8 && 'repository' in s && 'settings' in s) s = { ...s, version: 8 };
+  if (s.version < 8) return null; // pre-tester prototypes: no migration promise
+  while (s.version < CURRENT_VERSION) {
+    const step = MIGRATIONS[s.version];
+    if (!step) return null;
+    s = step(s);
+  }
+  if (s.version !== CURRENT_VERSION) return null;
+  if (!s.board || !s.energy || !s.actions || !s.social || !s.gratitude || !s.settings || !s.prefs) return null;
+  return s as GameState;
+}
 
 export function saveState(state: GameState): void {
   try {
@@ -16,21 +58,54 @@ export function saveState(state: GameState): void {
 
 export function loadState(): GameState | null {
   try {
-    const raw = localStorage.getItem(KEY);
+    let raw = localStorage.getItem(KEY);
+    if (!raw) {
+      for (const legacy of LEGACY_KEYS) {
+        raw = localStorage.getItem(legacy);
+        if (raw) break;
+      }
+    }
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as GameState;
-    if (
-      parsed.version !== 8 ||
-      !parsed.board ||
-      !parsed.energy ||
-      !parsed.actions ||
-      !parsed.social ||
-      !parsed.gratitude ||
-      !parsed.settings ||
-      !parsed.repository
-    )
-      return null;
-    return parsed;
+    rotateBackup(raw);
+    const state = migrateState(JSON.parse(raw));
+    if (state) saveState(state); // persist migrated shape under the current key
+    return state;
+  } catch {
+    return null;
+  }
+}
+
+/** Keep 3 rotating snapshots, refreshed at most hourly (called on load). */
+function rotateBackup(raw: string): void {
+  try {
+    const last = Number(localStorage.getItem(BACKUP_STAMP) ?? 0);
+    if (Date.now() - last < BACKUP_EVERY_MS) return;
+    for (let i = BACKUP_KEYS.length - 1; i > 0; i--) {
+      const prev = localStorage.getItem(BACKUP_KEYS[i - 1]!);
+      if (prev) localStorage.setItem(BACKUP_KEYS[i]!, prev);
+    }
+    localStorage.setItem(BACKUP_KEYS[0]!, raw);
+    localStorage.setItem(BACKUP_STAMP, String(Date.now()));
+  } catch {
+    /* backups are best-effort */
+  }
+}
+
+/** Serialized save for manual export (Settings). */
+export function exportSave(): string | null {
+  try {
+    return localStorage.getItem(KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Import a pasted save. Runs the full migration chain; returns the state or null. */
+export function importSave(json: string): GameState | null {
+  try {
+    const state = migrateState(JSON.parse(json));
+    if (state) saveState(state);
+    return state;
   } catch {
     return null;
   }
@@ -39,6 +114,7 @@ export function loadState(): GameState | null {
 export function clearSave(): void {
   try {
     localStorage.removeItem(KEY);
+    for (const k of LEGACY_KEYS) localStorage.removeItem(k);
   } catch {
     /* ignore */
   }

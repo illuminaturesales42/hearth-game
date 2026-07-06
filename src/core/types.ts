@@ -132,6 +132,15 @@ export interface Settings {
   autoMerge: boolean;
 }
 
+/** User preferences (Settings screen). Added in save v9. */
+export interface Prefs {
+  musicVol: number; // 0..1
+  sfxVol: number; // 0..1
+  textScale: number; // 0.9 | 1 | 1.12
+  highContrast: boolean;
+  forceReducedMotion: boolean;
+}
+
 /** An item held in the Repository (won from duels), usable to progress the story. */
 export interface RepositoryItem {
   chain: ChainId;
@@ -148,6 +157,7 @@ export interface GameState {
   social: SocialState;
   gratitude: GratitudeState;
   settings: Settings;
+  prefs: Prefs;
   /** Items won from duels, spendable to progress the story. */
   repository: readonly RepositoryItem[];
   /** Consecutive duel wins → reward multiplier. */

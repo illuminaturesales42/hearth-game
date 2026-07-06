@@ -6,7 +6,7 @@ import type { GameState, Item } from './types';
 import { createBoard, dropItem, emptyIndices, findItem, findMergePair, itemAt, withEmpty, withItem } from './board';
 import { accrueRegen, canSpend, grant, initialEnergy, spend } from './energy';
 import { BOARD_COLS, BOARD_ROWS, ENERGY, ORDERS, PRODUCER_INDEX, SPAWN_TABLE } from '../data/economy';
-import { loadState, saveState } from './save';
+import { CURRENT_VERSION, defaultPrefs, loadState, saveState } from './save';
 import { applySnapshot, initialLedger } from '../health/health-energy';
 import type { HealthSnapshot } from '../health/health-provider';
 import { advanceDay, canDoAction, initialActionState, recordAction, rolloverActions, streakMultiplier } from './actions';
@@ -72,13 +72,14 @@ export class Game {
     let uid = 1;
     for (const s of seeds) board = withItem(board, s.i, { chain: s.chain, level: s.level, uid: uid++ });
     return {
-      version: 6,
+      version: CURRENT_VERSION,
       board,
       energy: initialEnergy(now),
       actions: initialActionState(now),
       social: initialSocial(now),
       gratitude: initialGratitude(now),
       settings: { autoMerge: false },
+      prefs: defaultPrefs(),
       repository: [],
       duelStreak: 0,
       coins: 0,
@@ -359,6 +360,15 @@ export class Game {
 
   setAutoMerge(on: boolean): void {
     this.state = { ...this.state, settings: { ...this.state.settings, autoMerge: on } };
+    this.emit({ type: 'settings' });
+  }
+
+  get prefs() {
+    return this.state.prefs;
+  }
+
+  setPrefs(patch: Partial<GameState['prefs']>): void {
+    this.state = { ...this.state, prefs: { ...this.state.prefs, ...patch } };
     this.emit({ type: 'settings' });
   }
 

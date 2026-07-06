@@ -19,6 +19,7 @@
         <span class="brand-sub">Emberhollow</span>
       </div>
       <div class="coinpill" title="Coins"><span class="coin-ico" aria-hidden="true"></span><b id="hud-coins">0</b></div>
+      <button id="settings-open" class="gear-btn" aria-label="Settings">⚙</button>
     </header>
 
     <div class="screens">
@@ -165,6 +166,43 @@
           <button id="duel-done" class="btn-ghost">Done</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ================= SETTINGS ================= -->
+  <div id="settings-panel" class="sheet" role="dialog" aria-modal="true" aria-label="Settings" hidden>
+    <div class="sheet-card">
+      <button id="settings-close" class="sheet-close" aria-label="Close">✕</button>
+      <h2 class="energy-h2">Settings</h2>
+      <p class="energy-tag">Emberhollow, tuned to you</p>
+
+      <p class="earn-label">Sound</p>
+      <div class="set-row"><label for="set-music">Music &amp; ambience</label>
+        <input type="range" id="set-music" min="0" max="100" step="5" /></div>
+      <div class="set-row"><label for="set-sfx">Effects</label>
+        <input type="range" id="set-sfx" min="0" max="100" step="5" /></div>
+
+      <p class="earn-label">Display &amp; comfort</p>
+      <div class="set-row"><label>Text size</label>
+        <div class="set-seg" id="set-textscale">
+          <button data-scale="0.9">S</button><button data-scale="1">M</button><button data-scale="1.12">L</button>
+        </div></div>
+      <div class="set-row"><label for="set-contrast">High contrast</label>
+        <input type="checkbox" id="set-contrast" /></div>
+      <div class="set-row"><label for="set-motion">Reduce motion</label>
+        <input type="checkbox" id="set-motion" /></div>
+
+      <p class="earn-label">Your data</p>
+      <p class="set-note">Health and camera data never leave this device. Only in-game energy amounts are recorded.</p>
+      <div class="set-actions">
+        <button id="set-export" class="btn-secondary">Export save</button>
+        <button id="set-import" class="btn-secondary">Import save</button>
+      </div>
+      <div class="set-actions">
+        <button id="set-diag" class="btn-ghost">Copy diagnostics</button>
+        <button id="set-reset" class="btn-ghost danger">Reset everything</button>
+      </div>
+      <p class="set-note set-version" id="set-version"></p>
     </div>
   </div>
 

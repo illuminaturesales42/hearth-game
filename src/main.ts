@@ -1,4 +1,5 @@
 import { Game } from './core/game';
+import { clearSave } from './core/save';
 import { AppShell } from './ui/app-shell';
 import { recentEvents, track } from './analytics';
 import { SelfReportProvider } from './health/health-provider';
@@ -95,7 +96,7 @@ declare global {
   }
 }
 window.hearthReset = () => {
-  localStorage.removeItem('hearth:save:v8');
+  clearSave();
   location.reload();
 };
 window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {

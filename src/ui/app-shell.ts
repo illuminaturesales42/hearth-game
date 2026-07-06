@@ -15,6 +15,7 @@ import { AutoMergeController } from './auto-merge';
 import { StargazeUI } from './stargaze';
 import { DuelUI } from './duel';
 import { KindnessUI } from './kindness';
+import { SettingsUI } from './settings';
 import { NewDayUI } from './new-day';
 
 type ScreenId = 'home' | 'create' | 'villagers' | 'journal' | 'shop';
@@ -41,6 +42,7 @@ export class AppShell {
     const recovery = new RecoveryUI(game);
     const stargaze = new StargazeUI(game);
     const kindness = new KindnessUI(game);
+    new SettingsUI(game);
     new AutoMergeController(game);
     new NewDayUI(game).maybeShow();
     // The town map now lives on the Home screen; animate it while Home is active.
