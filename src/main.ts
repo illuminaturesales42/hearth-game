@@ -8,6 +8,17 @@ import type { HealthSnapshot } from './health/health-provider';
 const game = new Game();
 new AppShell(game);
 
+// Heartbeat: passive energy regen + midnight rollover (Chronicle writes itself).
+setInterval(() => game.tick(), 20_000);
+
+// Crash telemetry stays local: errors land in the diagnostics buffer only.
+window.addEventListener('error', (e) => {
+  track('client_error', { message: String(e.message).slice(0, 200) });
+});
+window.addEventListener('unhandledrejection', (e) => {
+  track('client_error', { message: String(e.reason).slice(0, 200) });
+});
+
 // ---------- analytics (taxonomy: docs/analytics.md) ----------
 let firstMergeSeen = game.snapshot.xp > 0;
 let firstOrderSeen = game.snapshot.orderIndex > 0;
@@ -66,6 +77,12 @@ game.subscribe((ev) => {
       break;
     case 'kindness':
       if (ev.energy > 0) track('kindness', { energy: ev.energy, selfie: ev.selfie });
+      break;
+    case 'achievement':
+      track('achievement', { id: ev.id });
+      break;
+    case 'questDone':
+      track('daily_quest_done', { label: ev.label, coins: ev.coins });
       break;
     case 'duelEnd':
       track('duel_end', { won: ev.won, streak: ev.streak, coins: ev.coins, items: ev.itemCount });

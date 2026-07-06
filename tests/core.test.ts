@@ -90,7 +90,8 @@ describe('game', () => {
     expect(g.deliverableIndex()).toBe(idx);
     const coinsBefore = g.snapshot.coins;
     g.deliver();
-    expect(g.snapshot.coins).toBe(coinsBefore + order.rewardCoins);
+    // At least the order reward; daily quests may auto-pay on top.
+    expect(g.snapshot.coins).toBeGreaterThanOrEqual(coinsBefore + order.rewardCoins);
     expect(g.snapshot.orderIndex).toBe(1);
     expect(findItem(g.snapshot.board, order.need.chain, order.need.level)).toBe(-1);
   });

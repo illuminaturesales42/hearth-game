@@ -74,6 +74,14 @@ export class Home {
             toast(ev.selfie ? `+${ev.energy} energy — a compliment and a new friend. 💛` : `+${ev.energy} energy. A kindness ripples out.`);
           }
           break;
+        case 'achievement':
+          feedback.chime(660);
+          toast(`${ev.icon} Achievement: ${ev.title}`);
+          break;
+        case 'questDone':
+          feedback.chime(587);
+          toast(`Daily quest done — ${ev.label}. +${ev.coins} coins.`);
+          break;
         case 'duelEnd':
           if (ev.won) {
             feedback.chapter();

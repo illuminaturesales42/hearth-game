@@ -260,6 +260,14 @@ export const CHAPTERS: readonly {
   },
 ] as const;
 
+/** Homestead art stage (0–4) spread across the whole MVP story. */
+export function stageFor(orderIndex: number): number {
+  const thresholds = [0, 5, 10, 16, 22];
+  let s = 0;
+  for (let k = 0; k < thresholds.length; k++) if (orderIndex >= thresholds[k]!) s = k;
+  return s;
+}
+
 export function chapterFor(orderIndex: number) {
   return CHAPTERS.find((c) => orderIndex >= c.start && orderIndex < c.end) ?? CHAPTERS[CHAPTERS.length - 1]!;
 }

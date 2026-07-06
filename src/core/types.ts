@@ -148,9 +148,43 @@ export interface RepositoryItem {
   count: number;
 }
 
+/** One remembered day in the Chronicle (auto-written prose, never raw stats). */
+export interface ChronicleEntry {
+  day: string; // YYYY-MM-DD local
+  text: string;
+  stage: number; // homestead stage that day
+  streak: number;
+}
+
+export interface ChronicleState {
+  entries: readonly ChronicleEntry[];
+}
+
+/** Lifetime + per-day counters for achievements and daily quests. */
+export interface StatsState {
+  merges: number;
+  duelWins: number;
+  flashbacks: number;
+  day: string; // YYYY-MM-DD local; day* counters reset when it changes
+  dayMerges: number;
+  dayDelivers: number;
+  dayActions: number;
+}
+
+export interface FlagsState {
+  ftueDone: boolean;
+  windDownShown: boolean;
+}
+
 export interface GameState {
   version: number;
   healthLedger?: HealthLedgerState;
+  chronicle: ChronicleState;
+  stats: StatsState;
+  achievements: readonly string[];
+  /** Daily-quest ids claimed today (rotate with stats.day). */
+  questsClaimed: readonly string[];
+  flags: FlagsState;
   board: BoardState;
   energy: EnergyState;
   actions: ActionState;

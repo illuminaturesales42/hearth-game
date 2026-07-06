@@ -564,6 +564,35 @@ body {
 .set-actions > * { flex: 1; }
 .btn-ghost.danger { border-color: rgba(224, 136, 95, 0.5); color: var(--danger); }
 
+/* ---------- chronicle ---------- */
+.chron-page { padding: 16px 18px; border-radius: var(--r-card); margin-bottom: 10px;
+  background: linear-gradient(180deg, var(--parch), var(--parch-2)); border: 2px solid var(--wood); color: var(--ink); }
+.chron-day { display: block; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--terracotta); margin-bottom: 6px; }
+.chron-page p { margin: 0; font-family: var(--serif); font-size: 14.5px; line-height: 1.65; }
+
+/* ---------- daily quests ---------- */
+.dq-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.dq { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--r-card);
+  background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 210, 122, 0.14); font-size: 12.5px; }
+.dq-check { width: 20px; height: 20px; border-radius: 50%; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; color: #12240f; background: rgba(255, 255, 255, 0.08); }
+.dq.done .dq-check { background: var(--good); }
+.dq-label { flex: 1; }
+.dq.done .dq-label { color: var(--cream-dim); text-decoration: line-through; }
+.dq-progress { font-variant-numeric: tabular-nums; color: var(--ember-hi); font-weight: 700; font-size: 12px; }
+
+/* ---------- achievements ---------- */
+.badge-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.badge { padding: 12px; border-radius: var(--r-card); background: var(--panel); border: 1px solid rgba(255, 210, 122, 0.14);
+  display: flex; flex-direction: column; gap: 3px; }
+.badge-ico { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 19px; margin-bottom: 4px; background: radial-gradient(circle at 40% 30%, #2b3450, #141b2e 82%);
+  box-shadow: inset 0 0 0 2px var(--ember), inset 0 1.5px 0 rgba(255, 255, 255, 0.2); }
+.badge.locked { opacity: 0.5; }
+.badge.locked .badge-ico { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.15); }
+.badge b { font-size: 12.5px; font-family: var(--serif); }
+.badge span { font-size: 10.5px; color: var(--cream-dim); line-height: 1.35; }
+
 /* ---------- accessibility modes ---------- */
 body.high-contrast { --cream-dim: #ddd5c2; }
 body.high-contrast .earn-row, body.high-contrast .set-row, body.high-contrast .loc, body.high-contrast .friend,

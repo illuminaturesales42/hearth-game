@@ -5,7 +5,10 @@
 import type { GameState, Item } from './types';
 import { createBoard, dropItem, emptyIndices, findItem, findMergePair, itemAt, withEmpty, withItem } from './board';
 import { accrueRegen, canSpend, grant, initialEnergy, spend } from './energy';
-import { BOARD_COLS, BOARD_ROWS, CHAPTERS, ENERGY, ORDERS, PRODUCER_INDEX, SPAWN_TABLE } from '../data/economy';
+import { BOARD_COLS, BOARD_ROWS, CHAPTERS, ENERGY, ORDERS, PRODUCER_INDEX, SPAWN_TABLE, stageFor } from '../data/economy';
+import { appendEntry, composeEntry, rolloverStats } from './chronicle';
+import { newlyEarned } from './achievements';
+import { questsForDay } from '../data/daily-quests';
 import { CURRENT_VERSION, defaultPrefs, loadState, saveState } from './save';
 import { applySnapshot, initialLedger } from '../health/health-energy';
 import type { HealthSnapshot } from '../health/health-provider';
@@ -41,6 +44,9 @@ export type GameEvent =
   | { type: 'flashback'; text: string; energy: number }
   | { type: 'stargaze'; energy: number; moon: string }
   | { type: 'kindness'; energy: number; selfie: boolean }
+  | { type: 'achievement'; id: string; title: string; icon: string }
+  | { type: 'questDone'; label: string; coins: number }
+  | { type: 'chronicle'; day: string }
   | { type: 'settings' }
   | { type: 'duelEnd'; won: boolean; streak: number; multiplier: number; coins: number; itemCount: number }
   | { type: 'chapterComplete'; chapter: number; title: string; cliffhanger: string; hasNext: boolean };
@@ -53,6 +59,7 @@ export class Game {
 
   constructor(now = Date.now()) {
     this.state = loadState() ?? Game.freshState(now);
+    this.beginDay(now); // yesterday's Chronicle entry before anything rolls
     this.state = {
       ...this.state,
       energy: accrueRegen(this.state.energy, now),
@@ -80,6 +87,11 @@ export class Game {
       gratitude: initialGratitude(now),
       settings: { autoMerge: false },
       prefs: defaultPrefs(),
+      chronicle: { entries: [] },
+      stats: { merges: 0, duelWins: 0, flashbacks: 0, day: localDayKey(now), dayMerges: 0, dayDelivers: 0, dayActions: 0 },
+      achievements: [],
+      questsClaimed: [],
+      flags: { ftueDone: false, windDownShown: false },
       repository: [],
       duelStreak: 0,
       coins: 0,
@@ -170,14 +182,60 @@ export class Game {
     };
   }
 
+  private processing = false;
+
   private emit(ev: GameEvent): void {
+    // Progression sweep: daily quests auto-complete and achievements grant
+    // themselves off the new state, queued as follow-up events (no recursion).
+    const extra: GameEvent[] = [];
+    if (!this.processing) {
+      this.processing = true;
+      for (const q of questsForDay(this.state.stats.day)) {
+        if (!this.state.questsClaimed.includes(q.id) && q.progress(this.state) >= q.target) {
+          this.state = {
+            ...this.state,
+            questsClaimed: [...this.state.questsClaimed, q.id],
+            coins: this.state.coins + q.coins,
+          };
+          extra.push({ type: 'questDone', label: q.label, coins: q.coins });
+        }
+      }
+      for (const a of newlyEarned(this.state)) {
+        this.state = { ...this.state, achievements: [...this.state.achievements, a.id] };
+        extra.push({ type: 'achievement', id: a.id, title: a.title, icon: a.icon });
+      }
+      this.processing = false;
+    }
     saveState(this.state);
     for (const l of this.listeners) l(ev);
+    for (const e of extra) for (const l of this.listeners) l(e);
     if (ev.type !== 'state') for (const l of this.listeners) l({ type: 'state' });
   }
 
-  /** Call on a timer to accrue passive regen. */
+  /**
+   * Day boundary: before any counts roll over, yesterday writes itself into
+   * the Chronicle; per-day stats and claimed quests reset. Idempotent.
+   */
+  private beginDay(now: number): void {
+    const today = localDayKey(now);
+    if (this.state.actions.day !== today) {
+      const a = this.state.actions;
+      const entry = composeEntry(a.day, a.counts, a.streak, stageFor(this.state.orderIndex), this.state.stats.dayDelivers);
+      this.state = { ...this.state, chronicle: { entries: appendEntry(this.state.chronicle.entries, entry) } };
+      this.emit({ type: 'chronicle', day: entry.day });
+    }
+    if (this.state.stats.day !== today) {
+      this.state = { ...this.state, stats: rolloverStats(this.state.stats, today), questsClaimed: [] };
+    }
+  }
+
+  private bumpStat(patch: Partial<GameState['stats']>): void {
+    this.state = { ...this.state, stats: { ...this.state.stats, ...patch } };
+  }
+
+  /** Call on a timer to accrue passive regen (and roll the day at midnight). */
   tick(now = Date.now()): void {
+    this.beginDay(now);
     const next = accrueRegen(this.state.energy, now);
     if (next !== this.state.energy) {
       this.state = { ...this.state, energy: next };
@@ -209,6 +267,7 @@ export class Game {
   }
 
   drop(from: number, to: number): void {
+    this.beginDay(Date.now());
     const res = dropItem(this.state.board, from, to, this.state.nextUid);
     if (res.board === this.state.board) {
       this.emit({ type: 'reject', index: to, reason: 'invalid' });
@@ -220,6 +279,9 @@ export class Game {
       nextUid: res.merged ? this.state.nextUid + 1 : this.state.nextUid,
       xp: res.merged ? this.state.xp + (res.result?.level ?? 0) : this.state.xp,
     };
+    if (res.merged) {
+      this.bumpStat({ merges: this.state.stats.merges + 1, dayMerges: this.state.stats.dayMerges + 1 });
+    }
     if (res.merged && res.result) this.emit({ type: 'merge', index: to, item: res.result });
     else this.emit({ type: 'state' });
   }
@@ -232,12 +294,14 @@ export class Game {
   }
 
   deliver(): void {
+    this.beginDay(Date.now());
     const order = ORDERS[this.state.orderIndex];
     const idx = this.deliverableIndex();
     if (!order || idx < 0) {
       this.emit({ type: 'reject', index: -1, reason: 'invalid' });
       return;
     }
+    this.bumpStat({ dayDelivers: this.state.stats.dayDelivers + 1 });
     this.state = {
       ...this.state,
       board: withEmpty(this.state.board, idx),
@@ -274,6 +338,7 @@ export class Game {
    * every app foreground. Emits 'health' only when something was granted.
    */
   syncHealth(snap: HealthSnapshot, now = Date.now()): void {
+    this.beginDay(now);
     const ledger = this.state.healthLedger ?? initialLedger(now);
     const res = applySnapshot(ledger, snap, now);
     this.state = { ...this.state, healthLedger: res.ledger };
@@ -315,6 +380,7 @@ export class Game {
    * action of the day won't re-pay the bonus.
    */
   claimDaily(now = Date.now()): void {
+    this.beginDay(now);
     const adv = advanceDay(this.state.actions, now);
     if (!adv.advanced) return;
     this.state = {
@@ -360,6 +426,7 @@ export class Game {
       energy: grant(this.state.energy, total),
       coins: this.state.coins + res.chestCoins,
     };
+    if (res.energy > 0) this.bumpStat({ dayActions: this.state.stats.dayActions + 1 });
     this.emit({ type: 'action', actionId, energy: res.energy });
     if (res.dailyBonus > 0) this.emit({ type: 'daily', energy: res.dailyBonus, streak: res.state.streak });
     if (res.chestCoins > 0) this.emit({ type: 'chest', coins: res.chestCoins });
@@ -378,6 +445,15 @@ export class Game {
 
   get prefs() {
     return this.state.prefs;
+  }
+
+  get flags() {
+    return this.state.flags;
+  }
+
+  setFlag(patch: Partial<GameState['flags']>): void {
+    this.state = { ...this.state, flags: { ...this.state.flags, ...patch } };
+    this.emit({ type: 'settings' });
   }
 
   setPrefs(patch: Partial<GameState['prefs']>): void {
@@ -412,6 +488,7 @@ export class Game {
 
   /** Log a completed stargaze. Night-gated, once per day, moon-bonused. */
   doStargaze(now = Date.now(), coords?: Coords): void {
+    this.beginDay(now);
     if (!isNight(now, coords)) {
       this.emit({ type: 'stargaze', energy: 0, moon: phaseName(now) });
       return;
@@ -428,6 +505,7 @@ export class Game {
       energy: grant(this.state.energy, res.energy + res.dailyBonus),
       coins: this.state.coins + res.chestCoins,
     };
+    if (res.energy > 0) this.bumpStat({ dayActions: this.state.stats.dayActions + 1 });
     this.emit({ type: 'stargaze', energy: res.energy, moon });
     if (res.dailyBonus > 0) this.emit({ type: 'daily', energy: res.dailyBonus, streak: res.state.streak });
     if (res.chestCoins > 0) this.emit({ type: 'chest', coins: res.chestCoins });
@@ -448,7 +526,9 @@ export class Game {
    * streak grows. A loss or tie resets the streak (no other penalty).
    */
   finishDuel(playerWon: boolean, spoils: readonly { chain: ChainId; level: number }[], score: number): void {
+    this.beginDay(Date.now());
     if (playerWon) {
+      this.bumpStat({ duelWins: this.state.stats.duelWins + 1 });
       const streak = this.state.duelStreak + 1;
       const mult = duelMultiplier(streak);
       const coins = Math.round(score * mult);
@@ -476,6 +556,7 @@ export class Game {
 
   /** Spend a Repository item to complete the current order — duels feeding the story. */
   deliverFromRepository(): void {
+    this.beginDay(Date.now());
     const order = ORDERS[this.state.orderIndex];
     if (!order) return;
     const idx = this.state.repository.findIndex(
@@ -485,6 +566,7 @@ export class Game {
       this.emit({ type: 'reject', index: -1, reason: 'invalid' });
       return;
     }
+    this.bumpStat({ dayDelivers: this.state.stats.dayDelivers + 1 });
     const repository = this.state.repository
       .map((r, i) => (i === idx ? { ...r, count: r.count - 1 } : r))
       .filter((r) => r.count > 0);
@@ -514,6 +596,7 @@ export class Game {
 
   /** Log a real-world compliment to a stranger; selfie with the new friend adds a bonus. */
   doKindness(withSelfie: boolean, now = Date.now()): void {
+    this.beginDay(now);
     const energy = KINDNESS.baseEnergy + (withSelfie ? KINDNESS.selfieBonus : 0);
     const res = recordAction(this.state.actions, KINDNESS.id, now, energy);
     if (res.energy <= 0 && res.dailyBonus <= 0) {
@@ -526,6 +609,7 @@ export class Game {
       energy: grant(this.state.energy, res.energy + res.dailyBonus),
       coins: this.state.coins + res.chestCoins,
     };
+    if (res.energy > 0) this.bumpStat({ dayActions: this.state.stats.dayActions + 1 });
     this.emit({ type: 'kindness', energy: res.energy, selfie: withSelfie });
     if (res.dailyBonus > 0) this.emit({ type: 'daily', energy: res.dailyBonus, streak: res.state.streak });
     if (res.chestCoins > 0) this.emit({ type: 'chest', coins: res.chestCoins });
@@ -549,6 +633,7 @@ export class Game {
 
   /** Write one good thing about today. Streak-multiplied energy; kept for flashbacks. */
   writeGratitude(text: string, now = Date.now()): void {
+    this.beginDay(now);
     const clean = text.trim().slice(0, GRATITUDE.maxLen);
     if (!clean) return;
     const { energy, multiplier } = this.gratitudePreview();
@@ -583,6 +668,7 @@ export class Game {
   claimFlashback(now = Date.now()): void {
     const entry = this.pendingFlashback(now);
     if (!entry) return;
+    this.bumpStat({ flashbacks: this.state.stats.flashbacks + 1 });
     this.state = {
       ...this.state,
       gratitude: { ...this.state.gratitude, lastFlashbackDay: localDayKey(now) },

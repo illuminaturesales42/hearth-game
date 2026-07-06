@@ -6,11 +6,12 @@
 import type { Game } from '../core/game';
 import { COLLECTIONS, EVENTS, JOURNAL } from '../data/world';
 import { GRATITUDE } from '../data/gratitude';
+import { ACHIEVEMENTS } from '../core/achievements';
 import { toast } from './toast';
 
 const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
-type JTab = 'Good Days' | 'Clues' | 'Letters' | 'People' | 'Places';
-const TABS: JTab[] = ['Good Days', 'Clues', 'Letters', 'People', 'Places'];
+type JTab = 'Chronicle' | 'Good Days' | 'Clues' | 'Letters' | 'People' | 'Places';
+const TABS: JTab[] = ['Chronicle', 'Good Days', 'Clues', 'Letters', 'People', 'Places'];
 
 function esc(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c);
@@ -43,7 +44,11 @@ export class Screens {
       `<div class="jtabs">` +
       TABS.map((t) => `<button class="jtab ${t === this.journalTab ? 'on' : ''}" data-tab="${t}">${t}</button>`).join('') +
       `</div>` +
-      (this.journalTab === 'Good Days' ? this.goodDays() : this.storyEntries());
+      (this.journalTab === 'Chronicle'
+        ? this.chronicle()
+        : this.journalTab === 'Good Days'
+          ? this.goodDays()
+          : this.storyEntries());
 
     host.querySelectorAll<HTMLButtonElement>('.jtab').forEach((b) => {
       b.onclick = () => {
@@ -52,6 +57,25 @@ export class Screens {
       };
     });
     if (this.journalTab === 'Good Days') this.wireGoodDays(host);
+  }
+
+  /** The Chronicle: prose memories of your days, written by the village. */
+  private chronicle(): string {
+    const entries = this.game.snapshot.chronicle.entries;
+    if (entries.length === 0) {
+      return (
+        `<div class="chron-page"><span class="chron-day">The Chronicle of Emberhollow</span>` +
+        `<p>Each night, the village writes down what your day meant to it. ` +
+        `Come back tomorrow and the first page will be waiting.</p></div>`
+      );
+    }
+    return entries
+      .map((e) => {
+        const d = new Date(`${e.day}T12:00:00`);
+        const label = d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+        return `<div class="chron-page"><span class="chron-day">${label}</span><p>${e.text}</p></div>`;
+      })
+      .join('');
   }
 
   private storyEntries(): string {
@@ -126,9 +150,22 @@ export class Screens {
   renderShop(): void {
     const host = byId('shop-body');
     if (!host) return;
+    const earned = new Set(this.game.snapshot.achievements);
     host.innerHTML =
-      `<h2 class="screen-title">Shop</h2>` +
-      `<p class="screen-sub">Decor and collections. Energy is never for sale — that never changes.</p>` +
+      `<h2 class="screen-title">Collections</h2>` +
+      `<p class="screen-sub">What Emberhollow remembers of you. Energy is never for sale — that never changes.</p>` +
+      `<p class="earn-label">Achievements · ${earned.size}/${ACHIEVEMENTS.length}</p>` +
+      `<div class="badge-grid">` +
+      ACHIEVEMENTS.map((a) => {
+        const has = earned.has(a.id);
+        return (
+          `<div class="badge ${has ? 'earned' : 'locked'}" title="${a.desc}">` +
+          `<span class="badge-ico">${has ? a.icon : '🔒'}</span>` +
+          `<b>${a.title}</b><span>${a.desc}</span></div>`
+        );
+      }).join('') +
+      `</div>` +
+      `<p class="earn-label">Item collections</p>` +
       `<div class="coll-list">` +
       COLLECTIONS.map(
         (c) =>
@@ -140,8 +177,6 @@ export class Screens {
       `<div class="event-list">` +
       EVENTS.map((e) => `<div class="event"><b>${e.name}</b><span>${e.timing}</span></div>`).join('') +
       `</div>` +
-      `<button class="btn-primary wide" id="shop-cta">Browse decor</button>`;
-    const cta = byId<HTMLButtonElement>('shop-cta');
-    if (cta) cta.onclick = () => toast('Decor shop arrives with the M2 art pass.');
+      `<p class="set-note">The decor shop arrives after public testing — cosmetics only, never power.</p>`;
   }
 }

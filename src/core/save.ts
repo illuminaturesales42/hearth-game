@@ -6,7 +6,7 @@
  */
 import type { GameState } from './types';
 
-export const CURRENT_VERSION = 9;
+export const CURRENT_VERSION = 10;
 
 const KEY = 'hearth:save';
 /** Older builds wrote the version into the key. Read them once, then adopt KEY. */
@@ -27,6 +27,19 @@ type LooseState = GameState & { version: number } & Record<string, unknown>;
 const MIGRATIONS: Record<number, (s: LooseState) => LooseState> = {
   // v8 → v9: user prefs (settings screen) join the save.
   8: (s) => ({ ...s, version: 9, prefs: defaultPrefs() }),
+  // v9 → v10: Chronicle, stats counters, achievements, daily quests, flags.
+  9: (s) => {
+    const day = (s.actions as { day?: string } | undefined)?.day ?? '1970-01-01';
+    return {
+      ...s,
+      version: 10,
+      chronicle: { entries: [] },
+      stats: { merges: 0, duelWins: 0, flashbacks: 0, day, dayMerges: 0, dayDelivers: 0, dayActions: 0 },
+      achievements: [],
+      questsClaimed: [],
+      flags: { ftueDone: true, windDownShown: false }, // existing players skip the tutorial
+    };
+  },
 };
 
 /** Upgrade any historical state to CURRENT_VERSION, or null if unrecognizable. */
@@ -44,7 +57,8 @@ export function migrateState(raw: unknown): GameState | null {
     s = step(s);
   }
   if (s.version !== CURRENT_VERSION) return null;
-  if (!s.board || !s.energy || !s.actions || !s.social || !s.gratitude || !s.settings || !s.prefs) return null;
+  if (!s.board || !s.energy || !s.actions || !s.social || !s.gratitude || !s.settings || !s.prefs || !s.stats || !s.chronicle)
+    return null;
   return s as GameState;
 }
 

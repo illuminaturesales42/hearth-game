@@ -10,7 +10,8 @@
  */
 import type { Game } from '../core/game';
 import { MAP_LOCATIONS } from '../data/world';
-import { ORDERS, chapterFor } from '../data/economy';
+import { ORDERS, chapterFor, stageFor } from '../data/economy';
+import { questsForDay } from '../data/daily-quests';
 import { artUrl } from './art';
 
 const STAGE_NAMES = [
@@ -42,7 +43,10 @@ export class MapView {
       img.src = url;
     }
     game.subscribe((ev) => {
-      if ((ev.type === 'delivered' || ev.type === 'chapterComplete') && this.visible) {
+      const refresh =
+        ev.type === 'delivered' || ev.type === 'chapterComplete' || ev.type === 'merge' ||
+        ev.type === 'action' || ev.type === 'questDone' || ev.type === 'chronicle';
+      if (refresh && this.visible) {
         this.renderList();
         if (this.reduce) this.draw(0);
       }
@@ -52,13 +56,9 @@ export class MapView {
   private progress(): number {
     return Math.min(1, this.game.snapshot.orderIndex / ORDERS.length);
   }
-  /** 0..4 homestead stage, spread across the full MVP story (24 orders). */
+  /** 0..4 homestead stage, spread across the full MVP story. */
   private stage(): number {
-    const i = this.game.snapshot.orderIndex;
-    const thresholds = [0, 5, 10, 16, 22];
-    let s = 0;
-    for (let k = 0; k < thresholds.length; k++) if (i >= thresholds[k]!) s = k;
-    return s;
+    return stageFor(this.game.snapshot.orderIndex);
   }
 
   setVisible(v: boolean): void {
@@ -122,14 +122,37 @@ export class MapView {
       const dw = art.width * scale;
       const dh = art.height * scale;
       ctx.drawImage(art, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      // Living Emberhollow: the town keeps real time and answers your day.
+      const counts = this.game.snapshot.actions.counts;
+      const meditated = Object.keys(counts).some((k) => k.startsWith('med-') && (counts[k] ?? 0) > 0);
+      const sleptWell = (this.game.snapshot.healthLedger?.sleepGranted ?? 0) > 0;
       if (!this.reduce) {
-        // Gentle living-world shimmer: a warm pulse that breathes with time.
-        const pulse = 0.05 + 0.03 * Math.sin(t / 1600);
+        // Hearth-glow pulse: warmer after a good night, calmer after meditation.
+        const speed = meditated ? 2600 : 1600;
+        const base = sleptWell ? 0.09 : 0.05;
+        const pulse = base + 0.03 * Math.sin(t / speed);
         const glow = ctx.createRadialGradient(W * 0.5, H * 0.42, 10, W * 0.5, H * 0.42, W * 0.6);
         glow.addColorStop(0, `rgba(255, 200, 120, ${pulse.toFixed(3)})`);
         glow.addColorStop(1, 'rgba(255, 200, 120, 0)');
         ctx.fillStyle = glow;
         ctx.fillRect(0, 0, W, H);
+      }
+      // Time-of-day light over the painting (real clock).
+      const hour = new Date().getHours();
+      if (hour >= 5 && hour < 11) ctx.fillStyle = 'rgba(255, 226, 170, 0.07)';
+      else if (hour >= 17 && hour < 21) ctx.fillStyle = 'rgba(255, 140, 70, 0.10)';
+      else if (hour >= 21 || hour < 5) ctx.fillStyle = 'rgba(24, 34, 84, 0.30)';
+      else ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+      ctx.fillRect(0, 0, W, H);
+      // A nature photo today plants a little colour along the shore path.
+      if ((counts['nature-photo'] ?? 0) > 0) {
+        const flowers = ['#e6739a', '#ffd27a', '#a06be0', '#7fbf6a', '#e6739a'];
+        for (let i = 0; i < 5; i++) {
+          ctx.fillStyle = flowers[i]!;
+          ctx.beginPath();
+          ctx.arc(W * (0.18 + i * 0.14), H * 0.9, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
       this.updateBar(prog, stage);
       return;
@@ -351,8 +374,20 @@ export class MapView {
         `<div class="mc-body"><b>Chapter complete</b><span>Emberhollow shines. New challenges await in the next chapter.</span></div></div>`;
     const ch = chapterFor(Math.min(delivered, ORDERS.length - 1));
     const inChapter = Math.min(delivered, ch.end) - ch.start;
+    const s = this.game.snapshot;
+    const quests = questsForDay(s.stats.day)
+      .map((q) => {
+        const done = s.questsClaimed.includes(q.id) || q.progress(s) >= q.target;
+        const p = Math.min(q.progress(s), q.target);
+        return (
+          `<div class="dq ${done ? 'done' : ''}"><span class="dq-check">${done ? '✓' : ''}</span>` +
+          `<span class="dq-label">${q.label}</span><span class="dq-progress">${done ? `+${q.coins}` : `${p}/${q.target}`}</span></div>`
+        );
+      })
+      .join('');
     host.innerHTML =
       challenge +
+      `<p class="map-locs-label">Today in Emberhollow</p><div class="dq-list">${quests}</div>` +
       `<p class="map-locs-label">Chapter ${ch.id} · ${ch.title} · ${inChapter}/${ch.end - ch.start} orders · village ${Math.round(
         (delivered / ORDERS.length) * 100,
       )}% restored</p>` +
