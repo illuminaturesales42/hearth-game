@@ -1,2 +1,8 @@
 node_modules/
 dist/
+dev-dist/
+
+# regenerable slicer outputs (python tools/slice_assets.py --probe/--contact)
+tools/probe_*.png
+tools/contact_sheet.png
+tools/verify_fixes.png
