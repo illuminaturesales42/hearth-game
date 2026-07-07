@@ -837,3 +837,7 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
 .bldg-tier { margin: 4px 0 2px; font-size: 13px; color: #d8a24a; letter-spacing: 1px; font-weight: 700; }
 .bldg-upgrade { margin-top: 6px; }
 .bldg-upgrade:disabled { opacity: 0.5; }
+
+/* The hidden attribute always wins — author display rules (flex/grid) on a
+   class must never resurrect a [hidden] element (the empty decor-tray strip). */
+[hidden] { display: none !important; }
