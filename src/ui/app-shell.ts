@@ -20,6 +20,7 @@ import { artUrl } from './art';
 import { FtueUI } from './ftue';
 import { NewDayUI } from './new-day';
 import { GrowthUI } from './growth';
+import type { Metrics } from '../platform/metrics';
 
 type ScreenId = 'home' | 'create' | 'villagers' | 'journal' | 'shop';
 
@@ -31,7 +32,10 @@ export class AppShell {
   private social: SocialScreen;
   private rendered = new Set<ScreenId>(['home']);
 
-  constructor(private game: Game) {
+  constructor(
+    private game: Game,
+    private metrics?: Metrics,
+  ) {
     const boardEl = document.getElementById('board');
     if (!boardEl) throw new Error('Missing #board');
     new BoardView(game, boardEl);
@@ -50,7 +54,7 @@ export class AppShell {
     new GrowthUI(game);
     const newDay = new NewDayUI(game);
     // New players get the welcome first; the sunrise claim follows it.
-    const ftueShown = new FtueUI(game).maybeStart(() => newDay.maybeShow());
+    const ftueShown = new FtueUI(game, this.metrics).maybeStart(() => newDay.maybeShow());
     if (!ftueShown) newDay.maybeShow();
     // The town map now lives on the Home screen; animate it while Home is active.
     this.map.setVisible(true);

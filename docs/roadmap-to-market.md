@@ -52,7 +52,7 @@ The PWA can't read steps or sleep, and iOS evicts web storage after 7 quiet days
 
 - Free, no monetization yet. Measure D1/D7/D30 against the gates above.
 - Iterate FTUE and the day-2 return loop until D1 ≥ 30%. Below D1 20%, stop and rework — nothing downstream saves a game that doesn't come back on day two.
-- Instrument with the existing analytics taxonomy; add a real sink (PostHog/Amplitude free tier) behind the current facade.
+- Instrument with the existing analytics taxonomy; add a real sink (PostHog/Amplitude free tier) behind the current facade. **Landed:** on-device retention (`src/core/retention.ts` — D1/D7/D30, streaks, FTUE funnel; `window.hearthMetrics()` dashboard; `retention_day`/`ftue_step`/`ftue_complete` events). The gate is now measurable per device during friends-and-family week; the server just aggregates the same records. Only the network sink remains to swap in via `setSink()`.
 
 ## Phase D — Monetize + global launch
 

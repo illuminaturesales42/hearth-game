@@ -9,9 +9,18 @@ import type { HealthSnapshot } from './health/health-provider';
 import { pickHealthProvider } from './platform/providers';
 import { LocalMirrorSyncProvider } from './platform/sync-provider';
 import { SyncController } from './platform/sync-controller';
+import { Metrics, exposeMetricsConsole } from './platform/metrics';
 
 const game = new Game();
-new AppShell(game);
+
+// Retention & funnel metrics: mark today active, expose the dev dashboard
+// (window.hearthMetrics), report this session. The soft-launch gate is
+// retention — this is how we read it during friends-and-family week.
+const metrics = new Metrics();
+exposeMetricsConsole(metrics);
+metrics.reportSession();
+
+new AppShell(game, metrics);
 
 // The splash lifts once the shell is mounted (a breath later, so it never blinks).
 const splash = document.getElementById('splash');

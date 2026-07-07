@@ -5,6 +5,7 @@
  */
 import type { Game } from '../core/game';
 import { artUrl } from './art';
+import type { Metrics } from '../platform/metrics';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 
@@ -12,7 +13,7 @@ interface Step {
   text: string;
   button: string | null; // null = waits for a game event
   highlight?: string; // CSS selector to glow
-  screen?: 'home' | 'create';
+  screen?: 'home' | 'create' | 'villagers';
   waitFor?: 'merge' | 'delivered';
 }
 
@@ -43,6 +44,12 @@ const STEPS: Step[] = [
     highlight: '#deliver-btn',
   },
   {
+    text: 'That was for Bran — and Bran will remember it. Every villager keeps the moments you share; help them and their hearts fill. You’ll find the people of Emberhollow under Villagers.',
+    button: 'I’ll say hello',
+    highlight: '.nav-btn[data-screen="villagers"]',
+    screen: 'home',
+  },
+  {
     text: 'One more thing: merging spends Hearth Energy — and energy is earned from your real day. Walks, sleep, sunlight, a kind word to a stranger. It is never sold. Tap the flame any time to see today’s ways.',
     button: 'Understood',
     highlight: '#energy-pill',
@@ -58,7 +65,10 @@ export class FtueUI {
   private unsub: (() => void) | null = null;
   private onDone: () => void = () => undefined;
 
-  constructor(private game: Game) {}
+  constructor(
+    private game: Game,
+    private metrics?: Metrics,
+  ) {}
 
   /** Start the flow if this is a brand-new player. Returns true when shown. */
   maybeStart(onDone: () => void): boolean {
@@ -78,6 +88,7 @@ export class FtueUI {
     const s = STEPS[this.step];
     const overlay = el('ftue-overlay');
     if (!s || !overlay) return;
+    this.metrics?.ftueReachedStep(this.step); // funnel: where do players drop?
     if (s.screen) document.querySelector<HTMLButtonElement>(`.nav-btn[data-screen="${s.screen}"]`)?.click();
     document.querySelectorAll('.ftue-glow').forEach((n) => n.classList.remove('ftue-glow'));
     if (s.highlight) document.querySelector(s.highlight)?.classList.add('ftue-glow');
@@ -109,6 +120,8 @@ export class FtueUI {
     const overlay = el('ftue-overlay');
     if (overlay) overlay.hidden = true;
     this.unsub?.();
+    // Completed only if they reached the last step; a skip is a drop we keep.
+    if (this.step >= STEPS.length) this.metrics?.ftueFinished();
     this.game.setFlag({ ftueDone: true });
     this.onDone();
   }
