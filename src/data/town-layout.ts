@@ -109,6 +109,42 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   { art: 'fence_wood', x: 0.73, y: 0.705, w: 0.11, unlockAt: 10, stage: 0 },
 ] as const;
 
+/**
+ * The island itself (Batch-2 usage note: "combine terrain, props, and
+ * buildings"). Always present — the storm bent the trees and scattered the
+ * rocks, but the land was never lost. Stone paths knit in with rebuilding.
+ */
+export const TOWN_TERRAIN: readonly TownPiece[] = [
+  // rocky coast ring
+  { art: 'terrain_rocks', x: 0.05, y: 0.52, w: 0.09, unlockAt: 0 },
+  { art: 'terrain_rocks', x: 0.955, y: 0.66, w: 0.085, unlockAt: 0 },
+  { art: 'terrain_rocks', x: 0.24, y: 0.9, w: 0.08, unlockAt: 0 },
+  { art: 'terrain_rocks', x: 0.045, y: 0.755, w: 0.07, unlockAt: 0 },
+  { art: 'terrain_rocks', x: 0.88, y: 0.4, w: 0.065, unlockAt: 0 },
+  // wooded edges
+  { art: 'terrain_trees_l', x: 0.1, y: 0.435, w: 0.1, unlockAt: 0 },
+  { art: 'terrain_trees_s', x: 0.245, y: 0.365, w: 0.085, unlockAt: 0 },
+  { art: 'terrain_trees_l', x: 0.545, y: 0.315, w: 0.095, unlockAt: 0 },
+  { art: 'terrain_trees_s', x: 0.71, y: 0.345, w: 0.08, unlockAt: 0 },
+  { art: 'terrain_trees_l', x: 0.93, y: 0.5, w: 0.09, unlockAt: 0 },
+  { art: 'terrain_bush', x: 0.165, y: 0.575, w: 0.06, unlockAt: 0 },
+  { art: 'terrain_bush', x: 0.62, y: 0.565, w: 0.06, unlockAt: 0 },
+  // meadow softness
+  { art: 'terrain_grass', x: 0.42, y: 0.6, w: 0.075, unlockAt: 0 },
+  { art: 'terrain_grass', x: 0.665, y: 0.775, w: 0.075, unlockAt: 0 },
+  { art: 'terrain_flowers1', x: 0.3, y: 0.665, w: 0.06, unlockAt: 0 },
+  { art: 'terrain_flowers2', x: 0.845, y: 0.63, w: 0.06, unlockAt: 0 },
+  // stone paths knit the square together once rebuilding begins
+  { art: 'terrain_path', x: 0.345, y: 0.505, w: 0.085, unlockAt: 1 },
+  { art: 'terrain_path', x: 0.445, y: 0.545, w: 0.085, unlockAt: 1 },
+  { art: 'terrain_path', x: 0.55, y: 0.515, w: 0.085, unlockAt: 1 },
+  { art: 'terrain_path', x: 0.525, y: 0.63, w: 0.08, unlockAt: 1 },
+  // the harbour reaches into the water at the south-east
+  { art: 'dock_straight', x: 0.775, y: 0.905, w: 0.1, unlockAt: 0 },
+  { art: 'dock_end', x: 0.865, y: 0.925, w: 0.075, unlockAt: 0 },
+  { art: 'dock_small', x: 0.7, y: 0.875, w: 0.065, unlockAt: 0 },
+] as const;
+
 /** Decorations the player can buy and place — coins buy beauty, never power. */
 export interface DecorDef {
   art: string;

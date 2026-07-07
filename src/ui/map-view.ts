@@ -12,7 +12,7 @@ import type { Game } from '../core/game';
 import { MAP_LOCATIONS } from '../data/world';
 import { ORDERS, chapterFor, stageFor } from '../data/economy';
 import { questsForDay } from '../data/daily-quests';
-import { BUILDING_INFO, DECOR_CATALOG, TOWN_BOATS, TOWN_BUILDINGS, TOWN_NATURE, TOWN_WALKERS } from '../data/town-layout';
+import { BUILDING_INFO, DECOR_CATALOG, TOWN_BOATS, TOWN_BUILDINGS, TOWN_NATURE, TOWN_TERRAIN, TOWN_WALKERS } from '../data/town-layout';
 import { computeMood, meditatedToday, moodCaption } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
 import { currentWeather } from './weather';
@@ -495,36 +495,41 @@ export class MapView {
       ctx.fillRect(0, 0, W, H);
     }
 
-    // --- sea, then the island ground ---
-    ctx.fillStyle = night ? '#0a1626' : '#1c3b4a';
+    // --- sea with an evening sheen, then the rocky island (Batch-2 look) ---
+    const seaGrad = ctx.createLinearGradient(0, H * 0.42, 0, H);
+    seaGrad.addColorStop(0, night ? '#0c1a2c' : '#1c3b4a');
+    seaGrad.addColorStop(1, night ? '#081220' : '#122a3c');
+    ctx.fillStyle = seaGrad;
     ctx.fillRect(0, H * 0.42, W, H * 0.58);
-    const grass = mix('#5a5038', '#3f6238', Math.min(1, stage / 3)); // storm-mud heals to green
-    ctx.fillStyle = grass;
-    ctx.beginPath();
-    ctx.moveTo(-W * 0.05, H * 0.46);
-    ctx.quadraticCurveTo(W * 0.2, H * 0.36, W * 0.5, H * 0.37);
-    ctx.quadraticCurveTo(W * 0.82, H * 0.36, W * 1.02, H * 0.5);
-    ctx.lineTo(W * 1.05, H * 0.82);
-    ctx.quadraticCurveTo(W * 0.7, H * 0.94, W * 0.4, H * 0.9);
-    ctx.quadraticCurveTo(W * 0.08, H * 0.88, -W * 0.05, H * 0.78);
-    ctx.closePath();
-    ctx.fill();
-    // shoreline highlight
-    ctx.strokeStyle = 'rgba(230, 214, 170, 0.35)';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    // dirt paths once rebuilding begins
-    if (stage >= 1) {
-      ctx.strokeStyle = 'rgba(150, 120, 80, 0.5)';
-      ctx.lineWidth = Math.max(4, W * 0.016);
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(W * 0.27, H * 0.5);
-      ctx.quadraticCurveTo(W * 0.5, H * 0.56, W * 0.64, H * 0.47);
-      ctx.moveTo(W * 0.5, H * 0.52);
-      ctx.quadraticCurveTo(W * 0.52, H * 0.66, W * 0.6, H * 0.72);
-      ctx.stroke();
+    if (!night) {
+      // the low sun lays a soft column on the water
+      const sunCol = ctx.createLinearGradient(0, H * 0.42, 0, H * 0.95);
+      sunCol.addColorStop(0, 'rgba(255, 200, 120, 0.16)');
+      sunCol.addColorStop(1, 'rgba(255, 200, 120, 0)');
+      ctx.fillStyle = sunCol;
+      ctx.fillRect(W * 0.68, H * 0.42, W * 0.2, H * 0.53);
     }
+    const island = (inset: number) => {
+      ctx.beginPath();
+      ctx.moveTo(-W * 0.05 - inset, H * 0.46);
+      ctx.quadraticCurveTo(W * 0.2, H * 0.36 - inset, W * 0.5, H * 0.37 - inset);
+      ctx.quadraticCurveTo(W * 0.82, H * 0.36 - inset, W * 1.02 + inset, H * 0.5);
+      ctx.lineTo(W * 1.05 + inset, H * 0.82);
+      ctx.quadraticCurveTo(W * 0.7, H * 0.94 + inset, W * 0.4, H * 0.9 + inset);
+      ctx.quadraticCurveTo(W * 0.08, H * 0.88 + inset, -W * 0.05 - inset, H * 0.78);
+      ctx.closePath();
+    };
+    // rocky under-rim first, then the green cap sitting inside it
+    island(4);
+    ctx.fillStyle = night ? '#38332a' : '#4c4436';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(230, 214, 170, 0.25)'; // wet-sand waterline
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    island(-3);
+    const grass = mix('#5a5f38', '#3f6238', Math.min(1, stage / 3)); // storm-mud heals to green
+    ctx.fillStyle = grass;
+    ctx.fill();
 
     // --- boats first (they sit on the water behind the shore) ---
     for (const b of TOWN_BOATS) {
@@ -565,7 +570,18 @@ export class MapView {
       unlockAt: 0,
       decorId: d.id,
     }));
+    // flat ground pieces (paths, meadow patches) lie under everything
+    const FLAT = new Set(['terrain_path', 'terrain_grass', 'terrain_flowers1', 'terrain_flowers2']);
+    for (const f of TOWN_TERRAIN) {
+      if (!FLAT.has(f.art) || delivered < f.unlockAt) continue;
+      const img = this.sprite(f.art);
+      if (!img) continue;
+      const w = f.w * W;
+      const h = w * (img.naturalHeight / img.naturalWidth);
+      ctx.drawImage(img, f.x * W - w / 2, f.y * H - h, w, h);
+    }
     const pieces: ScenePiece[] = [
+      ...TOWN_TERRAIN.filter((t) => !FLAT.has(t.art) && delivered >= t.unlockAt),
       ...TOWN_NATURE.filter((n) => stage >= n.stage && delivered >= n.unlockAt),
       ...TOWN_BUILDINGS.map((b) => ({ ...b, ruined: delivered < b.unlockAt })),
       ...decor,
@@ -592,10 +608,10 @@ export class MapView {
         });
       }
       if (p.ruined) {
-        // still lost to the storm: dark, drained, waiting
+        // still lost to the storm: a quiet silhouette, so restored buildings sing
         ctx.save();
-        ctx.globalAlpha = 0.8;
-        ctx.filter = 'grayscale(0.9) brightness(0.5) contrast(0.9)';
+        ctx.globalAlpha = 0.55;
+        ctx.filter = 'grayscale(0.95) brightness(0.42) contrast(0.85)';
         ctx.drawImage(img, p.x * W - w / 2, p.y * H - h, w, h);
         ctx.restore();
         continue;

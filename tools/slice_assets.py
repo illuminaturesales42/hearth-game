@@ -258,10 +258,31 @@ def define() -> None:
         "boat_row": (458, 595, 546, 650),
         "fence_wood": (1306, 592, 1402, 660),
     }
+    # terrain + dock kit (batch2 panels 4/6) — the pieces the sheet says to
+    # combine into the overworld: rocks, tree clusters, paths, docks
+    terrain = {
+        "terrain_trees_l": (1034, 505, 1120, 578),
+        "terrain_trees_s": (1130, 515, 1222, 578),
+        "terrain_bush": (1272, 532, 1344, 578),
+        "terrain_rocks": (1372, 505, 1492, 580),
+        "terrain_flowers1": (1028, 605, 1105, 652),
+        "terrain_flowers2": (1115, 605, 1195, 652),
+        "terrain_grass": (1205, 607, 1285, 652),
+        "terrain_path": (1418, 600, 1520, 652),
+        "dock_straight": (8, 493, 86, 542),
+        "dock_corner": (98, 493, 176, 542),
+        "dock_end": (192, 493, 257, 542),
+        "dock_small": (268, 493, 332, 542),
+    }
+    b2.update(terrain)
     add("batch2", b2)
     KEYED.update(b2.keys())
     for dark in ("boat_fishing_s", "boat_fishing_m", "boat_sail_s", "boat_row", "animal_cat", "animal_dog"):
         TOLERANCE[dark] = 26
+    for t in terrain:
+        TOLERANCE[t] = 30  # dark foliage/rock on navy panels — key gently
+    for t in ("terrain_trees_l", "terrain_trees_s", "terrain_bush"):
+        TOLERANCE[t] = 38  # panels must go; canopy greens survive this
 
     # ---- corepack5 (Core/MVP.png): the canonical grid board (merge area) ----
     add("corepack5", {"board_grass": (773, 500, 1172, 760)})
