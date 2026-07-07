@@ -12,7 +12,7 @@ import type { Game } from '../core/game';
 import { MAP_LOCATIONS } from '../data/world';
 import { ORDERS, chapterFor, stageFor } from '../data/economy';
 import { questsForDay } from '../data/daily-quests';
-import { TOWN_BUILDINGS, TOWN_NATURE } from '../data/town-layout';
+import { BUILDING_INFO, TOWN_BOATS, TOWN_BUILDINGS, TOWN_NATURE, TOWN_WALKERS } from '../data/town-layout';
 import { artUrl } from './art';
 
 const STAGE_NAMES = [
@@ -36,6 +36,8 @@ export class MapView {
   /** Recently-appeared building pop-in animations (art id -> start ms). */
   private appeared = new Map<string, number>();
   private lastOrderIndex = -1;
+  /** Last-drawn building rectangles for tap-to-inspect. */
+  private hitboxes: { x0: number; y0: number; x1: number; y1: number; art: string; unlockAt: number }[] = [];
 
   constructor(private game: Game) {
     for (let i = 0; i < 5; i++) {
@@ -85,12 +87,44 @@ export class MapView {
     if (this.canvas) return;
     this.canvas = document.getElementById('map-canvas') as HTMLCanvasElement | null;
     this.ctx = this.canvas?.getContext('2d') ?? null;
+    // Tap a returned building to hear how it came back.
+    this.canvas?.addEventListener('click', (e) => {
+      const rect = this.canvas!.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      for (let i = this.hitboxes.length - 1; i >= 0; i--) {
+        const hb = this.hitboxes[i]!;
+        if (x >= hb.x0 && x <= hb.x1 && y >= hb.y0 && y <= hb.y1) {
+          this.showBuilding(hb.art, hb.unlockAt);
+          return;
+        }
+      }
+    });
+    document.getElementById('bldg-close')?.addEventListener('click', () => {
+      const m = document.getElementById('bldg-modal');
+      if (m) m.hidden = true;
+    });
     window.addEventListener('resize', () => {
       if (this.visible) {
         this.resize();
         if (this.reduce) this.draw(0);
       }
     });
+  }
+
+  private showBuilding(art: string, unlockAt: number): void {
+    const img = document.getElementById('bldg-art') as HTMLImageElement | null;
+    const url = artUrl(art);
+    if (img && url) img.src = url;
+    const name = document.getElementById('bldg-name');
+    if (name) name.textContent = BUILDING_INFO[art] ?? 'Emberhollow';
+    const order = ORDERS[unlockAt - 1];
+    const story = document.getElementById('bldg-story');
+    if (story) story.textContent = order ? order.resolution : 'It has always stood here, waiting.';
+    const meta = document.getElementById('bldg-meta');
+    if (meta) meta.textContent = `Returned with order ${unlockAt} · ${chapterFor(unlockAt - 1).title}`;
+    const m = document.getElementById('bldg-modal');
+    if (m) m.hidden = false;
   }
 
   private resize(): void {
@@ -329,9 +363,21 @@ export class MapView {
       ctx.stroke();
     }
 
+    // --- boats first (they sit on the water behind the shore) ---
+    for (const b of TOWN_BOATS) {
+      if (stage < b.stage) continue;
+      const img = this.sprite(b.art);
+      if (!img) continue;
+      const w = b.w * W;
+      const h = w * (img.naturalHeight / img.naturalWidth);
+      const bob = this.reduce ? 0 : Math.sin(t / 900 + b.x * 20) * 2.2;
+      ctx.drawImage(img, b.x * W - w / 2, b.y * H - h + bob, w, h);
+    }
+
     // --- pieces, painter-sorted ---
+    this.hitboxes = [];
     const pieces = [
-      ...TOWN_NATURE.filter((n) => stage >= n.stage),
+      ...TOWN_NATURE.filter((n) => stage >= n.stage && delivered >= n.unlockAt),
       ...TOWN_BUILDINGS.filter((b) => delivered >= b.unlockAt),
     ].sort((a, b) => a.y - b.y);
     for (const p of pieces) {
@@ -339,6 +385,9 @@ export class MapView {
       if (!img) continue;
       const w = p.w * W;
       const h = w * (img.naturalHeight / img.naturalWidth);
+      if (BUILDING_INFO[p.art] && 'unlockAt' in p && p.unlockAt > 0) {
+        this.hitboxes.push({ x0: p.x * W - w / 2, y0: p.y * H - h, x1: p.x * W + w / 2, y1: p.y * H, art: p.art, unlockAt: p.unlockAt });
+      }
       let scale = 1;
       let alpha = 1;
       const born = this.appeared.get(p.art);
@@ -362,6 +411,55 @@ export class MapView {
           ctx.beginPath();
           ctx.arc(sx + Math.sin(t / 700 + i) * 2.5, puffY, 2.5 + i * 1.2, 0, Math.PI * 2);
           ctx.fill();
+        }
+      }
+    }
+
+    // --- villagers amble their rounds once their stories are told ---
+    for (const wk of TOWN_WALKERS) {
+      if (delivered < wk.unlockAt) continue;
+      const img = this.sprite(wk.art);
+      if (!img || wk.path.length < 2) continue;
+      // ping-pong along the waypoint list, phase-offset by art id hash
+      const total = wk.path.length - 1;
+      const phase = this.reduce ? 0.5 : ((t / 1000 + wk.art.length * 3.7) / wk.period) % 2;
+      const u = phase < 1 ? phase : 2 - phase; // 0..1..0
+      const seg = Math.min(total - 1, Math.floor(u * total));
+      const local = u * total - seg;
+      const a = wk.path[seg]!;
+      const b = wk.path[seg + 1]!;
+      const x = (a.x + (b.x - a.x) * local) * W;
+      const y = (a.y + (b.y - a.y) * local) * H;
+      const w = 0.034 * W;
+      const h = w * (img.naturalHeight / img.naturalWidth);
+      const facingLeft = b.x < a.x !== phase >= 1;
+      ctx.save();
+      if (facingLeft) {
+        ctx.translate(x, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(img, -w / 2, y - h, w, h);
+      } else {
+        ctx.drawImage(img, x - w / 2, y - h, w, h);
+      }
+      ctx.restore();
+    }
+
+    // --- small lives: the cat claims the bench, gulls work the docks ---
+    if (stage >= 3) {
+      const cat = this.sprite('animal_cat');
+      if (cat) {
+        const w = 0.032 * W;
+        ctx.drawImage(cat, W * 0.545, H * 0.665 - w * (cat.naturalHeight / cat.naturalWidth), w, w * (cat.naturalHeight / cat.naturalWidth));
+      }
+      const gull = this.sprite('animal_gull');
+      if (gull && !this.reduce) {
+        for (let g = 0; g < 2; g++) {
+          const gx = W * (0.74 + 0.14 * Math.sin(t / 2600 + g * 2.4));
+          const gy = H * (0.18 + 0.05 * Math.cos(t / 2100 + g * 1.7));
+          const gw = 0.028 * W;
+          ctx.globalAlpha = 0.9;
+          ctx.drawImage(gull, gx, gy, gw, gw * (gull.naturalHeight / gull.naturalWidth));
+          ctx.globalAlpha = 1;
         }
       }
     }

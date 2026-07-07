@@ -41,6 +41,8 @@ SHEETS = {
 MANIFEST: dict[str, tuple[str, tuple[int, int, int, int]]] = {}
 # ids that get edge-flood background removal (sprites composed onto scenes)
 KEYED: set[str] = set()
+# per-id keying tolerance overrides (dark sprites on dark panels need a tighter key)
+TOLERANCE: dict[str, int] = {}
 
 
 def remove_bg(im: Image.Image, tolerance: int = 52) -> Image.Image:
@@ -107,7 +109,7 @@ def slice_all() -> None:
             opened[key] = Image.open(SRC / SHEETS[key]).convert("RGBA")
         im = opened[key].crop(box)
         if ident in KEYED:
-            im = remove_bg(im)
+            im = remove_bg(im, TOLERANCE.get(ident, 52))
         im.save(OUT / f"{ident}.png")
         ids.append(ident)
     ts = (
@@ -206,6 +208,47 @@ def define() -> None:
     }
     add("corepack3", town)
     KEYED.update(town.keys())
+
+    # ---- batch89: achievement badge art + reward stills (keyed off cream panel) ----
+    badges = {
+        "badge_master_builder": (352, 445, 428, 518),
+        "badge_hearth_guardian": (438, 445, 512, 518),
+        "badge_merge_master": (520, 445, 594, 518),
+        "badge_habit_hero": (602, 445, 676, 518),
+        "reward_chest": (702, 447, 778, 517),
+    }
+    add("batch89", badges)
+    KEYED.update(badges.keys())
+    KEYED.discard("reward_chest")  # dramatic dark still, keep as a card image
+    for i in range(7):
+        x0 = 1085 + i * (430 / 7)
+        ident = f"badge_event_{i + 1}"
+        add("batch89", {ident: (int(x0), 452, int(x0 + 430 / 7), 512)})
+        KEYED.add(ident)
+
+    # ---- batch2: map-scale villagers, animals, boats, fence (all keyed sprites) ----
+    b2 = {
+        "npc_bran": (14, 706, 90, 862),
+        "npc_wren": (94, 706, 160, 862),
+        "npc_sorin": (164, 706, 230, 862),
+        "npc_marta": (234, 706, 296, 862),
+        "npc_joss": (298, 706, 366, 862),
+        "npc_child": (368, 712, 430, 862),
+        "npc_woman": (434, 706, 506, 862),
+        "npc_man": (508, 706, 576, 862),
+        "animal_gull": (612, 706, 698, 780),
+        "animal_cat": (770, 708, 838, 786),
+        "animal_dog": (842, 706, 908, 786),
+        "boat_fishing_s": (10, 586, 120, 655),
+        "boat_fishing_m": (128, 586, 246, 655),
+        "boat_sail_s": (253, 578, 347, 655),
+        "boat_row": (458, 595, 546, 650),
+        "fence_wood": (1306, 592, 1402, 660),
+    }
+    add("batch2", b2)
+    KEYED.update(b2.keys())
+    for dark in ("boat_fishing_s", "boat_fishing_m", "boat_sail_s", "boat_row", "animal_cat", "animal_dog"):
+        TOLERANCE[dark] = 26
 
     # ---- batch567: dialogue busts + fx stills ----
     add("batch567", {

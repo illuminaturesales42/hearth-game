@@ -165,6 +165,7 @@ export class Game {
     const res = takeGift(this.state.social, giftId);
     const index = empties[0]!;
     const item: Item = { chain: gift.chain, level: gift.level, uid: this.state.nextUid };
+    this.undoBoard = null;
     this.state = {
       ...this.state,
       social: res.state,
@@ -257,6 +258,7 @@ export class Game {
     const chain = pickSpawnChain(Math.random);
     const index = empties[Math.floor(Math.random() * empties.length)]!;
     const item: Item = { chain, level: 0, uid: this.state.nextUid };
+    this.undoBoard = null;
     this.state = {
       ...this.state,
       energy: spend(this.state.energy, ENERGY.spawnCost),
@@ -266,13 +268,18 @@ export class Game {
     this.emit({ type: 'spawn', index });
   }
 
+  /** Session-only snapshot for single-step merge undo (never saved). */
+  private undoBoard: GameState['board'] | null = null;
+
   drop(from: number, to: number): void {
     this.beginDay(Date.now());
+    const before = this.state.board;
     const res = dropItem(this.state.board, from, to, this.state.nextUid);
     if (res.board === this.state.board) {
       this.emit({ type: 'reject', index: to, reason: 'invalid' });
       return;
     }
+    this.undoBoard = res.merged ? before : null;
     this.state = {
       ...this.state,
       board: res.board,
@@ -284,6 +291,26 @@ export class Game {
     }
     if (res.merged && res.result) this.emit({ type: 'merge', index: to, item: res.result });
     else this.emit({ type: 'state' });
+  }
+
+  canUndoMerge(): boolean {
+    return this.undoBoard !== null;
+  }
+
+  /** Take back the last merge (one step; cleared by any other board change). */
+  undoLastMerge(): void {
+    if (!this.undoBoard) return;
+    this.state = { ...this.state, board: this.undoBoard };
+    this.undoBoard = null;
+    this.emit({ type: 'state' });
+  }
+
+  /** Remove an item from the board (confirmed in the UI). No refunds, no drama. */
+  trashItem(index: number): void {
+    if (!itemAt(this.state.board, index)) return;
+    this.undoBoard = null;
+    this.state = { ...this.state, board: withEmpty(this.state.board, index) };
+    this.emit({ type: 'state' });
   }
 
   /** Index of the board item satisfying the current order, or -1. */
@@ -302,6 +329,7 @@ export class Game {
       return;
     }
     this.bumpStat({ dayDelivers: this.state.stats.dayDelivers + 1 });
+    this.undoBoard = null; // undoing across a delivery would duplicate items
     this.state = {
       ...this.state,
       board: withEmpty(this.state.board, idx),

@@ -35,6 +35,52 @@ export const TOWN_BUILDINGS: readonly TownPiece[] = [
   { art: 'town_library', x: 0.585, y: 0.74, w: 0.165, unlockAt: 23 },
 ] as const;
 
+/** Friendly names + story links for tappable buildings. */
+export const BUILDING_INFO: Record<string, string> = {
+  prop_sign: 'The Notice Board',
+  town_cottage: 'The Old Cottage',
+  town_bakery: 'Bran’s Bakery',
+  prop_well: 'The Village Well',
+  town_market: 'Market Square',
+  town_garden: 'The Garden',
+  town_townhall: 'The Town Hall',
+  town_workshop: 'The Workshop',
+  town_farm: 'Meadow Farm',
+  town_fisherhut: 'Joss’s Hut',
+  town_sawmill: 'The Sawmill',
+  town_blacksmith: 'The Forge',
+  town_dock: 'North Docks',
+  town_library: 'The Library',
+};
+
+/** Villagers walk the town once their part of the story has been told. */
+export interface TownWalker {
+  art: string;
+  unlockAt: number;
+  /** Waypoints ambled between (ping-pong), normalized coords. */
+  path: readonly { x: number; y: number }[];
+  /** Seconds for a full one-way walk. */
+  period: number;
+}
+
+export const TOWN_WALKERS: readonly TownWalker[] = [
+  { art: 'npc_bran', unlockAt: 4, period: 26, path: [{ x: 0.6, y: 0.545 }, { x: 0.47, y: 0.6 }, { x: 0.36, y: 0.56 }] },
+  { art: 'npc_wren', unlockAt: 8, period: 30, path: [{ x: 0.44, y: 0.5 }, { x: 0.53, y: 0.585 }, { x: 0.63, y: 0.53 }] },
+  { art: 'npc_sorin', unlockAt: 9, period: 38, path: [{ x: 0.88, y: 0.62 }, { x: 0.76, y: 0.7 }] },
+  { art: 'npc_marta', unlockAt: 12, period: 34, path: [{ x: 0.3, y: 0.58 }, { x: 0.44, y: 0.65 }, { x: 0.55, y: 0.7 }] },
+  { art: 'npc_child', unlockAt: 16, period: 16, path: [{ x: 0.52, y: 0.68 }, { x: 0.66, y: 0.72 }, { x: 0.58, y: 0.78 }] },
+  { art: 'npc_joss', unlockAt: 18, period: 28, path: [{ x: 0.84, y: 0.72 }, { x: 0.76, y: 0.82 }] },
+  { art: 'npc_woman', unlockAt: 20, period: 32, path: [{ x: 0.2, y: 0.66 }, { x: 0.33, y: 0.6 }] },
+  { art: 'npc_man', unlockAt: 22, period: 30, path: [{ x: 0.62, y: 0.76 }, { x: 0.5, y: 0.82 }] },
+] as const;
+
+/** Boats moored and returning as the harbour comes back to life. */
+export const TOWN_BOATS: readonly { art: string; x: number; y: number; w: number; stage: number }[] = [
+  { art: 'boat_row', x: 0.92, y: 0.93, w: 0.09, stage: 2 },
+  { art: 'boat_fishing_s', x: 0.68, y: 0.965, w: 0.12, stage: 3 },
+  { art: 'boat_sail_s', x: 0.08, y: 0.96, w: 0.1, stage: 4 },
+] as const;
+
 /** Nature and street furniture fill in as the town heals (by homestead stage). */
 export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   { art: 'prop_rock', x: 0.05, y: 0.47, w: 0.05, unlockAt: 0, stage: 0 },
@@ -51,4 +97,7 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   { art: 'tree_flowerbush', x: 0.15, y: 0.52, w: 0.06, unlockAt: 0, stage: 4 },
   { art: 'prop_barrel', x: 0.71, y: 0.755, w: 0.035, unlockAt: 0, stage: 4 },
   { art: 'prop_crate', x: 0.685, y: 0.77, w: 0.035, unlockAt: 0, stage: 4 },
+  // fences frame the farm and the garden once they're tended
+  { art: 'fence_wood', x: 0.095, y: 0.685, w: 0.11, unlockAt: 16, stage: 0 },
+  { art: 'fence_wood', x: 0.73, y: 0.705, w: 0.11, unlockAt: 10, stage: 0 },
 ] as const;

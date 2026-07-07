@@ -88,6 +88,20 @@ export class AppShell {
     if (starOpen) starOpen.addEventListener('click', () => stargaze.open());
     const kindOpen = document.getElementById('kind-open');
     if (kindOpen) kindOpen.addEventListener('click', () => kindness.open());
+    // Board tools: single-step undo + duel straight from the workshop.
+    const undoBtn = document.getElementById('undo-btn') as HTMLButtonElement | null;
+    if (undoBtn) {
+      undoBtn.addEventListener('click', () => {
+        game.undoLastMerge();
+        undoBtn.hidden = true;
+      });
+      game.subscribe((ev) => {
+        if (ev.type === 'merge') undoBtn.hidden = false;
+        else if (ev.type !== 'state') undoBtn.hidden = !game.canUndoMerge();
+      });
+    }
+    const duelCreate = document.getElementById('duel-create-btn');
+    if (duelCreate) duelCreate.addEventListener('click', () => duel.start());
   }
 
   private go(id: ScreenId): void {

@@ -62,6 +62,9 @@ export class BoardView {
     return cell ? Number(cell.dataset.index) : -1;
   }
 
+  private holdTimer: ReturnType<typeof setTimeout> | undefined;
+  private holdStart: { x: number; y: number } | null = null;
+
   private bindPointer(): void {
     this.root.addEventListener('pointerdown', (e) => {
       const idx = this.cellIndexFromPoint(e.clientX, e.clientY);
@@ -80,10 +83,23 @@ export class BoardView {
       document.body.appendChild(this.ghost);
       this.moveGhost(e.clientX, e.clientY);
       (this.root.children[idx] as HTMLElement).style.opacity = '0.35';
+      // Hold in place to inspect the item instead of dragging it.
+      this.holdStart = { x: e.clientX, y: e.clientY };
+      clearTimeout(this.holdTimer);
+      this.holdTimer = setTimeout(() => {
+        if (this.dragFrom === idx) {
+          this.cancelDrag(idx);
+          this.showItemInfo(idx);
+        }
+      }, 480);
     });
 
     this.root.addEventListener('pointermove', (e) => {
       if (this.dragFrom < 0) return;
+      if (this.holdStart && Math.hypot(e.clientX - this.holdStart.x, e.clientY - this.holdStart.y) > 9) {
+        clearTimeout(this.holdTimer);
+        this.holdStart = null;
+      }
       this.moveGhost(e.clientX, e.clientY);
       const over = this.cellIndexFromPoint(e.clientX, e.clientY);
       Array.from(this.root.children).forEach((c, i) => {
@@ -92,18 +108,62 @@ export class BoardView {
     });
 
     const finish = (e: PointerEvent) => {
+      clearTimeout(this.holdTimer);
+      this.holdStart = null;
       if (this.dragFrom < 0) return;
       const from = this.dragFrom;
-      this.dragFrom = -1;
-      this.ghost?.remove();
-      this.ghost = null;
-      (this.root.children[from] as HTMLElement).style.opacity = '';
-      Array.from(this.root.children).forEach((c) => (c as HTMLElement).classList.remove('drop-ok'));
+      this.cancelDrag(from);
       const to = this.cellIndexFromPoint(e.clientX, e.clientY);
       if (to >= 0 && to !== from) this.game.drop(from, to);
     };
     this.root.addEventListener('pointerup', finish);
     this.root.addEventListener('pointercancel', finish);
+  }
+
+  private cancelDrag(from: number): void {
+    this.dragFrom = -1;
+    this.ghost?.remove();
+    this.ghost = null;
+    const cell = this.root.children[from] as HTMLElement | undefined;
+    if (cell) cell.style.opacity = '';
+    Array.from(this.root.children).forEach((c) => (c as HTMLElement).classList.remove('drop-ok'));
+  }
+
+  /** Long-press card: what this is, what it becomes, and a way to let it go. */
+  private showItemInfo(index: number): void {
+    const item = this.game.itemAt(index);
+    if (!item) return;
+    const def = chainDef(item.chain);
+    const artBox = document.getElementById('item-art');
+    if (artBox) artBox.innerHTML = tileMarkup(item.chain, item.level);
+    const name = document.getElementById('item-name');
+    if (name) name.textContent = `${def.levelNames[item.level]} · ${def.name} ${item.level + 1}/${def.levels.length}`;
+    const next = document.getElementById('item-next');
+    if (next) {
+      next.innerHTML =
+        item.level + 1 < def.levels.length
+          ? `Merge two of these to make <b>${def.levelNames[item.level + 1]}</b>.`
+          : 'Top of its chain — as fine as they come.';
+    }
+    const modal = document.getElementById('item-modal');
+    if (!modal) return;
+    modal.hidden = false;
+    const trash = document.getElementById('item-trash') as HTMLButtonElement | null;
+    if (trash) {
+      trash.textContent = 'Discard';
+      let armed = false;
+      trash.onclick = () => {
+        if (!armed) {
+          armed = true;
+          trash.textContent = 'Tap again to discard';
+          return;
+        }
+        this.game.trashItem(index);
+        modal.hidden = true;
+      };
+    }
+    const close = document.getElementById('item-close') as HTMLButtonElement | null;
+    if (close) close.onclick = () => (modal.hidden = true);
   }
 
   private moveGhost(x: number, y: number): void {

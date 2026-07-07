@@ -4,7 +4,7 @@
  */
 import type { Game } from '../core/game';
 import { chainDef } from '../core/board';
-import { portraitFor } from './art';
+import { artUrl, portraitFor } from './art';
 import { ORDERS, ZONE_STAGES } from '../data/economy';
 import { feedback } from './feedback';
 import { toast } from './toast';
@@ -28,10 +28,12 @@ export class Home {
         case 'spawn':
           feedback.spawn();
           break;
-        case 'delivered':
+        case 'delivered': {
           feedback.deliver();
-          this.showStory(ev.resolution, `+${ev.rewardEnergy} energy · +${ev.rewardCoins} coins`);
+          const order = ORDERS.find((o) => o.id === ev.orderId);
+          this.showStory(ev.resolution, `+${ev.rewardEnergy} energy · +${ev.rewardCoins} coins`, order?.who);
           break;
+        }
         case 'chapterComplete':
           feedback.chapter();
           this.showStory(
@@ -43,7 +45,7 @@ export class Home {
           if (ev.energy > 0) toast(`+${ev.energy} energy. The hearth brightens.`);
           break;
         case 'chest':
-          toast(`A chest opens: +${ev.coins} coins for tending the hearth.`);
+          this.showReward('A chest for tending the hearth', `+${ev.coins} coins`);
           break;
         case 'friendJoined':
           feedback.chapter();
@@ -109,6 +111,10 @@ export class Home {
     $('story-continue').addEventListener('click', () => {
       $('story-modal').hidden = true;
     });
+    document.getElementById('reward-continue')?.addEventListener('click', () => {
+      const m = document.getElementById('reward-modal');
+      if (m) m.hidden = true;
+    });
     this.render();
   }
 
@@ -116,6 +122,12 @@ export class Home {
     const s = this.game.snapshot;
     $('hud-coins').textContent = String(s.coins);
     $('hud-energy').textContent = String(s.energy.current);
+    // Energy pill wears its level: low embers dim, a full hearth glows.
+    const pill = document.querySelector<HTMLElement>('.energy-pill');
+    if (pill) {
+      pill.classList.toggle('pill-low', s.energy.current < 8);
+      pill.classList.toggle('pill-full', s.energy.current >= 60);
+    }
 
     const order = ORDERS[s.orderIndex];
     const text = $('order-text');
@@ -157,9 +169,37 @@ export class Home {
     }
   }
 
-  private showStory(body: string, reward: string): void {
+  /** Story beats arrive as dialogue: the villager's bust and name, then their words. */
+  private showStory(body: string, reward: string, who?: string): void {
+    const bustEl = document.getElementById('story-bust');
+    const nameEl = document.getElementById('story-name');
+    const bust = who ? portraitFor(who) : null;
+    if (bustEl) {
+      bustEl.style.backgroundImage = bust ? `url(${bust})` : '';
+      bustEl.hidden = !bust;
+    }
+    if (nameEl) {
+      nameEl.textContent = who ?? '';
+      nameEl.hidden = !who;
+    }
+    const flame = document.querySelector<HTMLElement>('#story-modal .modal-flame');
+    if (flame) flame.hidden = !!bust;
     $('story-text').textContent = body;
     $('story-reward').textContent = reward;
     $('story-modal').hidden = false;
+  }
+
+  /** Chest/reward moments get their moment: painted chest, warm count. */
+  private showReward(title: string, amount: string): void {
+    const img = document.getElementById('reward-art') as HTMLImageElement | null;
+    const url = artUrl('reward_chest');
+    if (img && url) img.src = url;
+    const t = document.getElementById('reward-title');
+    if (t) t.textContent = title;
+    const a = document.getElementById('reward-amount');
+    if (a) a.textContent = amount;
+    const m = document.getElementById('reward-modal');
+    if (m) m.hidden = false;
+    feedback.chime(660);
   }
 }

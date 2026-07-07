@@ -7,6 +7,37 @@ import type { Item } from '../src/core/types';
 
 const item = (chain: Item['chain'], level: number, uid: number): Item => ({ chain, level, uid });
 
+describe('board QoL: undo + trash', () => {
+  it('undo restores the board after a merge, once', () => {
+    const g = new Game(1000);
+    const pair = findMergePair(g.snapshot.board)!;
+    const before = g.snapshot.board.cells.filter((c) => c.kind === 'item').length;
+    g.drop(pair[0], pair[1]);
+    expect(g.canUndoMerge()).toBe(true);
+    g.undoLastMerge();
+    expect(g.snapshot.board.cells.filter((c) => c.kind === 'item').length).toBe(before);
+    expect(g.canUndoMerge()).toBe(false);
+  });
+
+  it('delivery clears the undo snapshot (no duplication exploit)', () => {
+    const g = new Game(1000);
+    g.finishDuel(true, [{ chain: 'wood', level: 2 }], 10);
+    const pair = findMergePair(g.snapshot.board)!;
+    g.drop(pair[0], pair[1]);
+    g.deliverFromRepository();
+    expect(g.canUndoMerge()).toBe(false);
+  });
+
+  it('trash removes an item and cannot be undone into a duplicate', () => {
+    const g = new Game(1000);
+    const idx = g.snapshot.board.cells.findIndex((c) => c.kind === 'item');
+    const before = g.snapshot.board.cells.filter((c) => c.kind === 'item').length;
+    g.trashItem(idx);
+    expect(g.snapshot.board.cells.filter((c) => c.kind === 'item').length).toBe(before - 1);
+    expect(g.canUndoMerge()).toBe(false);
+  });
+});
+
 describe('auto-merge', () => {
   it('findMergePair finds a matching pair, or null when none', () => {
     let b = createBoard(6, 7, 21);

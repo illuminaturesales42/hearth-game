@@ -39,7 +39,9 @@
       <!-- ================= CREATE (the merge game) ================= -->
       <section class="screen" id="screen-create">
         <section class="tools-bar" aria-label="Board tools">
-          <span class="tools-hint">Auto-merge joins matching items for you.</span>
+          <button id="undo-btn" class="tool-btn" title="Take back the last merge" hidden>↩ Undo</button>
+          <button id="duel-create-btn" class="tool-btn" title="Bonfire Duel">⚔ Duel</button>
+          <span class="tools-hint">Hold an item for details.</span>
           <label class="auto-toggle" title="Automatically merge matching items">
             <input type="checkbox" id="auto-merge" />
             <span>Auto-merge</span>
@@ -286,11 +288,47 @@
 
   <!-- ================= STORY MODAL ================= -->
   <div id="story-modal" class="modal" role="dialog" aria-modal="true" hidden>
-    <div class="modal-card">
+    <div class="modal-card dialogue-card">
+      <div id="story-bust" class="story-bust" aria-hidden="true" hidden></div>
+      <span id="story-name" class="story-name" hidden></span>
       <div class="modal-flame" aria-hidden="true"></div>
       <p id="story-text"></p>
       <p class="story-reward" id="story-reward"></p>
       <button id="story-continue" class="btn-primary">Continue</button>
+    </div>
+  </div>
+
+  <!-- ================= REWARD (chest) ================= -->
+  <div id="reward-modal" class="modal" role="dialog" aria-modal="true" aria-label="Reward" hidden>
+    <div class="modal-card reward-card">
+      <img id="reward-art" class="reward-art" alt="" />
+      <p id="reward-title" class="reward-title"></p>
+      <b id="reward-amount" class="reward-amount"></b>
+      <button id="reward-continue" class="btn-primary">Take it</button>
+    </div>
+  </div>
+
+  <!-- ================= BUILDING CARD (tap a building on the town) ================= -->
+  <div id="bldg-modal" class="modal" role="dialog" aria-modal="true" aria-label="Building" hidden>
+    <div class="modal-card">
+      <img id="bldg-art" class="bldg-art" alt="" />
+      <p id="bldg-name" class="bldg-name"></p>
+      <p id="bldg-story" class="bldg-story"></p>
+      <p id="bldg-meta" class="story-reward"></p>
+      <button id="bldg-close" class="btn-primary">Back to the village</button>
+    </div>
+  </div>
+
+  <!-- ================= ITEM INFO (long-press a board item) ================= -->
+  <div id="item-modal" class="modal" role="dialog" aria-modal="true" aria-label="Item" hidden>
+    <div class="modal-card">
+      <div id="item-art" class="item-art" aria-hidden="true"></div>
+      <p id="item-name" class="bldg-name"></p>
+      <p id="item-next" class="bldg-story"></p>
+      <div class="duel-result-actions">
+        <button id="item-trash" class="btn-ghost danger">Discard</button>
+        <button id="item-close" class="btn-primary">Keep it</button>
+      </div>
     </div>
   </div>
 

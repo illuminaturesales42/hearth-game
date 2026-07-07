@@ -7,6 +7,7 @@ import type { Game } from '../core/game';
 import { COLLECTIONS, EVENTS, JOURNAL } from '../data/world';
 import { GRATITUDE } from '../data/gratitude';
 import { ACHIEVEMENTS } from '../core/achievements';
+import { artUrl } from './art';
 import { toast } from './toast';
 
 const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
@@ -158,9 +159,12 @@ export class Screens {
       `<div class="badge-grid">` +
       ACHIEVEMENTS.map((a) => {
         const has = earned.has(a.id);
+        const art = a.art ? artUrl(a.art) : null;
+        const ico = art
+          ? `<span class="badge-ico badge-art" style="background-image:url(${art})"></span>`
+          : `<span class="badge-ico">${has ? a.icon : '🔒'}</span>`;
         return (
-          `<div class="badge ${has ? 'earned' : 'locked'}" title="${a.desc}">` +
-          `<span class="badge-ico">${has ? a.icon : '🔒'}</span>` +
+          `<div class="badge ${has ? 'earned' : 'locked'}" title="${a.desc}">${ico}` +
           `<b>${a.title}</b><span>${a.desc}</span></div>`
         );
       }).join('') +
