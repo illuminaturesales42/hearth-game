@@ -305,6 +305,9 @@ body {
 .screen-h3 { font-family: var(--serif); font-size: 18px; margin: 8px 0 0; }
 /* ---------- home map hero (the town, front and centre) ---------- */
 .home-map { position: relative; margin: 4px 0 12px; border-radius: var(--r-panel); overflow: hidden;
+  /* flex: none is load-bearing — overflow:hidden zeroes a flex item's min
+     size, so the scrolling screen column was crushing the map to 0 height */
+  flex: 0 0 auto;
   box-shadow: inset 0 0 0 1.5px rgba(255, 210, 122, 0.22), 0 10px 26px rgba(0, 0, 0, 0.45); }
 .map-canvas { width: 100%; height: 285px; display: block; }
 /* current challenge card on the town map */
