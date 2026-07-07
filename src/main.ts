@@ -5,8 +5,10 @@ import { feedback } from './ui/feedback';
 import { toast } from './ui/toast';
 import { AppShell } from './ui/app-shell';
 import { recentEvents, track } from './analytics';
-import { SelfReportProvider } from './health/health-provider';
 import type { HealthSnapshot } from './health/health-provider';
+import { pickHealthProvider } from './platform/providers';
+import { LocalMirrorSyncProvider } from './platform/sync-provider';
+import { SyncController } from './platform/sync-controller';
 
 const game = new Game();
 new AppShell(game);
@@ -133,10 +135,30 @@ game.subscribe((ev) => {
 });
 
 // ---------- health provider ----------
-// M1 web: self-report only. Native shells swap CapacitorHealthProvider in here
-// and call game.syncHealth on startup + app foreground.
-const health = new SelfReportProvider();
-void health.read();
+// Web self-reports; a Capacitor shell with the Health plugin bound gets real
+// HealthKit / Health Connect readings — chosen at runtime, no code change.
+const health = pickHealthProvider();
+void health.read().then((snap) => {
+  if (snap.source === 'healthkit' || snap.source === 'health-connect') game.syncHealth(snap);
+});
+
+// ---------- cloud save sync (roadmap Phase B) ----------
+// Device-mirror today (guards against a localStorage wipe); the account-backed
+// provider is a drop-in. Reconciles once on launch, then debounced pushes.
+const sync = new SyncController(game, new LocalMirrorSyncProvider());
+void sync.start().then((res) => {
+  if (res.outcome === 'adopted') {
+    toast('Welcome back — your saved village was restored.');
+    setTimeout(() => location.reload(), 800);
+  } else if (res.outcome === 'conflict' && res.remote) {
+    // Two devices diverged: keep the further-along one, never silently wipe.
+    const keepCloud = window.confirm(
+      'A saved Emberhollow was found that differs from this one. Keep the saved village? (Cancel keeps the one on this device.)',
+    );
+    if (keepCloud) void sync.adoptRemote(res.remote).then((ok) => ok && location.reload());
+    else void sync.keepLocal();
+  }
+});
 
 // ---------- dev helpers ----------
 declare global {

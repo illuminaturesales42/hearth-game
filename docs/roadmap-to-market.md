@@ -43,7 +43,7 @@ The PWA can't read steps or sleep, and iOS evicts web storage after 7 quiet days
 
 1. `npx cap add android` first (buildable on the Windows box today); iOS needs a Mac — plan for one (Mac mini / MacinCloud) before Phase C.
 2. HealthKit + Health Connect adapters behind the existing `health-provider` interface (Google Fit is dead end-2026 — Health Connect only).
-3. **Cloud saves — non-negotiable** before real testers on phones. Smallest honest version: account-keyed save sync (the export JSON is already the payload).
+3. **Cloud saves — non-negotiable** before real testers on phones. Smallest honest version: account-keyed save sync (the export JSON is already the payload). **Architecture landed:** `src/platform/sync-provider.ts` (provider seam + pure `resolveSync` conflict policy + device-mirror & in-memory impls) and `sync-controller.ts` (pull-and-reconcile on launch, debounced push, never silently overwrites — conflicts go to the player). The account-backed HTTP provider is now a drop-in: implement `SyncProvider.pull/push` against the endpoint and swap it in `main.ts`. `pickHealthProvider()` in `providers.ts` already selects HealthKit/Health Connect at runtime on native.
 4. Push notifications, gentle and opt-in only (sunrise New Day; never guilt).
 5. Paperwork early — health apps get rejected on it, not code: privacy policy, per-datatype purpose strings, Play Data-Safety form, Apple 5.1.3 compliance (health data never feeds ads/analytics, never in iCloud).
 6. Google Play new-account friction: 12+ testers for 14 days of closed testing is mandatory — recruit from the email list.
