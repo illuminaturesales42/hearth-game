@@ -85,6 +85,13 @@ export const TOWN_BOATS: readonly { art: string; x: number; y: number; w: number
 export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   { art: 'prop_rock', x: 0.05, y: 0.47, w: 0.05, unlockAt: 0, stage: 0 },
   { art: 'prop_rock', x: 0.94, y: 0.68, w: 0.045, unlockAt: 0, stage: 0 },
+  // the storm bent the trees but didn't take them — a fresh island still lives
+  { art: 'tree_pine', x: 0.1, y: 0.44, w: 0.045, unlockAt: 0, stage: 0 },
+  { art: 'tree_pine', x: 0.705, y: 0.415, w: 0.04, unlockAt: 0, stage: 0 },
+  { art: 'tree_bush', x: 0.875, y: 0.5, w: 0.05, unlockAt: 0, stage: 0 },
+  { art: 'tree_bush', x: 0.24, y: 0.62, w: 0.045, unlockAt: 0, stage: 0 },
+  { art: 'prop_rock', x: 0.31, y: 0.815, w: 0.04, unlockAt: 0, stage: 0 },
+  { art: 'prop_barrel', x: 0.585, y: 0.55, w: 0.03, unlockAt: 0, stage: 0 },
   { art: 'tree_pine', x: 0.045, y: 0.4, w: 0.05, unlockAt: 0, stage: 1 },
   { art: 'tree_oak', x: 0.665, y: 0.395, w: 0.07, unlockAt: 0, stage: 1 },
   { art: 'tree_pine', x: 0.315, y: 0.37, w: 0.05, unlockAt: 0, stage: 2 },

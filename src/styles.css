@@ -195,15 +195,30 @@ body {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 .cell {
-  aspect-ratio: 1; border-radius: var(--r-cell); background: rgba(24, 36, 14, 0.22);
-  box-shadow: inset 0 0 0 1px rgba(46, 66, 30, 0.45), inset 0 1px 3px rgba(0, 0, 0, 0.18);
+  /* recessed turf pocket — waiting for a piece */
+  aspect-ratio: 1; border-radius: var(--r-cell); background: rgba(30, 44, 18, 0.30);
+  box-shadow: inset 0 2px 5px rgba(14, 20, 8, 0.45), inset 0 0 0 1px rgba(58, 80, 38, 0.5);
   display: flex; align-items: center; justify-content: center;
   font-size: clamp(20px, 6.5vw, 30px); position: relative;
 }
-.cell.item { background: linear-gradient(170deg, #33405f, #1c2540); box-shadow: inset 0 1px 0 rgba(255, 235, 190, 0.22), 0 3px 8px rgba(0, 0, 0, 0.4); cursor: grab; }
-.cell.producer { background: linear-gradient(170deg, #6b4a2a, #46300f); box-shadow: inset 0 0 0 1.5px rgba(255, 210, 140, 0.5); cursor: pointer; }
-.cell.producer::after { content: "tap"; position: absolute; bottom: 3px; font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ember-hi); }
-.cell .lv { position: absolute; top: 3px; right: 6px; font-size: 9px; font-weight: 800; color: var(--ember-hi); }
+.cell.item {
+  /* a parchment game piece sitting proud of the field (concept mockup #1) */
+  background: linear-gradient(168deg, #e6d2a8, #cfb27e 62%, #bb9a62);
+  box-shadow: inset 0 0 0 1px rgba(92, 62, 30, 0.55), inset 0 -3px 6px rgba(92, 62, 30, 0.22),
+    inset 0 1px 0 rgba(255, 245, 220, 0.5), 0 3px 7px rgba(16, 22, 10, 0.45);
+  cursor: grab;
+}
+.cell.producer {
+  background: linear-gradient(168deg, #e6d2a8, #cfb27e 62%, #bb9a62);
+  box-shadow: inset 0 0 0 1.5px rgba(92, 62, 30, 0.65), 0 3px 7px rgba(16, 22, 10, 0.45);
+  cursor: pointer;
+}
+.cell.producer::before {
+  content: ""; position: absolute; inset: 12%; background-image: url('/art/prop_crate.png');
+  background-size: contain; background-repeat: no-repeat; background-position: center;
+}
+.cell.producer::after { content: "tap"; position: absolute; bottom: 2px; font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: #7a4a1e; }
+.cell .lv { position: absolute; top: 2px; right: 5px; font-size: 9px; font-weight: 800; color: #7a4a1e; text-shadow: 0 1px 0 rgba(255, 245, 220, 0.6); }
 .cell.drop-ok { box-shadow: inset 0 0 0 2px var(--ember-hi), 0 0 14px rgba(255, 210, 122, 0.4); }
 .cell.deliverable { box-shadow: inset 0 0 0 2px var(--good), 0 0 12px rgba(127, 191, 106, 0.35); }
 .cell.shake { animation: shake 0.28s ease; }

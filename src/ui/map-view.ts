@@ -209,17 +209,29 @@ export class MapView {
     });
   }
 
+  /** Building card. Negative unlockAt marks a ghost — still lost to the storm. */
   private showBuilding(art: string, unlockAt: number): void {
+    const locked = unlockAt < 0;
+    const at = Math.abs(unlockAt);
     const img = document.getElementById('bldg-art') as HTMLImageElement | null;
     const url = artUrl(art);
-    if (img && url) img.src = url;
+    if (img && url) {
+      img.src = url;
+      img.style.filter = locked ? 'grayscale(0.85) brightness(0.7)' : '';
+    }
     const name = document.getElementById('bldg-name');
     if (name) name.textContent = BUILDING_INFO[art] ?? 'Emberhollow';
-    const order = ORDERS[unlockAt - 1];
+    const order = ORDERS[at - 1];
     const story = document.getElementById('bldg-story');
-    if (story) story.textContent = order ? order.resolution : 'It has always stood here, waiting.';
+    if (story) {
+      story.textContent = locked
+        ? `Still lost to the storm. ${order ? `${order.who} remembers it well — keep tending the orders and it comes back.` : 'Keep tending the orders and it comes back.'}`
+        : order
+          ? order.resolution
+          : 'It has always stood here, waiting.';
+    }
     const meta = document.getElementById('bldg-meta');
-    if (meta) meta.textContent = `Returned with order ${unlockAt} · ${chapterFor(unlockAt - 1).title}`;
+    if (meta) meta.textContent = locked ? `Returns with order ${at} · ${chapterFor(at - 1).title}` : `Returned with order ${at} · ${chapterFor(at - 1).title}`;
     const m = document.getElementById('bldg-modal');
     if (m) m.hidden = false;
   }
@@ -497,9 +509,25 @@ export class MapView {
       ctx.restore();
     }
 
-    // --- pieces, painter-sorted (player decor joins the town) ---
+    // --- ghosts of what the storm took: the next few buildings show as
+    // faint ruins, so a young island already carries its promise ---
+    const ghosts = TOWN_BUILDINGS.filter((b) => b.unlockAt > delivered).slice(0, 3);
     this.hitboxes = [];
     this.decorHit = [];
+    for (const g of ghosts) {
+      const img = this.sprite(g.art);
+      if (!img) continue;
+      const w = g.w * W;
+      const h = w * (img.naturalHeight / img.naturalWidth);
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.filter = 'grayscale(0.85) brightness(0.55)';
+      ctx.drawImage(img, g.x * W - w / 2, g.y * H - h, w, h);
+      ctx.restore();
+      if (BUILDING_INFO[g.art]) {
+        this.hitboxes.push({ x0: g.x * W - w / 2, y0: g.y * H - h, x1: g.x * W + w / 2, y1: g.y * H, art: g.art, unlockAt: -g.unlockAt });
+      }
+    }
     interface ScenePiece {
       art: string;
       x: number;

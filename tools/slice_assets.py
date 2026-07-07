@@ -156,6 +156,15 @@ def define() -> None:
     row("batch34", "item_wood_", [str(i) for i in range(7)], 10, 115, 700, 248)
     row("batch34", "item_harvest_", [str(i) for i in range(7)], 10, 312, 700, 446)
     row("batch34", "item_hearthfire_", [str(i) for i in range(4)], 0, 518, 560, 645)
+    # key the navy panel bg off the item icons so they sit as pieces on the
+    # grassy board (tight tolerance: several icons are dark near their edges)
+    for _chain, _n in (("wood", 7), ("harvest", 7), ("hearthfire", 4)):
+        for _i in range(_n):
+            KEYED.add(f"item_{_chain}_{_i}")
+            # the wood row sits on a lighter navy gradient — needs a looser key
+            TOLERANCE[f"item_{_chain}_{_i}"] = 44 if _chain == "wood" else 30
+    TOLERANCE["item_wood_5"] = 56  # door + cottage cells are darker still
+    TOLERANCE["item_wood_6"] = 56
     # resources (skip the gem — no premium currency in Hearth)
     row("batch34", "res_", ["coin", "energy", "gem_SKIP", "chest_closed", "chest_open", "star", "gift"],
         10, 818, 700, 898)
