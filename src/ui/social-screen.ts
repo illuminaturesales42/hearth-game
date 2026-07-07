@@ -10,7 +10,8 @@ import type { Game } from '../core/game';
 import { chainDef } from '../core/board';
 import { portraitFor } from './art';
 import { JOIN_BONUS } from '../core/social';
-import { VILLAGERS } from '../data/world';
+import { greetingFor } from '../core/relationships';
+import { VILLAGER_DEFS } from '../data/villagers';
 import { toast } from './toast';
 
 const host = () => document.getElementById('villagers-body');
@@ -22,7 +23,7 @@ export class SocialScreen {
     private onDuel: () => void = () => undefined,
   ) {
     game.subscribe((ev) => {
-      if ((ev.type === 'social' || ev.type === 'duelEnd') && this.isVisible()) this.render();
+      if ((ev.type === 'social' || ev.type === 'duelEnd' || ev.type === 'bond') && this.isVisible()) this.render();
     });
   }
 
@@ -93,16 +94,25 @@ export class SocialScreen {
       `<p class="med-log-note">Friends and trading are simulated in this build; the multiplayer service arrives in M3.</p>` +
 
       `<p class="earn-label">Village folk</p>` +
-      `<div class="friend-list">` +
-      VILLAGERS.map((v) => {
+      `<p class="screen-sub folk-sub">The people of Emberhollow remember what you do for them. Help them, and the hearts fill.</p>` +
+      `<div class="friend-list folk-list">` +
+      VILLAGER_DEFS.map((v) => {
         const bust = portraitFor(v.name);
         const face = bust
           ? `<div class="friend-face npc has-art" style="background-image:url(${bust})" aria-hidden="true"></div>`
           : `<div class="friend-face npc" aria-hidden="true"></div>`;
+        const b = this.game.bond(v.id);
+        const rel = this.game.snapshot.relationships;
+        const greeting = greetingFor(rel, v.id);
+        const memory = rel[v.id]?.memories[0];
         return (
-          `<div class="friend">${face}` +
-          `<div class="friend-body"><b>${v.name}</b><span>${v.role}</span></div>` +
-          `<span class="friend-hearts">${hearts(v.affinity)}</span></div>`
+          `<div class="folk">` +
+          `<div class="folk-head">${face}` +
+          `<div class="friend-body"><b>${v.name}</b><span>${v.role} · ${v.trait}</span></div>` +
+          `<span class="friend-hearts" title="${b.hearts}/5">${hearts(b.hearts)}</span></div>` +
+          `<p class="folk-greet">${greeting}</p>` +
+          (memory && b.hearts > 0 ? '' : `<p class="folk-hint">Deliver ${v.name}’s orders to earn their trust — you’ll find them near ${v.favouritePlace}.</p>`) +
+          `</div>`
         );
       }).join('') +
       `</div>`;

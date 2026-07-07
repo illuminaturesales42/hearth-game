@@ -76,6 +76,12 @@ export class Home {
             toast(ev.selfie ? `+${ev.energy} energy — a compliment and a new friend. 💛` : `+${ev.energy} energy. A kindness ripples out.`);
           }
           break;
+        case 'bond':
+          if (ev.grew) {
+            feedback.chime(660);
+            toast(`${ev.name}’s trust grows — ${'♥'.repeat(ev.hearts)}${'♡'.repeat(Math.max(0, 5 - ev.hearts))}`);
+          }
+          break;
         case 'achievement':
           feedback.chime(660);
           toast(`${ev.icon} Achievement: ${ev.title}`);

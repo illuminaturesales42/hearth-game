@@ -3,7 +3,7 @@
  * UI layers subscribe; core stays DOM-free.
  */
 import type { GameState, Item } from './types';
-import { createBoard, dropItem, emptyIndices, findItem, findMergePair, itemAt, withEmpty, withItem } from './board';
+import { chainDef, createBoard, dropItem, emptyIndices, findItem, findMergePair, itemAt, withEmpty, withItem } from './board';
 import { accrueRegen, canSpend, grant, initialEnergy, spend } from './energy';
 import { BOARD_COLS, BOARD_ROWS, CHAPTERS, ENERGY, ORDERS, PRODUCER_INDEX, SPAWN_TABLE, stageFor } from '../data/economy';
 import { appendEntry, composeEntry, rolloverStats } from './chronicle';
@@ -24,8 +24,10 @@ import { STARGAZE, fullMoonBonus, phaseName } from '../data/moon';
 import { isNight } from './sun';
 import type { Coords } from './sun';
 import { addToRepository, duelMultiplier } from './duel';
-import { DECOR_CATALOG } from '../data/town-layout';
-import type { ActionState, ChainId, GratitudeEntry, GratitudeState, RepositoryItem, Settings, SocialState } from './types';
+import { DECOR_CATALOG, TOWN_BUILDINGS, BUILDING_INFO } from '../data/town-layout';
+import { bondFor, deliveryMemory, hearts, recordMemory, restoreMemory } from './relationships';
+import { villagerIdFor, villagerDef } from '../data/villagers';
+import type { ActionState, ChainId, GratitudeEntry, GratitudeState, OrderDef, RepositoryItem, Settings, SocialState } from './types';
 
 export type GameEvent =
   | { type: 'state' }
@@ -48,6 +50,7 @@ export type GameEvent =
   | { type: 'achievement'; id: string; title: string; icon: string }
   | { type: 'questDone'; label: string; coins: number }
   | { type: 'chronicle'; day: string }
+  | { type: 'bond'; villagerId: string; name: string; hearts: number; grew: boolean }
   | { type: 'decor' }
   | { type: 'settings' }
   | { type: 'duelEnd'; won: boolean; streak: number; multiplier: number; coins: number; itemCount: number }
@@ -95,6 +98,7 @@ export class Game {
       questsClaimed: [],
       flags: { ftueDone: false, windDownShown: false },
       wellbeing: { lastCalmDay: null },
+      relationships: {},
       decor: [],
       nextDecorId: 1,
       repository: [],
@@ -350,7 +354,34 @@ export class Game {
       rewardEnergy: order.rewardEnergy,
       rewardCoins: order.rewardCoins,
     });
+    this.recordBond(order);
     this.emitChapterBoundary();
+  }
+
+  /**
+   * A delivery is a moment between the player and a villager (Codex Book III).
+   * It grows their bond and is remembered; restoring the villager's own home
+   * counts double. Emitted as a 'bond' event so the UI can celebrate quietly.
+   */
+  private recordBond(order: OrderDef): void {
+    const vid = villagerIdFor(order.who);
+    if (!vid) return;
+    const day = this.state.actions.day;
+    const before = hearts(bondFor(this.state.relationships, vid).points);
+    const itemName = chainDef(order.need.chain).levelNames[order.need.level] ?? 'what they needed';
+    let rel = recordMemory(this.state.relationships, vid, deliveryMemory(day, villagerDef(vid)?.name ?? order.who, itemName));
+    // Did this delivery just bring their home back from the storm?
+    const home = TOWN_BUILDINGS.find((b) => b.unlockAt === this.state.orderIndex && b.art === villagerDef(vid)?.home);
+    if (home) rel = recordMemory(rel, vid, restoreMemory(day, BUILDING_INFO[home.art] ?? 'their home'));
+    this.state = { ...this.state, relationships: rel };
+    const after = hearts(bondFor(rel, vid).points);
+    this.emit({ type: 'bond', villagerId: vid, name: villagerDef(vid)?.name ?? order.who, hearts: after, grew: after > before });
+  }
+
+  /** The player's standing with a villager, for the Villagers screen. */
+  bond(villagerId: string): { points: number; hearts: number } {
+    const b = bondFor(this.state.relationships, villagerId);
+    return { points: b.points, hearts: hearts(b.points) };
   }
 
   /** Fires chapterComplete when a delivery just crossed a chapter's end. */
@@ -655,6 +686,7 @@ export class Game {
       rewardEnergy: order.rewardEnergy,
       rewardCoins: order.rewardCoins,
     });
+    this.recordBond(order);
     this.emitChapterBoundary();
   }
 

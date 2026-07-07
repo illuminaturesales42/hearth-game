@@ -182,6 +182,25 @@ export interface WellbeingState {
   lastCalmDay: string | null;
 }
 
+/**
+ * A remembered moment with a villager (Codex Book III: "People remember
+ * people, not quest givers"). Memories resurface in greetings.
+ */
+export interface Memory {
+  day: string; // YYYY-MM-DD local
+  text: string;
+  warmth: number; // bond points this moment was worth
+}
+
+/** The player's standing with one villager: bond points + what they remember. */
+export interface VillagerBond {
+  points: number;
+  memories: readonly Memory[];
+}
+
+/** villagerId -> bond. Absent = not yet met meaningfully. (save v12) */
+export type RelationshipState = Record<string, VillagerBond>;
+
 /** A player-placed decoration on the town map (normalized coords). */
 export interface DecorPiece {
   id: number;
@@ -207,6 +226,8 @@ export interface GameState {
   settings: Settings;
   prefs: Prefs;
   wellbeing: WellbeingState;
+  /** How each villager remembers the player (Codex Book III). */
+  relationships: RelationshipState;
   /** Player-placed town decorations (coins buy beauty, never power). */
   decor: readonly DecorPiece[];
   nextDecorId: number;
