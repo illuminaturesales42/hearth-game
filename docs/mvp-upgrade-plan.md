@@ -31,7 +31,7 @@
 
 ## Sprint 3 — Gameplay loops
 1. ✅ **Decor placement — the missing coin sink**: Decorate mode on Home; 7-piece catalog (bench/lamp/flowerbush/fence/barrel/pine/well, already-sliced props); tap to place, tap to pick up (full refund — nothing is ever lost); persists in save v11. Coins finally buy town beauty — never power.
-2. ⏳ **Building upgrades L2/L3** (batch567 6.1 sets): DEFERRED — upgrade-set sprites not yet sliced; needs a probe/slice pass on the batch567 sheet first.
+2. ✅ **Building upgrades L2/L3**: SHIPPED (7827f19) — coins upgrade returned buildings through Restored → Cared-for → Beloved (costs 120/320); rendered procedurally on the map (bunting @L2, lanterns + golden aura @L3) so no new slices were needed; upgrade button in the building tap card. Save v13. Second coin sink.
 3. ✅ **Order queue**: "Up next" preview under the order card.
 4. ✅ **Duel "Friend" AI**: mode chooser (pass & play vs Old Joss); greedy highest-merge opponent, 750 ms think.
 5. ✅ **Economy simulation test**: `tests/economy-pacing.test.ts` walks both chapters against a lazy-floor energy diet (≤14 days/chapter, ≤30 days total, rewards < spawn demand).
