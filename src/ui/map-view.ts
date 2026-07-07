@@ -12,6 +12,7 @@ import type { Game } from '../core/game';
 import { MAP_LOCATIONS } from '../data/world';
 import { ORDERS, chapterFor, stageFor } from '../data/economy';
 import { questsForDay } from '../data/daily-quests';
+import { TOWN_BUILDINGS, TOWN_NATURE } from '../data/town-layout';
 import { artUrl } from './art';
 
 const STAGE_NAMES = [
@@ -30,6 +31,11 @@ export class MapView {
   private reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   /** Painted stage backdrops (sliced from the concept sheets); null until loaded. */
   private stageArt: (HTMLImageElement | null)[] = [null, null, null, null, null];
+  /** Sprite cache for the composed town scene. */
+  private sprites = new Map<string, HTMLImageElement>();
+  /** Recently-appeared building pop-in animations (art id -> start ms). */
+  private appeared = new Map<string, number>();
+  private lastOrderIndex = -1;
 
   constructor(private game: Game) {
     for (let i = 0; i < 5; i++) {
@@ -114,6 +120,13 @@ export class MapView {
     const prog = this.progress();
     const stage = this.stage();
     ctx.clearRect(0, 0, W, H);
+
+    // Composed living town (building sprites unlock with the story).
+    if (artUrl('town_townhall')) {
+      this.drawTown(ctx, W, H, t, prog, stage);
+      this.updateBar(prog, stage);
+      return;
+    }
 
     // Painted stage backdrop when available (procedural scene as fallback).
     const art = this.stageArt[stage];
@@ -223,6 +236,192 @@ export class MapView {
     }
 
     this.updateBar(prog, stage);
+  }
+
+  private sprite(id: string): HTMLImageElement | null {
+    let img = this.sprites.get(id) ?? null;
+    if (!img) {
+      const url = artUrl(id);
+      if (!url) return null;
+      img = new Image();
+      img.src = url;
+      this.sprites.set(id, img);
+    }
+    return img.complete && img.naturalWidth > 0 ? img : null;
+  }
+
+  /**
+   * Emberhollow as a composed scene: every delivered order returns another
+   * building; nature and lamplight fill in as the village heals. Sky keeps
+   * real time; the sea keeps its own counsel at the shore.
+   */
+  private drawTown(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, prog: number, stage: number): void {
+    const delivered = this.game.snapshot.orderIndex;
+
+    // pop-in bookkeeping for buildings that just appeared
+    if (this.lastOrderIndex >= 0 && delivered > this.lastOrderIndex) {
+      for (const b of TOWN_BUILDINGS) {
+        if (b.unlockAt > this.lastOrderIndex && b.unlockAt <= delivered) this.appeared.set(b.art, performance.now());
+      }
+    }
+    this.lastOrderIndex = delivered;
+
+    // --- sky by real time of day ---
+    const hour = new Date().getHours();
+    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.45);
+    if (hour >= 5 && hour < 11) {
+      sky.addColorStop(0, '#3a4a72');
+      sky.addColorStop(1, mix('#c98a5a', '#f0c890', prog));
+    } else if (hour >= 11 && hour < 17) {
+      sky.addColorStop(0, '#3f5a86');
+      sky.addColorStop(1, '#a8c0d8');
+    } else if (hour >= 17 && hour < 21) {
+      sky.addColorStop(0, '#2c3560');
+      sky.addColorStop(1, mix('#a86242', '#f0a05a', prog));
+    } else {
+      sky.addColorStop(0, '#0c1230');
+      sky.addColorStop(1, '#233058');
+    }
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H * 0.45);
+    // sun or moon
+    const night = hour >= 21 || hour < 5;
+    ctx.fillStyle = night ? 'rgba(230,235,250,0.9)' : 'rgba(255,240,200,0.95)';
+    ctx.beginPath();
+    ctx.arc(W * 0.78, H * 0.14, night ? 11 : 14, 0, Math.PI * 2);
+    ctx.fill();
+    if (!night) {
+      const glow = ctx.createRadialGradient(W * 0.78, H * 0.14, 5, W * 0.78, H * 0.14, 52);
+      glow.addColorStop(0, 'rgba(255,220,150,0.5)');
+      glow.addColorStop(1, 'rgba(255,220,150,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, W, H * 0.4);
+    }
+
+    // --- sea, then the island ground ---
+    ctx.fillStyle = night ? '#0a1626' : '#1c3b4a';
+    ctx.fillRect(0, H * 0.42, W, H * 0.58);
+    const grass = mix('#5a5038', '#3f6238', Math.min(1, stage / 3)); // storm-mud heals to green
+    ctx.fillStyle = grass;
+    ctx.beginPath();
+    ctx.moveTo(-W * 0.05, H * 0.46);
+    ctx.quadraticCurveTo(W * 0.2, H * 0.36, W * 0.5, H * 0.37);
+    ctx.quadraticCurveTo(W * 0.82, H * 0.36, W * 1.02, H * 0.5);
+    ctx.lineTo(W * 1.05, H * 0.82);
+    ctx.quadraticCurveTo(W * 0.7, H * 0.94, W * 0.4, H * 0.9);
+    ctx.quadraticCurveTo(W * 0.08, H * 0.88, -W * 0.05, H * 0.78);
+    ctx.closePath();
+    ctx.fill();
+    // shoreline highlight
+    ctx.strokeStyle = 'rgba(230, 214, 170, 0.35)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    // dirt paths once rebuilding begins
+    if (stage >= 1) {
+      ctx.strokeStyle = 'rgba(150, 120, 80, 0.5)';
+      ctx.lineWidth = Math.max(4, W * 0.016);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(W * 0.27, H * 0.5);
+      ctx.quadraticCurveTo(W * 0.5, H * 0.56, W * 0.64, H * 0.47);
+      ctx.moveTo(W * 0.5, H * 0.52);
+      ctx.quadraticCurveTo(W * 0.52, H * 0.66, W * 0.6, H * 0.72);
+      ctx.stroke();
+    }
+
+    // --- pieces, painter-sorted ---
+    const pieces = [
+      ...TOWN_NATURE.filter((n) => stage >= n.stage),
+      ...TOWN_BUILDINGS.filter((b) => delivered >= b.unlockAt),
+    ].sort((a, b) => a.y - b.y);
+    for (const p of pieces) {
+      const img = this.sprite(p.art);
+      if (!img) continue;
+      const w = p.w * W;
+      const h = w * (img.naturalHeight / img.naturalWidth);
+      let scale = 1;
+      let alpha = 1;
+      const born = this.appeared.get(p.art);
+      if (born !== undefined && !this.reduce) {
+        const age = (performance.now() - born) / 900;
+        if (age < 1) {
+          scale = 0.6 + 0.4 * Math.min(1, age * 1.4);
+          alpha = Math.min(1, age * 2);
+        } else this.appeared.delete(p.art);
+      }
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(img, p.x * W - (w * scale) / 2, p.y * H - h * scale, w * scale, h * scale);
+      ctx.globalAlpha = 1;
+      // cosy chimney smoke once the village is warm again
+      if (p.smoke && stage >= 3 && !this.reduce) {
+        const sx = p.x * W + p.smoke.dx * w;
+        const sy = p.y * H - h + p.smoke.dy * h * 0.2;
+        for (let i = 0; i < 3; i++) {
+          const puffY = sy - i * 7 - ((t / 260 + i * 3) % 8);
+          ctx.fillStyle = `rgba(232, 225, 210, ${0.22 - i * 0.06})`;
+          ctx.beginPath();
+          ctx.arc(sx + Math.sin(t / 700 + i) * 2.5, puffY, 2.5 + i * 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    // --- the lighthouse keeps its watch on the point ---
+    const lx = W * 0.945;
+    const lTop = H * 0.28;
+    const lit = delivered >= 9; // the beacon story beat
+    ctx.fillStyle = '#ded6c2';
+    ctx.fillRect(lx - 6, lTop, 12, H * 0.2);
+    ctx.fillStyle = '#a8452f';
+    ctx.fillRect(lx - 6, lTop + H * 0.06, 12, H * 0.035);
+    ctx.fillStyle = lit ? '#ffe6a8' : '#39415a';
+    ctx.fillRect(lx - 8, lTop - 9, 16, 9);
+    if (lit) {
+      const ang = this.reduce ? -0.2 : Math.sin(t / 1500) * 0.55;
+      const beam = ctx.createLinearGradient(lx, lTop - 4, lx - 150 * Math.cos(ang), lTop - 4 - 80 * Math.sin(ang));
+      beam.addColorStop(0, 'rgba(255,230,160,0.45)');
+      beam.addColorStop(1, 'rgba(255,230,160,0)');
+      ctx.fillStyle = beam;
+      ctx.beginPath();
+      ctx.moveTo(lx, lTop - 4);
+      ctx.lineTo(lx - 160 * Math.cos(ang - 0.12), lTop - 4 - 100 * Math.sin(ang - 0.12));
+      ctx.lineTo(lx - 160 * Math.cos(ang + 0.12), lTop - 4 - 100 * Math.sin(ang + 0.12));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // --- sea shimmer at the shore ---
+    if (!this.reduce) {
+      ctx.strokeStyle = night ? 'rgba(180, 200, 255, 0.12)' : 'rgba(255,220,150,0.16)';
+      ctx.lineWidth = 1;
+      for (let y = H * 0.9; y < H; y += 8) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        for (let x = 0; x <= W; x += 22) ctx.lineTo(x, y + Math.sin(x / 26 + t / 600 + y) * 1.4);
+        ctx.stroke();
+      }
+    }
+
+    // --- your day, reflected (living-world flourishes) ---
+    const counts = this.game.snapshot.actions.counts;
+    const sleptWell = (this.game.snapshot.healthLedger?.sleepGranted ?? 0) > 0;
+    if (sleptWell && !this.reduce) {
+      const pulse = 0.06 + 0.03 * Math.sin(t / 1600);
+      const glow = ctx.createRadialGradient(W * 0.5, H * 0.5, 10, W * 0.5, H * 0.5, W * 0.55);
+      glow.addColorStop(0, `rgba(255, 200, 120, ${pulse.toFixed(3)})`);
+      glow.addColorStop(1, 'rgba(255, 200, 120, 0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, W, H);
+    }
+    if ((counts['nature-photo'] ?? 0) > 0) {
+      const flowers = ['#e6739a', '#ffd27a', '#a06be0', '#7fbf6a', '#e6739a'];
+      for (let i = 0; i < 5; i++) {
+        ctx.fillStyle = flowers[i]!;
+        ctx.beginPath();
+        ctx.arc(W * (0.3 + i * 0.09), H * 0.86, 2.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   }
 
   private drawHomestead(ctx: CanvasRenderingContext2D, cx: number, groundY: number, stage: number, t: number): void {

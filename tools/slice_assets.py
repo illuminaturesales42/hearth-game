@@ -39,6 +39,36 @@ SHEETS = {
 # id -> (sheet_key, (x0, y0, x1, y1)) in native sheet pixels (all sheets 1536x1024
 # except concept boards). Populated iteratively via --probe verification.
 MANIFEST: dict[str, tuple[str, tuple[int, int, int, int]]] = {}
+# ids that get edge-flood background removal (sprites composed onto scenes)
+KEYED: set[str] = set()
+
+
+def remove_bg(im: Image.Image, tolerance: int = 52) -> Image.Image:
+    """Make the panel background transparent: BFS from all border pixels,
+    clearing anything within `tolerance` colour distance of the border
+    average. Interior dark pixels stay (only edge-connected bg is removed)."""
+    im = im.convert("RGBA")
+    px = im.load()
+    w, h = im.size
+    border = [(x, y) for x in range(w) for y in (0, h - 1)] + [(x, y) for x in (0, w - 1) for y in range(h)]
+    n = len(border)
+    avg = tuple(sum(px[x, y][c] for x, y in border) // n for c in range(3))
+
+    def close(p):
+        return (p[0] - avg[0]) ** 2 + (p[1] - avg[1]) ** 2 + (p[2] - avg[2]) ** 2 <= tolerance * tolerance
+
+    seen = bytearray(w * h)
+    stack = [p for p in border if close(px[p[0], p[1]])]
+    for x, y in stack:
+        seen[y * w + x] = 1
+    while stack:
+        x, y = stack.pop()
+        px[x, y] = (0, 0, 0, 0)
+        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if 0 <= nx < w and 0 <= ny < h and not seen[ny * w + nx] and close(px[nx, ny]):
+                seen[ny * w + nx] = 1
+                stack.append((nx, ny))
+    return im
 
 
 def add(sheet: str, entries: dict[str, tuple[int, int, int, int]]) -> None:
@@ -76,6 +106,8 @@ def slice_all() -> None:
         if key not in opened:
             opened[key] = Image.open(SRC / SHEETS[key]).convert("RGBA")
         im = opened[key].crop(box)
+        if ident in KEYED:
+            im = remove_bg(im)
         im.save(OUT / f"{ident}.png")
         ids.append(ident)
     ts = (
@@ -145,6 +177,35 @@ def define() -> None:
     # ---- batch1: homestead stages (Home hero) + splash emblem ----
     row("batch1", "stage_", [str(i) for i in range(5)], 320, 40, 1258, 274)
     add("batch1", {"splash_emblem": (1272, 30, 1522, 268)})
+
+    # ---- corepack3: town building + nature sprites (edge-keyed for compositing) ----
+    town = {
+        "town_townhall": (352, 45, 510, 187),
+        "town_cottage": (530, 42, 700, 187),
+        "town_workshop": (722, 45, 880, 187),
+        "town_bakery": (910, 40, 1075, 187),
+        "town_market": (1098, 48, 1262, 187),
+        "town_dock": (1288, 40, 1490, 187),
+        "town_farm": (345, 322, 510, 455),
+        "town_fisherhut": (528, 322, 700, 455),
+        "town_sawmill": (720, 322, 880, 455),
+        "town_blacksmith": (905, 322, 1075, 455),
+        "town_library": (1098, 322, 1265, 455),
+        "town_garden": (1288, 322, 1480, 455),
+        "prop_bench": (8, 898, 88, 985),
+        "prop_lamp": (104, 890, 176, 985),
+        "prop_sign": (178, 890, 242, 985),
+        "prop_well": (244, 895, 306, 985),
+        "prop_crate": (316, 915, 362, 985),
+        "prop_barrel": (364, 910, 412, 985),
+        "tree_oak": (494, 900, 572, 982),
+        "tree_pine": (576, 902, 638, 982),
+        "tree_bush": (642, 916, 718, 985),
+        "tree_flowerbush": (722, 908, 812, 980),
+        "prop_rock": (814, 912, 878, 985),
+    }
+    add("corepack3", town)
+    KEYED.update(town.keys())
 
     # ---- batch567: dialogue busts + fx stills ----
     add("batch567", {
