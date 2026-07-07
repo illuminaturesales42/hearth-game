@@ -23,17 +23,19 @@ REPO = Path(__file__).resolve().parents[1]
 OUT = REPO / "public" / "art"
 TS_MANIFEST = REPO / "src" / "art-manifest.ts"
 
+# The user curated the canonical sheets into Core/ (2026-07-07) with friendly
+# names; working sheets remain in the folder root.
 SHEETS = {
-    "batch1": "Hearth_Assets.png",                                   # stages, style ref
-    "batch2": "01be34e2-4330-41d8-a41e-043cac105b37.png",            # map, vignettes
-    "batch34": "0f35c592-a51a-4183-ad3f-e0159dcfba17.png",           # merge items + UI kit
+    "batch1": "Core/Hearth_Assets.png",                              # stages, style ref (= progress.png)
+    "batch2": "Core/Map.png",                                        # map, vignettes
+    "batch34": "Core/Merge assest.png",                              # merge items + UI kit
     "batch567": "7f864af6-7e0a-4195-b28c-6683574085c1.png",          # portraits, buildings, fx
     "batch89": "fc428ff1-536b-4168-a842-a67644ad32e2.png",           # events, polish, splash
     "corepack1": "ChatGPT Image Jul 7, 2026, 04_42_47 AM.png",       # ui elements, props, trees
     "corepack2": "ChatGPT Image Jul 7, 2026, 04_42_55 AM.png",       # hud, chest, popups
-    "corepack3": "ChatGPT Image Jul 7, 2026, 04_43_01 AM.png",       # buildings catalogue
+    "corepack3": "Core/Terain and buildings.png",                    # buildings catalogue
     "corepack4": "ChatGPT Image Jul 7, 2026, 04_43_05 AM.png",       # core mvp pack (avatars, buildings)
-    "corepack5": "ChatGPT Image Jul 7, 2026, 04_43_12 AM.png",       # core mvp pack 2
+    "corepack5": "Core/MVP.png",                                     # CORE board + palette reference
 }
 
 # id -> (sheet_key, (x0, y0, x1, y1)) in native sheet pixels (all sheets 1536x1024
@@ -78,12 +80,13 @@ def add(sheet: str, entries: dict[str, tuple[int, int, int, int]]) -> None:
         MANIFEST[k] = (sheet, v)
 
 
-def row(sheet: str, prefix: str, ids: list[str], x0: int, y0: int, x1: int, y1: int) -> None:
-    """Evenly split [x0,x1] into len(ids) cells at rows y0..y1."""
+def row(sheet: str, prefix: str, ids: list[str], x0: int, y0: int, x1: int, y1: int, inset: int = 0) -> None:
+    """Evenly split [x0,x1] into len(ids) cells at rows y0..y1.
+    `inset` shrinks each cell on every side — kills neighbour-sprite bleed."""
     n = len(ids)
     w = (x1 - x0) / n
     for i, ident in enumerate(ids):
-        add(sheet, {f"{prefix}{ident}": (int(x0 + i * w), y0, int(x0 + (i + 1) * w), y1)})
+        add(sheet, {f"{prefix}{ident}": (int(x0 + i * w) + inset, y0 + inset, int(x0 + (i + 1) * w) - inset, y1 - inset)})
 
 
 def probe(key: str) -> None:
@@ -153,9 +156,9 @@ def contact() -> None:
 
 def define() -> None:
     # ---- batch34: merge item icons (the board's face) ----
-    row("batch34", "item_wood_", [str(i) for i in range(7)], 10, 115, 700, 248)
-    row("batch34", "item_harvest_", [str(i) for i in range(7)], 10, 312, 700, 446)
-    row("batch34", "item_hearthfire_", [str(i) for i in range(4)], 0, 518, 560, 645)
+    row("batch34", "item_wood_", [str(i) for i in range(7)], 10, 115, 700, 248, inset=5)
+    row("batch34", "item_harvest_", [str(i) for i in range(7)], 10, 312, 700, 446, inset=5)
+    row("batch34", "item_hearthfire_", [str(i) for i in range(4)], 0, 518, 560, 645, inset=5)
     # key the navy panel bg off the item icons so they sit as pieces on the
     # grassy board (tight tolerance: several icons are dark near their edges)
     for _chain, _n in (("wood", 7), ("harvest", 7), ("hearthfire", 4)):
@@ -181,7 +184,8 @@ def define() -> None:
         "btn_secondary": (736, 220, 893, 260),
         "btn_disabled": (736, 263, 893, 303),
         "panel_large": (922, 92, 1112, 208),
-        "panel_parchment": (922, 226, 1112, 304),
+        # inset past the torn corner notches so text never lands on dark edges
+        "panel_parchment": (930, 233, 1104, 297),
         "popup_window": (1238, 112, 1385, 262),
     })
 
@@ -259,8 +263,8 @@ def define() -> None:
     for dark in ("boat_fishing_s", "boat_fishing_m", "boat_sail_s", "boat_row", "animal_cat", "animal_dog"):
         TOLERANCE[dark] = 26
 
-    # ---- corepack4: the grassy merge field (play area) ----
-    add("corepack4", {"board_grass": (386, 513, 660, 708)})
+    # ---- corepack5 (Core/MVP.png): the canonical grid board (merge area) ----
+    add("corepack5", {"board_grass": (773, 500, 1172, 760)})
     KEYED.add("board_grass")
     TOLERANCE["board_grass"] = 26  # keep the stone rim; a faint dark halo hides on navy
 
