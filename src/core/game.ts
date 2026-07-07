@@ -595,6 +595,7 @@ export class Game {
       return;
     }
     this.bumpStat({ dayDelivers: this.state.stats.dayDelivers + 1 });
+    this.undoBoard = null; // deliveries close the undo window, wherever they come from
     const repository = this.state.repository
       .map((r, i) => (i === idx ? { ...r, count: r.count - 1 } : r))
       .filter((r) => r.count > 0);
