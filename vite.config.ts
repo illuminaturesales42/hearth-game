@@ -2,6 +2,10 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  preview: {
+    // local static preview, exposed only via tunnels for remote phone testing
+    allowedHosts: true,
+  },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
