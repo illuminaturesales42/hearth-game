@@ -14,6 +14,7 @@ export const ART_IDS: ReadonlySet<string> = new Set([
   'badge_hearth_guardian',
   'badge_master_builder',
   'badge_merge_master',
+  'board_grass',
   'boat_fishing_m',
   'boat_fishing_s',
   'boat_row',

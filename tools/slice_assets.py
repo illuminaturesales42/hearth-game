@@ -250,6 +250,11 @@ def define() -> None:
     for dark in ("boat_fishing_s", "boat_fishing_m", "boat_sail_s", "boat_row", "animal_cat", "animal_dog"):
         TOLERANCE[dark] = 26
 
+    # ---- corepack4: the grassy merge field (play area) ----
+    add("corepack4", {"board_grass": (386, 513, 660, 708)})
+    KEYED.add("board_grass")
+    TOLERANCE["board_grass"] = 26  # keep the stone rim; a faint dark halo hides on navy
+
     # ---- batch567: dialogue busts + fx stills ----
     add("batch567", {
         "char_bran_bust": (26, 698, 112, 806),
