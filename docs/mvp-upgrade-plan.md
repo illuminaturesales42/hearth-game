@@ -30,13 +30,17 @@
 6. **Cozy weather moments**: occasional soft rain/fog overlays from batch567 7.4 stills (post-MVP if time is tight).
 
 ## Sprint 3 — Gameplay loops
-1. **Decor placement — the missing coin sink**: spend coins to place benches, lamps, flower beds, fences onto the town (props already sliced); player decor persists in the save (docs: "player-placed decor persists year-round"). Coins finally buy town beauty — never power.
-2. **Building upgrades L2/L3** (batch567 6.1 sets): once the story returns a building, coins can upgrade it — visible on the map, second long-term sink.
-3. **Order queue**: show the next order alongside the current one so players can plan chains (top-merge-game pattern).
-4. **Duel "Friend" AI**: a simple greedy opponent so solo players can play Bonfire Duel without a second human.
-5. **Economy simulation test**: a vitest that "plays" both chapters and asserts days-to-complete stays within the pacing band; tune `HEALTH_RULES`/rewards from it.
-6. **Playwright smoke in CI**: launch → merge → deliver → reload persists.
-7. **Loading illustration** (batch89) behind first-load precache.
+1. ✅ **Decor placement — the missing coin sink**: Decorate mode on Home; 7-piece catalog (bench/lamp/flowerbush/fence/barrel/pine/well, already-sliced props); tap to place, tap to pick up (full refund — nothing is ever lost); persists in save v11. Coins finally buy town beauty — never power.
+2. ⏳ **Building upgrades L2/L3** (batch567 6.1 sets): DEFERRED — upgrade-set sprites not yet sliced; needs a probe/slice pass on the batch567 sheet first.
+3. ✅ **Order queue**: "Up next" preview under the order card.
+4. ✅ **Duel "Friend" AI**: mode chooser (pass & play vs Old Joss); greedy highest-merge opponent, 750 ms think.
+5. ✅ **Economy simulation test**: `tests/economy-pacing.test.ts` walks both chapters against a lazy-floor energy diet (≤14 days/chapter, ≤30 days total, rewards < spawn demand).
+6. ⏳ **Playwright smoke in CI**: DEFERRED to next session (browser download + CI wiring).
+7. ✅ **Loading illustration**: splash emblem + wordmark overlay, lifts after mount.
+
+## Post-plan additions (shipped alongside Sprint 3)
+- **Reactive living world**: real weather (Open-Meteo, keyless, 30-min cache, geolocation optional) drives clouds, rain/snow/fog, wind-blown smoke/gulls, boat bob & tilt; **sea choppiness follows real wind AND the player's practice** — meditation today stills the water, days without it make the harbour restless (reflection, never punishment; save v11 tracks `wellbeing.lastCalmDay`). Scene note in the progress label ("· soft rain, still water").
+- **Market-research folds** (docs/market-research-2026-07.md): email-capture card ("get the next chapter first", mailto for now), Share-my-town PNG composer (Web Share/download), day-2 tease lines on Home + New Day modal, install-to-home-screen + stale-export nudges (iOS 7-day eviction defence).
 
 ## Rules of engagement
 - Every visual sliced from the folder sheets via `tools/slice_assets.py` (probe → slice → contact verify); ComfyUI regeneration only for assets the sheets lack.

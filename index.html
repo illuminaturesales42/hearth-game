@@ -8,6 +8,12 @@
   <link rel="stylesheet" href="/src/styles.css" />
 </head>
 <body>
+  <!-- First-load splash: painted emblem while the town wakes. -->
+  <div id="splash" aria-hidden="true">
+    <img src="/art/splash_emblem.png" alt="" />
+    <span class="splash-word">HEARTH</span>
+    <span class="splash-sub">Emberhollow is waking…</span>
+  </div>
   <div id="app">
 
     <header class="topbar">
@@ -33,6 +39,25 @@
             <div class="map-bar"><i id="map-bar-fill"></i></div>
           </div>
         </section>
+        <div class="map-actions">
+          <button id="decor-btn" class="tool-btn">🪴 Decorate</button>
+          <button id="share-town-btn" class="tool-btn">📸 Share my town</button>
+        </div>
+        <div id="decor-tray" class="decor-tray" hidden></div>
+        <div id="keepsafe-card" class="growth-card" hidden>
+          <p id="keepsafe-text"></p>
+          <div class="growth-actions">
+            <button id="keepsafe-install" class="btn-primary" hidden>Install</button>
+            <button id="keepsafe-later" class="btn-ghost">Later</button>
+          </div>
+        </div>
+        <div id="email-card" class="growth-card" hidden>
+          <p><b>Get the next chapter first.</b> One quiet email when new story arrives — no noise, ever.</p>
+          <div class="growth-actions">
+            <button id="email-join" class="btn-primary">Keep me posted</button>
+            <button id="email-later" class="btn-ghost">Maybe later</button>
+          </div>
+        </div>
         <div class="screen-body" id="map-body"></div>
       </section>
 
@@ -54,6 +79,7 @@
           <div class="order-face" aria-hidden="true"></div>
           <p id="order-text"></p>
           <button id="deliver-btn" class="btn-primary" disabled>Deliver</button>
+          <p id="order-next" class="order-next" hidden></p>
         </section>
       </section>
 
@@ -149,10 +175,15 @@
       <h2 class="duel-title">Bonfire Duel</h2>
       <div id="duel-turn" class="duel-turn"></div>
     </header>
+    <div id="duel-mode" class="duel-mode" hidden>
+      <p class="duel-mode-title">Who's by the fire tonight?</p>
+      <button id="duel-mode-friend" class="btn-primary">A friend — pass &amp; play</button>
+      <button id="duel-mode-ai" class="btn-primary">Old Joss — he plays a sharp game</button>
+    </div>
     <div class="duel-scores">
       <div class="duel-side p0"><span>You</span><b id="duel-score-0">0</b></div>
       <div class="duel-vs">vs</div>
-      <div class="duel-side p1"><span>Friend</span><b id="duel-score-1">0</b></div>
+      <div class="duel-side p1"><span id="duel-opp-name">Friend</span><b id="duel-score-1">0</b></div>
     </div>
     <div id="duel-board" class="duel-board" role="grid" aria-label="Shared duel board"></div>
     <p class="duel-tip">Tap an item, then a matching one, to merge. Take turns. Most points wins the board.</p>
@@ -281,6 +312,7 @@
           <b id="newday-energy">+0</b><span>energy</span>
         </div>
         <p class="newday-streak" id="newday-streak"></p>
+        <p class="newday-tease" id="newday-tease" hidden></p>
         <button id="newday-claim" class="btn-primary">Welcome the day</button>
       </div>
     </div>

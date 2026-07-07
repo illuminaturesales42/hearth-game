@@ -24,6 +24,7 @@ import { STARGAZE, fullMoonBonus, phaseName } from '../data/moon';
 import { isNight } from './sun';
 import type { Coords } from './sun';
 import { addToRepository, duelMultiplier } from './duel';
+import { DECOR_CATALOG } from '../data/town-layout';
 import type { ActionState, ChainId, GratitudeEntry, GratitudeState, RepositoryItem, Settings, SocialState } from './types';
 
 export type GameEvent =
@@ -47,6 +48,7 @@ export type GameEvent =
   | { type: 'achievement'; id: string; title: string; icon: string }
   | { type: 'questDone'; label: string; coins: number }
   | { type: 'chronicle'; day: string }
+  | { type: 'decor' }
   | { type: 'settings' }
   | { type: 'duelEnd'; won: boolean; streak: number; multiplier: number; coins: number; itemCount: number }
   | { type: 'chapterComplete'; chapter: number; title: string; cliffhanger: string; hasNext: boolean };
@@ -92,6 +94,9 @@ export class Game {
       achievements: [],
       questsClaimed: [],
       flags: { ftueDone: false, windDownShown: false },
+      wellbeing: { lastCalmDay: null },
+      decor: [],
+      nextDecorId: 1,
       repository: [],
       duelStreak: 0,
       coins: 0,
@@ -443,6 +448,11 @@ export class Game {
   }
 
   private applyRecord(res: RecordResult, actionId: string): void {
+    // The sea remembers a quiet mind: any meditation marks today calm,
+    // whether or not the energy cap already paid out.
+    if (actionId.startsWith('med-') || actionId === 'log-meditation') {
+      this.state = { ...this.state, wellbeing: { lastCalmDay: res.state.day } };
+    }
     const total = res.energy + res.dailyBonus;
     if (total <= 0 && res.chestCoins <= 0) {
       this.emit({ type: 'action', actionId, energy: 0 });
@@ -458,6 +468,37 @@ export class Game {
     this.emit({ type: 'action', actionId, energy: res.energy });
     if (res.dailyBonus > 0) this.emit({ type: 'daily', energy: res.dailyBonus, streak: res.state.streak });
     if (res.chestCoins > 0) this.emit({ type: 'chest', coins: res.chestCoins });
+  }
+
+  // ---------- town decor (coins buy beauty, never power) ----------
+
+  /** Place a decoration from the catalog onto the town. False when it can't land. */
+  placeDecor(art: string, x: number, y: number): boolean {
+    const def = DECOR_CATALOG.find((d) => d.art === art);
+    if (!def || this.state.coins < def.cost) return false;
+    // Keep pieces on the island — not in the sky, not out at sea.
+    if (x < 0.04 || x > 0.96 || y < 0.42 || y > 0.92) return false;
+    this.state = {
+      ...this.state,
+      coins: this.state.coins - def.cost,
+      decor: [...this.state.decor, { id: this.state.nextDecorId, art, x, y }],
+      nextDecorId: this.state.nextDecorId + 1,
+    };
+    this.emit({ type: 'decor' });
+    return true;
+  }
+
+  /** Pick a decoration back up. Full refund — nothing is ever lost in Emberhollow. */
+  removeDecor(id: number): void {
+    const piece = this.state.decor.find((d) => d.id === id);
+    if (!piece) return;
+    const cost = DECOR_CATALOG.find((d) => d.art === piece.art)?.cost ?? 0;
+    this.state = {
+      ...this.state,
+      coins: this.state.coins + cost,
+      decor: this.state.decor.filter((d) => d.id !== id),
+    };
+    this.emit({ type: 'decor' });
   }
 
   // ---------- auto-merge ----------

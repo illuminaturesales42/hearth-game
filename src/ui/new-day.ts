@@ -4,6 +4,7 @@
  * (drives the same streak as everything else), so it never double-pays.
  */
 import type { Game } from '../core/game';
+import { nextTease } from './tease';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 
@@ -24,6 +25,13 @@ export class NewDayUI {
         ? `${p.streak}-day streak — the longer you tend the hearth, the more it gives.`
         : 'Return tomorrow to start a streak and grow the reward.';
     el('newday-streak')!.textContent = p.chestCoins > 0 ? `${streakLine} A milestone chest, too: +${p.chestCoins} coins.` : streakLine;
+    // Give today a face: who's waiting, and what for.
+    const tease = nextTease(this.game.snapshot.orderIndex);
+    const teaseEl = el('newday-tease');
+    if (teaseEl) {
+      teaseEl.textContent = tease ? `Today: ${tease}` : '';
+      teaseEl.hidden = !tease;
+    }
     el('newday-modal')!.hidden = false;
   }
 

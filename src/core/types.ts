@@ -176,6 +176,20 @@ export interface FlagsState {
   windDownShown: boolean;
 }
 
+/** Long-arc wellbeing signals the living world responds to (save v11). */
+export interface WellbeingState {
+  /** Last local day the player meditated — the sea remembers. */
+  lastCalmDay: string | null;
+}
+
+/** A player-placed decoration on the town map (normalized coords). */
+export interface DecorPiece {
+  id: number;
+  art: string;
+  x: number;
+  y: number;
+}
+
 export interface GameState {
   version: number;
   healthLedger?: HealthLedgerState;
@@ -192,6 +206,10 @@ export interface GameState {
   gratitude: GratitudeState;
   settings: Settings;
   prefs: Prefs;
+  wellbeing: WellbeingState;
+  /** Player-placed town decorations (coins buy beauty, never power). */
+  decor: readonly DecorPiece[];
+  nextDecorId: number;
   /** Items won from duels, spendable to progress the story. */
   repository: readonly RepositoryItem[];
   /** Consecutive duel wins → reward multiplier. */

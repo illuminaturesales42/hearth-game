@@ -727,3 +727,62 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
 .newday-body { background: transparent; }
 /* modal flame reads on parchment */
 .modal-flame, .newday-flame { box-shadow: 0 0 20px rgba(229, 118, 30, 0.5), inset 0 0 0 1.5px rgba(107, 74, 42, 0.3); }
+
+/* ===== splash: painted emblem while Emberhollow wakes ===== */
+#splash {
+  position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px;
+  background: radial-gradient(ellipse at 50% 38%, #1c2848 0%, #0f1626 70%);
+  transition: opacity 0.6s ease;
+}
+#splash img { width: min(46vw, 190px); filter: drop-shadow(0 6px 22px rgba(229, 150, 60, 0.35)); }
+.splash-word { font-family: Georgia, serif; font-size: 30px; letter-spacing: 0.35em; color: #f0c878; }
+.splash-sub { font-size: 13px; color: rgba(235, 226, 208, 0.55); }
+#splash.lifting { opacity: 0; pointer-events: none; }
+
+/* ===== map actions row + decorate tray ===== */
+.map-actions { display: flex; gap: 8px; padding: 8px 12px 0; }
+.map-actions .tool-btn.on { background: rgba(240, 200, 120, 0.22); border-color: rgba(255, 210, 122, 0.7); }
+.decor-tray {
+  display: flex; gap: 8px; overflow-x: auto; padding: 10px 12px; margin: 8px 12px 0;
+  border: 1px solid rgba(255, 210, 122, 0.3); border-radius: 12px;
+  background: rgba(16, 24, 44, 0.75); flex-wrap: wrap;
+}
+.decor-hint { flex-basis: 100%; margin: 0 0 2px; font-size: 12px; color: rgba(235, 226, 208, 0.7); }
+.decor-item {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 74px;
+  padding: 8px 6px; border-radius: 10px; border: 1px solid rgba(255, 210, 122, 0.25);
+  background: rgba(24, 34, 60, 0.9); color: #ebe2d0; font-size: 11px; cursor: pointer;
+}
+.decor-item.picked { border-color: #f0c878; background: rgba(240, 200, 120, 0.18); box-shadow: 0 0 10px rgba(240, 200, 120, 0.3); }
+.decor-item.broke { opacity: 0.45; }
+.decor-ico { width: 34px; height: 34px; background-size: contain; background-repeat: no-repeat; background-position: center; }
+.decor-name { font-weight: 600; }
+.decor-cost { color: #f0c878; }
+
+/* ===== growth cards (email list · keep-your-save-safe) ===== */
+.growth-card {
+  margin: 10px 12px 0; padding: 12px 14px; border-radius: 12px;
+  border: 1px solid rgba(255, 210, 122, 0.3);
+  background-image: url('/art/panel_parchment.png'); background-size: 100% 100%;
+  color: #3a2c1c;
+}
+.growth-card p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.45; }
+.growth-actions { display: flex; gap: 10px; }
+.growth-actions .btn-ghost { color: #6b4a2a; }
+
+/* ===== order queue preview ===== */
+.order-next { margin: 6px 0 0; font-size: 12px; color: rgba(235, 226, 208, 0.65); width: 100%; text-align: center; }
+
+/* ===== tomorrow tease on Home + New Day ===== */
+.map-tease {
+  margin: 10px 0 2px; padding: 9px 12px; border-radius: 10px; font-size: 12.5px;
+  border: 1px dashed rgba(255, 210, 122, 0.4); color: rgba(240, 216, 160, 0.9);
+  background: rgba(240, 200, 120, 0.07); line-height: 1.4;
+}
+.newday-tease { margin: 2px 0 10px; font-size: 13px; color: #6b4a2a; font-style: italic; }
+
+/* ===== duel mode chooser ===== */
+.duel-mode { display: flex; flex-direction: column; gap: 10px; align-items: center; padding: 26px 20px; }
+.duel-mode-title { font-family: Georgia, serif; font-size: 17px; color: #f0c878; margin: 0 0 4px; }
+.duel-mode .btn-primary { min-width: 240px; }

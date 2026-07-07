@@ -12,8 +12,13 @@ import type { Game } from '../core/game';
 import { MAP_LOCATIONS } from '../data/world';
 import { ORDERS, chapterFor, stageFor } from '../data/economy';
 import { questsForDay } from '../data/daily-quests';
-import { BUILDING_INFO, TOWN_BOATS, TOWN_BUILDINGS, TOWN_NATURE, TOWN_WALKERS } from '../data/town-layout';
+import { BUILDING_INFO, DECOR_CATALOG, TOWN_BOATS, TOWN_BUILDINGS, TOWN_NATURE, TOWN_WALKERS } from '../data/town-layout';
+import { computeMood, meditatedToday, moodCaption } from '../core/world-mood';
+import type { WeatherNow, WorldMood } from '../core/world-mood';
+import { currentWeather } from './weather';
 import { artUrl } from './art';
+import { toast } from './toast';
+import { tomorrowLine } from './tease';
 
 const STAGE_NAMES = [
   'Storm-Wrecked',
@@ -38,6 +43,13 @@ export class MapView {
   private lastOrderIndex = -1;
   /** Last-drawn building rectangles for tap-to-inspect. */
   private hitboxes: { x0: number; y0: number; x1: number; y1: number; art: string; unlockAt: number }[] = [];
+  /** Real weather outside the window (best-effort; null renders clear). */
+  private weather: WeatherNow | null = null;
+  private weatherAskedAt = 0;
+  /** Decorate mode: pick a piece from the tray, tap the town to place it. */
+  private decorMode = false;
+  private decorPick: string | null = null;
+  private decorHit: { x0: number; y0: number; x1: number; y1: number; id: number }[] = [];
 
   constructor(private game: Game) {
     for (let i = 0; i < 5; i++) {
@@ -69,10 +81,33 @@ export class MapView {
     return stageFor(this.game.snapshot.orderIndex);
   }
 
+  /** How the world feels right now: real weather + the player's day. */
+  private mood(): WorldMood {
+    const s = this.game.snapshot;
+    return computeMood({
+      weather: this.weather,
+      meditatedToday: meditatedToday(s.actions.counts),
+      lastCalmDay: s.wellbeing.lastCalmDay,
+      today: s.actions.day,
+      sleptWell: (s.healthLedger?.sleepGranted ?? 0) > 0,
+    });
+  }
+
+  private refreshWeather(): void {
+    if (Date.now() - this.weatherAskedAt < 30 * 60 * 1000) return;
+    this.weatherAskedAt = Date.now();
+    void currentWeather().then((w) => {
+      if (!w) return;
+      this.weather = w;
+      if (this.visible && this.reduce) this.draw(0);
+    });
+  }
+
   setVisible(v: boolean): void {
     this.visible = v;
     if (v) {
       this.mount();
+      this.refreshWeather();
       this.renderList();
       this.resize();
       if (this.reduce) this.draw(0);
@@ -87,11 +122,33 @@ export class MapView {
     if (this.canvas) return;
     this.canvas = document.getElementById('map-canvas') as HTMLCanvasElement | null;
     this.ctx = this.canvas?.getContext('2d') ?? null;
-    // Tap a returned building to hear how it came back.
+    // Tap a returned building to hear how it came back — or, in decorate
+    // mode, tap the town to place a piece / tap a piece to pick it back up.
     this.canvas?.addEventListener('click', (e) => {
       const rect = this.canvas!.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
+      if (this.decorMode) {
+        const W = this.canvas!.clientWidth || 360;
+        for (let i = this.decorHit.length - 1; i >= 0; i--) {
+          const hb = this.decorHit[i]!;
+          if (x >= hb.x0 && x <= hb.x1 && y >= hb.y0 && y <= hb.y1) {
+            this.game.removeDecor(hb.id);
+            toast('Picked back up — coins returned.');
+            if (this.reduce) this.draw(0);
+            return;
+          }
+        }
+        if (this.decorPick) {
+          const placed = this.game.placeDecor(this.decorPick, x / W, y / 240);
+          if (!placed) {
+            const def = DECOR_CATALOG.find((d) => d.art === this.decorPick);
+            const broke = def && this.game.snapshot.coins < def.cost;
+            toast(broke ? 'Not enough coins yet — orders and quests pay well.' : 'That spot is out over the water — try the island.');
+          } else if (this.reduce) this.draw(0);
+        }
+        return;
+      }
       for (let i = this.hitboxes.length - 1; i >= 0; i--) {
         const hb = this.hitboxes[i]!;
         if (x >= hb.x0 && x <= hb.x1 && y >= hb.y0 && y <= hb.y1) {
@@ -100,6 +157,7 @@ export class MapView {
         }
       }
     });
+    this.mountDecorTray();
     document.getElementById('bldg-close')?.addEventListener('click', () => {
       const m = document.getElementById('bldg-modal');
       if (m) m.hidden = true;
@@ -109,6 +167,45 @@ export class MapView {
         this.resize();
         if (this.reduce) this.draw(0);
       }
+    });
+  }
+
+  /** The decorate tray: pick a piece, tap the town. Coins buy beauty, never power. */
+  private mountDecorTray(): void {
+    const btn = document.getElementById('decor-btn');
+    const tray = document.getElementById('decor-tray');
+    if (!btn || !tray) return;
+    const renderTray = () => {
+      const coins = this.game.snapshot.coins;
+      tray.innerHTML =
+        `<p class="decor-hint">${this.decorPick ? 'Tap the town to place it — tap a placed piece to pick it up.' : 'Choose a piece. Picking one back up refunds it in full.'}</p>` +
+        DECOR_CATALOG.map((d) => {
+          const url = artUrl(d.art);
+          const afford = coins >= d.cost;
+          return (
+            `<button class="decor-item ${this.decorPick === d.art ? 'picked' : ''} ${afford ? '' : 'broke'}" data-art="${d.art}">` +
+            (url ? `<span class="decor-ico" style="background-image:url(${url})"></span>` : '') +
+            `<span class="decor-name">${d.name}</span><span class="decor-cost">🪙 ${d.cost}</span></button>`
+          );
+        }).join('');
+      tray.querySelectorAll<HTMLButtonElement>('.decor-item').forEach((b) => {
+        b.addEventListener('click', () => {
+          this.decorPick = this.decorPick === b.dataset.art ? null : (b.dataset.art ?? null);
+          renderTray();
+        });
+      });
+    };
+    btn.addEventListener('click', () => {
+      this.decorMode = !this.decorMode;
+      this.decorPick = null;
+      btn.classList.toggle('on', this.decorMode);
+      btn.textContent = this.decorMode ? '✓ Done' : '🪴 Decorate';
+      tray.hidden = !this.decorMode;
+      if (this.decorMode) renderTray();
+      if (this.reduce) this.draw(0);
+    });
+    this.game.subscribe((ev) => {
+      if (ev.type === 'decor' && this.decorMode) renderTray();
     });
   }
 
@@ -157,8 +254,9 @@ export class MapView {
 
     // Composed living town (building sprites unlock with the story).
     if (artUrl('town_townhall')) {
-      this.drawTown(ctx, W, H, t, prog, stage);
-      this.updateBar(prog, stage);
+      const mood = this.mood();
+      this.drawTown(ctx, W, H, t, prog, stage, mood);
+      this.updateBar(prog, stage, mood);
       return;
     }
 
@@ -289,7 +387,7 @@ export class MapView {
    * building; nature and lamplight fill in as the village heals. Sky keeps
    * real time; the sea keeps its own counsel at the shore.
    */
-  private drawTown(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, prog: number, stage: number): void {
+  private drawTown(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, prog: number, stage: number, mood: WorldMood): void {
     const delivered = this.game.snapshot.orderIndex;
 
     // pop-in bookkeeping for buildings that just appeared
@@ -326,10 +424,30 @@ export class MapView {
     ctx.fill();
     if (!night) {
       const glow = ctx.createRadialGradient(W * 0.78, H * 0.14, 5, W * 0.78, H * 0.14, 52);
-      glow.addColorStop(0, 'rgba(255,220,150,0.5)');
+      glow.addColorStop(0, `rgba(255,220,150,${(0.5 * (1 - mood.cloudCover * 0.7)).toFixed(3)})`);
       glow.addColorStop(1, 'rgba(255,220,150,0)');
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, W, H * 0.4);
+    }
+    // Real clouds drift in on the real wind.
+    const nClouds = Math.round(mood.cloudCover * 5);
+    if (nClouds > 0) {
+      ctx.fillStyle = night ? 'rgba(150,160,190,0.28)' : 'rgba(235,238,245,0.5)';
+      for (let i = 0; i < nClouds; i++) {
+        const drift = this.reduce ? 0.5 : (t / (60000 / (0.4 + mood.wind * 1.6))) % 1.25;
+        const cxp = (((i * 0.23 + drift) % 1.25) - 0.125) * W;
+        const cyp = H * (0.05 + (i % 3) * 0.045);
+        const cw = W * (0.09 + (i % 2) * 0.04);
+        ctx.beginPath();
+        ctx.ellipse(cxp, cyp, cw, cw * 0.32, 0, 0, Math.PI * 2);
+        ctx.ellipse(cxp + cw * 0.55, cyp + cw * 0.08, cw * 0.6, cw * 0.24, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    // Heavy weather leans on the whole scene, gently.
+    if (mood.weather === 'overcast' || mood.precip > 0) {
+      ctx.fillStyle = `rgba(60, 70, 95, ${(mood.weather === 'storm' ? 0.22 : 0.12).toFixed(2)})`;
+      ctx.fillRect(0, 0, W, H);
     }
 
     // --- sea, then the island ground ---
@@ -370,21 +488,54 @@ export class MapView {
       if (!img) continue;
       const w = b.w * W;
       const h = w * (img.naturalHeight / img.naturalWidth);
-      const bob = this.reduce ? 0 : Math.sin(t / 900 + b.x * 20) * 2.2;
-      ctx.drawImage(img, b.x * W - w / 2, b.y * H - h + bob, w, h);
+      const bob = this.reduce ? 0 : Math.sin(t / (900 - mood.sea * 350) + b.x * 20) * (1.2 + mood.sea * 3.6);
+      const tilt = this.reduce ? 0 : Math.sin(t / 1100 + b.x * 31) * mood.sea * 0.06;
+      ctx.save();
+      ctx.translate(b.x * W, b.y * H + bob);
+      ctx.rotate(tilt);
+      ctx.drawImage(img, -w / 2, -h, w, h);
+      ctx.restore();
     }
 
-    // --- pieces, painter-sorted ---
+    // --- pieces, painter-sorted (player decor joins the town) ---
     this.hitboxes = [];
-    const pieces = [
+    this.decorHit = [];
+    interface ScenePiece {
+      art: string;
+      x: number;
+      y: number;
+      w: number;
+      unlockAt: number;
+      smoke?: { dx: number; dy: number };
+      decorId?: number;
+    }
+    const decor: ScenePiece[] = this.game.snapshot.decor.map((d) => ({
+      art: d.art,
+      x: d.x,
+      y: d.y,
+      w: DECOR_CATALOG.find((c) => c.art === d.art)?.w ?? 0.05,
+      unlockAt: 0,
+      decorId: d.id,
+    }));
+    const pieces: ScenePiece[] = [
       ...TOWN_NATURE.filter((n) => stage >= n.stage && delivered >= n.unlockAt),
       ...TOWN_BUILDINGS.filter((b) => delivered >= b.unlockAt),
+      ...decor,
     ].sort((a, b) => a.y - b.y);
     for (const p of pieces) {
       const img = this.sprite(p.art);
       if (!img) continue;
       const w = p.w * W;
       const h = w * (img.naturalHeight / img.naturalWidth);
+      if (p.decorId !== undefined) {
+        this.decorHit.push({ x0: p.x * W - w / 2, y0: p.y * H - h, x1: p.x * W + w / 2, y1: p.y * H, id: p.decorId });
+        if (this.decorMode) {
+          ctx.strokeStyle = 'rgba(240, 200, 120, 0.6)';
+          ctx.setLineDash([4, 3]);
+          ctx.strokeRect(p.x * W - w / 2 - 2, p.y * H - h - 2, w + 4, h + 4);
+          ctx.setLineDash([]);
+        }
+      }
       if (BUILDING_INFO[p.art] && 'unlockAt' in p && p.unlockAt > 0) {
         this.hitboxes.push({ x0: p.x * W - w / 2, y0: p.y * H - h, x1: p.x * W + w / 2, y1: p.y * H, art: p.art, unlockAt: p.unlockAt });
       }
@@ -409,7 +560,8 @@ export class MapView {
           const puffY = sy - i * 7 - ((t / 260 + i * 3) % 8);
           ctx.fillStyle = `rgba(232, 225, 210, ${0.22 - i * 0.06})`;
           ctx.beginPath();
-          ctx.arc(sx + Math.sin(t / 700 + i) * 2.5, puffY, 2.5 + i * 1.2, 0, Math.PI * 2);
+          // the real wind carries the smoke sideways
+          ctx.arc(sx + Math.sin(t / 700 + i) * 2.5 - mood.wind * 9 * (i + 1) * 0.4, puffY, 2.5 + i * 1.2, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -453,9 +605,10 @@ export class MapView {
       }
       const gull = this.sprite('animal_gull');
       if (gull && !this.reduce) {
+        const gustiness = 1 + mood.wind * 1.4;
         for (let g = 0; g < 2; g++) {
-          const gx = W * (0.74 + 0.14 * Math.sin(t / 2600 + g * 2.4));
-          const gy = H * (0.18 + 0.05 * Math.cos(t / 2100 + g * 1.7));
+          const gx = W * (0.74 + 0.14 * Math.sin((t * gustiness) / 2600 + g * 2.4));
+          const gy = H * (0.18 + 0.05 * Math.cos((t * gustiness) / 2100 + g * 1.7));
           const gw = 0.028 * W;
           ctx.globalAlpha = 0.9;
           ctx.drawImage(gull, gx, gy, gw, gw * (gull.naturalHeight / gull.naturalWidth));
@@ -488,23 +641,81 @@ export class MapView {
       ctx.fill();
     }
 
-    // --- sea shimmer at the shore ---
+    // --- sea shimmer at the shore: the water carries the day's mood ---
     if (!this.reduce) {
+      const amp = 1.0 + mood.sea * 3.4;
+      const pace = 620 - mood.sea * 320;
       ctx.strokeStyle = night ? 'rgba(180, 200, 255, 0.12)' : 'rgba(255,220,150,0.16)';
       ctx.lineWidth = 1;
       for (let y = H * 0.9; y < H; y += 8) {
         ctx.beginPath();
         ctx.moveTo(0, y);
-        for (let x = 0; x <= W; x += 22) ctx.lineTo(x, y + Math.sin(x / 26 + t / 600 + y) * 1.4);
+        for (let x = 0; x <= W; x += 22) ctx.lineTo(x, y + Math.sin(x / 26 + t / pace + y) * amp);
         ctx.stroke();
+      }
+      // whitecaps once the water is truly restless
+      if (mood.sea > 0.55) {
+        ctx.strokeStyle = 'rgba(235, 240, 248, 0.4)';
+        ctx.lineWidth = 1.4;
+        for (let i = 0; i < 7; i++) {
+          const wx = ((i * 137 + Math.floor(t / 1400) * 41) % 100) / 100 * W;
+          const wy = H * (0.9 + ((i * 53) % 10) / 110);
+          ctx.beginPath();
+          ctx.moveTo(wx, wy);
+          ctx.lineTo(wx + 7 + mood.sea * 6, wy);
+          ctx.stroke();
+        }
+      }
+      // a quiet mind stills the water: a soft moon-path glint on calm days
+      if (mood.calm && mood.sea < 0.3) {
+        const glint = ctx.createLinearGradient(0, H * 0.9, 0, H);
+        glint.addColorStop(0, 'rgba(255, 236, 190, 0.10)');
+        glint.addColorStop(1, 'rgba(255, 236, 190, 0)');
+        ctx.fillStyle = glint;
+        ctx.fillRect(W * 0.6, H * 0.88, W * 0.4, H * 0.12);
+      }
+    }
+
+    // --- weather falls over everything ---
+    if (mood.weather === 'fog') {
+      const fog = ctx.createLinearGradient(0, H * 0.3, 0, H * 0.62);
+      fog.addColorStop(0, 'rgba(205, 214, 228, 0)');
+      fog.addColorStop(0.5, 'rgba(205, 214, 228, 0.30)');
+      fog.addColorStop(1, 'rgba(205, 214, 228, 0)');
+      ctx.fillStyle = fog;
+      ctx.fillRect(0, H * 0.28, W, H * 0.36);
+    }
+    if (mood.precip > 0 && !this.reduce) {
+      const snow = mood.weather === 'snow';
+      const n = Math.round(24 + mood.precip * (snow ? 30 : 60));
+      if (snow) {
+        ctx.fillStyle = 'rgba(240, 244, 252, 0.8)';
+        for (let i = 0; i < n; i++) {
+          const px = ((i * 97 + t * 0.012 * (1 + mood.wind)) % W + W) % W;
+          const py = ((i * 61 + t * (0.02 + mood.precip * 0.015)) % H + H) % H;
+          ctx.beginPath();
+          ctx.arc(px + Math.sin(t / 900 + i) * 4, py, 1.3 + (i % 3) * 0.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        ctx.strokeStyle = 'rgba(190, 210, 235, 0.4)';
+        ctx.lineWidth = 1;
+        const slant = mood.wind * 4;
+        for (let i = 0; i < n; i++) {
+          const px = ((i * 83 + t * 0.05) % W + W) % W;
+          const py = ((i * 47 + t * (0.14 + mood.precip * 0.1)) % H + H) % H;
+          ctx.beginPath();
+          ctx.moveTo(px, py);
+          ctx.lineTo(px - slant, py + 7 + mood.precip * 4);
+          ctx.stroke();
+        }
       }
     }
 
     // --- your day, reflected (living-world flourishes) ---
     const counts = this.game.snapshot.actions.counts;
-    const sleptWell = (this.game.snapshot.healthLedger?.sleepGranted ?? 0) > 0;
-    if (sleptWell && !this.reduce) {
-      const pulse = 0.06 + 0.03 * Math.sin(t / 1600);
+    if (mood.glow > 0.3 && !this.reduce) {
+      const pulse = mood.glow * 0.11 + 0.03 * Math.sin(t / (mood.calm ? 2400 : 1600));
       const glow = ctx.createRadialGradient(W * 0.5, H * 0.5, 10, W * 0.5, H * 0.5, W * 0.55);
       glow.addColorStop(0, `rgba(255, 200, 120, ${pulse.toFixed(3)})`);
       glow.addColorStop(1, 'rgba(255, 200, 120, 0)');
@@ -652,11 +863,12 @@ export class MapView {
     }
   }
 
-  private updateBar(prog: number, stage: number): void {
+  private updateBar(prog: number, stage: number, mood?: WorldMood): void {
     const fill = document.getElementById('map-bar-fill');
     if (fill) fill.style.width = `${Math.round(prog * 100)}%`;
     const label = document.getElementById('map-progress');
-    if (label) label.textContent = `${STAGE_NAMES[stage]} · ${Math.round(prog * 100)}% restored`;
+    const scene = mood ? moodCaption(mood) : '';
+    if (label) label.textContent = `${STAGE_NAMES[stage]} · ${Math.round(prog * 100)}% restored${scene ? ` · ${scene}` : ''}`;
   }
 
   private renderList(): void {
@@ -684,6 +896,7 @@ export class MapView {
       .join('');
     host.innerHTML =
       challenge +
+      `<div class="map-tease">🌅 ${tomorrowLine(s)}</div>` +
       `<p class="map-locs-label">Today in Emberhollow</p><div class="dq-list">${quests}</div>` +
       `<p class="map-locs-label">Chapter ${ch.id} · ${ch.title} · ${inChapter}/${ch.end - ch.start} orders · village ${Math.round(
         (delivered / ORDERS.length) * 100,

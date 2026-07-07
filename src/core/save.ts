@@ -6,7 +6,7 @@
  */
 import type { GameState } from './types';
 
-export const CURRENT_VERSION = 10;
+export const CURRENT_VERSION = 11;
 
 const KEY = 'hearth:save';
 /** Older builds wrote the version into the key. Read them once, then adopt KEY. */
@@ -40,6 +40,8 @@ const MIGRATIONS: Record<number, (s: LooseState) => LooseState> = {
       flags: { ftueDone: true, windDownShown: false }, // existing players skip the tutorial
     };
   },
+  // v10 → v11: wellbeing signals + player-placed town decor.
+  10: (s) => ({ ...s, version: 11, wellbeing: { lastCalmDay: null }, decor: [], nextDecorId: 1 }),
 };
 
 /** Upgrade any historical state to CURRENT_VERSION, or null if unrecognizable. */
@@ -57,7 +59,7 @@ export function migrateState(raw: unknown): GameState | null {
     s = step(s);
   }
   if (s.version !== CURRENT_VERSION) return null;
-  if (!s.board || !s.energy || !s.actions || !s.social || !s.gratitude || !s.settings || !s.prefs || !s.stats || !s.chronicle)
+  if (!s.board || !s.energy || !s.actions || !s.social || !s.gratitude || !s.settings || !s.prefs || !s.stats || !s.chronicle || !s.wellbeing)
     return null;
   return s as GameState;
 }

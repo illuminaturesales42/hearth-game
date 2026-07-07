@@ -101,3 +101,22 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   { art: 'fence_wood', x: 0.095, y: 0.685, w: 0.11, unlockAt: 16, stage: 0 },
   { art: 'fence_wood', x: 0.73, y: 0.705, w: 0.11, unlockAt: 10, stage: 0 },
 ] as const;
+
+/** Decorations the player can buy and place — coins buy beauty, never power. */
+export interface DecorDef {
+  art: string;
+  name: string;
+  cost: number;
+  /** map width as a fraction of canvas width */
+  w: number;
+}
+
+export const DECOR_CATALOG: readonly DecorDef[] = [
+  { art: 'prop_bench', name: 'Harbour bench', cost: 40, w: 0.06 },
+  { art: 'prop_lamp', name: 'Lamp post', cost: 30, w: 0.028 },
+  { art: 'tree_flowerbush', name: 'Flowering bush', cost: 25, w: 0.06 },
+  { art: 'fence_wood', name: 'Fence run', cost: 35, w: 0.11 },
+  { art: 'prop_barrel', name: 'Rain barrel', cost: 20, w: 0.035 },
+  { art: 'tree_pine', name: 'Pine sapling', cost: 30, w: 0.05 },
+  { art: 'prop_well', name: 'Wishing well', cost: 60, w: 0.055 },
+] as const;

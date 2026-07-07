@@ -6,37 +6,61 @@
  * player's win streak → a reward multiplier.
  */
 import type { Game } from '../core/game';
-import { boardSpoils, createDuel, duelMerge, duelWinner } from '../core/duel';
+import { bestDuelMove, boardSpoils, createDuel, duelMerge, duelWinner } from '../core/duel';
 import type { DuelState } from '../core/duel';
 import { tileMarkup } from './art';
 import { feedback } from './feedback';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
-const NAMES = ['You', 'Friend'];
 
 export class DuelUI {
   private state: DuelState | null = null;
   private selected = -1;
   private seed = 12345;
+  /** Solo mode: Old Joss takes the friend's chair. */
+  private vsAi = false;
+  private aiTimer = 0;
 
   constructor(private game: Game) {
     const close = el<HTMLButtonElement>('duel-close');
     if (close) close.onclick = () => this.close();
     const rematch = el<HTMLButtonElement>('duel-rematch');
-    if (rematch) rematch.onclick = () => this.start();
+    if (rematch) rematch.onclick = () => this.beginMatch(this.vsAi);
     const done = el<HTMLButtonElement>('duel-done');
     if (done) done.onclick = () => this.close();
     const deliver = el<HTMLButtonElement>('duel-deliver');
     if (deliver) deliver.onclick = () => this.game.deliverFromRepository();
+    el<HTMLButtonElement>('duel-mode-friend')?.addEventListener('click', () => this.beginMatch(false));
+    el<HTMLButtonElement>('duel-mode-ai')?.addEventListener('click', () => this.beginMatch(true));
   }
 
+  private oppName(): string {
+    return this.vsAi ? 'Old Joss' : 'Friend';
+  }
+
+  /** Open the duel: first choose who's playing, then the board deals. */
   start(): void {
+    const overlay = el('duel-overlay');
+    const results = el('duel-results');
+    const mode = el('duel-mode');
+    if (overlay) overlay.hidden = false;
+    if (results) results.hidden = true;
+    if (mode) mode.hidden = false;
+    this.state = null;
+    const grid = el('duel-board');
+    if (grid) grid.innerHTML = '';
+  }
+
+  private beginMatch(vsAi: boolean): void {
+    this.vsAi = vsAi;
+    const mode = el('duel-mode');
+    if (mode) mode.hidden = true;
+    const opp = el('duel-opp-name');
+    if (opp) opp.textContent = this.oppName();
     this.seed = (this.seed * 1103515245 + 12345) & 0x7fffffff;
     this.state = createDuel(this.seed);
     this.selected = -1;
-    const overlay = el('duel-overlay');
     const results = el('duel-results');
-    if (overlay) overlay.hidden = false;
     if (results) results.hidden = true;
     this.buildGrid();
     this.render();
@@ -46,6 +70,7 @@ export class DuelUI {
     const overlay = el('duel-overlay');
     if (overlay) overlay.hidden = true;
     this.state = null;
+    clearTimeout(this.aiTimer);
   }
 
   private buildGrid(): void {
@@ -64,6 +89,7 @@ export class DuelUI {
 
   private tap(index: number): void {
     if (!this.state || this.state.over) return;
+    if (this.vsAi && this.state.turn === 1) return; // Joss is thinking
     const cell = this.state.board.cells[index];
     if (!cell || cell.kind !== 'item') {
       this.selected = -1;
@@ -87,11 +113,29 @@ export class DuelUI {
       feedback.merge(move.resultLevel);
       this.render();
       if (this.state.over) this.showResults();
+      else this.maybeAiMove();
     } else {
       // not a match — reselect the tapped item
       this.selected = index;
       this.render();
     }
+  }
+
+  /** Joss ponders a moment, then takes the biggest merge on the table. */
+  private maybeAiMove(): void {
+    if (!this.vsAi || !this.state || this.state.over || this.state.turn !== 1) return;
+    clearTimeout(this.aiTimer);
+    this.aiTimer = window.setTimeout(() => {
+      if (!this.vsAi || !this.state || this.state.over || this.state.turn !== 1) return;
+      const pick = bestDuelMove(this.state);
+      if (!pick) return;
+      const move = duelMerge(this.state, pick[0], pick[1]);
+      if (!move.merged) return;
+      this.state = move.state;
+      feedback.merge(move.resultLevel);
+      this.render();
+      if (this.state.over) this.showResults();
+    }, 750);
   }
 
   private render(): void {
@@ -110,7 +154,7 @@ export class DuelUI {
         cell.innerHTML = '';
       }
     }
-    el('duel-turn')!.textContent = s.over ? 'Round over' : `${NAMES[s.turn]}’s turn`;
+    el('duel-turn')!.textContent = s.over ? 'Round over' : `${s.turn === 0 ? 'You' : this.oppName()}${s.turn === 0 ? 'r' : '’s'} turn`;
     el('duel-turn')!.className = `duel-turn p${s.turn}`;
     el('duel-score-0')!.textContent = String(s.scores[0]);
     el('duel-score-1')!.textContent = String(s.scores[1]);
@@ -142,8 +186,10 @@ export class DuelUI {
         `<p>Win streak <b>×${streak}</b> · reward multiplier <b>${mult}×</b>.</p>` +
         `<p class="duel-hint">Repository items can be delivered straight to the story.</p>`;
     } else {
-      title.textContent = 'Friend takes this one';
-      body.innerHTML = `<p>The spoils go to your friend. Your win streak resets — rematch?</p>`;
+      title.textContent = `${this.oppName()} takes this one`;
+      body.innerHTML = this.vsAi
+        ? `<p>Joss chuckles into his beard. Your win streak resets — rematch?</p>`
+        : `<p>The spoils go to your friend. Your win streak resets — rematch?</p>`;
     }
 
     deliver.hidden = !this.game.canDeliverFromRepository();

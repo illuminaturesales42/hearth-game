@@ -11,6 +11,15 @@ import type { HealthSnapshot } from './health/health-provider';
 const game = new Game();
 new AppShell(game);
 
+// The splash lifts once the shell is mounted (a breath later, so it never blinks).
+const splash = document.getElementById('splash');
+if (splash) {
+  setTimeout(() => {
+    splash.classList.add('lifting');
+    setTimeout(() => splash.remove(), 650);
+  }, 400);
+}
+
 // Heartbeat: passive energy regen + midnight rollover (Chronicle writes itself).
 setInterval(() => game.tick(), 20_000);
 

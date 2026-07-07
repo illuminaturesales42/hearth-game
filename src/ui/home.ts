@@ -149,6 +149,19 @@ export class Home {
       deliver.disabled = true;
     }
 
+    // Order queue: show what's coming so players can plan their chains.
+    const next = ORDERS[s.orderIndex + 1];
+    const nextEl = document.getElementById('order-next');
+    if (nextEl) {
+      if (next) {
+        const ndef = chainDef(next.need.chain);
+        nextEl.textContent = `Up next: ${next.who} — ${ndef.levels[next.need.level] ?? ''} ${ndef.levelNames[next.need.level] ?? ''}`;
+        nextEl.hidden = false;
+      } else {
+        nextEl.hidden = true;
+      }
+    }
+
     // Zone strip is optional (the Home map now shows restoration progress).
     const zoneLabel = document.getElementById('zone-label');
     const dots = document.getElementById('zone-dots');

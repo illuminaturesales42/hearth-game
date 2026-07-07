@@ -5,6 +5,7 @@
  */
 import type { Game } from '../core/game';
 import { clearSave, exportSave, importSave, CURRENT_VERSION } from '../core/save';
+import { EXPORT_STAMP_KEY } from './growth';
 import { recentEvents } from '../analytics';
 import { feedback } from './feedback';
 import { toast } from './toast';
@@ -98,6 +99,9 @@ export class SettingsUI {
     a.download = `hearth-save-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
+    try {
+      localStorage.setItem(EXPORT_STAMP_KEY, String(Date.now()));
+    } catch { /* fine */ }
     toast('Save exported. Keep it somewhere warm.');
   }
 

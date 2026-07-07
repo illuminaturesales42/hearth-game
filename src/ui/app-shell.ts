@@ -19,6 +19,7 @@ import { SettingsUI } from './settings';
 import { artUrl } from './art';
 import { FtueUI } from './ftue';
 import { NewDayUI } from './new-day';
+import { GrowthUI } from './growth';
 
 type ScreenId = 'home' | 'create' | 'villagers' | 'journal' | 'shop';
 
@@ -46,6 +47,7 @@ export class AppShell {
     const kindness = new KindnessUI(game);
     new SettingsUI(game);
     new AutoMergeController(game);
+    new GrowthUI(game);
     const newDay = new NewDayUI(game);
     // New players get the welcome first; the sunrise claim follows it.
     const ftueShown = new FtueUI(game).maybeStart(() => newDay.maybeShow());

@@ -78,6 +78,30 @@ export function duelMerge(state: DuelState, from: number, to: number): DuelMove 
   };
 }
 
+/**
+ * A sharp-but-simple opponent: takes the merge with the highest resulting
+ * level (the most points this turn). No lookahead — beatable with planning.
+ */
+export function bestDuelMove(state: DuelState): [number, number] | null {
+  if (state.over) return null;
+  let best: [number, number] | null = null;
+  let bestLevel = -1;
+  const cells = state.board.cells;
+  for (let i = 0; i < cells.length; i++) {
+    const a = cells[i]!;
+    if (a.kind !== 'item') continue;
+    for (let j = i + 1; j < cells.length; j++) {
+      const b = cells[j]!;
+      if (b.kind !== 'item' || !canMerge(a.item, b.item)) continue;
+      if (a.item.level + 1 > bestLevel) {
+        bestLevel = a.item.level + 1;
+        best = [i, j];
+      }
+    }
+  }
+  return best;
+}
+
 /** -1 tie, else 0 or 1. */
 export function duelWinner(state: DuelState): -1 | 0 | 1 {
   if (state.scores[0] === state.scores[1]) return -1;
