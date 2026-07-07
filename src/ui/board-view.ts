@@ -4,7 +4,7 @@
 import type { Game } from '../core/game';
 import { chainDef } from '../core/board';
 import { PRODUCER_INDEX } from '../data/economy';
-import { tileMarkup } from './art';
+import { artUrl, tileMarkup } from './art';
 
 export class BoardView {
   private root: HTMLElement;
@@ -41,11 +41,14 @@ export class BoardView {
     const deliverable = this.game.deliverableIndex();
     board.cells.forEach((c, i) => {
       const el = this.root.children[i] as HTMLElement;
-      el.className = 'cell';
+      // checkerboard aligned to the REAL gameplay grid (the art's baked
+      // squares can't line up with 6×7, so we paint our own turf squares)
+      const parity = (Math.floor(i / board.cols) + (i % board.cols)) % 2;
+      el.className = `cell ${parity ? 'turf-d' : 'turf-l'}`;
       el.innerHTML = '';
       if (c.kind === 'producer') {
         el.classList.add('producer');
-        el.innerHTML = '<span class="glyph">📦</span>';
+        if (!artUrl('prop_crate')) el.innerHTML = '<span class="glyph">📦</span>';
       } else if (c.kind === 'item') {
         el.classList.add('item');
         const def = chainDef(c.item.chain);

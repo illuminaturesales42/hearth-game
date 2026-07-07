@@ -141,7 +141,7 @@ export class MapView {
           }
         }
         if (this.decorPick) {
-          const placed = this.game.placeDecor(this.decorPick, x / W, y / 240);
+          const placed = this.game.placeDecor(this.decorPick, x / W, y / 285);
           if (!placed) {
             const def = DECOR_CATALOG.find((d) => d.art === this.decorPick);
             const broke = def && this.game.snapshot.coins < def.cost;
@@ -273,7 +273,7 @@ export class MapView {
     if (!this.canvas) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = this.canvas.clientWidth || 360;
-    const h = 240;
+    const h = 285;
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(h * dpr);
     this.ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -292,7 +292,7 @@ export class MapView {
     const cv = this.canvas;
     if (!ctx || !cv) return;
     const W = cv.clientWidth || 360;
-    const H = 240;
+    const H = 285;
     const prog = this.progress();
     const stage = this.stage();
     ctx.clearRect(0, 0, W, H);
@@ -542,25 +542,11 @@ export class MapView {
       ctx.restore();
     }
 
-    // --- ghosts of what the storm took: the next few buildings show as
-    // faint ruins, so a young island already carries its promise ---
-    const ghosts = TOWN_BUILDINGS.filter((b) => b.unlockAt > delivered).slice(0, 3);
+    // --- the whole town is visible from the first sunrise: what the storm
+    // took stands as dark ruins, and each delivered order restores one
+    // building to colour and life ---
     this.hitboxes = [];
     this.decorHit = [];
-    for (const g of ghosts) {
-      const img = this.sprite(g.art);
-      if (!img) continue;
-      const w = g.w * W;
-      const h = w * (img.naturalHeight / img.naturalWidth);
-      ctx.save();
-      ctx.globalAlpha = 0.16;
-      ctx.filter = 'grayscale(0.85) brightness(0.55)';
-      ctx.drawImage(img, g.x * W - w / 2, g.y * H - h, w, h);
-      ctx.restore();
-      if (BUILDING_INFO[g.art]) {
-        this.hitboxes.push({ x0: g.x * W - w / 2, y0: g.y * H - h, x1: g.x * W + w / 2, y1: g.y * H, art: g.art, unlockAt: -g.unlockAt });
-      }
-    }
     interface ScenePiece {
       art: string;
       x: number;
@@ -569,6 +555,7 @@ export class MapView {
       unlockAt: number;
       smoke?: { dx: number; dy: number };
       decorId?: number;
+      ruined?: boolean;
     }
     const decor: ScenePiece[] = this.game.snapshot.decor.map((d) => ({
       art: d.art,
@@ -580,7 +567,7 @@ export class MapView {
     }));
     const pieces: ScenePiece[] = [
       ...TOWN_NATURE.filter((n) => stage >= n.stage && delivered >= n.unlockAt),
-      ...TOWN_BUILDINGS.filter((b) => delivered >= b.unlockAt),
+      ...TOWN_BUILDINGS.map((b) => ({ ...b, ruined: delivered < b.unlockAt })),
       ...decor,
     ].sort((a, b) => a.y - b.y);
     for (const p of pieces) {
@@ -598,7 +585,20 @@ export class MapView {
         }
       }
       if (BUILDING_INFO[p.art] && 'unlockAt' in p && p.unlockAt > 0) {
-        this.hitboxes.push({ x0: p.x * W - w / 2, y0: p.y * H - h, x1: p.x * W + w / 2, y1: p.y * H, art: p.art, unlockAt: p.unlockAt });
+        this.hitboxes.push({
+          x0: p.x * W - w / 2, y0: p.y * H - h, x1: p.x * W + w / 2, y1: p.y * H,
+          art: p.art,
+          unlockAt: p.ruined ? -p.unlockAt : p.unlockAt,
+        });
+      }
+      if (p.ruined) {
+        // still lost to the storm: dark, drained, waiting
+        ctx.save();
+        ctx.globalAlpha = 0.8;
+        ctx.filter = 'grayscale(0.9) brightness(0.5) contrast(0.9)';
+        ctx.drawImage(img, p.x * W - w / 2, p.y * H - h, w, h);
+        ctx.restore();
+        continue;
       }
       let scale = 1;
       let alpha = 1;

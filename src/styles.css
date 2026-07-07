@@ -185,25 +185,37 @@ body {
 /* ---------- board ---------- */
 .board-wrap { flex: 1; display: flex; align-items: center; padding: 8px 0; }
 #board {
-  width: 100%; display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; touch-action: none;
-  padding: 8px 6px 10px; border-radius: 0;
-  /* The Core/MVP.png grid board: grass fringe + corner stones stay crisp via
-     border-image slicing; the checkered turf stretches under the pieces. */
+  width: 100%; display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; touch-action: none;
+  padding: 7px 6px 9px; border-radius: 0;
+  /* Core/MVP.png fringe as the frame; the playfield checker is painted
+     per-cell so the squares ALIGN with the real 6×7 gameplay grid. */
   border: 14px solid transparent;
-  border-image: url('/art/board_grass.png') 26 fill / 14px stretch;
-  background: none;
+  border-image: url('/art/board_grass.png') 26 / 14px stretch;
+  background: #6d7336; /* seam green between turf squares */
+  background-clip: padding-box;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 .cell {
-  /* the field itself is the board — empty squares stay quiet grass */
-  aspect-ratio: 1; border-radius: var(--r-cell); background: none;
+  aspect-ratio: 1; border-radius: 6px;
   display: flex; align-items: center; justify-content: center;
-  font-size: clamp(20px, 6.5vw, 30px); position: relative;
+  font-size: clamp(22px, 7vw, 32px); position: relative;
 }
+/* aligned turf checker, tones sampled from the Core/MVP.png board */
+.cell.turf-l { background: linear-gradient(160deg, #9a9440, #8f8a3a); box-shadow: inset 0 0 0 1px rgba(255, 250, 220, 0.07); }
+.cell.turf-d { background: linear-gradient(160deg, #848934, #7a7f2f); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
 .cell.item { cursor: grab; }
 .cell.item .tile-art,
 .cell.item .glyph {
   filter: drop-shadow(0 3px 3px rgba(10, 14, 6, 0.5));
+}
+/* chains without painted icons yet (keepsakes) ride a parchment token so
+   emoji never float raw on the grass */
+.cell.item .glyph {
+  width: 82%; height: 82%; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(168deg, #ead7b5, #d9bf90);
+  border: 1.5px solid rgba(92, 62, 30, 0.6); border-radius: 10px;
+  font-size: clamp(18px, 5.6vw, 26px);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 228, 0.6);
 }
 .cell.producer { cursor: pointer; }
 .cell.producer::before {
@@ -294,7 +306,7 @@ body {
 /* ---------- home map hero (the town, front and centre) ---------- */
 .home-map { position: relative; margin: 4px 0 12px; border-radius: var(--r-panel); overflow: hidden;
   box-shadow: inset 0 0 0 1.5px rgba(255, 210, 122, 0.22), 0 10px 26px rgba(0, 0, 0, 0.45); }
-.map-canvas { width: 100%; height: 240px; display: block; }
+.map-canvas { width: 100%; height: 285px; display: block; }
 /* current challenge card on the town map */
 .map-challenge { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-card); margin-bottom: 10px;
   background: linear-gradient(120deg, rgba(244, 166, 59, 0.16), rgba(125, 138, 79, 0.12)); border: 1px solid rgba(255, 210, 122, 0.32); }
@@ -552,7 +564,7 @@ body {
 .newday-card .btn-primary { width: 100%; }
 
 /* ---------- sliced art integration ---------- */
-.tile-art { width: 92%; height: 92%; object-fit: contain; pointer-events: none;
+.tile-art { width: 97%; height: 97%; object-fit: contain; pointer-events: none;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45)); }
 #drag-ghost .tile-art { width: 44px; height: 44px; }
 .nav-art { background-size: cover; background-position: center; border-radius: 10px; }

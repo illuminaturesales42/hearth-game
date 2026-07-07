@@ -57,7 +57,31 @@ export interface DuelMove {
   resultLevel: number;
 }
 
-/** Current player merges item at `from` onto `to`. Scores, flips turn, ends when dry. */
+/**
+ * RACE merge (the shipped duel mode): no turns — whoever spots a pair first
+ * takes it. `player` gets the points; the round ends when the board runs dry.
+ */
+export function raceMerge(state: DuelState, from: number, to: number, player: 0 | 1): DuelMove {
+  if (state.over || from === to) return { state, merged: false, resultLevel: -1 };
+  const a = itemAt(state.board, from);
+  const b = itemAt(state.board, to);
+  if (!a || !b || !canMerge(a, b)) return { state, merged: false, resultLevel: -1 };
+  const level = a.level + 1;
+  const merged: Item = { chain: a.chain, level, uid: state.nextUid };
+  const board = withItem(withEmpty(state.board, from), to, merged);
+  const scores: [number, number] = [...state.scores];
+  scores[player] += mergePoints(level);
+  const moves: [number, number] = [...state.moves];
+  moves[player] += 1;
+  const over = findMergePair(board) === null;
+  return {
+    state: { board, scores, turn: state.turn, moves, over, nextUid: state.nextUid + 1 },
+    merged: true,
+    resultLevel: level,
+  };
+}
+
+/** Turn-based merge (kept for the future async-with-friends mode). */
 export function duelMerge(state: DuelState, from: number, to: number): DuelMove {
   if (state.over || from === to) return { state, merged: false, resultLevel: -1 };
   const a = itemAt(state.board, from);

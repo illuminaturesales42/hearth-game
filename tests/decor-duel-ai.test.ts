@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Game } from '../src/core/game';
 import { DECOR_CATALOG } from '../src/data/town-layout';
-import { bestDuelMove, createDuel, duelMerge } from '../src/core/duel';
+import { bestDuelMove, createDuel, duelMerge, duelWinner, raceMerge } from '../src/core/duel';
 import { migrateState } from '../src/core/save';
 import { localDayKey } from '../src/core/energy';
 
@@ -111,5 +111,38 @@ describe('duel AI — Old Joss plays greedy', () => {
     expect(s.over).toBe(true);
     expect(bestDuelMove(s)).toBeNull();
     expect(s.scores[0] + s.scores[1]).toBeGreaterThan(0);
+  });
+});
+
+describe('duel race mode — most pairs wins, no turns', () => {
+  it('credits whoever takes the pair, without any turn gate', () => {
+    let s = createDuel(11);
+    const p1 = bestDuelMove(s)!;
+    s = raceMerge(s, p1[0], p1[1], 0).state; // player grabs
+    const p2 = bestDuelMove(s)!;
+    s = raceMerge(s, p2[0], p2[1], 0).state; // player grabs AGAIN — no turns
+    expect(s.scores[0]).toBeGreaterThan(0);
+    expect(s.scores[1]).toBe(0);
+    const p3 = bestDuelMove(s)!;
+    s = raceMerge(s, p3[0], p3[1], 1).state; // Joss snatches one
+    expect(s.scores[1]).toBeGreaterThan(0);
+  });
+
+  it('rejects non-pairs and finishes when the field runs dry', () => {
+    let s = createDuel(23);
+    // invalid: same index
+    expect(raceMerge(s, 0, 0, 0).merged).toBe(false);
+    let guard = 0;
+    let who: 0 | 1 = 0;
+    while (!s.over && guard < 200) {
+      const pick = bestDuelMove(s)!;
+      s = raceMerge(s, pick[0], pick[1], who).state;
+      who = (who ^ 1) as 0 | 1; // simulate a close race
+      guard++;
+    }
+    expect(s.over).toBe(true);
+    expect(raceMerge(s, 0, 1, 0).merged).toBe(false); // over = locked
+    expect([-1, 0, 1]).toContain(duelWinner(s));
+    expect(s.moves[0] + s.moves[1]).toBe(guard);
   });
 });
