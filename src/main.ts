@@ -175,11 +175,18 @@ declare global {
     hearthReset: () => void;
     hearthHealthSim: (steps: number, sleepHours?: number, flights?: number) => void;
     hearthEvents: () => void;
+    hearthSeeTown: (orders?: number) => void;
   }
 }
 window.hearthReset = () => {
   clearSave();
   location.reload();
+};
+// Preview the composed town: jump the story forward so buildings appear.
+// e.g. hearthSeeTown(12) = end of Chapter 1; hearthSeeTown() = everything.
+window.hearthSeeTown = (orders = 24) => {
+  game.devPreviewStory(orders);
+  document.querySelector<HTMLButtonElement>('.nav-btn[data-screen="home"]')?.click();
 };
 window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {
   const snap: HealthSnapshot = {

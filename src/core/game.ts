@@ -51,6 +51,7 @@ export type GameEvent =
   | { type: 'questDone'; label: string; coins: number }
   | { type: 'chronicle'; day: string }
   | { type: 'bond'; villagerId: string; name: string; hearts: number; grew: boolean }
+  | { type: 'upgrade'; art: string; tier: number; coins: number }
   | { type: 'decor' }
   | { type: 'settings' }
   | { type: 'duelEnd'; won: boolean; streak: number; multiplier: number; coins: number; itemCount: number }
@@ -99,6 +100,7 @@ export class Game {
       flags: { ftueDone: false, windDownShown: false },
       wellbeing: { lastCalmDay: null },
       relationships: {},
+      buildingUpgrades: {},
       decor: [],
       nextDecorId: 1,
       repository: [],
@@ -530,6 +532,53 @@ export class Game {
       decor: this.state.decor.filter((d) => d.id !== id),
     };
     this.emit({ type: 'decor' });
+  }
+
+  // ---------- building upgrades (coins buy pride, never power) ----------
+
+  /** Coin cost to reach each tier: [→ L2, → L3]. Escalating, so a long-term sink. */
+  static UPGRADE_COSTS = [120, 320] as const;
+
+  /** Current upgrade tier of a building (0 = base, 1 = L2, 2 = L3). */
+  upgradeTier(art: string): number {
+    return this.state.buildingUpgrades[art] ?? 0;
+  }
+
+  /** A building can be upgraded once it has returned and it isn't already at the top tier. */
+  canUpgrade(art: string): boolean {
+    const building = TOWN_BUILDINGS.find((b) => b.art === art);
+    if (!building || this.state.orderIndex < building.unlockAt) return false;
+    const tier = this.upgradeTier(art);
+    if (tier >= Game.UPGRADE_COSTS.length) return false;
+    return this.state.coins >= Game.UPGRADE_COSTS[tier]!;
+  }
+
+  /** The coin cost of the next upgrade for a building, or null if maxed. */
+  upgradeCost(art: string): number | null {
+    const tier = this.upgradeTier(art);
+    return tier < Game.UPGRADE_COSTS.length ? Game.UPGRADE_COSTS[tier]! : null;
+  }
+
+  /** Spend coins to raise a building a tier. Beauty and pride — never power. */
+  upgradeBuilding(art: string): boolean {
+    if (!this.canUpgrade(art)) return false;
+    const tier = this.upgradeTier(art);
+    const cost = Game.UPGRADE_COSTS[tier]!;
+    const nextTier = tier + 1;
+    this.state = {
+      ...this.state,
+      coins: this.state.coins - cost,
+      buildingUpgrades: { ...this.state.buildingUpgrades, [art]: nextTier },
+    };
+    this.emit({ type: 'upgrade', art, tier: nextTier, coins: cost });
+    return true;
+  }
+
+  /** Dev-only: jump the story forward to preview the composed town. */
+  devPreviewStory(orderIndex: number): void {
+    const clamped = Math.max(0, Math.min(ORDERS.length, Math.floor(orderIndex)));
+    this.state = { ...this.state, orderIndex: clamped };
+    this.emit({ type: 'state' });
   }
 
   // ---------- auto-merge ----------

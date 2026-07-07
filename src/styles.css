@@ -818,3 +818,8 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
 .folk-head .friend-hearts { color: #e6739a; font-size: 13px; letter-spacing: 1px; }
 .folk-greet { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color: rgba(240, 226, 200, 0.86); font-style: italic; }
 .folk-hint { margin: 6px 0 0; font-size: 11.5px; color: rgba(235, 226, 208, 0.5); }
+
+/* ===== building upgrade card ===== */
+.bldg-tier { margin: 4px 0 2px; font-size: 13px; color: #d8a24a; letter-spacing: 1px; font-weight: 700; }
+.bldg-upgrade { margin-top: 6px; }
+.bldg-upgrade:disabled { opacity: 0.5; }

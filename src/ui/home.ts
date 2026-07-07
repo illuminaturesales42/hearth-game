@@ -82,6 +82,9 @@ export class Home {
             toast(`${ev.name}’s trust grows — ${'♥'.repeat(ev.hearts)}${'♡'.repeat(Math.max(0, 5 - ev.hearts))}`);
           }
           break;
+        case 'upgrade':
+          feedback.chime(660);
+          break;
         case 'achievement':
           feedback.chime(660);
           toast(`${ev.icon} Achievement: ${ev.title}`);

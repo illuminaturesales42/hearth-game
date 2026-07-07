@@ -6,7 +6,7 @@
  */
 import type { GameState } from './types';
 
-export const CURRENT_VERSION = 12;
+export const CURRENT_VERSION = 13;
 
 const KEY = 'hearth:save';
 /** Older builds wrote the version into the key. Read them once, then adopt KEY. */
@@ -44,6 +44,8 @@ const MIGRATIONS: Record<number, (s: LooseState) => LooseState> = {
   10: (s) => ({ ...s, version: 11, wellbeing: { lastCalmDay: null }, decor: [], nextDecorId: 1 }),
   // v11 → v12: villager relationships (Codex Book III).
   11: (s) => ({ ...s, version: 12, relationships: {} }),
+  // v12 → v13: building upgrade tiers.
+  12: (s) => ({ ...s, version: 13, buildingUpgrades: {} }),
 };
 
 /** Upgrade any historical state to CURRENT_VERSION, or null if unrecognizable. */
@@ -61,7 +63,7 @@ export function migrateState(raw: unknown): GameState | null {
     s = step(s);
   }
   if (s.version !== CURRENT_VERSION) return null;
-  if (!s.board || !s.energy || !s.actions || !s.social || !s.gratitude || !s.settings || !s.prefs || !s.stats || !s.chronicle || !s.wellbeing || !s.relationships)
+  if (!s.board || !s.energy || !s.actions || !s.social || !s.gratitude || !s.settings || !s.prefs || !s.stats || !s.chronicle || !s.wellbeing || !s.relationships || !s.buildingUpgrades)
     return null;
   return s as GameState;
 }

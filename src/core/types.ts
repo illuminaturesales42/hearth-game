@@ -228,6 +228,8 @@ export interface GameState {
   wellbeing: WellbeingState;
   /** How each villager remembers the player (Codex Book III). */
   relationships: RelationshipState;
+  /** Building art id -> upgrade tier (0 = base L1, 1 = L2, 2 = L3). Coins buy pride, never power. */
+  buildingUpgrades: Record<string, number>;
   /** Player-placed town decorations (coins buy beauty, never power). */
   decor: readonly DecorPiece[];
   nextDecorId: number;

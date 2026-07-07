@@ -65,7 +65,8 @@ export class MapView {
     game.subscribe((ev) => {
       const refresh =
         ev.type === 'delivered' || ev.type === 'chapterComplete' || ev.type === 'merge' ||
-        ev.type === 'action' || ev.type === 'questDone' || ev.type === 'chronicle';
+        ev.type === 'action' || ev.type === 'questDone' || ev.type === 'chronicle' ||
+        ev.type === 'upgrade' || ev.type === 'decor' || ev.type === 'state';
       if (refresh && this.visible) {
         this.renderList();
         if (this.reduce) this.draw(0);
@@ -232,6 +233,38 @@ export class MapView {
     }
     const meta = document.getElementById('bldg-meta');
     if (meta) meta.textContent = locked ? `Returns with order ${at} · ${chapterFor(at - 1).title}` : `Returned with order ${at} · ${chapterFor(at - 1).title}`;
+
+    // Upgrade affordance — only for buildings that have actually returned.
+    const tierEl = document.getElementById('bldg-tier');
+    const upBtn = document.getElementById('bldg-upgrade') as HTMLButtonElement | null;
+    const tierNames = ['Restored', 'Cared-for', 'Beloved'];
+    if (tierEl && upBtn) {
+      if (locked) {
+        tierEl.hidden = true;
+        upBtn.hidden = true;
+      } else {
+        const tier = this.game.upgradeTier(art);
+        tierEl.hidden = false;
+        tierEl.textContent = `${tierNames[tier] ?? 'Beloved'} · ${'★'.repeat(tier + 1)}${'☆'.repeat(Math.max(0, 2 - tier))}`;
+        const cost = this.game.upgradeCost(art);
+        if (cost === null) {
+          upBtn.hidden = false;
+          upBtn.disabled = true;
+          upBtn.textContent = 'Cannot be more beloved';
+        } else {
+          upBtn.hidden = false;
+          upBtn.disabled = !this.game.canUpgrade(art);
+          upBtn.textContent = `Care for it · 🪙 ${cost}`;
+          upBtn.onclick = () => {
+            if (this.game.upgradeBuilding(art)) {
+              toast(`${BUILDING_INFO[art] ?? 'The building'} looks lovelier than ever.`);
+              this.showBuilding(art, unlockAt); // refresh the card in place
+              if (this.reduce) this.draw(0);
+            }
+          };
+        }
+      }
+    }
     const m = document.getElementById('bldg-modal');
     if (m) m.hidden = false;
   }
@@ -580,6 +613,10 @@ export class MapView {
       ctx.globalAlpha = alpha;
       ctx.drawImage(img, p.x * W - (w * scale) / 2, p.y * H - h * scale, w * scale, h * scale);
       ctx.globalAlpha = 1;
+      // upgrade tiers dress a cared-for building: bunting, then lanterns + glow
+      if (p.unlockAt > 0 && BUILDING_INFO[p.art]) {
+        this.drawUpgradeFlourish(ctx, this.game.upgradeTier(p.art), p.x * W, p.y * H, w * scale, h * scale, t);
+      }
       // cosy chimney smoke once the village is warm again
       if (p.smoke && stage >= 3 && !this.reduce) {
         const sx = p.x * W + p.smoke.dx * w;
@@ -756,6 +793,77 @@ export class MapView {
         ctx.fillStyle = flowers[i]!;
         ctx.beginPath();
         ctx.arc(W * (0.3 + i * 0.09), H * 0.86, 2.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  /**
+   * A cared-for building wears its tier: L2 hangs bunting across the eaves,
+   * L3 adds warm lanterns and a soft golden aura. Procedural — no new art.
+   * (cx, baseY) is the sprite's bottom-centre; w/h its drawn size.
+   */
+  private drawUpgradeFlourish(
+    ctx: CanvasRenderingContext2D,
+    tier: number,
+    cx: number,
+    baseY: number,
+    w: number,
+    h: number,
+    t: number,
+  ): void {
+    if (tier <= 0) return;
+    const topY = baseY - h;
+    const left = cx - w / 2;
+    // L3: a soft golden aura of pride behind the building
+    if (tier >= 2) {
+      const aura = ctx.createRadialGradient(cx, topY + h * 0.5, w * 0.2, cx, topY + h * 0.5, w * 0.75);
+      const pulse = this.reduce ? 0.12 : 0.1 + 0.04 * Math.sin(t / 1400 + cx);
+      aura.addColorStop(0, `rgba(255, 216, 140, ${pulse.toFixed(3)})`);
+      aura.addColorStop(1, 'rgba(255, 216, 140, 0)');
+      ctx.fillStyle = aura;
+      ctx.fillRect(left - w * 0.25, topY - h * 0.1, w * 1.5, h * 1.2);
+    }
+    // Bunting: a gentle swag of triangular flags across the upper facade
+    const swagY = topY + h * 0.16;
+    const span = w * 0.86;
+    const x0 = cx - span / 2;
+    const sag = h * 0.08;
+    ctx.strokeStyle = 'rgba(90, 62, 34, 0.7)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x0, swagY);
+    ctx.quadraticCurveTo(cx, swagY + sag, x0 + span, swagY);
+    ctx.stroke();
+    const flags = 6;
+    const colours = ['#e0664f', '#f0c060', '#6ba3c9', '#8fb96a', '#c98fc0', '#e0a060'];
+    for (let i = 0; i < flags; i++) {
+      const f = (i + 0.5) / flags;
+      const fx = x0 + span * f;
+      const fy = swagY + Math.sin(Math.PI * f) * sag;
+      ctx.fillStyle = colours[i % colours.length]!;
+      ctx.beginPath();
+      ctx.moveTo(fx - w * 0.03, fy);
+      ctx.lineTo(fx + w * 0.03, fy);
+      ctx.lineTo(fx, fy + h * 0.09);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // L3: two warm lanterns flanking the door, gently flickering
+    if (tier >= 2) {
+      for (const lx of [left + w * 0.2, left + w * 0.8]) {
+        const flick = this.reduce ? 1 : 0.8 + 0.2 * Math.sin(t / 300 + lx);
+        const ly = baseY - h * 0.32;
+        const glow = ctx.createRadialGradient(lx, ly, 0, lx, ly, w * 0.12);
+        glow.addColorStop(0, `rgba(255, 214, 130, ${(0.6 * flick).toFixed(3)})`);
+        glow.addColorStop(1, 'rgba(255, 214, 130, 0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(lx, ly, w * 0.12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffd66a';
+        ctx.beginPath();
+        ctx.arc(lx, ly, Math.max(1.5, w * 0.02), 0, Math.PI * 2);
         ctx.fill();
       }
     }
