@@ -86,18 +86,18 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   { art: 'prop_rock', x: 0.05, y: 0.47, w: 0.05, unlockAt: 0, stage: 0 },
   { art: 'prop_rock', x: 0.94, y: 0.68, w: 0.045, unlockAt: 0, stage: 0 },
   // the storm bent the trees but didn't take them — a fresh island still lives
-  { art: 'tree_pine', x: 0.1, y: 0.44, w: 0.045, unlockAt: 0, stage: 0 },
-  { art: 'tree_pine', x: 0.705, y: 0.415, w: 0.04, unlockAt: 0, stage: 0 },
+  { art: 'tree_pine', x: 0.105, y: 0.485, w: 0.045, unlockAt: 0, stage: 0 },
+  { art: 'tree_pine', x: 0.705, y: 0.44, w: 0.04, unlockAt: 0, stage: 0 },
   { art: 'tree_bush', x: 0.875, y: 0.5, w: 0.05, unlockAt: 0, stage: 0 },
   { art: 'tree_bush', x: 0.24, y: 0.62, w: 0.045, unlockAt: 0, stage: 0 },
   { art: 'prop_rock', x: 0.31, y: 0.815, w: 0.04, unlockAt: 0, stage: 0 },
   { art: 'prop_barrel', x: 0.585, y: 0.55, w: 0.03, unlockAt: 0, stage: 0 },
-  { art: 'tree_pine', x: 0.045, y: 0.4, w: 0.05, unlockAt: 0, stage: 1 },
-  { art: 'tree_oak', x: 0.665, y: 0.395, w: 0.07, unlockAt: 0, stage: 1 },
-  { art: 'tree_pine', x: 0.315, y: 0.37, w: 0.05, unlockAt: 0, stage: 2 },
+  { art: 'tree_pine', x: 0.05, y: 0.47, w: 0.05, unlockAt: 0, stage: 1 },
+  { art: 'tree_oak', x: 0.665, y: 0.425, w: 0.07, unlockAt: 0, stage: 1 },
+  { art: 'tree_pine', x: 0.315, y: 0.425, w: 0.05, unlockAt: 0, stage: 2 },
   { art: 'prop_lamp', x: 0.565, y: 0.47, w: 0.028, unlockAt: 0, stage: 2 },
   { art: 'prop_lamp', x: 0.44, y: 0.56, w: 0.028, unlockAt: 0, stage: 2 },
-  { art: 'tree_oak', x: 0.935, y: 0.45, w: 0.065, unlockAt: 0, stage: 2 },
+  { art: 'tree_oak', x: 0.935, y: 0.48, w: 0.065, unlockAt: 0, stage: 2 },
   { art: 'tree_bush', x: 0.35, y: 0.585, w: 0.055, unlockAt: 0, stage: 3 },
   { art: 'tree_flowerbush', x: 0.6, y: 0.6, w: 0.06, unlockAt: 0, stage: 3 },
   { art: 'prop_bench', x: 0.52, y: 0.665, w: 0.06, unlockAt: 0, stage: 3 },
@@ -120,12 +120,13 @@ export const TOWN_TERRAIN: readonly TownPiece[] = [
   { art: 'terrain_rocks', x: 0.955, y: 0.66, w: 0.085, unlockAt: 0 },
   { art: 'terrain_rocks', x: 0.24, y: 0.9, w: 0.08, unlockAt: 0 },
   { art: 'terrain_rocks', x: 0.045, y: 0.755, w: 0.07, unlockAt: 0 },
-  { art: 'terrain_rocks', x: 0.88, y: 0.4, w: 0.065, unlockAt: 0 },
-  // wooded edges
-  { art: 'terrain_trees_l', x: 0.1, y: 0.435, w: 0.1, unlockAt: 0 },
-  { art: 'terrain_trees_s', x: 0.245, y: 0.365, w: 0.085, unlockAt: 0 },
-  { art: 'terrain_trees_l', x: 0.545, y: 0.315, w: 0.095, unlockAt: 0 },
-  { art: 'terrain_trees_s', x: 0.71, y: 0.345, w: 0.08, unlockAt: 0 },
+  { art: 'terrain_rocks', x: 0.895, y: 0.455, w: 0.065, unlockAt: 0 },
+  // wooded edges — y positions follow the COASTLINE headlands (map-view.ts)
+  // so every copse stands on land, never in the sky or the sea
+  { art: 'terrain_trees_l', x: 0.1, y: 0.48, w: 0.1, unlockAt: 0 },
+  { art: 'terrain_trees_s', x: 0.235, y: 0.465, w: 0.085, unlockAt: 0 },
+  { art: 'terrain_trees_l', x: 0.615, y: 0.41, w: 0.095, unlockAt: 0 },
+  { art: 'terrain_trees_s', x: 0.735, y: 0.425, w: 0.08, unlockAt: 0 },
   { art: 'terrain_trees_l', x: 0.93, y: 0.5, w: 0.09, unlockAt: 0 },
   { art: 'terrain_bush', x: 0.165, y: 0.575, w: 0.06, unlockAt: 0 },
   { art: 'terrain_bush', x: 0.62, y: 0.565, w: 0.06, unlockAt: 0 },
@@ -134,11 +135,8 @@ export const TOWN_TERRAIN: readonly TownPiece[] = [
   { art: 'terrain_grass', x: 0.665, y: 0.775, w: 0.075, unlockAt: 0 },
   { art: 'terrain_flowers1', x: 0.3, y: 0.665, w: 0.06, unlockAt: 0 },
   { art: 'terrain_flowers2', x: 0.845, y: 0.63, w: 0.06, unlockAt: 0 },
-  // stone paths knit the square together once rebuilding begins
-  { art: 'terrain_path', x: 0.345, y: 0.505, w: 0.085, unlockAt: 1 },
-  { art: 'terrain_path', x: 0.445, y: 0.545, w: 0.085, unlockAt: 1 },
-  { art: 'terrain_path', x: 0.55, y: 0.515, w: 0.085, unlockAt: 1 },
-  { art: 'terrain_path', x: 0.525, y: 0.63, w: 0.08, unlockAt: 1 },
+  // (the old scattered cobble patches are gone — the map now draws worn dirt
+  // lanes that grow with the town; see the routes table in map-view.ts)
   // the harbour reaches into the water at the south-east
   { art: 'dock_straight', x: 0.775, y: 0.905, w: 0.1, unlockAt: 0 },
   { art: 'dock_end', x: 0.865, y: 0.925, w: 0.075, unlockAt: 0 },

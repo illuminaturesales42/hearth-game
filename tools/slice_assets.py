@@ -57,6 +57,11 @@ TOLERANCE: dict[str, int] = {}
 KEYCOLOR: dict[str, tuple] = {}
 # ids multiplied by a brightness factor after cropping (e.g. dark checker tile)
 DARKEN: dict[str, float] = {}
+# ids whose key colour is swept EVERYWHERE (not just edge-connected): sprites
+# with interior gaps — tree canopies, rock clusters — trap panel colour in
+# holes the edge flood can't reach. Swept tightly so dark art pixels survive.
+GLOBALKEY: dict[str, tuple] = {}
+GLOBALKEY_TOL = 20
 
 
 def remove_bg(im: Image.Image, tolerance: int = 52, key: tuple | None = None) -> Image.Image:
@@ -86,6 +91,20 @@ def remove_bg(im: Image.Image, tolerance: int = 52, key: tuple | None = None) ->
             if 0 <= nx < w and 0 <= ny < h and not seen[ny * w + nx] and close(px[nx, ny]):
                 seen[ny * w + nx] = 1
                 stack.append((nx, ny))
+    return im
+
+
+def global_key(im: Image.Image, key: tuple, tol: int = GLOBALKEY_TOL) -> Image.Image:
+    """Clear EVERY pixel within `tol` of `key`, connectivity be damned — for
+    interior panel remnants hiding in canopy gaps and rock crevices."""
+    im = im.convert("RGBA")
+    px = im.load()
+    w, h = im.size
+    for y in range(h):
+        for x in range(w):
+            p = px[x, y]
+            if p[3] and (p[0] - key[0]) ** 2 + (p[1] - key[1]) ** 2 + (p[2] - key[2]) ** 2 <= tol * tol:
+                px[x, y] = (0, 0, 0, 0)
     return im
 
 
@@ -207,7 +226,10 @@ def slice_all() -> None:
             opened[key] = Image.open(SRC / SHEETS[key]).convert("RGBA")
         im = opened[key].crop(box)
         if ident in KEYED:
-            im = defringe(remove_bg(im, TOLERANCE.get(ident, 52), KEYCOLOR.get(ident)))
+            im = remove_bg(im, TOLERANCE.get(ident, 52), KEYCOLOR.get(ident))
+            if ident in GLOBALKEY:
+                im = global_key(im, GLOBALKEY[ident])
+            im = defringe(im)
         if ident.startswith(("item_", "res_", "action_", "energy_")):
             im = clean_sprite(im)
         elif ident.startswith("town_"):
@@ -447,6 +469,10 @@ def define() -> None:
         TOLERANCE[t] = 30  # dark foliage/rock on navy panels — key gently
     for t in ("terrain_trees_l", "terrain_trees_s", "terrain_bush"):
         TOLERANCE[t] = 38  # panels must go; canopy greens survive this
+    for t in ("terrain_trees_l", "terrain_trees_s", "terrain_bush", "terrain_rocks"):
+        # sweep navy remnants out of canopy gaps / rock crevices (tight tol,
+        # everywhere — the edge flood can't reach interior holes)
+        GLOBALKEY[t] = (16, 30, 34)
 
     # ---- corepack5 (Core/MVP.png): the canonical grid board (merge area) ----
     add("corepack5", {"board_grass": (773, 500, 1172, 760)})
