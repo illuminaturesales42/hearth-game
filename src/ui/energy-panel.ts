@@ -9,6 +9,7 @@ import { DAILY_GAUGE, featuredActions, moreActions } from '../data/actions';
 import { chestDaysLeft, doneCount } from '../core/actions';
 import { capturePhoto } from './photo-action';
 import { runMotion } from './motion-action';
+import { actionIcon } from './art';
 import { toast } from './toast';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
@@ -78,7 +79,7 @@ export class EnergyPanel {
 
     const done = this.isDone(a);
     row.innerHTML =
-      `<span class="earn-ico">${a.icon}</span>` +
+      actionIcon(a.id, a.icon) +
       `<span class="earn-body"><b>${a.label}</b><span>${a.sublabel}</span></span>` +
       `<span class="earn-gain">+${a.energy}</span>`;
 

@@ -16,7 +16,7 @@ import { StargazeUI } from './stargaze';
 import { DuelUI } from './duel';
 import { KindnessUI } from './kindness';
 import { SettingsUI } from './settings';
-import { artUrl } from './art';
+import { artUrl, actionArt } from './art';
 import { FtueUI } from './ftue';
 import { NewDayUI } from './new-day';
 import { GrowthUI } from './growth';
@@ -83,6 +83,18 @@ export class AppShell {
     if (coin && coinArt) {
       coin.style.backgroundImage = `url(${coinArt})`;
       coin.classList.add('pip-art');
+    }
+    // painted wellness medallions on the energy-panel CTAs (Batch 10)
+    for (const [btnId, subject] of [
+      ['med-open', 'meditate'], ['recovery-open', 'cold_plunge'],
+      ['star-open', 'sleep'], ['kind-open', 'kindness'],
+    ] as const) {
+      const url = actionArt(subject);
+      const ico = document.querySelector<HTMLElement>(`#${btnId} .med-cta-ico`);
+      if (url && ico) {
+        ico.innerHTML = `<img src="${url}" alt="" />`;
+        ico.classList.add('act-art');
+      }
     }
     const pill = document.getElementById('energy-pill');
     if (pill) pill.addEventListener('click', () => this.energy.open());

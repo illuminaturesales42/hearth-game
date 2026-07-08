@@ -41,6 +41,8 @@ SHEETS = {
     "final_world": "Core/Final Assets/Batch 2 - 4 World & Map Merch Products chain.png",
     "final_build": "Core/Final Assets/Batch 5 - Buildings.png",
     "final_ui": "Core/Final Assets/Batch 6 -7 Terrain and Ui.png",
+    "final_char": "Core/Final Assets/Batch 8 - Charachters.png",
+    "final_wellness": "Core/Final Assets/Batch 9-10 - Story and real world wellness.png",
 }
 
 # id -> (sheet_key, (x0, y0, x1, y1)) in native sheet pixels (all sheets 1536x1024
@@ -171,7 +173,7 @@ def slice_all() -> None:
         im = opened[key].crop(box)
         if ident in KEYED:
             im = remove_bg(im, TOLERANCE.get(ident, 52), KEYCOLOR.get(ident))
-        if ident.startswith(("item_", "res_")):
+        if ident.startswith(("item_", "res_", "action_", "energy_")):
             im = clean_sprite(im)
         elif ident.startswith("town_"):
             im = clean_sprite(im, rel=0.03)  # gentle: buildings are one big mass
@@ -405,16 +407,39 @@ def define() -> None:
     add("final_ui", {"turf_light": (46, 103, 116, 162), "turf_dark": (46, 103, 116, 162)})
     DARKEN["turf_dark"] = 0.85
 
-    # ---- batch567: dialogue busts + fx stills ----
+    # ---- fx stills (still from batch567) ----
     add("batch567", {
-        "char_bran_bust": (26, 698, 112, 806),
-        "char_wren_bust": (118, 698, 205, 806),
-        "char_sorin_bust": (212, 698, 298, 806),
-        "char_marta_bust": (306, 698, 392, 806),
-        "char_joss_bust": (400, 698, 488, 806),
         "fx_merge_sparkle": (1056, 72, 1152, 152),
         "fx_energy_orb": (1056, 198, 1152, 270),
     })
+
+    # ---- FINAL villager portraits (Batch 8 panel 2, inside the wooden frames)
+    # -> char_<name>_bust, shown on order cards + the Villagers screen ----
+    portraits = {
+        "char_bran_bust": (786, 108, 876, 198),
+        "char_wren_bust": (906, 108, 996, 198),
+        "char_sorin_bust": (1028, 108, 1118, 198),
+        "char_marta_bust": (1150, 108, 1240, 198),
+        "char_joss_bust": (1272, 108, 1362, 198),
+        "char_mayor_bust": (1394, 108, 1484, 198),
+    }
+    add("final_char", portraits)  # painted vignette bg — do NOT key
+
+    # ---- FINAL wellness action medallions (Batch 10 panel 1, round, cream bg)
+    # -> action_<subject>, replace the emoji on each energy action ----
+    W10 = (252, 240, 220)
+    row("final_wellness", "action_", ["walk", "water", "stretch", "breathe", "meditate"], 28, 632, 476, 704, inset=4)
+    row("final_wellness", "action_", ["photo", "nature", "sunrise", "sunset", "journal"], 28, 708, 476, 780, inset=4)
+    row("final_wellness", "action_", ["sauna", "cold_plunge", "kindness", "reading", "sleep"], 28, 784, 476, 856, inset=4)
+    add("final_wellness", {"action_exercise": (30, 862, 104, 934), "action_streak_reward": (120, 862, 196, 934)})
+    # energy states (panel 4) -> energy_<state> for the HUD pill
+    row("final_wellness", "energy_", ["full", "med", "low", "empty"], 830, 862, 1155, 934, inset=4)
+    for k in [f"action_{s}" for s in ("walk", "water", "stretch", "breathe", "meditate", "photo", "nature",
+              "sunrise", "sunset", "journal", "sauna", "cold_plunge", "kindness", "reading", "sleep",
+              "exercise", "streak_reward")] + [f"energy_{s}" for s in ("full", "med", "low", "empty")]:
+        KEYED.add(k)
+        KEYCOLOR[k] = W10
+        TOLERANCE[k] = 52
 
 
 define()

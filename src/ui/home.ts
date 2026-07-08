@@ -131,11 +131,17 @@ export class Home {
     const s = this.game.snapshot;
     $('hud-coins').textContent = String(s.coins);
     $('hud-energy').textContent = String(s.energy.current);
-    // Energy pill wears its level: low embers dim, a full hearth glows.
+    // Energy pill wears its level: the ember-heart brightens with energy.
     const pill = document.querySelector<HTMLElement>('.energy-pill');
     if (pill) {
       pill.classList.toggle('pill-low', s.energy.current < 8);
       pill.classList.toggle('pill-full', s.energy.current >= 60);
+    }
+    const pip = document.querySelector<HTMLElement>('.energy-pill .pip');
+    if (pip) {
+      const state = s.energy.current >= 60 ? 'full' : s.energy.current >= 20 ? 'med' : s.energy.current > 0 ? 'low' : 'empty';
+      const url = artUrl(`energy_${state}`) ?? artUrl('res_energy');
+      if (url) pip.style.backgroundImage = `url(${url})`;
     }
 
     const order = ORDERS[s.orderIndex];

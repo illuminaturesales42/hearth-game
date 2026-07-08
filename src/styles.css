@@ -429,6 +429,10 @@ body {
 .earn-list { display: flex; flex-direction: column; gap: 8px; }
 .earn-row { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: var(--r-card); background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 210, 122, 0.12); }
 .earn-ico { font-size: 22px; width: 30px; text-align: center; flex: 0 0 auto; }
+/* painted wellness medallions (Batch 10) in the energy list + CTAs */
+.act-art { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; }
+.act-art img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35)); }
+.med-cta-ico.act-art { width: 30px; height: 30px; }
 .earn-body { flex: 1; line-height: 1.3; }
 .earn-body b { font-size: 13.5px; }
 .earn-body span { display: block; font-size: 11px; color: var(--cream-dim); }
