@@ -1,0 +1,37 @@
+name: Deploy to Cloudflare Pages
+
+# Auto-publishes the web build to the permanent Pages URL on every push to main.
+# One-time setup (repo secrets + first local deploy) is documented in DEPLOY.md.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Skip if the Cloudflare secrets aren't configured yet, so the workflow
+    # doesn't fail red on repos that haven't finished the one-time setup.
+    if: ${{ vars.CLOUDFLARE_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # project name + output dir come from wrangler.toml
+          command: pages deploy
