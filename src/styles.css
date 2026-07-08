@@ -44,6 +44,62 @@
   --r-btn: 12px;
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
   --sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  /* ===== design tokens (v2 restructure) ===== */
+  /* type scale — 7 steps + display outliers */
+  --fs-xs: 9px;      /* micro labels (level chip, badges) */
+  --fs-sm: 11px;     /* captions, hints */
+  --fs-base: 13px;   /* body / standard UI */
+  --fs-md: 15px;     /* companion text, secondary headings */
+  --fs-lg: 18px;     /* tertiary headings, prompts */
+  --fs-xl: 22px;     /* section titles */
+  --fs-2xl: 28px;    /* page titles */
+  --fs-hero: 40px;   /* energy display number */
+
+  /* spacing — 4px base */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 20px;
+  --space-2xl: 24px;
+
+  /* radius — extends the existing --r-panel/card/cell/btn */
+  --r-xs: 3px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 20px;
+  --r-xl: 24px;
+  --r-circle: 50%;
+
+  /* shadows + glows */
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6);
+  --shadow-inset-light: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  --shadow-inset-dark: inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+  --shadow-inset-gold: inset 0 0 0 1px rgba(255, 210, 122, 0.25);
+  --glow-ember: 0 0 20px rgba(244, 166, 59, 0.6);
+  --glow-gold: 0 0 20px rgba(255, 210, 122, 0.6);
+  --glow-teal: 0 0 40px rgba(120, 200, 220, 0.4);
+
+  /* ink on parchment (was hardcoded #6b3f14 / #7a4a12 / #7a5a32 / #5a3a12) */
+  --ink-parch-dark: #6b3f14;
+  --ink-parch-mid: #7a4a12;
+  --ink-parch-light: #7a5a32;
+  --gold-bright: #f0c878;   /* splash word, decor cost, tier gold */
+  --pink-hearts: #e6739a;   /* villager affinity hearts */
+
+  /* ember / gold opacity utilities (kill ~30 repeated rgba literals) */
+  --ember-12: rgba(244, 166, 59, 0.12);
+  --ember-16: rgba(244, 166, 59, 0.16);
+  --ember-20: rgba(244, 166, 59, 0.2);
+  --ember-35: rgba(244, 166, 59, 0.35);
+  --gold-22: rgba(255, 210, 122, 0.22);
+  --gold-25: rgba(255, 210, 122, 0.25);
+  --gold-30: rgba(255, 210, 122, 0.3);
+  --gold-35: rgba(255, 210, 122, 0.35);
+  --gold-45: rgba(255, 210, 122, 0.45);
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
