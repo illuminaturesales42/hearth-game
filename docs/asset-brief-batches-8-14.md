@@ -119,9 +119,10 @@ The composed town now has a real coastline, waves, warm windows, and clean cutou
 - Irregular rocky coastline with headlands and coves; sandy beach at the waterline; foam and gentle waves; shallow turquoise water ringing the shore; open sea to the canvas edges (the game animates extra foam/swell over it).
 - A north-east headland kept **empty** for the lighthouse; a sheltered south-east bay with **no dock structures** (the game places them).
 - Meadow interior with worn dirt paths connecting **14 building plots left visibly clear** (gentle grass, slight trodden edge — no structures). Wooded copses along the north and west edges, rocks at the shore.
-- Golden-hour warm light from the upper right, matching Batch 1/2. **Layout must follow the game's plot map** — generate against the composed-town screenshot + `TOWN_BUILDINGS` positions in `src/data/town-layout.ts` (x/y are fractions of the canvas; the build session can render a plot-mask PNG on request).
+- Golden-hour warm light from the upper right, matching Batch 1/2. **Include the sky** — the game keeps compositing its live time-of-day light, weather, drifting clouds, stars, foam, and all moving pieces *on top* as translucent overlays, so a painted sky still shifts dawn→night and stays reactive.
+- **Paint to the delivered template:** `Batch 15/PLOT_MASK_map_island_plate.png` (rendered by `tools/make_plot_mask.py` from the live `TOWN_BUILDINGS` + `COASTLINE` data). Every labelled plot and both red KEEP-CLEAR zones must stay empty. Size **exactly 2048×1536**.
 
-🔌 *wire: becomes the ground layer replacing the procedural island fill (coast/sand/meadow/paths stop being code); buildings/walkers/boats/effects composite on top unchanged.*
+🔌 *WIRED + VERIFIED (2026-07-09): the render path already consumes `map_island_plate`. Drop the PNG into `Batch 15/`, run `python tools/slice_assets.py`, rebuild — it becomes the ground layer with buildings/boats/people/light composited on top. Tested end-to-end using the plot-mask itself as a stand-in; every sprite landed exactly on its plot.*
 
 ### 15.2 Isolated building sprites (replace the scene-vignette slices)
 

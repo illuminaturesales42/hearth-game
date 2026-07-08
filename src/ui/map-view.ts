@@ -514,6 +514,14 @@ export class MapView {
     }
     this.lastOrderIndex = delivered;
 
+    // Batch 15: a painted island plate (map_island_plate.png), when present, is
+    // the scene's base. The opaque procedural sky/sea/land fills are then
+    // skipped — the game only composites its LIVE layers (sun/moon, clouds,
+    // stars, weather, foam, boats, buildings, people, effects) on top, so the
+    // plate reads as a single painting yet still breathes with the time of day.
+    const plate = this.sprite('map_island_plate');
+    if (plate) ctx.drawImage(plate, 0, 0, W, H);
+
     // --- sky by real time of day ---
     const hour = new Date().getHours();
     const sky = ctx.createLinearGradient(0, 0, 0, H * 0.45);
@@ -530,8 +538,10 @@ export class MapView {
       sky.addColorStop(0, '#0c1230');
       sky.addColorStop(1, '#233058');
     }
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, W, H * 0.45);
+    if (!plate) {
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H * 0.45);
+    }
     // sun or moon
     const night = hour >= 21 || hour < 5;
     // stars emerge at night — a scattered field that gently twinkles, fading
@@ -593,6 +603,10 @@ export class MapView {
       ctx.fillRect(0, 0, W, H);
     }
 
+    // The whole procedural ground (sea, island landmass, dirt lanes) is the
+    // part a painted plate replaces — skip it when one is loaded. (Body left
+    // un-reindented to keep the diff minimal; all `island()` uses are inside.)
+    if (!plate) {
     // --- sea with an evening sheen, then the rocky island (Batch-2 look) ---
     const seaGrad = ctx.createLinearGradient(0, H * 0.42, 0, H);
     seaGrad.addColorStop(0, night ? '#0c1a2c' : '#1c3b4a');
@@ -799,6 +813,7 @@ export class MapView {
       }
       ctx.restore();
     }
+    } // end if (!plate) — the painted plate stands in for the procedural ground
 
     // --- boats first (they sit on the water behind the shore) ---
     for (const b of TOWN_BOATS) {

@@ -43,6 +43,11 @@ SHEETS = {
     "final_ui": "Core/Final Assets/Batch 6 -7 Terrain and Ui.png",
     "final_char": "Core/Final Assets/Batch 8 - Charachters.png",
     "final_wellness": "Core/Final Assets/Batch 9-10 - Story and real world wellness.png",
+    # Batch 15 (2026-07-09): the painted island terrain plate — the whole
+    # island+sea as one opaque painting; the game composites buildings/boats/
+    # people/time-of-day on top. Skipped gracefully until this file is generated
+    # (see PLOT_MASK_map_island_plate.png + tools/make_plot_mask.py for the guide).
+    "batch15_plate": "Core/Final Assets/Batch 15/map_island_plate.png",
 }
 
 # id -> (sheet_key, (x0, y0, x1, y1)) in native sheet pixels (all sheets 1536x1024
@@ -223,7 +228,16 @@ def slice_all() -> None:
     ids = []
     for ident, (key, box) in sorted(MANIFEST.items()):
         if key not in opened:
-            opened[key] = Image.open(SRC / SHEETS[key]).convert("RGBA")
+            sheet_path = SRC / SHEETS[key]
+            if not sheet_path.exists():
+                # Batch 15+ art may not be generated yet — skip its ids so the
+                # slicer still runs; they integrate the moment the file lands.
+                print(f"skip {ident}: sheet not delivered ({SHEETS[key]})")
+                opened[key] = None  # type: ignore[assignment]
+                continue
+            opened[key] = Image.open(sheet_path).convert("RGBA")
+        if opened[key] is None:
+            continue
         im = opened[key].crop(box)
         if ident in KEYED:
             im = remove_bg(im, TOLERANCE.get(ident, 52), KEYCOLOR.get(ident))
@@ -478,6 +492,10 @@ def define() -> None:
     add("corepack5", {"board_grass": (773, 500, 1172, 760)})
     KEYED.add("board_grass")
     TOLERANCE["board_grass"] = 26  # keep the stone rim; a faint dark halo hides on navy
+
+    # Batch 15 island plate: opaque, whole-image, no keying/cleanup. Box is the
+    # specced plate size (2048×1536); skipped until the file is generated.
+    add("batch15_plate", {"map_island_plate": (0, 0, 2048, 1536)})
     # two real turf squares from the reference board — used as the cell
     # textures so the aligned checker carries the painted mossy look
     # board turf: green INTERIOR of Batch 6 grass tile (01_grass). The tile
