@@ -36,6 +36,11 @@ SHEETS = {
     "corepack3": "Core/Terain and buildings.png",                    # buildings catalogue
     "corepack4": "ChatGPT Image Jul 7, 2026, 04_43_05 AM.png",       # core mvp pack (avatars, buildings)
     "corepack5": "Core/MVP.png",                                     # CORE board + palette reference
+    # FINAL production assets (2026-07-08) — the authoritative art library
+    "final_style": "Core/Final Assets/Batch 1 — Foundation & Style Lock.png",
+    "final_world": "Core/Final Assets/Batch 2 - 4 World & Map Merch Products chain.png",
+    "final_build": "Core/Final Assets/Batch 5 - Buildings.png",
+    "final_ui": "Core/Final Assets/Batch 6 -7 Terrain and Ui.png",
 }
 
 # id -> (sheet_key, (x0, y0, x1, y1)) in native sheet pixels (all sheets 1536x1024
@@ -45,18 +50,23 @@ MANIFEST: dict[str, tuple[str, tuple[int, int, int, int]]] = {}
 KEYED: set[str] = set()
 # per-id keying tolerance overrides (dark sprites on dark panels need a tighter key)
 TOLERANCE: dict[str, int] = {}
+# ids keyed against a FIXED colour instead of the border average (for light
+# sheets where an icon can touch the crop edge and skew the average)
+KEYCOLOR: dict[str, tuple] = {}
 
 
-def remove_bg(im: Image.Image, tolerance: int = 52) -> Image.Image:
+def remove_bg(im: Image.Image, tolerance: int = 52, key: tuple | None = None) -> Image.Image:
     """Make the panel background transparent: BFS from all border pixels,
-    clearing anything within `tolerance` colour distance of the border
-    average. Interior dark pixels stay (only edge-connected bg is removed)."""
+    clearing anything within `tolerance` colour distance of the reference
+    colour. `key` fixes that colour (robust when an icon touches the crop
+    edge and skews the border average); otherwise the border average is used.
+    Interior pixels stay (only edge-connected bg is removed)."""
     im = im.convert("RGBA")
     px = im.load()
     w, h = im.size
     border = [(x, y) for x in range(w) for y in (0, h - 1)] + [(x, y) for x in (0, w - 1) for y in range(h)]
     n = len(border)
-    avg = tuple(sum(px[x, y][c] for x, y in border) // n for c in range(3))
+    avg = key if key is not None else tuple(sum(px[x, y][c] for x, y in border) // n for c in range(3))
 
     def close(p):
         return (p[0] - avg[0]) ** 2 + (p[1] - avg[1]) ** 2 + (p[2] - avg[2]) ** 2 <= tolerance * tolerance
@@ -103,15 +113,16 @@ def probe(key: str) -> None:
     print(f"probe -> {out}")
 
 
-def clean_sprite(im: Image.Image, min_blob: int = 30, pad_frac: float = 0.05) -> Image.Image:
-    """Post-key cleanup for game pieces: drop stray speckles (small alpha
-    islands from neighbour-cell bleed), then autocrop to content + padding so
-    every icon fills its tile consistently."""
+def clean_sprite(im: Image.Image, min_blob: int = 30, pad_frac: float = 0.05, rel: float = 0.12) -> Image.Image:
+    """Post-key cleanup for game pieces: keep only substantial connected
+    components (drops stray speckles, keyed arrows, and label text), then
+    autocrop to content + padding so every icon centres in its tile. A blob
+    survives if it is >= min_blob px AND >= `rel` of the largest blob."""
     im = im.convert("RGBA")
     w, h = im.size
     px = im.load()
     seen = bytearray(w * h)
-    keep = bytearray(w * h)
+    blobs = []
     for sy in range(h):
         for sx in range(w):
             i0 = sy * w + sx
@@ -127,9 +138,14 @@ def clean_sprite(im: Image.Image, min_blob: int = 30, pad_frac: float = 0.05) ->
                     if 0 <= nx < w and 0 <= ny < h and not seen[ny * w + nx] and px[nx, ny][3] >= 16:
                         seen[ny * w + nx] = 1
                         stack.append((nx, ny))
-            if len(blob) >= min_blob:
-                for x, y in blob:
-                    keep[y * w + x] = 1
+            blobs.append(blob)
+    biggest = max((len(b) for b in blobs), default=0)
+    thresh = max(min_blob, int(biggest * rel))
+    keep = bytearray(w * h)
+    for blob in blobs:
+        if len(blob) >= thresh:
+            for x, y in blob:
+                keep[y * w + x] = 1
     for y in range(h):
         for x in range(w):
             if px[x, y][3] >= 16 and not keep[y * w + x]:
@@ -152,8 +168,8 @@ def slice_all() -> None:
             opened[key] = Image.open(SRC / SHEETS[key]).convert("RGBA")
         im = opened[key].crop(box)
         if ident in KEYED:
-            im = remove_bg(im, TOLERANCE.get(ident, 52))
-        if ident.startswith("item_") and ident not in ("item_wood_5", "item_wood_6"):
+            im = remove_bg(im, TOLERANCE.get(ident, 52), KEYCOLOR.get(ident))
+        if ident.startswith(("item_", "res_")):
             im = clean_sprite(im)
         im.save(OUT / f"{ident}.png")
         ids.append(ident)
@@ -198,21 +214,53 @@ def contact() -> None:
 
 def define() -> None:
     # ---- batch34: merge item icons (the board's face) ----
-    row("batch34", "item_wood_", [str(i) for i in range(7)], 10, 115, 700, 248, inset=5)
-    row("batch34", "item_harvest_", [str(i) for i in range(7)], 10, 312, 700, 446, inset=5)
-    row("batch34", "item_hearthfire_", [str(i) for i in range(4)], 0, 518, 560, 645, inset=5)
-    # key the navy panel bg off the item icons so they sit as pieces on the
-    # grassy board (tight tolerance: several icons are dark near their edges)
-    for _chain, _n in (("wood", 7), ("harvest", 7), ("hearthfire", 4)):
-        for _i in range(_n):
-            KEYED.add(f"item_{_chain}_{_i}")
-            # the wood row sits on a lighter navy gradient — needs a looser key
-            TOLERANCE[f"item_{_chain}_{_i}"] = 44 if _chain == "wood" else 30
-    TOLERANCE["item_wood_5"] = 56  # door + cottage need the loose key, and their
-    TOLERANCE["item_wood_6"] = 56  # sparse paint must skip the speckle cleanup
-    # resources (skip the gem — no premium currency in Hearth)
-    row("batch34", "res_", ["coin", "energy", "gem_SKIP", "chest_closed", "chest_open", "star", "gift"],
-        10, 818, 700, 898)
+    # ---- FINAL merge chains (Batch 3, cream bg, individually boxed) ----
+    merge = {
+        # Timberline — row 1 then row 2
+        "item_wood_0": (28, 442, 95, 545), "item_wood_1": (106, 452, 186, 542),
+        "item_wood_2": (190, 458, 272, 535), "item_wood_3": (283, 442, 376, 545),
+        "item_wood_4": (26, 552, 96, 652), "item_wood_5": (126, 552, 202, 652),
+        "item_wood_6": (208, 548, 306, 652),
+        # Harvest
+        "item_harvest_0": (410, 442, 480, 548), "item_harvest_1": (498, 452, 590, 542),
+        "item_harvest_2": (593, 452, 682, 542), "item_harvest_3": (683, 440, 767, 545),
+        "item_harvest_4": (408, 550, 502, 654), "item_harvest_5": (522, 552, 628, 650),
+        "item_harvest_6": (656, 548, 727, 650),
+        # Hearthfire
+        "item_hearthfire_0": (796, 442, 864, 545), "item_hearthfire_1": (870, 448, 946, 545),
+        "item_hearthfire_2": (946, 448, 1040, 545), "item_hearthfire_3": (1040, 442, 1110, 545),
+        # Keepsake (emoji placeholders before this)
+        "item_keepsake_0": (1136, 452, 1220, 544), "item_keepsake_1": (1226, 452, 1314, 544),
+        "item_keepsake_2": (1328, 442, 1424, 545), "item_keepsake_3": (1432, 454, 1520, 542),
+        "item_keepsake_4": (1132, 550, 1230, 652), "item_keepsake_5": (1236, 548, 1346, 654),
+        "item_keepsake_6": (1432, 556, 1528, 648),
+    }
+    add("final_world", merge)
+    CREAM = (250, 238, 217)  # Batch 2-4 sheet background
+    for k in merge:
+        KEYED.add(k)
+        KEYCOLOR[k] = CREAM
+        TOLERANCE[k] = 52
+    # ---- FINAL resources, currencies & containers (Batch 4, cream bg) ----
+    res = {
+        "res_coin": (26, 876, 106, 928), "res_energy": (135, 872, 220, 930),
+        "res_star": (245, 874, 328, 928),
+        "res_chest_closed": (556, 710, 646, 802), "res_chest_open": (652, 710, 750, 802),
+        "res_gift": (750, 706, 820, 802),
+        "res_wood": (26, 712, 100, 800), "res_stone": (116, 712, 196, 800),
+        "res_clay": (210, 712, 290, 800), "res_water": (300, 712, 380, 800),
+        "res_flowers": (386, 712, 470, 800), "res_honey": (476, 712, 558, 800),
+        "res_herbs": (24, 806, 100, 878), "res_rope": (114, 806, 196, 878),
+        "res_iron": (210, 806, 292, 878), "res_copper": (300, 806, 384, 878),
+        "res_seeds": (386, 806, 470, 878), "res_fish": (476, 806, 560, 878),
+        "res_key": (554, 806, 634, 878), "res_scroll": (646, 806, 722, 878),
+        "res_book": (728, 806, 804, 878),
+    }
+    add("final_world", res)
+    for k in res:
+        KEYED.add(k)
+        KEYCOLOR[k] = (250, 238, 217)
+        TOLERANCE[k] = 52
     # bottom navigation medallions
     row("batch34", "nav_", ["shop", "map", "home", "villagers", "journal"], 1192, 348, 1510, 412)
     # core icon set, two rows of ten

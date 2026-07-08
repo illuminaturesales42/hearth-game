@@ -214,7 +214,7 @@ export class Home {
   /** Chest/reward moments get their moment: painted chest, warm count. */
   private showReward(title: string, amount: string): void {
     const img = document.getElementById('reward-art') as HTMLImageElement | null;
-    const url = artUrl('reward_chest');
+    const url = artUrl('res_chest_open') ?? artUrl('reward_chest');
     if (img && url) img.src = url;
     const t = document.getElementById('reward-title');
     if (t) t.textContent = title;
