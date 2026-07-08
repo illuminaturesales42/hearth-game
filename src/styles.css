@@ -158,10 +158,10 @@ body {
 }
 .energy-pill .pip { background: radial-gradient(circle at 50% 62%, var(--ember-hi), var(--ember-deep) 72%); box-shadow: 0 0 12px rgba(244, 166, 59, 0.6); }
 .coin-ico { background: radial-gradient(circle at 38% 32%, var(--ember-hi), var(--ember) 75%); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.3); }
-.brandmark { text-align: center; line-height: 1; }
-.brand-title { display: block; font-family: var(--serif); font-size: 22px; font-weight: 700; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--ember-hi); text-shadow: 0 1px 10px rgba(244, 166, 59, 0.35); }
-.brand-sub { font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--cream-dim); }
+.brandmark { text-align: center; line-height: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.brand-wordmark { display: block; height: 32px; width: auto; max-width: 46vw;
+  filter: drop-shadow(0 1px 6px var(--ember-20)); }
+.brand-sub { font-size: var(--fs-xs); letter-spacing: 0.3em; text-transform: uppercase; color: var(--cream-dim); }
 
 @media (prefers-reduced-motion: no-preference) {
   .energy-pill .pip { animation: flicker 2.6s ease-in-out infinite; }

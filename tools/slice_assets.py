@@ -434,6 +434,13 @@ def define() -> None:
     }
     add("final_char", portraits)  # painted vignette bg — do NOT key
 
+    # ---- FINAL painted HEARTH wordmark (Batch 1 top-left: gilded serif +
+    # ember flame + vine flourishes) -> topbar brandmark + splash ----
+    add("final_style", {"wordmark_hearth": (18, 22, 322, 116)})
+    KEYED.add("wordmark_hearth")
+    KEYCOLOR["wordmark_hearth"] = (1, 10, 14)  # near-black navy bg
+    TOLERANCE["wordmark_hearth"] = 34  # gentle — keep the dark-green vines
+
     # ---- FINAL wellness action medallions (Batch 10 panel 1, round, cream bg)
     # -> action_<subject>, replace the emoji on each energy action ----
     W10 = (252, 240, 220)
