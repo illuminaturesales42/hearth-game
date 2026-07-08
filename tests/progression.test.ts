@@ -84,12 +84,16 @@ describe('daily quests', () => {
 
   it('completing a quest pays coins automatically', () => {
     const g = new Game(T0);
-    const day = g.snapshot.stats.day;
-    const deliverQuest = questsForDay(day).find((q) => q.id.startsWith('dq-deliver'));
-    if (!deliverQuest || deliverQuest.target > 1) return; // only assert on the 1-delivery variant
     const coinsBefore = g.snapshot.coins;
     g.finishDuel(true, [{ chain: 'wood', level: 2 }], 10); // bank the needed item
     g.deliverFromRepository();
+    // Delivering rolls the game to the REAL day before counting, so judge
+    // against the day the delivery actually landed on — asserting T0's quest
+    // rotation made this test flip whenever the wall-clock day rotated in
+    // the other deliver quest (it broke on 2026-07-09).
+    const day = g.snapshot.stats.day;
+    const deliverQuest = questsForDay(day).find((q) => q.id.startsWith('dq-deliver'));
+    if (!deliverQuest || deliverQuest.target > 1) return; // only assert on the 1-delivery variant
     expect(g.snapshot.questsClaimed).toContain(deliverQuest.id);
     expect(g.snapshot.coins).toBeGreaterThan(coinsBefore);
   });
