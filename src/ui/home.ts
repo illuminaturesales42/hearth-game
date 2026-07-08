@@ -4,7 +4,7 @@
  */
 import type { Game } from '../core/game';
 import { chainDef } from '../core/board';
-import { artUrl, portraitFor } from './art';
+import { artUrl, portraitFor, itemIconInline } from './art';
 import { ORDERS, ZONE_STAGES } from '../data/economy';
 import { feedback } from './feedback';
 import { toast } from './toast';
@@ -155,9 +155,9 @@ export class Home {
     }
     if (order) {
       const def = chainDef(order.need.chain);
-      const glyph = def.levels[order.need.level] ?? '';
+      const item = itemIconInline(order.need.chain, order.need.level);
       const name = def.levelNames[order.need.level] ?? '';
-      text.innerHTML = `<span class="who">${order.who}</span>${order.text} <b>Bring: ${glyph} ${name}</b>`;
+      text.innerHTML = `<span class="who">${order.who}</span>${order.text} <b>Bring: ${item} ${name}</b>`;
       deliver.disabled = this.game.deliverableIndex() < 0;
     } else {
       text.innerHTML = '<span class="who">Chapter complete</span>Marta’s story continues in Chapter 2.';
@@ -170,7 +170,7 @@ export class Home {
     if (nextEl) {
       if (next) {
         const ndef = chainDef(next.need.chain);
-        nextEl.textContent = `Up next: ${next.who} — ${ndef.levels[next.need.level] ?? ''} ${ndef.levelNames[next.need.level] ?? ''}`;
+        nextEl.innerHTML = `Up next: ${next.who} — ${itemIconInline(next.need.chain, next.need.level)} ${ndef.levelNames[next.need.level] ?? ''}`;
         nextEl.hidden = false;
       } else {
         nextEl.hidden = true;

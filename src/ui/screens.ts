@@ -160,9 +160,14 @@ export class Screens {
       ACHIEVEMENTS.map((a) => {
         const has = earned.has(a.id);
         const art = a.art ? artUrl(a.art) : null;
+        const lockUrl = artUrl('icon_lock');
         const ico = art
           ? `<span class="badge-ico badge-art" style="background-image:url(${art})"></span>`
-          : `<span class="badge-ico">${has ? a.icon : '🔒'}</span>`;
+          : has
+            ? `<span class="badge-ico">${a.icon}</span>`
+            : lockUrl
+              ? `<span class="badge-ico badge-art locked-art" style="background-image:url(${lockUrl})"></span>`
+              : `<span class="badge-ico">🔒</span>`;
         return (
           `<div class="badge ${has ? 'earned' : 'locked'}" title="${a.desc}">${ico}` +
           `<b>${a.title}</b><span>${a.desc}</span></div>`

@@ -59,4 +59,11 @@ export function actionArt(subject: string): string | null {
   return artUrl(`action_${subject}`);
 }
 
+/** Small inline painted item icon (for order/"up next" text), emoji fallback. */
+export function itemIconInline(chain: ChainId, level: number): string {
+  const url = artUrl(`item_${chain}_${level}`);
+  if (url) return `<img class="inline-ico" src="${url}" alt="" />`;
+  return `<span class="inline-glyph">${chainDef(chain).levels[level] ?? '❔'}</span>`;
+}
+
 export { artUrl };

@@ -7,6 +7,7 @@
 import type { Game } from '../core/game';
 import { LOG_MEDITATION, MEDITATIONS, findMeditation, loggedMinutesToEnergy } from '../data/meditations';
 import type { Meditation } from '../data/meditations';
+import { actionIcon } from './art';
 import { feedback } from './feedback';
 import { toast } from './toast';
 
@@ -36,7 +37,7 @@ export class MeditationUI {
         const done = !this.game.canDoAction(m.id);
         return (
           `<div class="earn-row">` +
-          `<span class="earn-ico">🧘</span>` +
+          actionIcon('log-meditation', '🧘') +
           `<span class="earn-body"><b>${m.title}</b><span>${m.sublabel} · ${mmss(m.durationSec)}</span></span>` +
           `<span class="earn-gain">+${m.energy}</span>` +
           `<div class="earn-ctrl">` +

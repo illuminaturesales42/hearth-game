@@ -310,7 +310,10 @@ body {
 .order-face { width: 44px; height: 44px; border-radius: 50%; flex: 0 0 auto;
   background: radial-gradient(circle at 38% 32%, #f7c08c, #b06a3a 75%); box-shadow: 0 0 0 2px rgba(107, 74, 42, 0.55); }
 #order-text { margin: 0; flex: 1 1 55%; min-width: 0; font-size: 12.5px; line-height: 1.42; }
-#order-text .who { display: block; font-family: var(--serif); font-size: 15px; color: var(--wood); margin-bottom: 2px; }
+#order-text .who { display: block; font-family: var(--serif); font-size: var(--fs-md); color: var(--wood); margin-bottom: 2px; }
+.inline-ico { width: 20px; height: 20px; object-fit: contain; vertical-align: -5px; margin: 0 1px; }
+.inline-glyph { font-size: 1em; }
+.badge-ico.locked-art { opacity: 0.75; filter: grayscale(0.3); }
 #order-text b { color: #7a4a12; }
 
 /* ---------- buttons (style-guide: chunky gold primary, teal secondary) ---------- */
