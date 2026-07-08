@@ -5,13 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
   <meta name="theme-color" content="#0f1626" />
   <title>Hearth: Merge &amp; Mystery</title>
+  <!-- Warm up the weather API connection early so the reactive sky loads fast. -->
+  <link rel="preconnect" href="https://api.open-meteo.com" crossorigin />
+  <link rel="dns-prefetch" href="https://api.open-meteo.com" />
   <link rel="stylesheet" href="/src/styles.css" />
 </head>
 <body>
   <!-- First-load splash: painted emblem while the town wakes. -->
   <div id="splash" aria-hidden="true">
     <div class="splash-glow" aria-hidden="true"></div>
-    <img class="splash-wordmark" src="/art/wordmark_hearth.png" alt="Hearth — Merge · Care · Restore" />
+    <img class="splash-wordmark" src="/art/wordmark_hearth.png" alt="Hearth — Merge · Care · Restore" fetchpriority="high" decoding="async" />
     <span class="splash-sub">Emberhollow is waking…</span>
   </div>
   <div id="app">
@@ -21,7 +24,7 @@
         <span class="pip" aria-hidden="true"></span><b id="hud-energy">0</b>
       </button>
       <div class="brandmark">
-        <img class="brand-wordmark" src="/art/wordmark_hearth.png" alt="Hearth — Merge · Care · Restore" />
+        <img class="brand-wordmark" src="/art/wordmark_hearth.png" alt="Hearth — Merge · Care · Restore" decoding="async" />
         <span class="brand-sub">Emberhollow</span>
       </div>
       <div class="coinpill" title="Coins"><span class="coin-ico" aria-hidden="true"></span><b id="hud-coins">0</b></div>

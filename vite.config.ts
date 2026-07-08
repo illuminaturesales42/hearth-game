@@ -20,7 +20,7 @@ export default defineConfig({
         name: 'Hearth: Merge & Mystery',
         short_name: 'Hearth',
         description:
-          'A cozy merge-adventure where real-life actions power your village. Restore Emberhollow — energy is earned from your day, never sold.',
+          'A cosy merge-adventure where real-life actions power your village. Restore Emberhollow — energy is earned from your day, never sold.',
         theme_color: '#0f1626',
         background_color: '#0d1322',
         display: 'standalone',
