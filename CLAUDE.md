@@ -34,7 +34,8 @@ Always land changes green: `tsc` clean + tests pass + build clean, then commit.
 
 ## Art pipeline & visual authority
 
-- **Canonical style/reference: `C:\Users\illum\OneDrive\Desktop\Hearth\Graphics and UI\Core\`** — `MVP.png` (palette + board), `Map.png` (terrain/props/buildings), `Merge assest.png` (item icons), `UI Flame.png` (ember-heart energy). Design bibles: `…\HEARTH_Codex_and_Production_Pack_v1\` (Book V art, Technical Art Bible, Book VI naming).
+- **AUTHORITATIVE art library: `C:\Users\illum\OneDrive\Desktop\Hearth\Graphics and UI\Core\Final Assets\`** — the production sheets (Batch 1 style-lock, Batch 2-4 world/merge/resources, Batch 5 buildings L1/L2/L3, Batch 6-7 terrain + full UI kit) + `Asset Guide (Read Me).txt`. Merge icons, resources, currencies (ember-heart energy), and all 12 town buildings + L2/L3 are sliced from here. Batches 8+ (characters, wellness action icons) NOT yet delivered → villager portraits + wellness-action medallions still use older sheets/emoji until then.
+- Earlier reference (`Core\` root): `MVP.png` (board), `Map.png` (terrain kit), `UI Flame.png` (ember energy). Design bibles: `…\HEARTH_Codex_and_Production_Pack_v1\` (Book V art, Technical Art Bible, Book VI naming).
 - `tools/slice_assets.py` crops sprites from source sheets → `public/art/` + generated `src/art-manifest.ts` (`artUrl(id)`). `KEYED` set = edge-flood bg removal; per-id `TOLERANCE`. Item icons also get `clean_sprite()` (speckle removal + autocrop).
 - Rulings: dark navy/gold storybook style is authoritative; **no gems/premium-currency art ever**; energy = ember-heart, not a lightning bolt.
 - New art to generate is briefed in `docs/asset-generation-brief.md`. Game is fully playable on current sliced assets — the brief is polish, not a blocker.
