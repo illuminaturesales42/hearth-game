@@ -218,7 +218,7 @@ export class MapView {
     const url = artUrl(art);
     if (img && url) {
       img.src = url;
-      img.style.filter = locked ? 'grayscale(0.85) brightness(0.7)' : '';
+      img.style.filter = locked ? 'sepia(0.4) saturate(0.6) brightness(0.72)' : '';
     }
     const name = document.getElementById('bldg-name');
     if (name) name.textContent = BUILDING_INFO[art] ?? 'Emberhollow';
@@ -577,10 +577,15 @@ export class MapView {
       ctx.save();
       island(-3);
       ctx.clip();
-      const ts = Math.max(38, W * 0.11);
-      ctx.globalAlpha = 0.5 * Math.min(1, stage / 2 + 0.25);
-      for (let yy = H * 0.33; yy < H * 0.96; yy += ts) {
-        for (let xx = -ts; xx < W + ts; xx += ts) ctx.drawImage(turf, xx, yy, ts, ts);
+      const ts = Math.max(44, W * 0.13);
+      ctx.globalAlpha = 0.42 * Math.min(1, stage / 2 + 0.25);
+      // Stagger alternate rows by a half-tile and overlap by 1px so the tile
+      // edges never line up into visible vertical seams.
+      let row = 0;
+      for (let yy = H * 0.33; yy < H * 0.98; yy += ts - 1) {
+        const off = (row % 2) * (ts / 2);
+        for (let xx = -ts + off; xx < W + ts; xx += ts - 1) ctx.drawImage(turf, xx, yy, ts + 1, ts + 1);
+        row++;
       }
       ctx.globalAlpha = 1;
       ctx.restore();
@@ -635,10 +640,20 @@ export class MapView {
       const h = w * (img.naturalHeight / img.naturalWidth);
       ctx.drawImage(img, f.x * W - w / 2, f.y * H - h, w, h);
     }
+    // Only the next ~3 not-yet-restored buildings appear as storm-worn ruins —
+    // enough to promise what's coming without cluttering the island with a
+    // dozen grey shells.
+    const upcoming = TOWN_BUILDINGS.filter((b) => b.unlockAt > delivered)
+      .map((b) => b.unlockAt)
+      .sort((a, b) => a - b);
+    const ghostCutoff = upcoming.length ? upcoming[Math.min(2, upcoming.length - 1)]! : -1;
     const pieces: ScenePiece[] = [
       ...TOWN_TERRAIN.filter((t) => !FLAT.has(t.art) && delivered >= t.unlockAt),
       ...TOWN_NATURE.filter((n) => stage >= n.stage && delivered >= n.unlockAt),
-      ...TOWN_BUILDINGS.map((b) => ({ ...b, ruined: delivered < b.unlockAt })),
+      ...TOWN_BUILDINGS.filter((b) => delivered >= b.unlockAt || b.unlockAt <= ghostCutoff).map((b) => ({
+        ...b,
+        ruined: delivered < b.unlockAt,
+      })),
       ...decor,
     ].sort((a, b) => a.y - b.y);
     for (const p of pieces) {
@@ -670,10 +685,11 @@ export class MapView {
         });
       }
       if (p.ruined) {
-        // still lost to the storm: a quiet silhouette, so restored buildings sing
+        // storm-worn, not a grey ghost: keep the building's warmth but drop it
+        // into shadow so the restored ones sing. A soft dark base grounds it.
         ctx.save();
-        ctx.globalAlpha = 0.55;
-        ctx.filter = 'grayscale(0.95) brightness(0.42) contrast(0.85)';
+        ctx.globalAlpha = 0.5;
+        ctx.filter = 'sepia(0.45) saturate(0.6) brightness(0.5) contrast(0.95)';
         ctx.drawImage(img, p.x * W - w / 2, p.y * H - h, w, h);
         ctx.restore();
         continue;
