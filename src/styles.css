@@ -300,20 +300,24 @@ body {
 
 /* ---------- order card (parchment on wood, per concept) ---------- */
 .order-card {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 8px;
-  padding: 14px 16px; border-radius: var(--r-card);
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-md); margin-top: var(--space-sm);
+  padding: var(--space-md) var(--space-lg); border-radius: var(--r-card);
   background: linear-gradient(180deg, var(--parch), var(--parch-2));
   border: 3px solid var(--wood); color: var(--ink);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
-.order-face { width: 44px; height: 44px; border-radius: 50%; flex: 0 0 auto;
+.order-face { width: 44px; height: 44px; border-radius: var(--r-circle); flex: 0 0 auto;
   background: radial-gradient(circle at 38% 32%, #f7c08c, #b06a3a 75%); box-shadow: 0 0 0 2px rgba(107, 74, 42, 0.55); }
-#order-text { margin: 0; flex: 1 1 55%; min-width: 0; font-size: 12.5px; line-height: 1.42; }
+#order-text { margin: 0; flex: 1 1 160px; min-width: 0; font-size: var(--fs-base); line-height: 1.42; }
 #order-text .who { display: block; font-family: var(--serif); font-size: var(--fs-md); color: var(--wood); margin-bottom: 2px; }
 .inline-ico { width: 20px; height: 20px; object-fit: contain; vertical-align: -5px; margin: 0 1px; }
 .inline-glyph { font-size: 1em; }
 .badge-ico.locked-art { opacity: 0.75; filter: grayscale(0.3); }
-#order-text b { color: #7a4a12; }
+#order-text b { color: var(--ink-parch-mid); }
+/* narrow phones: stack the order card so the deliver button never squeezes text */
+@media (max-width: 400px) {
+  #deliver-btn { width: 100%; margin-top: var(--space-sm); order: 3; }
+}
 
 /* ---------- buttons (style-guide: chunky gold primary, teal secondary) ---------- */
 .btn-primary, .btn-secondary {
@@ -716,7 +720,7 @@ body {
 .reward-title { margin: 0 0 4px; font-family: var(--serif); font-size: 16px; color: var(--ink); }
 .reward-amount { display: block; font-size: 26px; color: #b06a1e; font-variant-numeric: tabular-nums; margin-bottom: 14px; }
 .bldg-art { width: 130px; height: auto; margin: 0 auto 8px; display: block; }
-.bldg-name { margin: 0 0 6px; font-family: var(--serif); font-size: 20px; color: #6b3f14; text-align: center; }
+.bldg-name { margin: 0 0 6px; font-family: var(--serif); font-size: var(--fs-lg); color: var(--ink-parch-dark); text-align: center; }
 .bldg-story { margin: 0 0 10px; font-family: var(--serif); font-size: 14px; line-height: 1.55; color: var(--ink); text-align: center; }
 .item-art { width: 84px; height: 84px; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center;
   border-radius: 14px; background: rgba(0, 0, 0, 0.12); font-size: 44px; }
@@ -822,7 +826,7 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
 }
 .modal-card #story-text, .duel-results-card h3, .duel-results-card p,
 .newday-sub, .newday-reward span { color: var(--ink); }
-#newday-title, #duel-result-title { color: #6b3f14; }
+#newday-title, #duel-result-title { color: var(--ink-parch-dark); }
 .newday-eyebrow { color: var(--terracotta); }
 .story-reward, .duel-results-card .duel-hint, .newday-streak { color: #3a6b2f; }
 .newday-reward { background: rgba(107, 74, 42, 0.12); border-color: rgba(107, 74, 42, 0.4); }
@@ -863,8 +867,10 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
 .map-actions { display: flex; gap: 8px; padding: 8px 12px 0; }
 .map-actions .tool-btn.on { background: rgba(240, 200, 120, 0.22); border-color: rgba(255, 210, 122, 0.7); }
 .decor-tray {
-  display: flex; gap: 8px; overflow-x: auto; padding: 10px 12px; margin: 8px 12px 0;
-  border: 1px solid rgba(255, 210, 122, 0.3); border-radius: 12px;
+  /* wrap (not scroll) — the 7-item palette shows all options; the hint takes
+     the top row via its own flex-basis:100% (set on .decor-hint) */
+  display: flex; gap: var(--space-sm); padding: var(--space-md); margin: var(--space-sm) var(--space-md) 0;
+  border: 1px solid var(--gold-30); border-radius: var(--r-card);
   background: rgba(16, 24, 44, 0.75); flex-wrap: wrap;
 }
 .decor-hint { flex-basis: 100%; margin: 0 0 2px; font-size: 12px; color: rgba(235, 226, 208, 0.7); }
@@ -877,7 +883,7 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
 .decor-item.broke { opacity: 0.45; }
 .decor-ico { width: 34px; height: 34px; background-size: contain; background-repeat: no-repeat; background-position: center; }
 .decor-name { font-weight: 600; }
-.decor-cost { color: #f0c878; }
+.decor-cost { color: var(--gold-bright); }
 
 /* ===== growth cards (email list · keep-your-save-safe) ===== */
 .growth-card {
@@ -891,7 +897,7 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
 .growth-actions .btn-ghost { color: #6b4a2a; }
 
 /* ===== order queue preview ===== */
-.order-next { margin: 0; font-size: 12px; color: #7a5a32; flex-basis: 100%; text-align: center; }
+.order-next { margin: 0; font-size: var(--fs-sm); color: var(--ink-parch-light); flex-basis: 100%; text-align: center; }
 
 /* ===== tomorrow tease on Home + New Day ===== */
 .map-tease {
