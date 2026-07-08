@@ -108,12 +108,43 @@ Seasonal re-skins + festival decor. Not needed for the test build; generate afte
 
 ---
 
+## Batch 15 — Map Production Plate & Isolated Sprites  *(2026-07-09 art-quality audit — THE "1000x" fix for the town view)*
+
+The composed town now has a real coastline, waves, warm windows, and clean cutouts for most sprites — but sprite-compositing on procedural terrain will always trail the reference's single cohesive painting, and four building slices are **painted scene-vignettes that cannot be cleanly extracted by keying** (verified pixel-forensically: the stall/hall/hut fill their panels edge-to-edge with scene). This batch replaces those at the source.
+
+### 15.1 The island terrain plate (highest-value single asset in the game)
+
+`map_island_plate.png` — **2048×1536, opaque** — one cohesive painting of Emberhollow's island with **NO buildings, NPCs, boats, or lighthouse** (the game composites all of those on top). Baked into the painting:
+
+- Irregular rocky coastline with headlands and coves; sandy beach at the waterline; foam and gentle waves; shallow turquoise water ringing the shore; open sea to the canvas edges (the game animates extra foam/swell over it).
+- A north-east headland kept **empty** for the lighthouse; a sheltered south-east bay with **no dock structures** (the game places them).
+- Meadow interior with worn dirt paths connecting **14 building plots left visibly clear** (gentle grass, slight trodden edge — no structures). Wooded copses along the north and west edges, rocks at the shore.
+- Golden-hour warm light from the upper right, matching Batch 1/2. **Layout must follow the game's plot map** — generate against the composed-town screenshot + `TOWN_BUILDINGS` positions in `src/data/town-layout.ts` (x/y are fractions of the canvas; the build session can render a plot-mask PNG on request).
+
+🔌 *wire: becomes the ground layer replacing the procedural island fill (coast/sand/meadow/paths stop being code); buildings/walkers/boats/effects composite on top unchanged.*
+
+### 15.2 Isolated building sprites (replace the scene-vignette slices)
+
+512×512 each, **transparent background, one isolated building**, consistent ¾ view, small grass-tuft footprint only, warm windows: `town_market.png` (+`_l2`/`_l3`), `town_townhall.png` (+levels), `town_fisherhut.png` (+levels), `town_bakery.png` (+levels).
+
+### 15.3 NPC re-gens (threshold-unfixable keying damage)
+
+512×1024 transparent full-body, Batch-8 style: `npc_man.png` (trouser folds currently nicked), `npc_child.png` (keep the waving pose).
+
+### 15.4 Living-world life set (Codex "Daily Life" pass)
+
+256×256 transparent: `ambient_laundry_1.png` / `ambient_laundry_2.png` (two sway frames), `animal_pigeon.png`, `animal_dog_walk.png`, `prop_market_cart.png`, `prop_notice_board.png`.
+
+---
+
 ## Recommended generation order (by in-game value)
 
-1. **Batch 8 portraits + walking sprites** — the villagers are the emotional core and the seams exist; biggest visible jump.
-2. **Batch 10 action medallions + energy states** — kills the last emoji placeholders in the energy loop (the product's spine).
-3. **Batch 9 story/chapter art** — deepens the mystery pull (retention).
-4. **Batch 13 app icon** — needed before any store step.
-5. **Batch 14 ambient**, **Batch 11 fx upgrades**, **Batch 12 seasonal** — polish, post-MVP.
+1. **Batch 15.1 island terrain plate** — single biggest jump toward the reference; retires the procedural ground entirely.
+2. **Batch 15.2 isolated buildings** — kills the last dirty cutouts (market/townhall/fisherhut/bakery scene panels).
+3. **Batch 8 portraits + walking sprites** — the villagers are the emotional core; biggest character jump (+ 15.3 fixes).
+4. **Batch 10 action medallions + energy states** — kills the last emoji placeholders in the energy loop (the product's spine).
+5. **Batch 9 story/chapter art** — deepens the mystery pull (retention).
+6. **Batch 13 app icon** — needed before any store step.
+7. **Batch 15.4 life set + Batch 14 ambient**, **Batch 11 fx upgrades**, **Batch 12 seasonal** — polish.
 
-*Per-asset checklist: transparent bg? no text? matches Batch-1 palette/lighting? reads at target size? correct filename? in `Batch <n>/`?*
+*Per-asset checklist: transparent bg (except the 15.1 plate)? no text? matches Batch-1 palette/lighting? reads at target size? correct filename? in `Batch <n>/`?*
