@@ -7,7 +7,7 @@ import { AppShell } from './ui/app-shell';
 import { recentEvents, track } from './analytics';
 import type { HealthSnapshot } from './health/health-provider';
 import { pickHealthProvider } from './platform/providers';
-import { LocalMirrorSyncProvider } from './platform/sync-provider';
+import { HttpSyncProvider, LocalMirrorSyncProvider } from './platform/sync-provider';
 import { SyncController } from './platform/sync-controller';
 import { Metrics, exposeMetricsConsole } from './platform/metrics';
 
@@ -152,9 +152,12 @@ void health.read().then((snap) => {
 });
 
 // ---------- cloud save sync (roadmap Phase B) ----------
-// Device-mirror today (guards against a localStorage wipe); the account-backed
-// provider is a drop-in. Reconciles once on launch, then debounced pushes.
-const sync = new SyncController(game, new LocalMirrorSyncProvider());
+// In production the game's own /v1/save Pages Function is the cloud (same
+// origin, anonymous device key); in dev there is no Functions runtime, so a
+// device-local mirror still guards against a localStorage wipe. Reconciles
+// once on launch, then debounced pushes. Failures degrade to "no cloud today".
+const provider = import.meta.env.PROD ? new HttpSyncProvider() : new LocalMirrorSyncProvider();
+const sync = new SyncController(game, provider);
 void sync.start().then((res) => {
   if (res.outcome === 'adopted') {
     toast('Welcome back — your saved village was restored.');

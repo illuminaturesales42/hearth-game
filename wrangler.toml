@@ -6,3 +6,15 @@
 name = "hearth"
 compatibility_date = "2026-07-08"
 pages_build_output_dir = "dist"
+
+# Cloud-save sync API (roadmap Phase B): served same-origin as the game via
+# Pages Functions (functions/v1/save.ts) against this D1 database.
+# One-time setup already done:
+#   wrangler d1 create hearth-saves
+#   wrangler d1 execute hearth-saves --remote --command "CREATE TABLE IF NOT
+#     EXISTS saves (device_key TEXT PRIMARY KEY, rev INTEGER NOT NULL,
+#     updated_at INTEGER NOT NULL, save TEXT NOT NULL)"
+[[d1_databases]]
+binding = "DB"
+database_name = "hearth-saves"
+database_id = "c36c19cc-07fd-48a2-887a-24625d74c249"

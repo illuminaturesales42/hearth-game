@@ -54,6 +54,17 @@ Re-run `pnpm deploy` any time to publish the latest build.
 | Publish a throwaway preview | `pnpm deploy:preview` (deploys to a `preview` branch URL) |
 | Auto-publish on merge to main | Nothing — Path B does it on push |
 
+## Cloud saves (the /v1/save sync API)
+
+Cloud saves ship **with the site**: [`functions/v1/save.ts`](functions/v1/save.ts)
+is a Pages Function deployed automatically by every `pnpm deploy`, backed by
+the `hearth-saves` D1 database declared in [`wrangler.toml`](wrangler.toml)
+(binding `DB`; database + table already created — commands are in that file's
+comments). The client (`HttpSyncProvider`) talks to it same-origin with an
+anonymous device key, so there is no separate API deploy, domain, or CORS
+setup to maintain. Inspect data with
+`pnpm exec wrangler d1 execute hearth-saves --remote --command "SELECT device_key, rev, updated_at, length(save) FROM saves"`.
+
 ## Before soft launch (not now)
 
 The service worker is currently **self-destroying** (`selfDestroying: true` in
