@@ -16,7 +16,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageEnhance
 
 SRC = Path(r"C:/Users/illum/OneDrive/Desktop/Hearth/Graphics and UI")
 REPO = Path(__file__).resolve().parents[1]
@@ -53,6 +53,8 @@ TOLERANCE: dict[str, int] = {}
 # ids keyed against a FIXED colour instead of the border average (for light
 # sheets where an icon can touch the crop edge and skew the average)
 KEYCOLOR: dict[str, tuple] = {}
+# ids multiplied by a brightness factor after cropping (e.g. dark checker tile)
+DARKEN: dict[str, float] = {}
 
 
 def remove_bg(im: Image.Image, tolerance: int = 52, key: tuple | None = None) -> Image.Image:
@@ -173,6 +175,8 @@ def slice_all() -> None:
             im = clean_sprite(im)
         elif ident.startswith("town_"):
             im = clean_sprite(im, rel=0.03)  # gentle: buildings are one big mass
+        if ident in DARKEN:
+            im = ImageEnhance.Brightness(im.convert("RGBA")).enhance(DARKEN[ident])
         im.save(OUT / f"{ident}.png")
         ids.append(ident)
     ts = (
@@ -395,7 +399,10 @@ def define() -> None:
     TOLERANCE["board_grass"] = 26  # keep the stone rim; a faint dark halo hides on navy
     # two real turf squares from the reference board — used as the cell
     # textures so the aligned checker carries the painted mossy look
-    add("corepack5", {"turf_light": (927, 555, 967, 595), "turf_dark": (977, 604, 1017, 644)})
+    # board turf: Batch 6 seamless grass tile (01_grass), light + a darkened
+    # sibling so the aligned checker carries the final painted texture
+    add("final_ui", {"turf_light": (44, 88, 150, 166), "turf_dark": (46, 90, 152, 166)})
+    DARKEN["turf_dark"] = 0.86
 
     # ---- batch567: dialogue busts + fx stills ----
     add("batch567", {
