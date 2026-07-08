@@ -17,6 +17,7 @@ import { computeMood, meditatedToday, moodCaption } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
 import { currentWeather } from './weather';
 import { artUrl } from './art';
+import { drawButterfly, drawFlower, drawSparkle, drawStroller } from './paint-flourishes';
 import { toast } from './toast';
 import { tomorrowLine } from './tease';
 
@@ -98,6 +99,9 @@ export class MapView {
       lastCalmDay: s.wellbeing.lastCalmDay,
       today: s.actions.day,
       sleptWell: (s.healthLedger?.sleepGranted ?? 0) > 0,
+      counts: s.actions.counts,
+      walkedToday: (s.healthLedger?.stepsGranted ?? 0) > 0,
+      streak: s.actions.streak,
     });
   }
 
@@ -470,6 +474,21 @@ export class MapView {
     ctx.fillRect(0, 0, W, H * 0.45);
     // sun or moon
     const night = hour >= 21 || hour < 5;
+    // stars emerge at night — a scattered field that gently twinkles, fading
+    // out as cloud rolls in (Daily Rhythm: "stars emerge").
+    if (night) {
+      const twinkle = 1 - mood.cloudCover * 0.7;
+      for (let i = 0; i < 42; i++) {
+        const sx = (((i * 73) % 100) / 100) * W;
+        const sy = (((i * 37) % 42) / 100) * H * 0.42 + H * 0.01;
+        const big = i % 8 === 0;
+        const tw = this.reduce ? 0.6 : 0.3 + 0.55 * Math.abs(Math.sin(t / 900 + i * 1.3));
+        ctx.globalAlpha = tw * 0.85 * twinkle;
+        ctx.fillStyle = 'rgba(240, 244, 255, 1)';
+        ctx.fillRect(sx, sy, big ? 1.7 : 1, big ? 1.7 : 1);
+      }
+      ctx.globalAlpha = 1;
+    }
     ctx.fillStyle = night ? 'rgba(230,235,250,0.9)' : 'rgba(255,240,200,0.95)';
     ctx.beginPath();
     ctx.arc(W * 0.78, H * 0.14, night ? 11 : 14, 0, Math.PI * 2);
@@ -946,8 +965,24 @@ export class MapView {
     // make Emberhollow feel like weather and light are passing through ---
     if (!this.reduce) this.drawAmbientEffects(ctx, W, H, t, night, hour, mood, stage);
 
-    // --- your day, reflected (living-world flourishes) ---
-    const counts = this.game.snapshot.actions.counts;
+    // --- your day, reflected: real-world actions bloom in the town ---
+    // (see src/core/world-mood.ts — every reaction only ever brightens the scene)
+    this.drawReactions(ctx, W, H, t, night, mood, delivered);
+  }
+
+  /**
+   * The living-world flourishes that answer the player's real-world day:
+   * a sleep-warmed glow, water sparkling the well and blooming the gardens,
+   * a busier road after a walk, and festival banners for a long streak.
+   * Kept apart from drawTown's scenery so the mapping stays legible.
+   */
+  private drawReactions(
+    ctx: CanvasRenderingContext2D, W: number, H: number, t: number,
+    night: boolean, mood: WorldMood, delivered: number,
+  ): void {
+    const FLOWER_COLOURS = ['#e6739a', '#ffd27a', '#a06be0', '#f2996b', '#7fbf6a'];
+
+    // Sleep + meditation → the hearth's warmth spreads across the whole town.
     if (mood.glow > 0.3 && !this.reduce) {
       const pulse = mood.glow * 0.11 + 0.03 * Math.sin(t / (mood.calm ? 2400 : 1600));
       const glow = ctx.createRadialGradient(W * 0.5, H * 0.5, 10, W * 0.5, H * 0.5, W * 0.55);
@@ -956,13 +991,113 @@ export class MapView {
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, W, H);
     }
-    if ((counts['nature-photo'] ?? 0) > 0) {
-      const flowers = ['#e6739a', '#ffd27a', '#a06be0', '#7fbf6a', '#e6739a'];
-      for (let i = 0; i < 5; i++) {
-        ctx.fillStyle = flowers[i]!;
+
+    // Long streak → festival banners gather over the rooftops, more each day.
+    if (mood.festive > 0) {
+      const flags = 4 + Math.round(mood.festive * 8);
+      const y0 = H * 0.30;
+      const x0 = W * 0.14;
+      const x1 = W * 0.72;
+      const sag = 10 + mood.festive * 6;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(60, 46, 30, 0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.quadraticCurveTo((x0 + x1) / 2, y0 + sag * 2, x1, y0 - H * 0.02);
+      ctx.stroke();
+      for (let i = 0; i <= flags; i++) {
+        const f = i / flags;
+        const fx = x0 + (x1 - x0) * f;
+        // follow the catenary of the string
+        const fy = y0 + sag * 2 * (1 - (2 * f - 1) * (2 * f - 1)) - H * 0.02 * f;
+        const col = FLOWER_COLOURS[i % FLOWER_COLOURS.length]!;
+        ctx.fillStyle = col;
+        ctx.globalAlpha = 0.85;
         ctx.beginPath();
-        ctx.arc(W * (0.3 + i * 0.09), H * 0.86, 2.6, 0, Math.PI * 2);
+        ctx.moveTo(fx - 4, fy);
+        ctx.lineTo(fx + 4, fy);
+        ctx.lineTo(fx, fy + 8);
+        ctx.closePath();
         ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+
+    // Water + stretch → the gardens green up: a soft vitality over the meadow
+    // and a few flowers by the garden plot once it's been restored.
+    if (mood.gardenLush > 0) {
+      const gx = W * 0.73;
+      const gy = H * 0.66;
+      const gr = W * 0.16;
+      const g = ctx.createRadialGradient(gx, gy - gr * 0.25, gr * 0.15, gx, gy - gr * 0.25, gr);
+      g.addColorStop(0, `rgba(126, 196, 106, ${(0.08 + mood.gardenLush * 0.14).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(126, 196, 106, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(gx - gr, gy - gr, gr * 2, gr * 1.5);
+    }
+
+    // Nature photo + water → flowers bloom, a richer band the more you tend.
+    if (mood.bloom > 0) {
+      const n = 3 + Math.round(mood.bloom * 7);
+      for (let i = 0; i < n; i++) {
+        const f = i / Math.max(1, n - 1);
+        // scatter organically along the shore, not in a tidy fence line
+        const jitterX = Math.sin(i * 12.9898) * 0.025;
+        const jitterY = (Math.sin(i * 78.233) * 0.5 + 0.5) * 0.05;
+        const x = W * (0.24 + f * 0.52 + jitterX);
+        const y = H * (0.83 + jitterY);
+        const size = 2.4 + mood.bloom * 1.4 + (i % 3) * 0.5;
+        drawFlower(ctx, x, y, size, FLOWER_COLOURS[i % FLOWER_COLOURS.length]!);
+      }
+      // a small cluster nestles by the garden plot when it exists
+      if (delivered >= 10) {
+        for (let i = 0; i < 3; i++) {
+          drawFlower(ctx, W * (0.68 + i * 0.03), H * (0.7 + (i % 2) * 0.015), 2.6, FLOWER_COLOURS[(i + 2) % FLOWER_COLOURS.length]!);
+        }
+      }
+    }
+
+    // Drink water → the well sparkles and its plaza feels fresh.
+    if (mood.wellSparkle && delivered >= 6) {
+      const wx = W * 0.475;
+      const wy = H * 0.635 - H * 0.03;
+      const count = this.reduce ? 3 : 6;
+      for (let i = 0; i < count; i++) {
+        const seed = i * 1.7;
+        const rise = this.reduce ? (i % 3) * 8 : ((t / 42 + i * 24) % 30);
+        const sx = wx + Math.cos(t / 520 + seed) * (5 + (i % 3) * 3);
+        const sy = wy - rise;
+        const k = this.reduce ? 0.8 : 0.45 + 0.5 * Math.sin(t / 200 + seed);
+        drawSparkle(ctx, sx, sy, 2.0 + (i % 2) * 0.8, k);
+      }
+    }
+
+    // A walk → the roads are busier: a couple of painted townsfolk take a turn
+    // along the shore path (silhouettes, so no unmet villager is spoiled).
+    if (mood.villagersOut > 0) {
+      const extra = mood.villagersOut >= 0.9 ? 2 : 1;
+      const cloaks = ['#8a5a3c', '#5a6e88', '#7a4a5e'];
+      for (let i = 0; i < extra; i++) {
+        const span = 0.18 + i * 0.02;
+        const base = 0.24 + i * 0.34;
+        const sweep = this.reduce ? 0.5 : (Math.sin(t / (4200 + i * 900)) + 1) / 2;
+        const x = W * (base + span * sweep);
+        const y = H * (0.72 + i * 0.055);
+        drawStroller(ctx, x, y, H * 0.05, cloaks[i % cloaks.length]!);
+      }
+    }
+
+    // A flourishing, watered garden draws butterflies by day.
+    if (mood.butterflies && !night && !this.reduce) {
+      const cols = ['#f2c14e', '#e6739a', '#a06be0'];
+      for (let i = 0; i < 3; i++) {
+        const seed = i * 2.3;
+        const x = W * (0.3 + 0.42 * ((Math.sin(t / (3200 + i * 500) + seed) + 1) / 2));
+        const y = H * (0.8 + 0.05 * Math.sin(t / 900 + seed));
+        const flap = Math.sin(t / 120 + seed);
+        drawButterfly(ctx, x, y, 3.2, flap, cols[i % cols.length]!);
       }
     }
   }
