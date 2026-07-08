@@ -54,6 +54,17 @@ export interface WorldMood {
   restless: number;
   /** 0..1 warmth of the hearth glow (sleep + meditation) */
   glow: number;
+  /**
+   * Real-world actions reflected in the town (Vision Bible — "Real-World
+   * Actions Affect the World"). Each 0..1 (or flag); the map reads these to
+   * add gentle, non-punishing flourishes.
+   */
+  bloom: number;        // nature photo / water → flowers bloom
+  gardenLush: number;   // water / stretch → gardens greener, vines grow
+  wellSparkle: boolean; // drink water → wells sparkle
+  villagersOut: number; // walk → more villagers ambling outdoors
+  festive: number;      // long streak → festival decorations appear
+  butterflies: boolean; // a flourishing garden draws butterflies
 }
 
 /** Whole days between two YYYY-MM-DD local day keys (b - a, ≥0 when b later). */
@@ -70,6 +81,17 @@ export function meditatedToday(counts: Record<string, number>): boolean {
   return Object.keys(counts).some((k) => (k.startsWith('med-') || k === 'log-meditation') && (counts[k] ?? 0) > 0);
 }
 
+/** Sum how many times any of these action ids fired today. */
+function tally(counts: Record<string, number>, ids: readonly string[]): number {
+  return ids.reduce((n, id) => n + (counts[id] ?? 0), 0);
+}
+
+// Which real-world gestures map to which action ids (see src/data/actions.ts).
+const WATER_IDS = ['water'] as const;                                            // Fill the Well
+const WALK_IDS = ['steps', 'stairs'] as const;                                   // Walk the Coast Road, Climb the Cliff Steps
+const STRETCH_IDS = ['stretch', 'squats'] as const;                              // Wake the Garden, Turn the Millstone
+const NATURE_IDS = ['nature-photo', 'photo-outside', 'sunrise-photo', 'sunset-photo'] as const;
+
 export interface MoodInputs {
   weather: WeatherNow | null;
   meditatedToday: boolean;
@@ -78,6 +100,12 @@ export interface MoodInputs {
   /** today's local day key */
   today: string;
   sleptWell: boolean;
+  /** today's action tally (game.snapshot.actions.counts) — drives the reactions */
+  counts?: Record<string, number>;
+  /** did today's steps arrive from health/steps as well? (walk → busier town) */
+  walkedToday?: boolean;
+  /** current daily streak length — long streaks bring festival decor */
+  streak?: number;
 }
 
 export function computeMood(inp: MoodInputs): WorldMood {
@@ -99,7 +127,33 @@ export function computeMood(inp: MoodInputs): WorldMood {
 
   const glow = clamp01(0.25 + (inp.sleptWell ? 0.4 : 0) + (inp.meditatedToday ? 0.3 : 0));
 
-  return { weather: kind, cloudCover, precip, wind, sea, calm: inp.meditatedToday, restless, glow };
+  // Real-world actions reflected in the town. Every reaction is additive and
+  // gentle — the world only ever brightens; skipping a day removes a flourish,
+  // it never darkens the scene (Hearth Test: reflect, never punish).
+  const counts = inp.counts ?? {};
+  const water = tally(counts, WATER_IDS);
+  const stretch = tally(counts, STRETCH_IDS);
+  const nature = tally(counts, NATURE_IDS);
+  const walk = tally(counts, WALK_IDS) + (inp.walkedToday ? 1 : 0);
+  const streak = inp.streak ?? 0;
+
+  // Drink water → wells sparkle and gardens look healthier.
+  const wellSparkle = water > 0;
+  // Nature photo + water → flowers bloom along the shore and in the gardens.
+  const bloom = clamp01((nature > 0 ? 0.6 : 0) + Math.min(0.4, water * 0.4));
+  // Water + stretch → gardens greener, vines creep a little further up the walls.
+  const gardenLush = clamp01(Math.min(0.55, water * 0.35) + (stretch > 0 ? 0.4 : 0));
+  // Walk → more villagers out on the roads (0..1 extra crowd).
+  const villagersOut = clamp01(walk >= 2 ? 1 : walk === 1 ? 0.6 : 0);
+  // Long streak → festival decorations gather over ~a week of showing up.
+  const festive = clamp01((streak - 5) / 9);
+  // A flourishing, watered garden draws butterflies by day.
+  const butterflies = bloom >= 0.6 && gardenLush >= 0.4;
+
+  return {
+    weather: kind, cloudCover, precip, wind, sea, calm: inp.meditatedToday, restless, glow,
+    bloom, gardenLush, wellSparkle, villagersOut, festive, butterflies,
+  };
 }
 
 /** A short scene note for the progress label ("· soft rain, calm seas"). */
@@ -111,7 +165,14 @@ export function moodCaption(m: WorldMood): string {
     m.weather === 'fog' ? 'sea fog' :
     m.weather === 'overcast' ? 'grey skies' : '';
   const sea = m.calm ? 'still water' : m.sea >= 0.6 ? 'restless seas' : '';
-  return [weather, sea].filter(Boolean).join(', ');
+  // One earned flourish, if any — the most "special" the day unlocked.
+  const care =
+    m.festive >= 0.5 ? 'festival banners' :
+    m.butterflies ? 'butterflies about' :
+    m.bloom >= 0.6 ? 'flowers blooming' :
+    m.wellSparkle ? 'wells sparkling' :
+    m.gardenLush >= 0.6 ? 'gardens greening' : '';
+  return [weather, sea, care].filter(Boolean).join(', ');
 }
 
 function clamp01(v: number): number {

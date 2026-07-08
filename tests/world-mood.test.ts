@@ -99,3 +99,71 @@ describe('mood helpers', () => {
     expect(moodCaption(rainy)).toContain('rain');
   });
 });
+
+describe('computeMood — real-world actions bloom the town', () => {
+  const base = { weather: null, meditatedToday: false, lastCalmDay: null, today: '2026-07-07', sleptWell: false };
+
+  it('a quiet day leaves the world at rest (no reactions, no punishment)', () => {
+    const m = computeMood(base);
+    expect(m.wellSparkle).toBe(false);
+    expect(m.bloom).toBe(0);
+    expect(m.gardenLush).toBe(0);
+    expect(m.villagersOut).toBe(0);
+    expect(m.festive).toBe(0);
+    expect(m.butterflies).toBe(false);
+  });
+
+  it('drinking water sparkles the well and greens the gardens', () => {
+    const m = computeMood({ ...base, counts: { water: 1 } });
+    expect(m.wellSparkle).toBe(true);
+    expect(m.gardenLush).toBeGreaterThan(0);
+    expect(m.bloom).toBeGreaterThan(0);
+  });
+
+  it('a nature photo blooms flowers; water + photo draws butterflies', () => {
+    const photo = computeMood({ ...base, counts: { 'nature-photo': 1 } });
+    expect(photo.bloom).toBeGreaterThanOrEqual(0.6);
+    const flourishing = computeMood({ ...base, counts: { 'nature-photo': 1, water: 1, stretch: 1 } });
+    expect(flourishing.butterflies).toBe(true);
+  });
+
+  it('a stretch makes the gardens visibly lusher', () => {
+    const still = computeMood(base);
+    const stretched = computeMood({ ...base, counts: { stretch: 1 } });
+    expect(stretched.gardenLush).toBeGreaterThan(still.gardenLush);
+  });
+
+  it('walking — logged or from health — busies the roads', () => {
+    const stepped = computeMood({ ...base, counts: { steps: 1 } });
+    expect(stepped.villagersOut).toBeGreaterThan(0);
+    const healthWalk = computeMood({ ...base, walkedToday: true });
+    expect(healthWalk.villagersOut).toBeGreaterThan(0);
+  });
+
+  it('festival banners gather only over a long streak', () => {
+    expect(computeMood({ ...base, streak: 3 }).festive).toBe(0);
+    const week = computeMood({ ...base, streak: 8 }).festive;
+    const fortnight = computeMood({ ...base, streak: 14 }).festive;
+    expect(fortnight).toBeGreaterThan(week);
+    expect(fortnight).toBeLessThanOrEqual(1);
+  });
+
+  it('every reaction stays within 0..1 (reflect, never overwhelm)', () => {
+    const loud = computeMood({
+      ...base,
+      counts: { water: 5, stretch: 3, 'nature-photo': 2, steps: 4, stairs: 2 },
+      walkedToday: true, streak: 40,
+    });
+    for (const v of [loud.bloom, loud.gardenLush, loud.villagersOut, loud.festive]) {
+      expect(v).toBeGreaterThanOrEqual(0);
+      expect(v).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('moodCaption surfaces the day’s finest earned flourish', () => {
+    const bloomy = computeMood({ ...base, counts: { 'nature-photo': 1 } });
+    expect(moodCaption(bloomy)).toContain('flowers');
+    const festivy = computeMood({ ...base, streak: 20 });
+    expect(moodCaption(festivy)).toContain('festival');
+  });
+});
