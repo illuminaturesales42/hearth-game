@@ -171,6 +171,8 @@ def slice_all() -> None:
             im = remove_bg(im, TOLERANCE.get(ident, 52), KEYCOLOR.get(ident))
         if ident.startswith(("item_", "res_")):
             im = clean_sprite(im)
+        elif ident.startswith("town_"):
+            im = clean_sprite(im, rel=0.03)  # gentle: buildings are one big mass
         im.save(OUT / f"{ident}.png")
         ids.append(ident)
     ts = (
@@ -283,20 +285,33 @@ def define() -> None:
     row("batch1", "stage_", [str(i) for i in range(5)], 320, 40, 1258, 274)
     add("batch1", {"splash_emblem": (1272, 30, 1522, 268)})
 
-    # ---- corepack3: town building + nature sprites (edge-keyed for compositing) ----
+    # ---- FINAL buildings (Batch 5, cream bg): L1 = town_<id>, plus L2/L3
+    # for the upgrade system. Each panel holds Level1/Level2/Level3. ----
+    b5 = {
+        # row 1: Town Hall, Cottage, Workshop, Bakery, Market
+        "town_townhall": (10, 140, 104, 280), "town_townhall_l2": (112, 132, 202, 280), "town_townhall_l3": (208, 128, 302, 280),
+        "town_cottage": (347, 140, 452, 280), "town_cottage_l2": (452, 136, 545, 280), "town_cottage_l3": (543, 130, 622, 280),
+        "town_workshop": (648, 140, 752, 280), "town_workshop_l2": (750, 136, 840, 280), "town_workshop_l3": (838, 132, 922, 280),
+        "town_bakery": (950, 138, 1055, 280), "town_bakery_l2": (1053, 132, 1148, 280), "town_bakery_l3": (1148, 132, 1220, 280),
+        "town_market": (1238, 150, 1342, 280), "town_market_l2": (1342, 146, 1438, 280), "town_market_l3": (1440, 150, 1528, 280),
+        # row 2: Farm, Dock, Blacksmith, Library, Garden
+        "town_farm": (12, 305, 112, 408), "town_farm_l2": (112, 300, 210, 408), "town_farm_l3": (218, 300, 305, 408),
+        "town_dock": (347, 320, 438, 408), "town_dock_l2": (440, 318, 538, 408), "town_dock_l3": (540, 315, 615, 408),
+        "town_blacksmith": (648, 305, 752, 408), "town_blacksmith_l2": (750, 302, 840, 408), "town_blacksmith_l3": (838, 300, 922, 408),
+        "town_library": (950, 305, 1042, 408), "town_library_l2": (1045, 296, 1150, 408), "town_library_l3": (1150, 300, 1222, 408),
+        "town_garden": (1242, 315, 1330, 408), "town_garden_l2": (1332, 312, 1428, 408), "town_garden_l3": (1432, 315, 1522, 408),
+        # row 3: Fishery -> fisherhut, Boat House -> sawmill (nautical stand-in)
+        "town_fisherhut": (12, 475, 112, 570), "town_fisherhut_l2": (112, 470, 210, 570), "town_fisherhut_l3": (216, 468, 305, 570),
+        "town_sawmill": (342, 478, 438, 570), "town_sawmill_l2": (440, 474, 538, 570), "town_sawmill_l3": (540, 470, 618, 570),
+    }
+    add("final_build", b5)
+    for k in b5:
+        KEYED.add(k)
+        KEYCOLOR[k] = (247, 240, 224)  # Batch 5 sheet background
+        TOLERANCE[k] = 50
+
+    # ---- corepack3: props + nature sprites (edge-keyed for compositing) ----
     town = {
-        "town_townhall": (352, 45, 510, 187),
-        "town_cottage": (530, 42, 700, 187),
-        "town_workshop": (722, 45, 880, 187),
-        "town_bakery": (910, 40, 1075, 187),
-        "town_market": (1098, 48, 1262, 187),
-        "town_dock": (1288, 40, 1490, 187),
-        "town_farm": (345, 322, 510, 455),
-        "town_fisherhut": (528, 322, 700, 455),
-        "town_sawmill": (720, 322, 880, 455),
-        "town_blacksmith": (905, 322, 1075, 455),
-        "town_library": (1098, 322, 1265, 455),
-        "town_garden": (1288, 322, 1480, 455),
         "prop_bench": (8, 898, 88, 985),
         "prop_lamp": (104, 890, 176, 985),
         "prop_sign": (178, 890, 242, 985),
