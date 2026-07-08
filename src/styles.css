@@ -833,14 +833,30 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
 /* ===== splash: painted emblem while Emberhollow wakes ===== */
 #splash {
   position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 10px;
-  background: radial-gradient(ellipse at 50% 38%, #1c2848 0%, #0f1626 70%);
+  align-items: center; justify-content: center; gap: var(--space-lg); overflow: hidden;
+  /* warm dusk over deep harbour — the world about to wake */
+  background:
+    radial-gradient(ellipse at 50% 44%, rgba(90, 60, 40, 0.55) 0%, transparent 55%),
+    linear-gradient(180deg, #14223c 0%, #0f1626 46%, #0b1120 100%);
   transition: opacity 0.6s ease;
 }
-#splash img { width: min(46vw, 190px); filter: drop-shadow(0 6px 22px rgba(229, 150, 60, 0.35)); }
-.splash-word { font-family: Georgia, serif; font-size: 30px; letter-spacing: 0.35em; color: #f0c878; }
-.splash-sub { font-size: 13px; color: rgba(235, 226, 208, 0.55); }
+.splash-glow {
+  position: absolute; top: 40%; left: 50%; width: min(80vw, 420px); height: min(80vw, 420px);
+  transform: translate(-50%, -50%); border-radius: var(--r-circle);
+  background: radial-gradient(circle, var(--ember-20), transparent 68%);
+  filter: blur(18px);
+}
+.splash-wordmark { position: relative; z-index: 1; width: min(76vw, 380px); height: auto;
+  filter: drop-shadow(0 6px 30px var(--ember-35)); }
+.splash-sub { position: relative; z-index: 1; font-size: var(--fs-base); letter-spacing: 0.06em;
+  color: rgba(235, 226, 208, 0.6); }
 #splash.lifting { opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .splash-wordmark { animation: splashRise 0.9s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+  .splash-glow { animation: splashPulse 2.8s ease-in-out infinite; }
+  @keyframes splashRise { from { opacity: 0; transform: translateY(10px) scale(0.96); } to { opacity: 1; transform: none; } }
+  @keyframes splashPulse { 0%, 100% { opacity: 0.75; } 50% { opacity: 1; } }
+}
 
 /* ===== map actions row + decorate tray ===== */
 .map-actions { display: flex; gap: 8px; padding: 8px 12px 0; }
