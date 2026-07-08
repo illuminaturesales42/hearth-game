@@ -9,6 +9,12 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
+      // TEST-BUILD SETTING: the offline precache was serving testers a stale
+      // cached build no matter how many times they reloaded. A self-destroying
+      // worker unregisters any existing SW and clears its caches, so every
+      // load fetches fresh from the tunnel. Flip back to false for the
+      // production launch build to restore offline play + installability.
+      selfDestroying: true,
       includeAssets: ['art/*.png', 'icons/*.png'],
       manifest: {
         name: 'Hearth: Merge & Mystery',
