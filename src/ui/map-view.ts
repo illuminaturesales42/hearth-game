@@ -919,6 +919,10 @@ export class MapView {
       }
     }
 
+    // --- ambient environment effects (Batch 11) — the small motions that
+    // make Emberhollow feel like weather and light are passing through ---
+    if (!this.reduce) this.drawAmbientEffects(ctx, W, H, t, night, hour, mood, stage);
+
     // --- your day, reflected (living-world flourishes) ---
     const counts = this.game.snapshot.actions.counts;
     if (mood.glow > 0.3 && !this.reduce) {
@@ -940,6 +944,111 @@ export class MapView {
     }
   }
 
+
+  /**
+   * Batch 11 — Environment Effects, drawn procedurally: sun rays and cloud
+   * shadows by day, fireflies over the meadow at night, and pollen/leaves
+   * drifting on the wind. All gentle, all paused under reduced-motion.
+   */
+  private drawAmbientEffects(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    t: number,
+    night: boolean,
+    hour: number,
+    mood: WorldMood,
+    stage: number,
+  ): void {
+    // God-rays fanning from the low sun on clear-ish days.
+    if (!night && mood.cloudCover < 0.55) {
+      const sx = W * 0.78;
+      const sy = H * 0.14;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 5; i++) {
+        const a = (0.9 + i * 0.34) + Math.sin(t / 5000 + i) * 0.05;
+        const len = H * 0.7;
+        const spread = 0.05;
+        const g = ctx.createLinearGradient(sx, sy, sx + Math.cos(a) * len, sy + Math.sin(a) * len);
+        g.addColorStop(0, `rgba(255, 232, 175, ${(0.06 * (1 - mood.cloudCover)).toFixed(3)})`);
+        g.addColorStop(1, 'rgba(255, 232, 175, 0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + Math.cos(a - spread) * len, sy + Math.sin(a - spread) * len);
+        ctx.lineTo(sx + Math.cos(a + spread) * len, sy + Math.sin(a + spread) * len);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // Soft cloud shadows sliding across the island ground.
+    if (!night) {
+      const nsh = Math.max(1, Math.round(mood.cloudCover * 3));
+      ctx.fillStyle = 'rgba(20, 30, 20, 0.05)';
+      for (let i = 0; i < nsh; i++) {
+        const drift = (t / (40000 / (0.5 + mood.wind * 1.4))) % 1.4;
+        const sx = (((i * 0.4 + drift) % 1.4) - 0.2) * W;
+        const sy = H * (0.55 + (i % 2) * 0.14);
+        ctx.beginPath();
+        ctx.ellipse(sx, sy, W * 0.14, H * 0.05, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    if (night) {
+      // Fireflies wander the meadow, twinkling warm.
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const n = 14;
+      for (let i = 0; i < n; i++) {
+        const fx = W * (0.12 + 0.76 * ((i / n + Math.sin(t / 3200 + i * 1.7) * 0.06 + 1) % 1));
+        const fy = H * (0.5 + 0.34 * ((0.5 + Math.cos(t / 2600 + i * 2.3) * 0.5)));
+        const tw = 0.35 + 0.65 * Math.abs(Math.sin(t / 700 + i * 2.1));
+        const r = 3.2;
+        const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, r);
+        g.addColorStop(0, `rgba(200, 240, 150, ${(0.55 * tw).toFixed(3)})`);
+        g.addColorStop(1, 'rgba(200, 240, 150, 0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(fx, fy, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    } else {
+      // Pollen / dust motes and the odd leaf drift on the breeze by day.
+      const drift = 0.4 + mood.wind * 2.2;
+      ctx.fillStyle = 'rgba(255, 245, 210, 0.5)';
+      for (let i = 0; i < 12; i++) {
+        const mx = ((i * 79 + t * 0.01 * drift) % W + W) % W;
+        const my = H * 0.36 + ((i * 43 + t * 0.006) % (H * 0.55)) + Math.sin(t / 900 + i) * 4;
+        ctx.beginPath();
+        ctx.arc(mx, my, 0.9 + (i % 3) * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // a few tumbling leaves once there are trees to shed them
+      if (stage >= 1) {
+        const leafCols = ['#c98a3a', '#b5642f', '#9a8a3a'];
+        for (let i = 0; i < 5; i++) {
+          const lx = ((i * 137 + t * 0.02 * drift) % W + W) % W;
+          const ly = H * 0.34 + ((i * 91 + t * 0.014) % (H * 0.56));
+          const rot = t / 400 + i;
+          ctx.save();
+          ctx.translate(lx + Math.sin(t / 700 + i) * 8, ly);
+          ctx.rotate(rot);
+          ctx.fillStyle = leafCols[i % leafCols.length]!;
+          ctx.globalAlpha = 0.7;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 3.2, 1.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
 
   private drawHomestead(ctx: CanvasRenderingContext2D, cx: number, groundY: number, stage: number, t: number): void {
     const built = stage >= 2;
