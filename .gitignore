@@ -6,3 +6,5 @@ dev-dist/
 tools/probe_*.png
 tools/contact_sheet.png
 tools/verify_fixes.png
+test-results/
+playwright-report/

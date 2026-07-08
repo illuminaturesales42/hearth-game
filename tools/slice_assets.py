@@ -57,6 +57,11 @@ TOLERANCE: dict[str, int] = {}
 KEYCOLOR: dict[str, tuple] = {}
 # ids multiplied by a brightness factor after cropping (e.g. dark checker tile)
 DARKEN: dict[str, float] = {}
+# ids whose key colour is swept EVERYWHERE (not just edge-connected): sprites
+# with interior gaps — tree canopies, rock clusters — trap panel colour in
+# holes the edge flood can't reach. Swept tightly so dark art pixels survive.
+GLOBALKEY: dict[str, tuple] = {}
+GLOBALKEY_TOL = 20
 
 
 def remove_bg(im: Image.Image, tolerance: int = 52, key: tuple | None = None) -> Image.Image:
@@ -86,6 +91,55 @@ def remove_bg(im: Image.Image, tolerance: int = 52, key: tuple | None = None) ->
             if 0 <= nx < w and 0 <= ny < h and not seen[ny * w + nx] and close(px[nx, ny]):
                 seen[ny * w + nx] = 1
                 stack.append((nx, ny))
+    return im
+
+
+def global_key(im: Image.Image, key: tuple, tol: int = GLOBALKEY_TOL) -> Image.Image:
+    """Clear EVERY pixel within `tol` of `key`, connectivity be damned — for
+    interior panel remnants hiding in canopy gaps and rock crevices."""
+    im = im.convert("RGBA")
+    px = im.load()
+    w, h = im.size
+    for y in range(h):
+        for x in range(w):
+            p = px[x, y]
+            if p[3] and (p[0] - key[0]) ** 2 + (p[1] - key[1]) ** 2 + (p[2] - key[2]) ** 2 <= tol * tol:
+                px[x, y] = (0, 0, 0, 0)
+    return im
+
+
+def defringe(im: Image.Image) -> Image.Image:
+    """Kill the 1px halo that flood-keying leaves: boundary pixels (opaque but
+    touching transparency) still carry the old panel colour blended into their
+    RGB. Give each boundary pixel the average colour of its solid neighbours
+    and soften its alpha, so sprites blend into ANY background instead of
+    ringing with the sheet colour they were cut from."""
+    im = im.convert("RGBA")
+    px = im.load()
+    w, h = im.size
+    boundary: list[tuple[int, int]] = []
+    for y in range(h):
+        for x in range(w):
+            if px[x, y][3] == 0:
+                continue
+            for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                if 0 <= nx < w and 0 <= ny < h and px[nx, ny][3] == 0:
+                    boundary.append((x, y))
+                    break
+    fixes: list[tuple[int, int, tuple[int, int, int, int]]] = []
+    for x, y in boundary:
+        rs = gs = bs = n = 0
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < w and 0 <= ny < h and px[nx, ny][3] >= 200 and (nx, ny) not in ((x, y),):
+                    r, g, b, _ = px[nx, ny]
+                    rs += r; gs += g; bs += b; n += 1
+        if n:
+            a = px[x, y][3]
+            fixes.append((x, y, (rs // n, gs // n, bs // n, min(a, 210))))
+    for x, y, c in fixes:
+        px[x, y] = c
     return im
 
 
@@ -173,6 +227,9 @@ def slice_all() -> None:
         im = opened[key].crop(box)
         if ident in KEYED:
             im = remove_bg(im, TOLERANCE.get(ident, 52), KEYCOLOR.get(ident))
+            if ident in GLOBALKEY:
+                im = global_key(im, GLOBALKEY[ident])
+            im = defringe(im)
         if ident.startswith(("item_", "res_", "action_", "energy_")):
             im = clean_sprite(im)
         elif ident.startswith("town_"):
@@ -296,7 +353,9 @@ def define() -> None:
     b5 = {
         # row 1: Town Hall, Cottage, Workshop, Bakery, Market
         "town_townhall": (10, 140, 104, 280), "town_townhall_l2": (112, 132, 202, 280), "town_townhall_l3": (208, 128, 302, 280),
-        "town_cottage": (347, 140, 452, 280), "town_cottage_l2": (452, 136, 545, 280), "town_cottage_l3": (543, 130, 622, 280),
+        # right edge 430: the L2 sprite overlaps its own panel and bleeds left
+        # of 452, and the shared ground shadow keeps it blob-connected
+        "town_cottage": (347, 140, 430, 280), "town_cottage_l2": (452, 136, 545, 280), "town_cottage_l3": (543, 130, 622, 280),
         "town_workshop": (648, 140, 752, 280), "town_workshop_l2": (750, 136, 840, 280), "town_workshop_l3": (838, 132, 922, 280),
         "town_bakery": (950, 138, 1055, 280), "town_bakery_l2": (1053, 132, 1148, 280), "town_bakery_l3": (1148, 132, 1220, 280),
         "town_market": (1238, 150, 1342, 280), "town_market_l2": (1342, 146, 1438, 280), "town_market_l3": (1440, 150, 1528, 280),
@@ -368,7 +427,7 @@ def define() -> None:
     b2 = {
         "npc_child": (368, 712, 430, 862),
         "npc_woman": (434, 706, 506, 862),
-        "npc_man": (508, 706, 576, 862),
+        "npc_man": (508, 714, 576, 862),  # top at 714: a black divider line runs at ~708
         "animal_gull": (612, 706, 698, 780),
         "animal_cat": (770, 708, 838, 786),
         "animal_dog": (842, 706, 908, 786),
@@ -399,10 +458,21 @@ def define() -> None:
     KEYED.update(b2.keys())
     for dark in ("boat_fishing_s", "boat_fishing_m", "boat_sail_s", "boat_row", "animal_cat", "animal_dog"):
         TOLERANCE[dark] = 26
+    # map-scale villagers sit on the dark navy panel: fix the key colour and
+    # key GENTLY — border-average at tol 52 ate npc_child's own dark outlines.
+    for k in ("npc_child", "npc_woman", "npc_man"):
+        KEYCOLOR[k] = (16, 30, 34)
+        TOLERANCE[k] = 26
+    # the man's dark-olive trousers sit ~22 from the navy key — key tighter
+    TOLERANCE["npc_man"] = 18
     for t in terrain:
         TOLERANCE[t] = 30  # dark foliage/rock on navy panels — key gently
     for t in ("terrain_trees_l", "terrain_trees_s", "terrain_bush"):
         TOLERANCE[t] = 38  # panels must go; canopy greens survive this
+    for t in ("terrain_trees_l", "terrain_trees_s", "terrain_bush", "terrain_rocks"):
+        # sweep navy remnants out of canopy gaps / rock crevices (tight tol,
+        # everywhere — the edge flood can't reach interior holes)
+        GLOBALKEY[t] = (16, 30, 34)
 
     # ---- corepack5 (Core/MVP.png): the canonical grid board (merge area) ----
     add("corepack5", {"board_grass": (773, 500, 1172, 760)})
