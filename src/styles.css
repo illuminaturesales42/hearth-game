@@ -570,7 +570,11 @@ body {
 .tile-art { width: 97%; height: 97%; object-fit: contain; pointer-events: none;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45)); }
 #drag-ghost .tile-art { width: 44px; height: 44px; }
-.nav-art { background-size: cover; background-position: center; border-radius: 10px; }
+.nav-art { background-size: contain; background-repeat: no-repeat; background-position: center; border-radius: 0;
+  width: 26px; height: 26px; }
+#bottom-nav .nav-btn span.nav-art { filter: none; opacity: 0.72; transition: opacity 0.18s ease, transform 0.18s ease; }
+#bottom-nav .nav-btn.on span.nav-art { opacity: 1; transform: translateY(-1px) scale(1.06);
+  filter: drop-shadow(0 2px 5px rgba(244, 166, 59, 0.5)); }
 .pip-art { background-size: contain; background-repeat: no-repeat; background-position: center; border-radius: 50%; }
 .pip-art::after { content: none; }
 /* the ember-heart energy + coin are painted tokens — show them whole, no clip */
