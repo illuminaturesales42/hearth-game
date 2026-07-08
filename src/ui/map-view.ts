@@ -578,28 +578,59 @@ export class MapView {
       ctx.quadraticCurveTo(W * 0.08, H * 0.88 + inset, -W * 0.05 - inset, H * 0.78);
       ctx.closePath();
     };
-    // rocky under-rim first, then the green cap sitting inside it
-    island(4);
-    ctx.fillStyle = night ? '#38332a' : '#4c4436';
+    // --- the island as a real landmass, not a flat cut-out ---
+    // rocky, wet under-rim in shadow
+    island(5);
+    ctx.fillStyle = night ? '#2c281f' : '#3f382c';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(230, 214, 170, 0.25)'; // wet-sand waterline
+    // a warm sand beach hugs the waterline, with a soft foam edge
+    island(1);
+    ctx.fillStyle = night ? '#4d4636' : '#cdb489';
+    ctx.fill();
+    ctx.strokeStyle = night ? 'rgba(150, 170, 205, 0.18)' : 'rgba(245, 234, 205, 0.38)';
     ctx.lineWidth = 2;
     ctx.stroke();
+    // the green cap: storm-mud heals to a warm meadow green
     island(-3);
-    const grass = mix('#5a5f38', '#3f6238', Math.min(1, stage / 3)); // storm-mud heals to green
+    const grass = mix('#5c5636', '#4f6d34', Math.min(1, stage / 3));
     ctx.fillStyle = grass;
     ctx.fill();
-    // lay real grass texture over the ground so it reads as turf, not paint;
-    // fades in as the island heals from storm-mud to meadow
+    // give the land volume: clip to the meadow, then top-light + edge-shade,
+    // dapple the tone so it never reads as one flat fill, and lay real turf.
+    ctx.save();
+    island(-3);
+    ctx.clip();
+    // light falls from the sky above; the low edges sit in shadow
+    const litG = ctx.createLinearGradient(0, H * 0.32, 0, H);
+    if (night) {
+      litG.addColorStop(0, 'rgba(130, 150, 185, 0.10)');
+      litG.addColorStop(0.5, 'rgba(0, 0, 0, 0)');
+      litG.addColorStop(1, 'rgba(8, 12, 20, 0.34)');
+    } else {
+      litG.addColorStop(0, 'rgba(255, 240, 190, 0.17)');
+      litG.addColorStop(0.55, 'rgba(0, 0, 0, 0)');
+      litG.addColorStop(1, 'rgba(38, 48, 24, 0.24)');
+    }
+    ctx.fillStyle = litG;
+    ctx.fillRect(0, H * 0.3, W, H * 0.7);
+    // dappled meadow — soft lighter/darker blotches for organic variation
+    const dapple: [number, number, number][] = [
+      [0.30, 0.55, 0.11], [0.55, 0.62, 0.13], [0.70, 0.50, 0.10], [0.20, 0.70, 0.12],
+      [0.80, 0.72, 0.10], [0.46, 0.76, 0.12], [0.62, 0.44, 0.09],
+    ];
+    for (let i = 0; i < dapple.length; i++) {
+      const d = dapple[i]!;
+      const g = ctx.createRadialGradient(d[0] * W, d[1] * H, 0, d[0] * W, d[1] * H, d[2] * W);
+      g.addColorStop(0, i % 2 === 0 ? 'rgba(158, 182, 96, 0.15)' : 'rgba(38, 58, 26, 0.15)');
+      g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect((d[0] - d[2]) * W, (d[1] - d[2]) * H, d[2] * 2 * W, d[2] * 2 * H);
+    }
+    // real turf texture, staggered + overlapped so tile edges never seam
     const turf = this.sprite('turf_light');
     if (turf) {
-      ctx.save();
-      island(-3);
-      ctx.clip();
       const ts = Math.max(44, W * 0.13);
-      ctx.globalAlpha = 0.42 * Math.min(1, stage / 2 + 0.25);
-      // Stagger alternate rows by a half-tile and overlap by 1px so the tile
-      // edges never line up into visible vertical seams.
+      ctx.globalAlpha = 0.4 * Math.min(1, stage / 2 + 0.25);
       let row = 0;
       for (let yy = H * 0.33; yy < H * 0.98; yy += ts - 1) {
         const off = (row % 2) * (ts / 2);
@@ -607,8 +638,8 @@ export class MapView {
         row++;
       }
       ctx.globalAlpha = 1;
-      ctx.restore();
     }
+    ctx.restore();
 
     // --- boats first (they sit on the water behind the shore) ---
     for (const b of TOWN_BOATS) {
@@ -726,6 +757,20 @@ export class MapView {
       ctx.globalAlpha = alpha;
       ctx.drawImage(img, p.x * W - (w * scale) / 2, p.y * H - h * scale, w * scale, h * scale);
       ctx.globalAlpha = 1;
+      // cosy warmth spills from the windows once the light fails — the single
+      // biggest "someone lives here" cue (reference: warm golden windows).
+      const dusk = hour >= 17 && hour < 21;
+      const dawn = hour >= 5 && hour < 7;
+      if ((night || dusk || dawn) && !this.reduce) {
+        const cx = p.x * W;
+        const cy = p.y * H - h * 0.4;
+        const k = night ? 0.46 : dusk ? 0.32 : 0.2;
+        const warm = ctx.createRadialGradient(cx, cy, 1, cx, cy, w * 0.6);
+        warm.addColorStop(0, `rgba(255, 198, 120, ${k})`);
+        warm.addColorStop(1, 'rgba(255, 190, 110, 0)');
+        ctx.fillStyle = warm;
+        ctx.fillRect(cx - w * 0.7, cy - h * 0.55, w * 1.4, h * 1.05);
+      }
       // a fully-upgraded (Beloved) building gets a soft golden aura of pride;
       // the L2/L3 detail now lives in the painted sprite itself
       if (!p.ruined && p.unlockAt > 0 && BUILDING_INFO[p.art] && this.game.upgradeTier(p.art) >= 2 && !this.reduce) {
