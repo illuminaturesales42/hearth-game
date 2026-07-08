@@ -474,18 +474,20 @@ export class MapView {
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, W, H * 0.4);
     }
-    // Real clouds drift in on the real wind.
-    const nClouds = Math.round(mood.cloudCover * 5);
-    if (nClouds > 0) {
-      ctx.fillStyle = night ? 'rgba(150,160,190,0.28)' : 'rgba(235,238,245,0.5)';
+    // Clouds always drift the sky (at least a couple), more when it's cloudy.
+    const nClouds = Math.max(2, Math.round(mood.cloudCover * 5));
+    {
+      const density = night ? 0.22 : 0.4 + mood.cloudCover * 0.25;
       for (let i = 0; i < nClouds; i++) {
-        const drift = this.reduce ? 0.5 : (t / (60000 / (0.4 + mood.wind * 1.6))) % 1.25;
-        const cxp = (((i * 0.23 + drift) % 1.25) - 0.125) * W;
-        const cyp = H * (0.05 + (i % 3) * 0.045);
-        const cw = W * (0.09 + (i % 2) * 0.04);
+        const drift = this.reduce ? 0.5 : (t / (48000 / (0.5 + mood.wind * 1.6))) % 1.3;
+        const cxp = (((i * 0.27 + drift) % 1.3) - 0.15) * W;
+        const cyp = H * (0.05 + (i % 3) * 0.05);
+        const cw = W * (0.1 + (i % 2) * 0.045);
+        ctx.fillStyle = night ? `rgba(150,160,190,${density})` : `rgba(240,242,248,${density})`;
         ctx.beginPath();
-        ctx.ellipse(cxp, cyp, cw, cw * 0.32, 0, 0, Math.PI * 2);
-        ctx.ellipse(cxp + cw * 0.55, cyp + cw * 0.08, cw * 0.6, cw * 0.24, 0, 0, Math.PI * 2);
+        ctx.ellipse(cxp, cyp, cw, cw * 0.34, 0, 0, Math.PI * 2);
+        ctx.ellipse(cxp + cw * 0.55, cyp + cw * 0.08, cw * 0.62, cw * 0.26, 0, 0, Math.PI * 2);
+        ctx.ellipse(cxp - cw * 0.5, cyp + cw * 0.06, cw * 0.5, cw * 0.22, 0, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -509,6 +511,34 @@ export class MapView {
       ctx.fillStyle = sunCol;
       ctx.fillRect(W * 0.68, H * 0.42, W * 0.2, H * 0.53);
     }
+    // the horizon water is alive: rolling swell lines behind the town, their
+    // pace + amplitude set by the day's mood (calm after meditation, restless
+    // after none). Drawn before the island so it only shows on open water.
+    if (!this.reduce) {
+      const amp = 1.2 + mood.sea * 3.6;
+      const pace = 640 - mood.sea * 340;
+      ctx.strokeStyle = night ? 'rgba(150, 180, 235, 0.16)' : 'rgba(210, 232, 245, 0.22)';
+      ctx.lineWidth = 1.2;
+      for (let y = H * 0.43; y < H * 0.62; y += 7) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        for (let x = 0; x <= W; x += 20) ctx.lineTo(x, y + Math.sin(x / 24 + t / pace + y * 0.6) * amp);
+        ctx.stroke();
+      }
+      if (mood.sea > 0.5) {
+        // whitecaps out on the swell
+        ctx.strokeStyle = 'rgba(238, 244, 250, 0.5)';
+        ctx.lineWidth = 1.6;
+        for (let i = 0; i < 6; i++) {
+          const wx = (((i * 151 + Math.floor(t / 900) * 37) % 100) / 100) * W;
+          const wy = H * (0.45 + ((i * 61) % 14) / 100);
+          ctx.beginPath();
+          ctx.moveTo(wx, wy);
+          ctx.lineTo(wx + 8 + mood.sea * 8, wy);
+          ctx.stroke();
+        }
+      }
+    }
     const island = (inset: number) => {
       ctx.beginPath();
       ctx.moveTo(-W * 0.05 - inset, H * 0.46);
@@ -530,6 +560,21 @@ export class MapView {
     const grass = mix('#5a5f38', '#3f6238', Math.min(1, stage / 3)); // storm-mud heals to green
     ctx.fillStyle = grass;
     ctx.fill();
+    // lay real grass texture over the ground so it reads as turf, not paint;
+    // fades in as the island heals from storm-mud to meadow
+    const turf = this.sprite('turf_light');
+    if (turf) {
+      ctx.save();
+      island(-3);
+      ctx.clip();
+      const ts = Math.max(38, W * 0.11);
+      ctx.globalAlpha = 0.5 * Math.min(1, stage / 2 + 0.25);
+      for (let yy = H * 0.33; yy < H * 0.96; yy += ts) {
+        for (let xx = -ts; xx < W + ts; xx += ts) ctx.drawImage(turf, xx, yy, ts, ts);
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
 
     // --- boats first (they sit on the water behind the shore) ---
     for (const b of TOWN_BOATS) {
@@ -692,21 +737,24 @@ export class MapView {
       ctx.restore();
     }
 
-    // --- small lives: the cat claims the bench, gulls work the docks ---
+    // --- small lives: gulls always wheel over the harbour; the cat later ---
     if (stage >= 3) {
       const cat = this.sprite('animal_cat');
       if (cat) {
         const w = 0.032 * W;
         ctx.drawImage(cat, W * 0.545, H * 0.665 - w * (cat.naturalHeight / cat.naturalWidth), w, w * (cat.naturalHeight / cat.naturalWidth));
       }
+    }
+    {
       const gull = this.sprite('animal_gull');
       if (gull && !this.reduce) {
         const gustiness = 1 + mood.wind * 1.4;
-        for (let g = 0; g < 2; g++) {
-          const gx = W * (0.74 + 0.14 * Math.sin((t * gustiness) / 2600 + g * 2.4));
-          const gy = H * (0.18 + 0.05 * Math.cos((t * gustiness) / 2100 + g * 1.7));
+        const flock = 2 + (stage >= 3 ? 1 : 0);
+        for (let g = 0; g < flock; g++) {
+          const gx = W * (0.5 + 0.34 * Math.sin((t * gustiness) / 2600 + g * 2.1));
+          const gy = H * (0.14 + 0.06 * Math.cos((t * gustiness) / 2100 + g * 1.7) + g * 0.03);
           const gw = 0.028 * W;
-          ctx.globalAlpha = 0.9;
+          ctx.globalAlpha = 0.85;
           ctx.drawImage(gull, gx, gy, gw, gw * (gull.naturalHeight / gull.naturalWidth));
           ctx.globalAlpha = 1;
         }

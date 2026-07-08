@@ -399,10 +399,11 @@ def define() -> None:
     TOLERANCE["board_grass"] = 26  # keep the stone rim; a faint dark halo hides on navy
     # two real turf squares from the reference board — used as the cell
     # textures so the aligned checker carries the painted mossy look
-    # board turf: Batch 6 seamless grass tile (01_grass), light + a darkened
-    # sibling so the aligned checker carries the final painted texture
-    add("final_ui", {"turf_light": (44, 88, 150, 166), "turf_dark": (46, 90, 152, 166)})
-    DARKEN["turf_dark"] = 0.86
+    # board turf: green INTERIOR of Batch 6 grass tile (01_grass). The tile
+    # sits inside cream panel borders (cream gap at x~120 and above y~100), so
+    # crop tight to the green or the cells wash out pale.
+    add("final_ui", {"turf_light": (46, 103, 116, 162), "turf_dark": (46, 103, 116, 162)})
+    DARKEN["turf_dark"] = 0.85
 
     # ---- batch567: dialogue busts + fx stills ----
     add("batch567", {
