@@ -1,0 +1,8 @@
+# Cloudflare Pages config for Hearth's public web build.
+# The permanent funnel URL (roadmap Phase 0, step #1) — replaces the fragile
+# `cloudflared` quick tunnels that die on PC sleep.
+#
+# One-time human setup and the deploy commands live in DEPLOY.md.
+name = "hearth"
+compatibility_date = "2026-07-08"
+pages_build_output_dir = "dist"

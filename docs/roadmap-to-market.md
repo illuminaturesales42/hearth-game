@@ -14,7 +14,7 @@ The product work left before we point strangers at it.
 
 | Item | Status / gap |
 |---|---|
-| Permanent public URL | **Blocked on a 1-time human step:** `wrangler login`, then `npx wrangler pages deploy dist --project-name hearth` (or connect the GitHub repo to Cloudflare Pages). The quick tunnel dies when the PC sleeps. |
+| Permanent public URL | **Wired — awaits 1 human step.** Cloudflare Pages fully pre-wired: `wrangler` dev dep, `wrangler.toml`, `pnpm deploy` script, and a `deploy.yml` CI workflow (auto-publish on push to main, gated on a `CLOUDFLARE_ENABLED` repo var). Only human step left: `pnpm exec wrangler login` → `pnpm deploy` (creates `hearth.pages.dev`). Full steps in [`DEPLOY.md`](../DEPLOY.md). Replaces the quick tunnels, which die on PC sleep. |
 | Real email list | Card ships in-app but points at a mailto. Stand up Buttondown/MailerLite (free tiers) and swap `LIST_EMAIL` in `src/ui/growth.ts` for the form/endpoint. |
 | Building upgrades L2/L3 | Needs a probe/slice pass on the batch567 sheet (6.1 upgrade sets), then the coin-sink mechanic. Second long-term sink after decor. |
 | Ember-heart energy pill | `UI Flame.png` shows the sanctioned energy visual ("ember, not lightning"). Slice + swap into the top bar. |
@@ -78,7 +78,7 @@ No energy sales · no gems · no ads near health data (ideally no ads at all) ·
 
 ## This week's actionable shortlist
 
-1. ☐ `wrangler login` → permanent URL (5 minutes, human-only step).
+1. ☐ `pnpm exec wrangler login` → `pnpm deploy` → permanent `hearth.pages.dev` URL (5 min, human-only; everything else pre-wired — see [`DEPLOY.md`](../DEPLOY.md)).
 2. ☐ Create Buttondown list → swap `LIST_EMAIL`.
 3. ☐ First devlog Short: town-growth timelapse from the composed map.
 4. ☐ Recruit 5 friends-and-family testers onto the permanent URL.
