@@ -350,13 +350,22 @@ def define() -> None:
         add("batch89", {ident: (int(x0), 452, int(x0 + 430 / 7), 512)})
         KEYED.add(ident)
 
-    # ---- batch2: map-scale villagers, animals, boats, fence (all keyed sprites) ----
+    # ---- FINAL full-body villagers (Batch 8 panel 1) -> map walkers ----
+    npc = {
+        "npc_bran": (22, 102, 112, 335),
+        "npc_wren": (142, 105, 232, 335),
+        "npc_sorin": (262, 102, 352, 335),
+        "npc_marta": (382, 105, 472, 335),
+        "npc_joss": (502, 102, 592, 335),
+    }
+    add("final_char", npc)
+    for k in npc:
+        KEYED.add(k)
+        KEYCOLOR[k] = (250, 240, 222)
+        TOLERANCE[k] = 50
+
+    # ---- batch2: remaining map-scale villagers, animals, boats, fence ----
     b2 = {
-        "npc_bran": (14, 706, 90, 862),
-        "npc_wren": (94, 706, 160, 862),
-        "npc_sorin": (164, 706, 230, 862),
-        "npc_marta": (234, 706, 296, 862),
-        "npc_joss": (298, 706, 366, 862),
         "npc_child": (368, 712, 430, 862),
         "npc_woman": (434, 706, 506, 862),
         "npc_man": (508, 706, 576, 862),
