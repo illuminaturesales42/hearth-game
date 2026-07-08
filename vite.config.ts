@@ -1,7 +1,12 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  // Vitest runs the pure-logic unit suite only; the Playwright e2e specs in
+  // tests/e2e/*.spec.ts are driven by playwright.config.ts, not vitest.
+  test: {
+    include: ['tests/**/*.test.ts'],
+  },
   preview: {
     // local static preview, exposed only via tunnels for remote phone testing
     allowedHosts: true,

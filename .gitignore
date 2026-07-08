@@ -2,6 +2,12 @@ node_modules/
 dist/
 dev-dist/
 
+# Playwright e2e artifacts
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
 # regenerable slicer outputs (python tools/slice_assets.py --probe/--contact)
 tools/probe_*.png
 tools/contact_sheet.png
