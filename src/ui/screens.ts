@@ -1,5 +1,5 @@
 /**
- * Read-only cozy screens plus the Journal's interactive "Good Days" tab:
+ * Read-only cosy screens plus the Journal's interactive "Good Days" tab:
  * write one good thing about your day for streak-multiplied energy, revisit
  * past entries, and claim a flashback boost when an old good day resurfaces.
  */

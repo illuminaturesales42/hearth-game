@@ -52,15 +52,22 @@ export class MapView {
   private decorHit: { x0: number; y0: number; x1: number; y1: number; id: number }[] = [];
 
   constructor(private game: Game) {
-    for (let i = 0; i < 5; i++) {
-      const url = artUrl(`stage_${i}`);
-      if (!url) continue;
-      const img = new Image();
-      img.onload = () => {
-        this.stageArt[i] = img;
-        if (this.visible && this.reduce) this.draw(0);
-      };
-      img.src = url;
+    // The painted stage backdrops are a fallback for when the composed-town art
+    // pack is absent (see draw() — the town always wins when `town_townhall`
+    // exists). In the shipped build the pack is present, so preloading all five
+    // (~480KB) on the Home screen is pure waste — only fetch them if the
+    // composed town isn't available.
+    if (!artUrl('town_townhall')) {
+      for (let i = 0; i < 5; i++) {
+        const url = artUrl(`stage_${i}`);
+        if (!url) continue;
+        const img = new Image();
+        img.onload = () => {
+          this.stageArt[i] = img;
+          if (this.visible && this.reduce) this.draw(0);
+        };
+        img.src = url;
+      }
     }
     game.subscribe((ev) => {
       const refresh =

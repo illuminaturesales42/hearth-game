@@ -1,6 +1,6 @@
 /**
  * Static world content for the Map, Villagers, Journal and Shop screens.
- * Read-only cozy data; unlocks are driven by orders delivered so the
+ * Read-only cosy data; unlocks are driven by orders delivered so the
  * screens stay in sync with story progress.
  */
 
