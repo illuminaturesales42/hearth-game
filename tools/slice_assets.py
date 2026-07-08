@@ -103,6 +103,46 @@ def probe(key: str) -> None:
     print(f"probe -> {out}")
 
 
+def clean_sprite(im: Image.Image, min_blob: int = 30, pad_frac: float = 0.05) -> Image.Image:
+    """Post-key cleanup for game pieces: drop stray speckles (small alpha
+    islands from neighbour-cell bleed), then autocrop to content + padding so
+    every icon fills its tile consistently."""
+    im = im.convert("RGBA")
+    w, h = im.size
+    px = im.load()
+    seen = bytearray(w * h)
+    keep = bytearray(w * h)
+    for sy in range(h):
+        for sx in range(w):
+            i0 = sy * w + sx
+            if seen[i0] or px[sx, sy][3] < 16:
+                continue
+            stack = [(sx, sy)]
+            seen[i0] = 1
+            blob = []
+            while stack:
+                x, y = stack.pop()
+                blob.append((x, y))
+                for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if 0 <= nx < w and 0 <= ny < h and not seen[ny * w + nx] and px[nx, ny][3] >= 16:
+                        seen[ny * w + nx] = 1
+                        stack.append((nx, ny))
+            if len(blob) >= min_blob:
+                for x, y in blob:
+                    keep[y * w + x] = 1
+    for y in range(h):
+        for x in range(w):
+            if px[x, y][3] >= 16 and not keep[y * w + x]:
+                px[x, y] = (0, 0, 0, 0)
+    box = im.getbbox()
+    if not box:
+        return im
+    pw = int((box[2] - box[0]) * pad_frac)
+    ph = int((box[3] - box[1]) * pad_frac)
+    box = (max(0, box[0] - pw), max(0, box[1] - ph), min(w, box[2] + pw), min(h, box[3] + ph))
+    return im.crop(box)
+
+
 def slice_all() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     opened: dict[str, Image.Image] = {}
@@ -113,6 +153,8 @@ def slice_all() -> None:
         im = opened[key].crop(box)
         if ident in KEYED:
             im = remove_bg(im, TOLERANCE.get(ident, 52))
+        if ident.startswith("item_") and ident not in ("item_wood_5", "item_wood_6"):
+            im = clean_sprite(im)
         im.save(OUT / f"{ident}.png")
         ids.append(ident)
     ts = (
@@ -166,8 +208,8 @@ def define() -> None:
             KEYED.add(f"item_{_chain}_{_i}")
             # the wood row sits on a lighter navy gradient — needs a looser key
             TOLERANCE[f"item_{_chain}_{_i}"] = 44 if _chain == "wood" else 30
-    TOLERANCE["item_wood_5"] = 56  # door + cottage cells are darker still
-    TOLERANCE["item_wood_6"] = 56
+    TOLERANCE["item_wood_5"] = 56  # door + cottage need the loose key, and their
+    TOLERANCE["item_wood_6"] = 56  # sparse paint must skip the speckle cleanup
     # resources (skip the gem — no premium currency in Hearth)
     row("batch34", "res_", ["coin", "energy", "gem_SKIP", "chest_closed", "chest_open", "star", "gift"],
         10, 818, 700, 898)
@@ -288,6 +330,9 @@ def define() -> None:
     add("corepack5", {"board_grass": (773, 500, 1172, 760)})
     KEYED.add("board_grass")
     TOLERANCE["board_grass"] = 26  # keep the stone rim; a faint dark halo hides on navy
+    # two real turf squares from the reference board — used as the cell
+    # textures so the aligned checker carries the painted mossy look
+    add("corepack5", {"turf_light": (927, 555, 967, 595), "turf_dark": (977, 604, 1017, 644)})
 
     # ---- batch567: dialogue busts + fx stills ----
     add("batch567", {

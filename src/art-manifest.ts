@@ -132,6 +132,8 @@ export const ART_IDS: ReadonlySet<string> = new Set([
   'tree_flowerbush',
   'tree_oak',
   'tree_pine',
+  'turf_dark',
+  'turf_light',
 ]);
 export function artUrl(id: string): string | null {
   return ART_IDS.has(id) ? `/art/${id}.png` : null;
