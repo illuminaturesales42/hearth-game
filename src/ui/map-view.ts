@@ -474,21 +474,31 @@ export class MapView {
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, W, H * 0.4);
     }
-    // Clouds always drift the sky (at least a couple), more when it's cloudy.
-    const nClouds = Math.max(2, Math.round(mood.cloudCover * 5));
+    // Clouds always drift the sky — soft, warm wisps, not hard blobs. Each is
+    // a cluster of radial puffs so the edges feather into the sky.
+    const nClouds = Math.max(2, Math.round(mood.cloudCover * 4));
     {
-      const density = night ? 0.22 : 0.4 + mood.cloudCover * 0.25;
+      const dusk = hour >= 17 && hour < 21;
+      const dawn = hour >= 5 && hour < 8;
+      const tint = night ? '190,200,225' : dusk ? '255,224,196' : dawn ? '255,232,214' : '250,251,255';
+      const peak = (night ? 0.16 : 0.24) + mood.cloudCover * 0.18;
       for (let i = 0; i < nClouds; i++) {
-        const drift = this.reduce ? 0.5 : (t / (48000 / (0.5 + mood.wind * 1.6))) % 1.3;
-        const cxp = (((i * 0.27 + drift) % 1.3) - 0.15) * W;
-        const cyp = H * (0.05 + (i % 3) * 0.05);
-        const cw = W * (0.1 + (i % 2) * 0.045);
-        ctx.fillStyle = night ? `rgba(150,160,190,${density})` : `rgba(240,242,248,${density})`;
-        ctx.beginPath();
-        ctx.ellipse(cxp, cyp, cw, cw * 0.34, 0, 0, Math.PI * 2);
-        ctx.ellipse(cxp + cw * 0.55, cyp + cw * 0.08, cw * 0.62, cw * 0.26, 0, 0, Math.PI * 2);
-        ctx.ellipse(cxp - cw * 0.5, cyp + cw * 0.06, cw * 0.5, cw * 0.22, 0, 0, Math.PI * 2);
-        ctx.fill();
+        const drift = this.reduce ? 0.5 : (t / (54000 / (0.5 + mood.wind * 1.4))) % 1.3;
+        const cx = (((i * 0.31 + drift) % 1.3) - 0.15) * W;
+        const cy = H * (0.06 + (i % 3) * 0.05);
+        const cw = W * (0.075 + (i % 2) * 0.03);
+        for (const [ox, oy, r] of [[0, 0, 1], [0.7, 0.1, 0.72], [-0.65, 0.12, 0.62], [0.2, -0.14, 0.55]] as const) {
+          const px = cx + ox * cw;
+          const py = cy + oy * cw;
+          const rad = r * cw;
+          const g = ctx.createRadialGradient(px, py, 0, px, py, rad);
+          g.addColorStop(0, `rgba(${tint},${peak.toFixed(3)})`);
+          g.addColorStop(1, `rgba(${tint},0)`);
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(px, py, rad, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
     // Heavy weather leans on the whole scene, gently.
@@ -761,28 +771,81 @@ export class MapView {
       }
     }
 
-    // --- the lighthouse keeps its watch on the point ---
-    const lx = W * 0.945;
-    const lTop = H * 0.28;
-    const lit = delivered >= 9; // the beacon story beat
-    ctx.fillStyle = '#ded6c2';
-    ctx.fillRect(lx - 6, lTop, 12, H * 0.2);
-    ctx.fillStyle = '#a8452f';
-    ctx.fillRect(lx - 6, lTop + H * 0.06, 12, H * 0.035);
-    ctx.fillStyle = lit ? '#ffe6a8' : '#39415a';
-    ctx.fillRect(lx - 8, lTop - 9, 16, 9);
-    if (lit) {
-      const ang = this.reduce ? -0.2 : Math.sin(t / 1500) * 0.55;
-      const beam = ctx.createLinearGradient(lx, lTop - 4, lx - 150 * Math.cos(ang), lTop - 4 - 80 * Math.sin(ang));
-      beam.addColorStop(0, 'rgba(255,230,160,0.45)');
-      beam.addColorStop(1, 'rgba(255,230,160,0)');
-      ctx.fillStyle = beam;
+    // --- the lighthouse keeps its watch on the point (painted-style tower) ---
+    {
+      const lx = W * 0.93;
+      const baseY = H * 0.5; // sits on the north headland
+      const th = H * 0.24; // tower height
+      const topY = baseY - th;
+      const wBot = W * 0.05;
+      const wTop = W * 0.032;
+      const lit = delivered >= 9; // the beacon story beat
+      // rocky footing
+      ctx.fillStyle = night ? '#2c3242' : '#5a5648';
       ctx.beginPath();
-      ctx.moveTo(lx, lTop - 4);
-      ctx.lineTo(lx - 160 * Math.cos(ang - 0.12), lTop - 4 - 100 * Math.sin(ang - 0.12));
-      ctx.lineTo(lx - 160 * Math.cos(ang + 0.12), lTop - 4 - 100 * Math.sin(ang + 0.12));
+      ctx.ellipse(lx, baseY, wBot * 0.9, H * 0.02, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // tapered tower body
+      ctx.beginPath();
+      ctx.moveTo(lx - wBot / 2, baseY);
+      ctx.lineTo(lx - wTop / 2, topY);
+      ctx.lineTo(lx + wTop / 2, topY);
+      ctx.lineTo(lx + wBot / 2, baseY);
+      ctx.closePath();
+      const body = ctx.createLinearGradient(lx - wBot / 2, 0, lx + wBot / 2, 0);
+      body.addColorStop(0, night ? '#b9b3a4' : '#efe9db');
+      body.addColorStop(0.5, night ? '#d4cfc0' : '#fbf7ec');
+      body.addColorStop(1, night ? '#a49e8f' : '#ddd6c6');
+      ctx.fillStyle = body;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(90,74,50,0.35)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // two red bands
+      ctx.fillStyle = '#c14a35';
+      for (const f of [0.34, 0.66]) {
+        const y = baseY - th * f;
+        const wb = wBot + (wTop - wBot) * f;
+        ctx.fillRect(lx - wb / 2, y - th * 0.05, wb, th * 0.09);
+      }
+      // gallery deck + lantern room
+      const galW = wTop * 1.7;
+      const galY = topY;
+      ctx.fillStyle = night ? '#3a4152' : '#4a5568';
+      ctx.fillRect(lx - galW / 2, galY - 2, galW, 4);
+      const lampH = th * 0.14;
+      ctx.beginPath();
+      ctx.fillStyle = lit ? '#ffe6a8' : night ? '#39415a' : '#7a8494';
+      ctx.fillRect(lx - wTop * 0.6, galY - lampH, wTop * 1.2, lampH);
+      if (lit) {
+        ctx.fillStyle = 'rgba(255,230,160,0.5)';
+        ctx.beginPath();
+        ctx.arc(lx, galY - lampH / 2, wTop * 0.9, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // little roof cap
+      ctx.fillStyle = '#7a4a34';
+      ctx.beginPath();
+      ctx.moveTo(lx - wTop * 0.7, galY - lampH);
+      ctx.lineTo(lx, galY - lampH - th * 0.08);
+      ctx.lineTo(lx + wTop * 0.7, galY - lampH);
       ctx.closePath();
       ctx.fill();
+      // sweeping beam
+      if (lit && !this.reduce) {
+        const oy = galY - lampH / 2;
+        const ang = Math.sin(t / 1500) * 0.5 - 0.25;
+        const beam = ctx.createLinearGradient(lx, oy, lx - 170 * Math.cos(ang), oy - 90 * Math.sin(ang));
+        beam.addColorStop(0, 'rgba(255,232,168,0.42)');
+        beam.addColorStop(1, 'rgba(255,232,168,0)');
+        ctx.fillStyle = beam;
+        ctx.beginPath();
+        ctx.moveTo(lx, oy);
+        ctx.lineTo(lx - 180 * Math.cos(ang - 0.11), oy - 110 * Math.sin(ang - 0.11));
+        ctx.lineTo(lx - 180 * Math.cos(ang + 0.11), oy - 110 * Math.sin(ang + 0.11));
+        ctx.closePath();
+        ctx.fill();
+      }
     }
 
     // --- sea shimmer at the shore: the water carries the day's mood ---
