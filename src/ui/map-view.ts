@@ -626,15 +626,25 @@ export class MapView {
       ctx.fillStyle = g;
       ctx.fillRect((d[0] - d[2]) * W, (d[1] - d[2]) * H, d[2] * 2 * W, d[2] * 2 * H);
     }
-    // real turf texture, staggered + overlapped so tile edges never seam
+    // real turf texture — staggered rows, and every other tile mirrored so the
+    // sprite's own edges never repeat into visible vertical banding.
     const turf = this.sprite('turf_light');
     if (turf) {
       const ts = Math.max(44, W * 0.13);
-      ctx.globalAlpha = 0.4 * Math.min(1, stage / 2 + 0.25);
+      ctx.globalAlpha = 0.28 * Math.min(1, stage / 2 + 0.25);
       let row = 0;
       for (let yy = H * 0.33; yy < H * 0.98; yy += ts - 1) {
         const off = (row % 2) * (ts / 2);
-        for (let xx = -ts + off; xx < W + ts; xx += ts - 1) ctx.drawImage(turf, xx, yy, ts + 1, ts + 1);
+        let col = 0;
+        for (let xx = -ts + off; xx < W + ts; xx += ts - 1) {
+          const flip = (col + row) % 2 === 0 ? 1 : -1;
+          ctx.save();
+          ctx.translate(xx + ts / 2, yy + ts / 2);
+          ctx.scale(flip, 1);
+          ctx.drawImage(turf, -ts / 2, -ts / 2, ts + 1, ts + 1);
+          ctx.restore();
+          col++;
+        }
         row++;
       }
       ctx.globalAlpha = 1;
@@ -754,14 +764,32 @@ export class MapView {
           alpha = Math.min(1, age * 2);
         } else this.appeared.delete(p.art);
       }
+      // a soft contact shadow grounds the building on the meadow so it doesn't
+      // look like it's floating
+      if (BUILDING_INFO[p.art] && !this.reduce) {
+        const bx = p.x * W;
+        const by = p.y * H - h * 0.02;
+        const sh = ctx.createRadialGradient(bx, by, 2, bx, by, w * 0.55);
+        sh.addColorStop(0, 'rgba(18, 24, 14, 0.30)');
+        sh.addColorStop(1, 'rgba(18, 24, 14, 0)');
+        ctx.fillStyle = sh;
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.scale(1, 0.3);
+        ctx.beginPath();
+        ctx.arc(0, 0, w * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
       ctx.globalAlpha = alpha;
       ctx.drawImage(img, p.x * W - (w * scale) / 2, p.y * H - h * scale, w * scale, h * scale);
       ctx.globalAlpha = 1;
-      // cosy warmth spills from the windows once the light fails — the single
-      // biggest "someone lives here" cue (reference: warm golden windows).
       const dusk = hour >= 17 && hour < 21;
       const dawn = hour >= 5 && hour < 7;
-      if ((night || dusk || dawn) && !this.reduce) {
+      const dim = night || dusk || dawn;
+      // cosy warmth spills from the windows of restored homes once the light
+      // fails — the single biggest "someone lives here" cue.
+      if (dim && BUILDING_INFO[p.art] && !this.reduce) {
         const cx = p.x * W;
         const cy = p.y * H - h * 0.4;
         const k = night ? 0.46 : dusk ? 0.32 : 0.2;
@@ -770,6 +798,27 @@ export class MapView {
         warm.addColorStop(1, 'rgba(255, 190, 110, 0)');
         ctx.fillStyle = warm;
         ctx.fillRect(cx - w * 0.7, cy - h * 0.55, w * 1.4, h * 1.05);
+      }
+      // street lamps cast a warm pool on the ground + a glowing head at dusk/night
+      if (dim && p.art === 'prop_lamp' && !this.reduce) {
+        const lx = p.x * W;
+        const ly = p.y * H;
+        const pool = ctx.createRadialGradient(lx, ly, 1, lx, ly, w * 2.6);
+        pool.addColorStop(0, 'rgba(255, 210, 130, 0.32)');
+        pool.addColorStop(1, 'rgba(255, 200, 120, 0)');
+        ctx.fillStyle = pool;
+        ctx.save();
+        ctx.translate(lx, ly);
+        ctx.scale(1, 0.42);
+        ctx.beginPath();
+        ctx.arc(0, 0, w * 2.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        const head = ctx.createRadialGradient(lx, ly - h * 0.82, 0, lx, ly - h * 0.82, w * 0.9);
+        head.addColorStop(0, 'rgba(255, 226, 150, 0.6)');
+        head.addColorStop(1, 'rgba(255, 226, 150, 0)');
+        ctx.fillStyle = head;
+        ctx.fillRect(lx - w, ly - h * 0.82 - w, w * 2, w * 2);
       }
       // a fully-upgraded (Beloved) building gets a soft golden aura of pride;
       // the L2/L3 detail now lives in the painted sprite itself
