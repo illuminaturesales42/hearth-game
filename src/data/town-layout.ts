@@ -63,15 +63,18 @@ export interface TownWalker {
   period: number;
 }
 
+// Each villager keeps to their own corner — a short round near their home or
+// workplace, pausing at the ends (the ping-pong dwells there). A place feels
+// lived-in when people belong somewhere, not when they wander mid-map.
 export const TOWN_WALKERS: readonly TownWalker[] = [
-  { art: 'npc_bran', unlockAt: 4, period: 26, path: [{ x: 0.6, y: 0.545 }, { x: 0.47, y: 0.6 }, { x: 0.36, y: 0.56 }] },
-  { art: 'npc_wren', unlockAt: 8, period: 30, path: [{ x: 0.44, y: 0.5 }, { x: 0.53, y: 0.585 }, { x: 0.63, y: 0.53 }] },
-  { art: 'npc_sorin', unlockAt: 9, period: 38, path: [{ x: 0.88, y: 0.62 }, { x: 0.76, y: 0.7 }] },
-  { art: 'npc_marta', unlockAt: 12, period: 34, path: [{ x: 0.3, y: 0.58 }, { x: 0.44, y: 0.65 }, { x: 0.55, y: 0.7 }] },
-  { art: 'npc_child', unlockAt: 16, period: 16, path: [{ x: 0.52, y: 0.68 }, { x: 0.66, y: 0.72 }, { x: 0.58, y: 0.78 }] },
-  { art: 'npc_joss', unlockAt: 18, period: 28, path: [{ x: 0.84, y: 0.72 }, { x: 0.76, y: 0.82 }] },
-  { art: 'npc_woman', unlockAt: 20, period: 32, path: [{ x: 0.2, y: 0.66 }, { x: 0.33, y: 0.6 }] },
-  { art: 'npc_man', unlockAt: 22, period: 30, path: [{ x: 0.62, y: 0.76 }, { x: 0.5, y: 0.82 }] },
+  { art: 'npc_bran', unlockAt: 4, period: 24, path: [{ x: 0.60, y: 0.535 }, { x: 0.67, y: 0.55 }, { x: 0.62, y: 0.53 }] }, // Bran tends the bakery step
+  { art: 'npc_wren', unlockAt: 8, period: 28, path: [{ x: 0.49, y: 0.61 }, { x: 0.56, y: 0.585 }, { x: 0.52, y: 0.62 }] }, // Wren by the notice board
+  { art: 'npc_sorin', unlockAt: 9, period: 32, path: [{ x: 0.82, y: 0.62 }, { x: 0.90, y: 0.61 }] }, // Sorin near his hut
+  { art: 'npc_marta', unlockAt: 12, period: 30, path: [{ x: 0.30, y: 0.585 }, { x: 0.24, y: 0.61 }, { x: 0.29, y: 0.58 }] }, // Marta at the old cottage
+  { art: 'npc_child', unlockAt: 16, period: 14, path: [{ x: 0.50, y: 0.68 }, { x: 0.60, y: 0.70 }, { x: 0.52, y: 0.73 }, { x: 0.45, y: 0.70 }] }, // the child romps by the well
+  { art: 'npc_joss', unlockAt: 18, period: 26, path: [{ x: 0.72, y: 0.81 }, { x: 0.82, y: 0.83 }] }, // Joss works the docks
+  { art: 'npc_woman', unlockAt: 20, period: 28, path: [{ x: 0.15, y: 0.68 }, { x: 0.22, y: 0.66 }] }, // by the farm
+  { art: 'npc_man', unlockAt: 22, period: 26, path: [{ x: 0.32, y: 0.76 }, { x: 0.42, y: 0.78 }] }, // by the forge
 ] as const;
 
 /** Boats moored and returning as the harbour comes back to life. */

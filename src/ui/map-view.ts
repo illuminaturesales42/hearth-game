@@ -1030,6 +1030,13 @@ export class MapView {
       const w = 0.027 * W;
       const h = w * (img.naturalHeight / img.naturalWidth);
       const facingLeft = b.x < a.x !== phase >= 1;
+      // a soft shadow so villagers stand on the ground, not float above it
+      if (!this.reduce) {
+        ctx.fillStyle = 'rgba(20, 26, 16, 0.22)';
+        ctx.beginPath();
+        ctx.ellipse(x, y - 1, w * 0.4, w * 0.14, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.save();
       if (facingLeft) {
         ctx.translate(x, 0);
@@ -1039,6 +1046,81 @@ export class MapView {
         ctx.drawImage(img, x - w / 2, y - h, w, h);
       }
       ctx.restore();
+    }
+
+    // --- the village dog trots its rounds near the heart of town ---
+    {
+      const dog = this.sprite('animal_dog');
+      if (dog && delivered >= 6) {
+        const path = [[0.34, 0.63], [0.46, 0.665], [0.40, 0.705], [0.30, 0.67]] as const;
+        const total = path.length - 1;
+        const phase = this.reduce ? 0.3 : (t / 1000 / 12) % 2;
+        const u = phase < 1 ? phase : 2 - phase;
+        const seg = Math.min(total - 1, Math.floor(u * total));
+        const local = u * total - seg;
+        const a = path[seg]!;
+        const b = path[seg + 1]!;
+        const dx = (a[0] + (b[0] - a[0]) * local) * W;
+        const dy = (a[1] + (b[1] - a[1]) * local) * H;
+        const dw = 0.03 * W;
+        const dh = dw * (dog.naturalHeight / dog.naturalWidth);
+        const left = b[0] < a[0] !== phase >= 1;
+        if (!this.reduce) {
+          ctx.fillStyle = 'rgba(20, 26, 16, 0.22)';
+          ctx.beginPath();
+          ctx.ellipse(dx, dy - 1, dw * 0.42, dw * 0.14, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.save();
+        if (left) {
+          ctx.translate(dx, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(dog, -dw / 2, dy - dh, dw, dh);
+        } else {
+          ctx.drawImage(dog, dx - dw / 2, dy - dh, dw, dh);
+        }
+        ctx.restore();
+      }
+    }
+
+    // --- laundry sways between the homes once the village warms (Codex: "the
+    // world quietly lives... laundry sways") — cloth catching the sea breeze ---
+    if (stage >= 2 && !this.reduce) {
+      const lines: [number, number, number, number][] = [
+        [0.20, 0.50, 0.30, 0.50], // by the cottage
+        [0.06, 0.61, 0.15, 0.60], // by the farm
+      ];
+      const cloths = ['#f0e6d2', '#a8c8e0', '#e6a8b8', '#bcd0a0'];
+      for (const [x1n, y1n, x2n, y2n] of lines) {
+        const x1 = x1n * W;
+        const y1 = y1n * H;
+        const x2 = x2n * W;
+        const y2 = y2n * H;
+        const sag = (x2 - x1) * 0.12;
+        ctx.strokeStyle = 'rgba(60, 48, 32, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.quadraticCurveTo((x1 + x2) / 2, (y1 + y2) / 2 + sag, x2, y2);
+        ctx.stroke();
+        const n = 3;
+        for (let i = 0; i < n; i++) {
+          const f = (i + 1) / (n + 1);
+          const hx = x1 + (x2 - x1) * f;
+          const hy = y1 + (y2 - y1) * f + sag * (1 - (2 * f - 1) * (2 * f - 1));
+          const cw = (x2 - x1) * 0.16;
+          const ch = cw * 1.5;
+          const sway = Math.sin(t / 700 + i * 1.3 + x1) * (0.12 + mood.wind * 0.25);
+          ctx.save();
+          ctx.translate(hx, hy);
+          ctx.rotate(sway);
+          ctx.fillStyle = cloths[i % cloths.length]!;
+          ctx.fillRect(-cw / 2, 0, cw, ch);
+          ctx.fillStyle = 'rgba(60, 48, 32, 0.7)';
+          ctx.fillRect(-1, -1, 2, 3);
+          ctx.restore();
+        }
+      }
     }
 
     // --- small lives: gulls always wheel over the harbour; the cat later ---
