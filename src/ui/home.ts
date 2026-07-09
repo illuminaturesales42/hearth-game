@@ -43,6 +43,10 @@ export class Home {
           feedback.chapter();
           toast(`✨ ${ev.label} — Emberhollow brightens.`);
           break;
+        case 'collectionDone':
+          feedback.chime(660);
+          toast(`🏆 ${ev.name} mastered — +${ev.coins} coins.`);
+          break;
         case 'delivered': {
           feedback.deliver();
           const order = ORDERS.find((o) => o.id === ev.orderId);

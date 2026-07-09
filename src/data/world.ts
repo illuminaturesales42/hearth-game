@@ -67,18 +67,25 @@ export const JOURNAL: readonly JournalEntry[] = [
   { id: 'j-aldenvale', tab: 'People', title: 'Alden Vale', at: 22, note: 'A name in invisible ink. Payments. Silence. The letters A.V. on torn oilskin.', fresh: true },
 ];
 
+/**
+ * Collections are chain-mastery: reach the top tier of a chain to complete its
+ * collection and earn a one-off coin reward. Progress is REAL — it reads the
+ * highest tier the player has ever merged in that chain.
+ */
 export interface Collection {
   id: string;
   name: string;
-  have: number;
-  total: number;
+  chain: import('../core/types').ChainId;
+  /** One-off coin reward on completion (coins buy beauty, never power). */
+  coins: number;
 }
 
 export const COLLECTIONS: readonly Collection[] = [
-  { id: 'timberline', name: 'Timberline', have: 6, total: 10 },
-  { id: 'harvest', name: 'Harvest', have: 5, total: 10 },
-  { id: 'hearthfire', name: 'Hearthfire', have: 4, total: 10 },
-  { id: 'decor', name: 'Town Decor', have: 3, total: 10 },
+  { id: 'timberline', name: 'Timberline', chain: 'wood', coins: 120 },
+  { id: 'harvest', name: 'Harvest', chain: 'harvest', coins: 120 },
+  { id: 'hearthfire', name: 'Hearthfire', chain: 'hearthfire', coins: 90 },
+  { id: 'keepsakes', name: 'Keepsakes', chain: 'keepsake', coins: 150 },
+  { id: 'homestead', name: "Builder's Yard", chain: 'homestead', coins: 250 },
 ];
 
 export interface WorldEvent {

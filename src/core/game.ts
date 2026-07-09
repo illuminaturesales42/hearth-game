@@ -3,7 +3,8 @@
  * UI layers subscribe; core stays DOM-free.
  */
 import type { GameState, Item } from './types';
-import { chainDef, createBoard, dropItem, emptyIndices, findItem, findMergePair, itemAt, tidyBoard, toggleLock, trashMatching, withEmpty, withItem } from './board';
+import { chainDef, createBoard, dropItem, emptyIndices, findItem, findMergePair, itemAt, maxLevel, tidyBoard, toggleLock, trashMatching, withEmpty, withItem } from './board';
+import { COLLECTIONS } from '../data/world';
 import { accrueRegen, canSpend, grant, initialEnergy, spend } from './energy';
 import { BOARD_COLS, BOARD_ROWS, CHAPTERS, ENERGY, ORDERS, PRODUCER_INDEX, RESOURCE_SPAWN_TABLE, SPAWN_TABLE, WORKSHOP_UNLOCK_AT, ZONE_STAGES, sellValue, stageFor } from '../data/economy';
 import { appendEntry, composeEntry, rolloverStats } from './chronicle';
@@ -40,6 +41,7 @@ export type GameEvent =
   | { type: 'bought'; label: string; coins: number }
   | { type: 'requestDone'; who: string; coins: number }
   | { type: 'zoneRestored'; label: string; at: number }
+  | { type: 'collectionDone'; name: string; coins: number }
   | { type: 'delivered'; orderId: string; resolution: string; rewardEnergy: number; rewardCoins: number }
   | { type: 'action'; actionId: string; energy: number }
   | { type: 'chest'; coins: number }
@@ -234,6 +236,19 @@ export class Game {
         };
         extra.push({ type: 'milestone', days: m.at, coins: m.coins, title: m.title, note: m.note });
       }
+      // Collection mastery: reaching a chain's top tier completes its set.
+      const claimed = new Set(this.state.collectionsClaimed ?? []);
+      for (const col of COLLECTIONS) {
+        if (claimed.has(col.id)) continue;
+        if ((this.state.maxTier?.[col.chain] ?? 0) >= maxLevel(col.chain)) {
+          this.state = {
+            ...this.state,
+            collectionsClaimed: [...(this.state.collectionsClaimed ?? []), col.id],
+            coins: this.state.coins + col.coins,
+          };
+          extra.push({ type: 'collectionDone', name: col.name, coins: col.coins });
+        }
+      }
       this.processing = false;
     }
     saveState(this.state);
@@ -381,11 +396,16 @@ export class Game {
       return;
     }
     this.undoBoard = res.merged ? before : null;
+    const tierPatch =
+      res.merged && res.result
+        ? { maxTier: { ...(this.state.maxTier ?? {}), [res.result.chain]: Math.max(this.state.maxTier?.[res.result.chain] ?? 0, res.result.level) } }
+        : {};
     this.state = {
       ...this.state,
       board: res.board,
       nextUid: res.merged ? this.state.nextUid + 1 : this.state.nextUid,
       xp: res.merged ? this.state.xp + (res.result?.level ?? 0) : this.state.xp,
+      ...tierPatch,
     };
     if (res.merged) {
       this.bumpStat({ merges: this.state.stats.merges + 1, dayMerges: this.state.stats.dayMerges + 1 });
@@ -692,6 +712,15 @@ export class Game {
     };
     this.emit({ type: 'upgrade', art, tier: nextTier, coins: cost });
     return true;
+  }
+
+  /** Real progress toward a collection: highest tier reached vs the chain top. */
+  collectionProgress(id: string): { have: number; total: number; done: boolean } {
+    const col = COLLECTIONS.find((c) => c.id === id);
+    if (!col) return { have: 0, total: 1, done: false };
+    const total = maxLevel(col.chain);
+    const have = Math.min(total, this.state.maxTier?.[col.chain] ?? 0);
+    return { have, total, done: (this.state.collectionsClaimed ?? []).includes(id) };
   }
 
   // ---------- Market: cosmetic board skins (coins buy beauty, never power) ----

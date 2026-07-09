@@ -229,13 +229,16 @@ export class Screens {
         );
       }).join('') +
       `</div>` +
-      `<p class="earn-label">Item collections</p>` +
+      `<p class="earn-label">Chain mastery</p>` +
       `<div class="coll-list">` +
-      COLLECTIONS.map(
-        (c) =>
-          `<div class="coll"><b>${c.name}</b><span>${c.have}/${c.total}</span>` +
-          `<div class="coll-bar"><i style="width:${Math.round((c.have / c.total) * 100)}%"></i></div></div>`,
-      ).join('') +
+      COLLECTIONS.map((c) => {
+        const p = this.game.collectionProgress(c.id);
+        const label = p.done ? `Mastered · +${c.coins}🪙` : `${p.have}/${p.total}`;
+        return (
+          `<div class="coll ${p.done ? 'done' : ''}"><b>${c.name}</b><span>${label}</span>` +
+          `<div class="coll-bar"><i style="width:${Math.round((p.have / p.total) * 100)}%"></i></div></div>`
+        );
+      }).join('') +
       `</div>` +
       `<h3 class="screen-h3">Events</h3>` +
       `<div class="event-list">` +

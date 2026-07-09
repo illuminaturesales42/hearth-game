@@ -233,6 +233,10 @@ export interface GameState {
   milestonesSeen?: readonly string[];
   /** Town-request ids fulfilled today (rotate/reset with stats.day). */
   requestsFilled?: readonly string[];
+  /** Highest tier ever merged per chain (drives collection progress). */
+  maxTier?: Record<string, number>;
+  /** Collection ids already completed + rewarded (never re-awarded). */
+  collectionsClaimed?: readonly string[];
   flags: FlagsState;
   board: BoardState;
   energy: EnergyState;
