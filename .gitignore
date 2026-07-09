@@ -15,3 +15,5 @@ tools/verify_fixes.png
 test-results/
 playwright-report/
 tools/*_contact.png
+tools/_*.png
+tools/_*.json
