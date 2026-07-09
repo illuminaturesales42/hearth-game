@@ -229,6 +229,8 @@ export interface GameState {
   questsClaimed: readonly string[];
   /** Streak-milestone ids already celebrated (never re-awarded). */
   milestonesSeen?: readonly string[];
+  /** Town-request ids fulfilled today (rotate/reset with stats.day). */
+  requestsFilled?: readonly string[];
   flags: FlagsState;
   board: BoardState;
   energy: EnergyState;

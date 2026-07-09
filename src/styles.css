@@ -464,6 +464,13 @@ body {
 .friend-face.av-5 { background: radial-gradient(circle at 38% 32%, #f7d68c, #c0913a 78%); }
 .friend-face.av-6 { background: radial-gradient(circle at 38% 32%, #f79c9c, #c04a4a 78%); }
 .friend-face.npc { background: radial-gradient(circle at 38% 32%, #cbb79a, #6b5a42 78%); }
+/* Town requests: villager resource asks (styled like the friend rows) */
+.req-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+.req { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--r-card);
+  background: var(--panel); border: 1px solid rgba(255, 210, 122, 0.14); }
+.req-body { flex: 1; line-height: 1.3; }
+.req-body b { font-family: var(--serif); font-size: 15px; display: block; }
+.req-body span { font-size: 11px; color: var(--cream-dim); }
 .friend-body { flex: 1; line-height: 1.3; }
 .friend-body b { font-family: var(--serif); font-size: 16px; display: block; }
 .friend-body span { font-size: 11px; color: var(--cream-dim); }

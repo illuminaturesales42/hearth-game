@@ -37,6 +37,7 @@ export class SocialScreen {
     const s = this.game.socialState;
     const joined = s.friends.filter((f) => f.status === 'joined');
     const pending = s.friends.filter((f) => f.status === 'pending');
+    const reqs = this.game.activeRequests();
 
     el.innerHTML =
       `<h2 class="screen-title">Your Village</h2>` +
@@ -51,6 +52,28 @@ export class SocialScreen {
       `<span class="med-cta-ico">⚔️</span>` +
       `<span class="med-cta-body"><b>Bonfire Duel</b><span>Play a friend hot-seat · win streak ×${this.game.duelStreak}</span></span>` +
       `<span class="med-cta-go">›</span></button>` +
+
+      (reqs.length
+        ? `<p class="earn-label">Town requests</p>` +
+          `<p class="screen-sub folk-sub">Craft resources at the Workshop and hand them over for coins.</p>` +
+          `<div class="req-list">` +
+          reqs
+            .map((r) => {
+              const def = chainDef(r.chain);
+              const name = def.levelNames[r.level] ?? def.name;
+              const can = this.game.canFulfil(r);
+              return (
+                `<div class="req"><div class="req-body"><b>${r.who} needs ${r.qty}× ${name}</b>` +
+                `<span>${def.name} · +${r.coins} coins</span></div>` +
+                (can
+                  ? `<button class="earn-btn" data-req="${r.id}">Give</button>`
+                  : `<span class="earn-auto">Need ${r.qty}× L${r.level + 1}</span>`) +
+                `</div>`
+              );
+            })
+            .join('') +
+          `</div>`
+        : '') +
 
       (s.gifts.length
         ? `<p class="earn-label">Gifts waiting</p><div class="gift-list">` +
@@ -134,6 +157,12 @@ export class SocialScreen {
     });
     el.querySelectorAll<HTMLButtonElement>('[data-ask]').forEach((b) => {
       b.onclick = () => this.game.askFriendForHelp(b.dataset.ask ?? '');
+    });
+    el.querySelectorAll<HTMLButtonElement>('[data-req]').forEach((b) => {
+      b.onclick = () => {
+        this.game.fulfilRequest(b.dataset.req ?? '');
+        this.render();
+      };
     });
     el.querySelectorAll<HTMLButtonElement>('[data-gift]').forEach((b) => {
       b.onclick = () => this.game.claimGift(b.dataset.gift ?? '');

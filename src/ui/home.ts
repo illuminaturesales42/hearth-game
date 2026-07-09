@@ -35,6 +35,10 @@ export class Home {
         case 'sold':
           toast(`Sold for +${ev.coins} coins.`);
           break;
+        case 'requestDone':
+          feedback.chime(587);
+          toast(`${ev.who} thanks you — +${ev.coins} coins.`);
+          break;
         case 'delivered': {
           feedback.deliver();
           const order = ORDERS.find((o) => o.id === ev.orderId);

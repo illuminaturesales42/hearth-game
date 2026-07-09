@@ -10,6 +10,7 @@ import { appendEntry, composeEntry, rolloverStats } from './chronicle';
 import { newlyEarned } from './achievements';
 import { questMultiplier, questsForDay } from '../data/daily-quests';
 import { newMilestones } from '../data/milestones';
+import { requestsForDay, type TownRequest } from '../data/town-requests';
 import { CURRENT_VERSION, defaultPrefs, loadState, saveState } from './save';
 import { applySnapshot, initialLedger } from '../health/health-energy';
 import type { HealthSnapshot } from '../health/health-provider';
@@ -37,6 +38,7 @@ export type GameEvent =
   | { type: 'reject'; index: number; reason: 'energy' | 'full' | 'invalid' }
   | { type: 'sold'; coins: number }
   | { type: 'bought'; label: string; coins: number }
+  | { type: 'requestDone'; who: string; coins: number }
   | { type: 'delivered'; orderId: string; resolution: string; rewardEnergy: number; rewardCoins: number }
   | { type: 'action'; actionId: string; energy: number }
   | { type: 'chest'; coins: number }
@@ -252,7 +254,7 @@ export class Game {
       this.emit({ type: 'chronicle', day: entry.day });
     }
     if (this.state.stats.day !== today) {
-      this.state = { ...this.state, stats: rolloverStats(this.state.stats, today), questsClaimed: [] };
+      this.state = { ...this.state, stats: rolloverStats(this.state.stats, today), questsClaimed: [], requestsFilled: [] };
     }
   }
 
@@ -311,6 +313,48 @@ export class Game {
     const producerMode = this.state.producerMode === 'workshop' ? 'story' : 'workshop';
     this.state = { ...this.state, producerMode };
     this.emit({ type: 'state' });
+  }
+
+  /** Today's town requests still open (empty until the Workshop is unlocked). */
+  activeRequests(): TownRequest[] {
+    if (!this.workshopUnlocked()) return [];
+    const filled = new Set(this.state.requestsFilled ?? []);
+    return requestsForDay(this.state.stats.day).filter((r) => !filled.has(r.id));
+  }
+
+  /** How many unlocked board items match a chain+level (for request checks). */
+  countMatching(chain: ChainId, level: number): number {
+    return this.state.board.cells.filter(
+      (c) => c.kind === 'item' && c.item.chain === chain && c.item.level === level && !c.item.locked,
+    ).length;
+  }
+
+  canFulfil(req: TownRequest): boolean {
+    return this.countMatching(req.chain, req.level) >= req.qty;
+  }
+
+  /** Hand a town request its items from the board, in exchange for coins. */
+  fulfilRequest(id: string): boolean {
+    const req = requestsForDay(this.state.stats.day).find((r) => r.id === id);
+    if (!req || (this.state.requestsFilled ?? []).includes(id) || !this.canFulfil(req)) return false;
+    // remove qty matching, unlocked items
+    let removed = 0;
+    const cells = this.state.board.cells.map((c) => {
+      if (removed < req.qty && c.kind === 'item' && c.item.chain === req.chain && c.item.level === req.level && !c.item.locked) {
+        removed++;
+        return { kind: 'empty' as const };
+      }
+      return c;
+    });
+    this.undoBoard = null;
+    this.state = {
+      ...this.state,
+      board: { ...this.state.board, cells },
+      coins: this.state.coins + req.coins,
+      requestsFilled: [...(this.state.requestsFilled ?? []), id],
+    };
+    this.emit({ type: 'requestDone', who: req.who, coins: req.coins });
+    return true;
   }
 
   /** Sell a board item for coins (a modest sink for surplus resources). */
