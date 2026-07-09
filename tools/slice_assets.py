@@ -281,6 +281,14 @@ def slice_all() -> None:
             im = alpha_autocrop(im)
         elif ident.startswith(("item_", "res_", "action_", "energy_", "debris_")):
             im = clean_sprite(im)
+            if ident.startswith("item_"):
+                # Board tiles render ~54px; upscale small merge sprites to a
+                # consistent size with Lanczos so the browser DOWNSCALES them
+                # (always crisper than upscaling a tiny source).
+                mx = max(im.size)
+                if mx < 112:
+                    s = 112 / mx
+                    im = im.resize((round(im.width * s), round(im.height * s)), Image.LANCZOS)
         elif ident.startswith("town_"):
             im = clean_sprite(im, rel=0.03)  # gentle: buildings are one big mass
         if ident in DARKEN:
@@ -722,11 +730,17 @@ def define() -> None:
     ]
     MERGE_STAGES = 7
     merge2 = detect_merge_boxes(MERGE_ROWS, MERGE_STAGES)
+    # The very pale bread-dough (harvest L0) is too near-white for the content
+    # detector to bound, so hand-box it (keyed gently below so the dough keeps).
+    merge2["item_harvest_0"] = (144, 590, 222, 662)
     add("trans_merge", merge2)
     for k in merge2:
         KEYED.add(k)
         KEYCOLOR[k] = (255, 255, 255)
-        TOLERANCE[k] = 30
+        # The pale bread dough (harvest stages) blends into white, so an
+        # aggressive flood eats its body — key only near-pure white there so the
+        # soft cream survives (defringe cleans the thin halo afterwards).
+        TOLERANCE[k] = 8 if k.startswith("item_harvest_") else 30
 
     # ---- Ruined + under-construction building states (Buildings2.png, alpha ✓).
     # 8 building rows × [under-construction, L1, L2, L3, damaged]. We cut the two
