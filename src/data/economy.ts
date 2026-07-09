@@ -2,7 +2,7 @@
  * Economy configuration. Everything here is designed to be remote-config
  * shaped: plain serializable data, no logic, live-tunable in M3.
  */
-import type { ChainDef, LifeQuestDef, OrderDef } from '../core/types';
+import type { ChainDef, ChainId, LifeQuestDef, OrderDef } from '../core/types';
 
 export const CHAINS: readonly ChainDef[] = [
   {
@@ -30,6 +30,83 @@ export const CHAINS: readonly ChainDef[] = [
     levels: ['✉️', '📜', '🫖', '🛋️', '✒️', '🪢', '🛶'],
     levelNames: ['Letter', 'Stack of Paper', 'Kettle', 'Bench', 'Writing Desk', 'Fishing Net', 'Rowboat'],
   },
+
+  // ── Resource library ─────────────────────────────────────────────────────
+  // Painted art lives in item_<id>_<0..6> (from the clean merge-chain sheet);
+  // the emoji are fallbacks only. These extend the world's craftable resources
+  // for villager trades, rewards, and future chapters.
+  {
+    id: 'stone',
+    name: 'Stoneworks',
+    levels: ['🪨', '🪨', '⛰️', '🧱', '🧱', '🏛️', '🏛️'],
+    levelNames: ['Pebbles', 'Rocks', 'Boulder', 'Cut Stone', 'Blocks', 'Wall', 'Arch'],
+  },
+  {
+    id: 'clay',
+    name: 'Pottery',
+    levels: ['🟤', '🟤', '🔴', '⛰️', '🧱', '🏺', '🏺'],
+    levelNames: ['Clay', 'Lump', 'Ball', 'Mound', 'Bricks', 'Kiln', 'Amphora'],
+  },
+  {
+    id: 'seeds',
+    name: 'Orchard',
+    levels: ['🌰', '🌰', '🥜', '🌱', '🌿', '🪴', '🍎'],
+    levelNames: ['Seed', 'Seeds', 'Acorn', 'Sprout', 'Seedling', 'Plant', 'Fruit Bush'],
+  },
+  {
+    id: 'flowers',
+    name: 'Blooms',
+    levels: ['🌱', '🌼', '🌸', '💐', '🌷', '🌺', '🏵️'],
+    levelNames: ['Bud', 'Bloom', 'Posy', 'Bouquet', 'Flower Bed', 'Wildflowers', 'Flower Cart'],
+  },
+  {
+    id: 'water',
+    name: 'Waterworks',
+    levels: ['💧', '💦', '🥣', '🪣', '🛢️', '🚰', '⛲'],
+    levelNames: ['Droplet', 'Splash', 'Bowl', 'Bucket', 'Barrel', 'Trough', 'Fountain'],
+  },
+  {
+    id: 'copper',
+    name: 'Coppersmith',
+    levels: ['🟫', '🟠', '🪨', '🧱', '📏', '🟧', '🔩'],
+    levelNames: ['Ore', 'Nuggets', 'Rubble', 'Ingot', 'Bar', 'Sheet', 'Pipes'],
+  },
+  {
+    id: 'fish',
+    name: 'Fishery',
+    levels: ['🐟', '🐠', '🎣', '🪣', '🧺', '🐟', '📦'],
+    levelNames: ['Fish', 'Pair', 'Catch', 'Pail', 'Basket', 'Rack', 'Crate'],
+  },
+  {
+    id: 'honey',
+    name: 'Apiary',
+    levels: ['🌼', '🍯', '🐝', '🟨', '🥣', '🍯', '🛢️'],
+    levelNames: ['Blossom', 'Comb', 'Honeycomb', 'Slab', 'Bowl', 'Jar', 'Barrel'],
+  },
+  {
+    id: 'herbs',
+    name: 'Apothecary',
+    levels: ['🌿', '🌿', '🍃', '🪴', '🌱', '🌾', '⚗️'],
+    levelNames: ['Leaf', 'Sprig', 'Bunch', 'Pot', 'Bush', 'Drying Rack', 'Apothecary'],
+  },
+  {
+    id: 'wool',
+    name: 'Weavery',
+    levels: ['🐑', '☁️', '🧶', '🧶', '🧵', '🪡', '🎗️'],
+    levelNames: ['Tuft', 'Fleece', 'Bundle', 'Yarn', 'Skeins', 'Bolt', 'Bale'],
+  },
+  {
+    id: 'books',
+    name: 'Library',
+    levels: ['📝', '📄', '📕', '📗', '📚', '🗄️', '🏛️'],
+    levelNames: ['Note', 'Papers', 'Book', 'Tome', 'Volumes', 'Bookcase', 'Library'],
+  },
+  {
+    id: 'music',
+    name: 'Conservatory',
+    levels: ['🎵', '🎶', '📜', '🪕', '🎻', '🎹', '📻'],
+    levelNames: ['Note', 'Notes', 'Score', 'Lute', 'Fiddle', 'Piano', 'Gramophone'],
+  },
 ] as const;
 
 export const BOARD_COLS = 6;
@@ -38,7 +115,7 @@ export const BOARD_ROWS = 7;
 export const PRODUCER_INDEX = 21; // row 3, col 3
 
 /** Which chains the producer can spawn, with weights. */
-export const SPAWN_TABLE: readonly { chain: 'wood' | 'harvest' | 'hearthfire' | 'keepsake'; weight: number }[] = [
+export const SPAWN_TABLE: readonly { chain: ChainId; weight: number }[] = [
   { chain: 'wood', weight: 34 },
   { chain: 'harvest', weight: 34 },
   { chain: 'hearthfire', weight: 14 },

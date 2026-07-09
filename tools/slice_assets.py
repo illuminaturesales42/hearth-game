@@ -324,6 +324,49 @@ def contact() -> None:
 # CROP DEFINITIONS (verified against --probe output)
 # ============================================================================
 
+def detect_merge_boxes(names: list[str], stages: int, pad: int = 8) -> dict[str, tuple[int, int, int, int]]:
+    """Content-detect each merge tile on 'Merg chain sprites.png' (RGB-on-white).
+    For every chain row, find non-white column runs, drop the left label column
+    and the thin ⇒ arrows (narrow runs), take the first `stages` sprite runs, and
+    tighten the vertical extent per run. Returns padded item_<name>_<s> boxes."""
+    im = Image.open(SRC / SHEETS["trans_merge"]).convert("RGB")
+    W, H = im.size
+    px = im.load()
+    rowh = H / len(names)
+
+    def nonwhite(x: int, y: int) -> bool:
+        r, g, b = px[x, y]
+        return (r + g + b) < 720  # avg < 240 → real ink
+
+    out: dict[str, tuple[int, int, int, int]] = {}
+    for r, name in enumerate(names):
+        y0, y1 = int(rowh * r) + 3, int(rowh * (r + 1)) - 3
+        # column projection over the row band
+        colcount = [sum(1 for y in range(y0, y1) if nonwhite(x, y)) for x in range(W)]
+        runs: list[tuple[int, int]] = []
+        s: int | None = None
+        for x in range(W):
+            on = colcount[x] > 2
+            if on and s is None:
+                s = x
+            elif not on and s is not None:
+                runs.append((s, x))
+                s = None
+        if s is not None:
+            runs.append((s, W))
+        # sprite runs: wide (>=35px) and right of the label column (start >=120)
+        sprites = [(a, b) for a, b in runs if (b - a) >= 35 and a >= 120][:stages]
+        for i, (a, b) in enumerate(sprites):
+            # tighten vertical extent within this column span
+            ys = [y for y in range(y0, y1) if any(nonwhite(x, y) for x in range(a, b))]
+            ty0, ty1 = (min(ys), max(ys) + 1) if ys else (y0, y1)
+            out[f"item_{name}_{i}"] = (
+                max(0, a - pad), max(0, ty0 - pad),
+                min(W, b + pad), min(H, ty1 + pad),
+            )
+    return out
+
+
 def define() -> None:
     # ---- batch34: merge item icons (the board's face) ----
     # ---- FINAL merge chains (Batch 3, cream bg, individually boxed) ----
@@ -608,6 +651,25 @@ def define() -> None:
         KEYED.add(k)
         KEYCOLOR[k] = W10
         TOLERANCE[k] = 52
+
+    # ---- Clean merge chains (Merg chain sprites.png, 1536×1024, RGB-on-white).
+    # 14 chains, one per row; stages are laid out left→right separated by ⇒
+    # arrows with slightly irregular pitch, so we DETECT each sprite's real
+    # bounding box by content projection rather than assuming a fixed grid
+    # (a fixed grid clipped the odd stages). Padded boxes + white-key +
+    # clean_sprite give clean, uncut tiles. Re-points the game's wood/harvest/
+    # keepsake chains at the new art and adds a library of new resource chains.
+    MERGE_ROWS = [
+        "wood", "stone", "clay", "seeds", "flowers", "water", "copper",
+        "fish", "harvest", "honey", "herbs", "wool", "keepsake", "music",
+    ]
+    MERGE_STAGES = 7
+    merge2 = detect_merge_boxes(MERGE_ROWS, MERGE_STAGES)
+    add("trans_merge", merge2)
+    for k in merge2:
+        KEYED.add(k)
+        KEYCOLOR[k] = (255, 255, 255)
+        TOLERANCE[k] = 30
 
 
 define()

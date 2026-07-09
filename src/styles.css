@@ -476,15 +476,23 @@ body {
 @media (prefers-reduced-motion: no-preference) { .sheet-card { animation: sheetUp 0.3s ease; } @keyframes sheetUp { from { transform: translateY(30px); } to { transform: none; } } }
 .sheet-close { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: var(--r-circle); border: none; background: rgba(255, 255, 255, 0.08); color: var(--cream); font-size: var(--fs-lg); cursor: pointer; }
 .energy-head { display: flex; align-items: center; gap: 12px; }
-.sun-badge { width: 42px; height: 42px; border-radius: 50%; flex: 0 0 auto; background: radial-gradient(circle at 50% 60%, var(--ember-hi), var(--ember-deep) 72%); box-shadow: 0 0 20px rgba(244, 166, 59, 0.6); }
+/* the Hearth Energy = the flaming heart (matches the HUD pill) */
+.sun-badge { width: 50px; height: 54px; flex: 0 0 auto;
+  background: url('/art/energy_heart.png') center/contain no-repeat;
+  filter: drop-shadow(0 0 9px rgba(255, 184, 84, 0.75)); }
+@media (prefers-reduced-motion: no-preference) { .sun-badge { animation: flicker 2.8s ease-in-out infinite; } }
 .energy-h2 { font-family: var(--serif); font-size: var(--fs-xl); margin: 0; }
 .energy-tag { margin: 2px 0 0; font-size: 11.5px; color: var(--cream-dim); }
 .energy-gauge { margin: 16px 0 12px; }
 .energy-num { display: flex; align-items: baseline; gap: 6px; }
 .energy-num b { font-size: 40px; font-family: var(--serif); color: var(--ember-hi); font-variant-numeric: tabular-nums; }
 .energy-num span { font-size: 15px; color: var(--cream-dim); }
-.gauge-track { margin-top: 6px; height: 10px; border-radius: 6px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
-.gauge-track i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--ember), var(--ember-hi)); transition: width 0.5s ease; box-shadow: 0 0 12px rgba(255, 210, 122, 0.5); }
+.gauge-track { margin-top: 7px; height: 14px; border-radius: 8px; background: rgba(20, 12, 6, 0.5);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 200, 120, 0.25); overflow: hidden; }
+.gauge-track i { display: block; height: 100%; border-radius: 8px;
+  background: linear-gradient(90deg, #b8481a, #ef9a34 55%, #ffd884);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -3px 4px rgba(120, 40, 0, 0.4), 0 0 14px rgba(255, 190, 90, 0.6);
+  transition: width 0.5s ease; }
 .energy-chips { display: flex; gap: 10px; margin-bottom: 14px; }
 .echip { flex: 1; padding: 10px 12px; border-radius: var(--r-card); background: rgba(0, 0, 0, 0.22); border: 1px solid rgba(255, 210, 122, 0.14); }
 .echip span { display: block; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--cream-dim); }
