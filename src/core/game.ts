@@ -36,6 +36,7 @@ export type GameEvent =
   | { type: 'merge'; index: number; item: Item }
   | { type: 'reject'; index: number; reason: 'energy' | 'full' | 'invalid' }
   | { type: 'sold'; coins: number }
+  | { type: 'bought'; label: string; coins: number }
   | { type: 'delivered'; orderId: string; resolution: string; rewardEnergy: number; rewardCoins: number }
   | { type: 'action'; actionId: string; energy: number }
   | { type: 'chest'; coins: number }
@@ -638,6 +639,42 @@ export class Game {
       buildingUpgrades: { ...this.state.buildingUpgrades, [art]: nextTier },
     };
     this.emit({ type: 'upgrade', art, tier: nextTier, coins: cost });
+    return true;
+  }
+
+  // ---------- Market: cosmetic board skins (coins buy beauty, never power) ----
+  currentSkin(): string {
+    return this.state.prefs.boardSkin ?? 'classic';
+  }
+
+  ownsSkin(id: string): boolean {
+    return id === 'classic' || (this.state.prefs.ownedSkins ?? []).includes(id);
+  }
+
+  /** Equip an already-owned skin (free). */
+  equipSkin(id: string): void {
+    if (!this.ownsSkin(id)) return;
+    this.state = { ...this.state, prefs: { ...this.state.prefs, boardSkin: id } };
+    this.emit({ type: 'state' });
+  }
+
+  /** Buy a skin (or equip if owned). Returns false if unaffordable. */
+  buySkin(id: string, cost: number): boolean {
+    if (this.ownsSkin(id)) {
+      this.equipSkin(id);
+      return true;
+    }
+    if (this.state.coins < cost) return false;
+    this.state = {
+      ...this.state,
+      coins: this.state.coins - cost,
+      prefs: {
+        ...this.state.prefs,
+        ownedSkins: [...(this.state.prefs.ownedSkins ?? []), id],
+        boardSkin: id,
+      },
+    };
+    this.emit({ type: 'bought', label: 'skin', coins: cost });
     return true;
   }
 

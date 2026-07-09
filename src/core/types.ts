@@ -145,6 +145,10 @@ export interface Prefs {
   textScale: number; // 0.9 | 1 | 1.12
   highContrast: boolean;
   forceReducedMotion: boolean;
+  /** Cosmetic board skin id (Market purchase; defaults to 'classic'). */
+  boardSkin?: string;
+  /** Board skins the player has bought (re-equipping is free). */
+  ownedSkins?: readonly string[];
 }
 
 /** An item held in the Repository (won from duels), usable to progress the story. */

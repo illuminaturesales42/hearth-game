@@ -7,6 +7,8 @@ import type { Game } from '../core/game';
 import { COLLECTIONS, EVENTS, JOURNAL } from '../data/world';
 import { GRATITUDE } from '../data/gratitude';
 import { ACHIEVEMENTS } from '../core/achievements';
+import { BOARD_SKINS } from '../data/shop';
+import { BUILDING_INFO, TOWN_BUILDINGS } from '../data/town-layout';
 import { artUrl } from './art';
 import { toast } from './toast';
 
@@ -152,9 +154,49 @@ export class Screens {
     const host = byId('shop-body');
     if (!host) return;
     const earned = new Set(this.game.snapshot.achievements);
+    const coins = this.game.snapshot.coins;
+    const delivered = this.game.snapshot.orderIndex;
+
+    // ---- Market: cosmetic board skins (coins buy beauty, never power) ----
+    const skins = BOARD_SKINS.map((sk) => {
+      const owned = this.game.ownsSkin(sk.id);
+      const equipped = this.game.currentSkin() === sk.id;
+      const label = equipped ? 'Equipped' : owned ? 'Equip' : `Buy · ${sk.cost}🪙`;
+      const afford = owned || coins >= sk.cost;
+      return (
+        `<button class="shop-skin ${equipped ? 'on' : ''}" data-skin="${sk.id}" data-cost="${sk.cost}" ` +
+        `${equipped || !afford ? 'disabled' : ''}>` +
+        `<span class="skin-swatch" style="background:${sk.swatch}"></span>` +
+        `<b>${esc(sk.name)}</b><span>${esc(sk.note)}</span><em>${label}</em></button>`
+      );
+    }).join('');
+
+    // ---- Beautify restored buildings (surfaces the existing coin upgrade) ----
+    const beautify = TOWN_BUILDINGS.filter(
+      (b) => BUILDING_INFO[b.art] && delivered >= b.unlockAt && this.game.upgradeCost(b.art) !== null,
+    )
+      .map((b) => {
+        const cost = this.game.upgradeCost(b.art)!;
+        const tier = this.game.upgradeTier(b.art);
+        const afford = coins >= cost;
+        return (
+          `<button class="shop-upgrade" data-art="${b.art}" ${afford ? '' : 'disabled'}>` +
+          `<b>${esc(BUILDING_INFO[b.art]!)}</b><span>Tier ${tier + 1} → ${tier + 2}</span>` +
+          `<em>${cost}🪙</em></button>`
+        );
+      })
+      .join('');
+
     host.innerHTML =
-      `<h2 class="screen-title">Collections</h2>` +
-      `<p class="screen-sub">What Emberhollow remembers of you. Energy is never for sale — that never changes.</p>` +
+      `<h2 class="screen-title">Market</h2>` +
+      `<p class="screen-sub">Coins buy beauty and comfort — never power, never energy.</p>` +
+      `<p class="earn-label">Your coins · ${coins}🪙</p>` +
+      `<p class="earn-label">Board skins</p>` +
+      `<div class="shop-grid">${skins}</div>` +
+      (beautify
+        ? `<p class="earn-label">Beautify Emberhollow</p><div class="shop-grid">${beautify}</div>`
+        : '') +
+      `<h2 class="screen-title" style="margin-top:20px">Collections</h2>` +
       `<p class="earn-label">Achievements · ${earned.size}/${ACHIEVEMENTS.length}</p>` +
       `<div class="badge-grid">` +
       ACHIEVEMENTS.map((a) => {
@@ -186,6 +228,33 @@ export class Screens {
       `<div class="event-list">` +
       EVENTS.map((e) => `<div class="event"><b>${e.name}</b><span>${e.timing}</span></div>`).join('') +
       `</div>` +
-      `<p class="set-note">The decor shop arrives after public testing — cosmetics only, never power.</p>`;
+      `<p class="set-note">Energy is never for sale — that never changes.</p>`;
+
+    // Wire the Market buttons (re-render to reflect the new balance/equip state).
+    host.querySelectorAll<HTMLButtonElement>('.shop-skin').forEach((btn) => {
+      btn.onclick = () => {
+        const id = btn.dataset.skin!;
+        const cost = Number(btn.dataset.cost);
+        const owned = this.game.ownsSkin(id);
+        if (this.game.buySkin(id, cost)) {
+          toast(owned ? 'Skin equipped.' : `Skin unlocked — −${cost} coins.`);
+          this.renderShop();
+        } else {
+          toast('Not enough coins yet.');
+        }
+      };
+    });
+    host.querySelectorAll<HTMLButtonElement>('.shop-upgrade').forEach((btn) => {
+      btn.onclick = () => {
+        const art = btn.dataset.art!;
+        const cost = this.game.upgradeCost(art);
+        if (this.game.upgradeBuilding(art)) {
+          toast(`Beautified — −${cost} coins.`);
+          this.renderShop();
+        } else {
+          toast('Not enough coins yet.');
+        }
+      };
+    });
   }
 }

@@ -62,6 +62,7 @@ export class BoardView {
     const deliverable = this.game.deliverableIndex();
     if (deliverable >= 0) this.lastDeliverable = deliverable; // orb origin for the next delivery
     if (this.selected >= 0 && !this.game.itemAt(this.selected)) this.selected = -1; // stale selection
+    this.applySkin();
     board.cells.forEach((c, i) => {
       const el = this.root.children[i] as HTMLElement;
       // checkerboard aligned to the REAL gameplay grid (the art's baked
@@ -353,5 +354,16 @@ export class BoardView {
   private boardCentre(): { x: number; y: number } {
     const r = this.root.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
+  /** Reflect the equipped cosmetic board skin as a class on the board root. */
+  private applySkin(): void {
+    const skin = this.game.currentSkin();
+    if (this.root.dataset.skin === skin) return;
+    this.root.classList.forEach((c) => {
+      if (c.startsWith('skin-')) this.root.classList.remove(c);
+    });
+    if (skin && skin !== 'classic') this.root.classList.add(`skin-${skin}`);
+    this.root.dataset.skin = skin;
   }
 }
