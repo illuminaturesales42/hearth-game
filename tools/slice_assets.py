@@ -43,6 +43,9 @@ SHEETS = {
     "final_ui": "Core/Final Assets/Batch 6 -7 Terrain and Ui.png",
     "final_char": "Core/Final Assets/Batch 8 - Charachters.png",
     "final_wellness": "Core/Final Assets/Batch 9-10 - Story and real world wellness.png",
+    "final_env": "Core/Final Assets/Batch 11 - 12 Enviromental effects and Seasonal content.png",
+    "final_panels": "Core/Final Assets/Batch 13 - UI panels and information.png",
+    "final_interact": "Core/Final Assets/Batch 14 - UI interactive.png",
     # Batch 15 (2026-07-09): the painted island terrain plate — the whole
     # island+sea as one opaque painting; the game composites buildings/boats/
     # people/time-of-day on top. Skipped gracefully until this file is generated
@@ -496,6 +499,18 @@ def define() -> None:
     # Batch 15 island plate: opaque, whole-image, no keying/cleanup. Box is the
     # specced plate size (2048×1536); skipped until the file is generated.
     add("batch15_plate", {"map_island_plate": (0, 0, 2048, 1536)})
+
+    # ---- Batch 13/14 UI: the sanctioned FLAMING-HEART energy icon + painted
+    # panel frames. (NO gems / premium-currency art — that violates no-IAP.) ----
+    add("final_interact", {
+        "energy_heart": (1430, 810, 1480, 882),          # flaming heart (from the loading spinner)
+        "panel_wood": (738, 616, 892, 740),              # 9-slice wood frame
+        "panel_parch": (930, 612, 1088, 742),            # parchment panel
+    })
+    for k in ("energy_heart", "panel_wood", "panel_parch"):
+        KEYED.add(k)
+        KEYCOLOR[k] = (244, 240, 229)  # Batch 13/14 sheet cream
+        TOLERANCE[k] = 34
     # two real turf squares from the reference board — used as the cell
     # textures so the aligned checker carries the painted mossy look
     # board turf: green INTERIOR of Batch 6 grass tile (01_grass). The tile

@@ -71,9 +71,10 @@ export class AppShell {
         ico.classList.add('nav-art');
       }
     });
-    // Currency/energy pips get their painted tokens.
+    // Currency/energy pips get their painted tokens — the energy is the
+    // flaming heart (Batch 14); home.ts brightens/dims its glow by level.
     const pip = document.querySelector<HTMLElement>('.energy-pill .pip');
-    const energyArt = artUrl('res_energy');
+    const energyArt = artUrl('energy_heart') ?? artUrl('res_energy');
     if (pip && energyArt) {
       pip.style.backgroundImage = `url(${energyArt})`;
       pip.classList.add('pip-art');

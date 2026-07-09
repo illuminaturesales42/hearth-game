@@ -138,10 +138,14 @@ export class Home {
       pill.classList.toggle('pill-full', s.energy.current >= 60);
     }
     const pip = document.querySelector<HTMLElement>('.energy-pill .pip');
-    if (pip) {
-      const state = s.energy.current >= 60 ? 'full' : s.energy.current >= 20 ? 'med' : s.energy.current > 0 ? 'low' : 'empty';
-      const url = artUrl(`energy_${state}`) ?? artUrl('res_energy');
-      if (url) pip.style.backgroundImage = `url(${url})`;
+    if (pip && !pip.classList.contains('pip-art')) {
+      // the painted flaming heart — always vibrant; the pill's pill-low/-full
+      // classes brighten or gutter its glow with the energy level.
+      const url = artUrl('energy_heart') ?? artUrl('energy_full');
+      if (url) {
+        pip.style.backgroundImage = `url(${url})`;
+        pip.classList.add('pip-art');
+      }
     }
 
     const order = ORDERS[s.orderIndex];
