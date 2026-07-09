@@ -107,6 +107,34 @@ export const CHAINS: readonly ChainDef[] = [
     levels: ['🎵', '🎶', '📜', '🪕', '🎻', '🎹', '📻'],
     levelNames: ['Note', 'Notes', 'Score', 'Lute', 'Fiddle', 'Piano', 'Gramophone'],
   },
+
+  // ── Builder's Yard ───────────────────────────────────────────────────────
+  // Merge chains that climb from raw materials to a finished building. Crafted
+  // in the Workshop; the top-tier structures sell for a premium (sellValue).
+  {
+    id: 'homestead',
+    name: 'The Homestead',
+    levels: ['🪵', '🧱', '🏺', '🏚️', '🏠'],
+    levelNames: ['Driftwood', 'Cut Stone', 'Kiln', 'Cottage Frame', 'Cottage'],
+  },
+  {
+    id: 'greenhouse',
+    name: 'The Greenhouse',
+    levels: ['🍎', '🪨', '🪴', '🌱', '🌸', '🏡'],
+    levelNames: ['Windfall', 'Rubble', 'Potted Sprout', 'Planter', 'Flower Cart', 'Greenhouse'],
+  },
+  {
+    id: 'smithy',
+    name: 'The Smithy',
+    levels: ['💧', '🪣', '🌷', '💐', '⛲', '🔥'],
+    levelNames: ['Spring', 'Pail', 'Flower Pot', 'Flower Box', 'Well', 'Forge'],
+  },
+  {
+    id: 'apothecary',
+    name: 'The Apothecary',
+    levels: ['🪨', '🟫', '🧪', '🌾', '🛢️', '⚗️', '🏬'],
+    levelNames: ['Ore', 'Copper', 'Mortar', 'Harvest', 'Barrel', 'Tincture', 'Apothecary'],
+  },
 ] as const;
 
 export const BOARD_COLS = 6;
@@ -129,19 +157,32 @@ export const SPAWN_TABLE: readonly { chain: ChainId; weight: number }[] = [
  * earned into coins (sold or via Town Requests), never into energy or power.
  */
 export const RESOURCE_SPAWN_TABLE: readonly { chain: ChainId; weight: number }[] = [
-  { chain: 'stone', weight: 22 },
-  { chain: 'clay', weight: 18 },
-  { chain: 'flowers', weight: 16 },
-  { chain: 'water', weight: 16 },
-  { chain: 'herbs', weight: 14 },
-  { chain: 'wool', weight: 14 },
+  { chain: 'stone', weight: 20 },
+  { chain: 'clay', weight: 16 },
+  { chain: 'flowers', weight: 14 },
+  { chain: 'water', weight: 14 },
+  { chain: 'herbs', weight: 12 },
+  { chain: 'wool', weight: 12 },
+  // Builder's Yard — rarer, a longer climb to a sellable building.
+  { chain: 'homestead', weight: 6 },
+  { chain: 'greenhouse', weight: 6 },
+  { chain: 'smithy', weight: 6 },
+  { chain: 'apothecary', weight: 6 },
 ];
+
+/** Chains that climb to a building — their top tiers sell for a premium. */
+export const BUILDER_CHAINS: ReadonlySet<ChainId> = new Set(['homestead', 'greenhouse', 'smithy', 'apothecary']);
 
 /** Deliveries completed before the Workshop mode unlocks (mid Chapter 1). */
 export const WORKSHOP_UNLOCK_AT = 6;
 
-/** Coins a sold item is worth: base + level, scaled by chain tier count. */
-export function sellValue(level: number): number {
+/**
+ * Coins a sold item is worth. Ordinary items are a modest sink-clear; a
+ * finished Builder's-Yard structure is a real payday (the reward for the long
+ * climb) — coins only, never energy or power.
+ */
+export function sellValue(chain: ChainId, level: number): number {
+  if (BUILDER_CHAINS.has(chain)) return 12 + level * level * 6; // steep: the building is the prize
   return 2 + level * 2;
 }
 

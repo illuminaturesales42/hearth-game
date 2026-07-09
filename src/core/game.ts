@@ -362,7 +362,7 @@ export class Game {
   sellItem(index: number): number {
     const it = itemAt(this.state.board, index);
     if (!it || it.locked) return 0;
-    const coins = sellValue(it.level);
+    const coins = sellValue(it.chain, it.level);
     this.undoBoard = null;
     this.state = { ...this.state, coins: this.state.coins + coins, board: withEmpty(this.state.board, index) };
     this.emit({ type: 'sold', coins });

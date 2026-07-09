@@ -781,6 +781,35 @@ def define() -> None:
         KEYCOLOR.pop(k, None)
         AUTOCROP.add(k)
 
+    # ---- Builder's Yard chains (Build Merg.png, alpha ✓): four merge chains
+    # that climb from raw materials to a finished building. Content-detected by
+    # alpha row/col bands, then alpha-autocropped. Craftable in the Workshop;
+    # the top-tier buildings sell for a premium. ----
+    import numpy as _np
+
+    _bm = _np.asarray(Image.open(SRC / SHEETS["trans_buildmerge"]).convert("RGBA"))[:, :, 3]
+    _bm_rows = [(117, 313), (368, 598), (697, 911), (961, 1179)]
+    _bm_names = ["homestead", "greenhouse", "smithy", "apothecary"]
+    buildmerge: dict[str, tuple[int, int, int, int]] = {}
+    for _r, (_y0, _y1) in enumerate(_bm_rows):
+        _proj = (_bm[_y0:_y1] > 60).sum(0)
+        _s = None
+        _stage = 0
+        for _x in range(len(_proj)):
+            _on = _proj[_x] > 15
+            if _on and _s is None:
+                _s = _x
+            elif not _on and _s is not None:
+                if _x - _s >= 30:
+                    buildmerge[f"item_{_bm_names[_r]}_{_stage}"] = (_s, _y0, _x, _y1)
+                    _stage += 1
+                _s = None
+        if _s is not None:
+            buildmerge[f"item_{_bm_names[_r]}_{_stage}"] = (_s, _y0, len(_proj), _y1)
+    add("trans_buildmerge", buildmerge)
+    for k in buildmerge:
+        AUTOCROP.add(k)
+
     # ---- Storm debris (Coastal pack "Beached & Weathered", RGB-on-white) +
     # dead trees (Nature.png, alpha) — early-game dressing that makes the
     # Storm-Wrecked island read wrecked-but-alive, then clears as it restores.

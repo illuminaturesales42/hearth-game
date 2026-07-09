@@ -238,7 +238,7 @@ export class BoardView {
     // Sell this item for coins (a modest sink for surplus, esp. resources)
     const sellBtn = document.getElementById('item-sell') as HTMLButtonElement | null;
     if (sellBtn) {
-      sellBtn.textContent = `Sell +${sellValue(item.level)}`;
+      sellBtn.textContent = `Sell +${sellValue(item.chain, item.level)}`;
       sellBtn.disabled = !!item.locked;
       sellBtn.onclick = () => {
         this.game.sellItem(index);
