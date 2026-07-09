@@ -340,6 +340,97 @@ export const ORDERS: readonly OrderDef[] = [
     resolution: 'Trust grows. Marta opens the eleventh letter… but not yet.',
     rewardEnergy: 10, rewardCoins: 150,
   },
+
+  // ============================================================
+  // Chapter 3 — The Ninth Night. The town is whole again; now the
+  // truth of the storm surfaces. Alden Vale paid to shutter the light
+  // and wreck the ships. Marta came home to relight the true beacon —
+  // and the village stands with her. Warm, hopeful, resolved.
+  // ============================================================
+  {
+    id: 'c3-01', who: 'Marta',
+    need: { chain: 'keepsake', level: 2 },
+    text: 'Boil the kettle. I’ll tell it properly this time — from the ninth night on.',
+    resolution: 'She sets the eleventh letter on the sill, still sealed. "Not until it’s finished."',
+    rewardEnergy: 10, rewardCoins: 160,
+  },
+  {
+    id: 'c3-02', who: 'Wren the postmistress',
+    need: { chain: 'keepsake', level: 1 },
+    text: 'Copy the nine letters out, in order. I think they’re not letters at all.',
+    resolution: 'Laid in a row, they read as a keeper’s log — a warning, written forward, night by night.',
+    rewardEnergy: 11, rewardCoins: 175,
+  },
+  {
+    id: 'c3-03', who: 'Old Keeper Sorin',
+    need: { chain: 'hearthfire', level: 2 },
+    text: 'Kindle the old brazier. I’ll say aloud what I’ve carried too long.',
+    resolution: 'Sorin confesses: he took Vale’s coin to shutter the light, told the ships were empty. They were not.',
+    rewardEnergy: 11, rewardCoins: 190,
+  },
+  {
+    id: 'c3-04', who: 'Fisher Joss',
+    need: { chain: 'harvest', level: 2 },
+    text: 'Bake something for the tide — I’m rowing the shoals where the light should have been.',
+    resolution: 'Joss finds the wreck Vale profited from, and a strongbox chained to the keel.',
+    rewardEnergy: 12, rewardCoins: 205,
+  },
+  {
+    id: 'c3-05', who: 'Bran the baker',
+    need: { chain: 'harvest', level: 4 },
+    text: 'The divers work cold water. A full basket keeps them down long enough.',
+    resolution: 'The strongbox comes up. Inside: Vale’s ledgers — names, payments, every shuttered night.',
+    rewardEnergy: 12, rewardCoins: 220,
+  },
+  {
+    id: 'c3-06', who: 'Wren the postmistress',
+    need: { chain: 'keepsake', level: 5 },
+    text: 'The tide’s taking loose pages. Bring a net — we save every word.',
+    resolution: 'Netted from the surf: the ledger’s last page, and a threat in Vale’s own hand.',
+    rewardEnergy: 13, rewardCoins: 235,
+  },
+  {
+    id: 'c3-07', who: 'Marta',
+    need: { chain: 'wood', level: 4 },
+    text: 'Build a chair for the square. When Vale comes, he’ll sit and hear the town.',
+    resolution: 'Vale arrives, all charm and warning. The chair waits. So does Emberhollow.',
+    rewardEnergy: 13, rewardCoins: 255,
+  },
+  {
+    id: 'c3-08', who: 'Old Keeper Sorin',
+    need: { chain: 'hearthfire', level: 3 },
+    text: 'Build the true beacon — the one I should have lit. Let every ship see it.',
+    resolution: 'The beacon blazes over the shoals. No wreck will be made in the dark again.',
+    rewardEnergy: 14, rewardCoins: 280,
+  },
+  {
+    id: 'c3-09', who: 'Marta',
+    need: { chain: 'keepsake', level: 6 },
+    text: 'Mend the rowboat I came home in. I want it seaworthy — but I’m staying.',
+    resolution: 'She names it for the harbour. A boat to leave in is a boat that chooses to stay.',
+    rewardEnergy: 14, rewardCoins: 300,
+  },
+  {
+    id: 'c3-10', who: 'The whole village',
+    need: { chain: 'harvest', level: 5 },
+    text: 'Set the feast. Whatever tonight brings, we meet it together — and fed.',
+    resolution: 'The revenue men take Vale, undone by his own ledgers. The square lets out a long breath.',
+    rewardEnergy: 15, rewardCoins: 320,
+  },
+  {
+    id: 'c3-11', who: 'Wren the postmistress',
+    need: { chain: 'keepsake', level: 3 },
+    text: 'A bench by the window. Somewhere to read a thing seventeen years unread.',
+    resolution: 'Marta sits, and at last breaks the seal on the eleventh letter.',
+    rewardEnergy: 15, rewardCoins: 340,
+  },
+  {
+    id: 'c3-12', who: 'Marta',
+    need: { chain: 'harvest', level: 6 },
+    text: 'One more, and it’s a proper fair. The whole harbour, out under the light.',
+    resolution: 'The eleventh letter was to Emberhollow itself: "Keep the light. I’m coming home." She is. The fair blazes till dawn.',
+    rewardEnergy: 16, rewardCoins: 400,
+  },
 ] as const;
 
 /** Chapters: metadata over the flat ORDERS spine. */
@@ -357,6 +448,10 @@ export const CHAPTERS: readonly {
   {
     id: 2, title: 'Shadows in the Sand', start: 12, end: 24,
     cliffhanger: 'A smuggler’s log reveals a payment made just before the storm.',
+  },
+  {
+    id: 3, title: 'The Ninth Night', start: 24, end: 36,
+    cliffhanger: 'The true beacon is lit, Vale is undone, and Marta is home for good.',
   },
 ] as const;
 
@@ -383,3 +478,10 @@ export const ZONE_STAGES: readonly { at: number; label: string }[] = [
   { at: 20, label: 'The lighthouse path cleared' },
   { at: 24, label: 'The docks, revealed' },
 ] as const;
+
+/**
+ * Deliveries that fully rebuild Emberhollow (all buildings + zones restored).
+ * Restoration % is capped here so later story chapters — which continue past a
+ * fully-restored town — never make the "% restored" bar regress.
+ */
+export const RESTORE_ORDERS = Math.max(...ZONE_STAGES.map((z) => z.at));

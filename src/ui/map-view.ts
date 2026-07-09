@@ -10,7 +10,7 @@
  */
 import type { Game } from '../core/game';
 import { MAP_LOCATIONS } from '../data/world';
-import { ORDERS, chapterFor, stageFor } from '../data/economy';
+import { ORDERS, RESTORE_ORDERS, chapterFor, stageFor } from '../data/economy';
 import { questsForDay } from '../data/daily-quests';
 import { BUILDING_INFO, DECOR_CATALOG, TOWN_BOATS, TOWN_BUILDINGS, TOWN_NATURE, TOWN_TERRAIN, TOWN_WALKERS } from '../data/town-layout';
 import { computeMood, meditatedToday, moodCaption } from '../core/world-mood';
@@ -115,7 +115,9 @@ export class MapView {
   }
 
   private progress(): number {
-    return Math.min(1, this.game.snapshot.orderIndex / ORDERS.length);
+    // Restoration completes when the town is fully rebuilt; later story
+    // chapters continue past that without regressing the bar.
+    return Math.min(1, this.game.snapshot.orderIndex / RESTORE_ORDERS);
   }
   /** 0..4 homestead stage, spread across the full MVP story. */
   private stage(): number {

@@ -24,6 +24,8 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     earned: (s) => s.orderIndex >= 12 },
   { id: 'ch2-complete', art: 'badge_event_4', title: 'Shadows, Lifted', desc: 'Complete Chapter 2.', icon: '🕯️', coins: 250,
     earned: (s) => s.orderIndex >= 24 },
+  { id: 'ch3-complete', art: 'badge_event_3', title: 'The Ninth Night', desc: 'Complete Chapter 3.', icon: '🌅', coins: 400,
+    earned: (s) => s.orderIndex >= 36 },
   { id: 'streak-7', art: 'badge_habit_hero', title: 'Keeper of the Flame', desc: 'Tend the hearth 7 days running.', icon: '🔥', coins: 100,
     earned: (s) => s.actions.streak >= 7 },
   { id: 'first-duel-win', art: 'badge_event_7', title: 'Bonfire Champion', desc: 'Win a Bonfire Duel.', icon: '⚔️', coins: 60,

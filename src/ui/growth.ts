@@ -8,7 +8,7 @@
  * All of it is invitation-only: dismissible, snoozed, never a gate.
  */
 import type { Game } from '../core/game';
-import { ORDERS } from '../data/economy';
+import { ORDERS, RESTORE_ORDERS } from '../data/economy';
 import { toast } from './toast';
 
 /** Swap for a real list address/endpoint when one exists. */
@@ -94,7 +94,7 @@ export class GrowthUI {
       toast('The town is still waking up — try again in a moment.');
       return;
     }
-    const pct = Math.round((this.game.snapshot.orderIndex / ORDERS.length) * 100);
+    const pct = Math.min(100, Math.round((this.game.snapshot.orderIndex / RESTORE_ORDERS) * 100));
     const out = document.createElement('canvas');
     out.width = 1080;
     out.height = 860;
