@@ -39,6 +39,10 @@ export class Home {
           feedback.chime(587);
           toast(`${ev.who} thanks you — +${ev.coins} coins.`);
           break;
+        case 'zoneRestored':
+          feedback.chapter();
+          toast(`✨ ${ev.label} — Emberhollow brightens.`);
+          break;
         case 'delivered': {
           feedback.deliver();
           const order = ORDERS.find((o) => o.id === ev.orderId);

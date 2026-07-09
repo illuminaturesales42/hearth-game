@@ -5,7 +5,7 @@
 import type { GameState, Item } from './types';
 import { chainDef, createBoard, dropItem, emptyIndices, findItem, findMergePair, itemAt, tidyBoard, toggleLock, trashMatching, withEmpty, withItem } from './board';
 import { accrueRegen, canSpend, grant, initialEnergy, spend } from './energy';
-import { BOARD_COLS, BOARD_ROWS, CHAPTERS, ENERGY, ORDERS, PRODUCER_INDEX, RESOURCE_SPAWN_TABLE, SPAWN_TABLE, WORKSHOP_UNLOCK_AT, sellValue, stageFor } from '../data/economy';
+import { BOARD_COLS, BOARD_ROWS, CHAPTERS, ENERGY, ORDERS, PRODUCER_INDEX, RESOURCE_SPAWN_TABLE, SPAWN_TABLE, WORKSHOP_UNLOCK_AT, ZONE_STAGES, sellValue, stageFor } from '../data/economy';
 import { appendEntry, composeEntry, rolloverStats } from './chronicle';
 import { newlyEarned } from './achievements';
 import { questMultiplier, questsForDay } from '../data/daily-quests';
@@ -39,6 +39,7 @@ export type GameEvent =
   | { type: 'sold'; coins: number }
   | { type: 'bought'; label: string; coins: number }
   | { type: 'requestDone'; who: string; coins: number }
+  | { type: 'zoneRestored'; label: string; at: number }
   | { type: 'delivered'; orderId: string; resolution: string; rewardEnergy: number; rewardCoins: number }
   | { type: 'action'; actionId: string; energy: number }
   | { type: 'chest'; coins: number }
@@ -469,7 +470,14 @@ export class Game {
       rewardCoins: order.rewardCoins,
     });
     this.recordBond(order);
+    this.checkZoneRestored();
     this.emitChapterBoundary();
+  }
+
+  /** Celebrate crossing a village-restoration milestone (a zone comes back). */
+  private checkZoneRestored(): void {
+    const zone = ZONE_STAGES.find((z) => z.at === this.state.orderIndex && z.at > 0);
+    if (zone) this.emit({ type: 'zoneRestored', label: zone.label, at: zone.at });
   }
 
   /**
@@ -884,6 +892,7 @@ export class Game {
       rewardCoins: order.rewardCoins,
     });
     this.recordBond(order);
+    this.checkZoneRestored();
     this.emitChapterBoundary();
   }
 

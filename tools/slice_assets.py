@@ -732,7 +732,7 @@ def define() -> None:
     merge2 = detect_merge_boxes(MERGE_ROWS, MERGE_STAGES)
     # The very pale bread-dough (harvest L0) is too near-white for the content
     # detector to bound, so hand-box it (keyed gently below so the dough keeps).
-    merge2["item_harvest_0"] = (144, 590, 222, 662)
+    merge2["item_harvest_0"] = (162, 584, 240, 622)
     add("trans_merge", merge2)
     for k in merge2:
         KEYED.add(k)
