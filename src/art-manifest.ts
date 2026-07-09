@@ -102,6 +102,7 @@ export const ART_IDS: ReadonlySet<string> = new Set([
   'item_wood_4',
   'item_wood_5',
   'item_wood_6',
+  'map_island_plate',
   'nav_home',
   'nav_journal',
   'nav_map',
