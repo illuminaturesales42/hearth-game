@@ -324,11 +324,15 @@ def contact() -> None:
 # CROP DEFINITIONS (verified against --probe output)
 # ============================================================================
 
-def detect_merge_boxes(names: list[str], stages: int, pad: int = 8) -> dict[str, tuple[int, int, int, int]]:
+def detect_merge_boxes(names: list[str], stages: int, pad: int = 5) -> dict[str, tuple[int, int, int, int]]:
     """Content-detect each merge tile on 'Merg chain sprites.png' (RGB-on-white).
-    For every chain row, find non-white column runs, drop the left label column
-    and the thin ⇒ arrows (narrow runs), take the first `stages` sprite runs, and
-    tighten the vertical extent per run. Returns padded item_<name>_<s> boxes."""
+    Horizontal: per chain row, find non-white column runs, drop the left label
+    column and the thin ⇒ arrows (narrow runs), take the first `stages` wide runs.
+    Vertical: the sprite rows abut with no white gap and even touch (a plain
+    bbox bleeds the neighbour above/below into the tile), so for each sprite we
+    scan its OWN column span for the low-density gap to the neighbour above and
+    below the row centre and cut there — smart edge detection that never clips
+    the sprite nor swallows its neighbours. Returns padded item_<name>_<s>."""
     im = Image.open(SRC / SHEETS["trans_merge"]).convert("RGB")
     W, H = im.size
     px = im.load()
@@ -356,10 +360,27 @@ def detect_merge_boxes(names: list[str], stages: int, pad: int = 8) -> dict[str,
             runs.append((s, W))
         # sprite runs: wide (>=35px) and right of the label column (start >=120)
         sprites = [(a, b) for a, b in runs if (b - a) >= 35 and a >= 120][:stages]
+        cy = rowh * (r + 0.5)
         for i, (a, b) in enumerate(sprites):
-            # tighten vertical extent within this column span
-            ys = [y for y in range(y0, y1) if any(nonwhite(x, y) for x in range(a, b))]
-            ty0, ty1 = (min(ys), max(ys) + 1) if ys else (y0, y1)
+            # vertical density profile within THIS sprite's column span
+            wy0, wy1 = max(0, int(cy - 52)), min(H, int(cy + 52))
+            prof = [sum(1 for x in range(a, b) if nonwhite(x, y)) for y in range(wy0, wy1)]
+            mx = max(prof) or 1
+            ci = int(cy) - wy0
+
+            def gap(lo: int, hi: int, default: int) -> int:
+                lo, hi = max(0, lo), min(len(prof), hi)
+                if hi <= lo:
+                    return default
+                j = min(range(lo, hi), key=lambda k: prof[k])
+                # only cut at a genuine trough; else fall back to a fixed half-row
+                return j if prof[j] < 0.15 * mx else default
+
+            up = gap(ci - 46, ci - 12, ci - 38) + wy0
+            dn = gap(ci + 12, ci + 46, ci + 38) + wy0
+            # tighten to real content inside the gap-bounded band
+            ys = [y for y in range(up, dn) if any(nonwhite(x, y) for x in range(a, b))]
+            ty0, ty1 = (min(ys), max(ys) + 1) if ys else (up, dn)
             out[f"item_{name}_{i}"] = (
                 max(0, a - pad), max(0, ty0 - pad),
                 min(W, b + pad), min(H, ty1 + pad),
