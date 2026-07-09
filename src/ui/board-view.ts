@@ -10,15 +10,32 @@ export class BoardView {
   private root: HTMLElement;
   private ghost: HTMLElement | null = null;
   private dragFrom = -1;
+  private fxLayer: HTMLElement;
+  private reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /** last cell that was deliverable, captured pre-delivery for the orb origin */
+  private lastDeliverable = -1;
 
   constructor(private game: Game, rootEl: HTMLElement) {
     this.root = rootEl;
+    this.fxLayer =
+      document.getElementById('fx-layer') ??
+      (() => {
+        const d = document.createElement('div');
+        d.id = 'fx-layer';
+        document.body.appendChild(d);
+        return d;
+      })();
     this.buildCells();
     this.bindPointer();
     game.subscribe((ev) => {
       if (ev.type === 'state') this.render();
-      if (ev.type === 'merge' || ev.type === 'spawn') this.popCell(ev.index);
+      if (ev.type === 'spawn') this.popCell(ev.index);
+      if (ev.type === 'merge') {
+        this.popCell(ev.index);
+        this.mergeBurst(ev.index);
+      }
       if (ev.type === 'reject' && ev.index >= 0) this.shakeCell(ev.index);
+      if (ev.type === 'delivered') this.deliverFly();
     });
     this.render();
   }
@@ -39,6 +56,7 @@ export class BoardView {
   render(): void {
     const { board } = this.game.snapshot;
     const deliverable = this.game.deliverableIndex();
+    if (deliverable >= 0) this.lastDeliverable = deliverable; // orb origin for the next delivery
     board.cells.forEach((c, i) => {
       const el = this.root.children[i] as HTMLElement;
       // checkerboard aligned to the REAL gameplay grid (the art's baked
@@ -187,5 +205,63 @@ export class BoardView {
     if (!el) return;
     el.classList.add('shake');
     setTimeout(() => el.classList.remove('shake'), 300);
+  }
+
+  private cellCentre(i: number): { x: number; y: number } | null {
+    const el = this.root.children[i] as HTMLElement | undefined;
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
+  /** Merge juice: a sparkle burst + an expanding ember ring at the target cell. */
+  private mergeBurst(i: number): void {
+    if (this.reduce) return;
+    const c = this.cellCentre(i);
+    if (!c) return;
+    const url = artUrl('fx_merge_sparkle');
+    if (url) {
+      const s = document.createElement('img');
+      s.src = url;
+      s.className = 'fx-sparkle';
+      s.style.left = `${c.x}px`;
+      s.style.top = `${c.y}px`;
+      this.fxLayer.appendChild(s);
+      setTimeout(() => s.remove(), 480);
+    }
+    const ring = document.createElement('div');
+    ring.className = 'fx-ring';
+    ring.style.left = `${c.x}px`;
+    ring.style.top = `${c.y}px`;
+    this.fxLayer.appendChild(ring);
+    setTimeout(() => ring.remove(), 480);
+  }
+
+  /** Deliver juice: an energy orb floats from the completed cell to the order card. */
+  private deliverFly(): void {
+    if (this.reduce) return;
+    const url = artUrl('fx_energy_orb');
+    if (!url) return;
+    const from = this.cellCentre(this.lastDeliverable) ?? this.boardCentre();
+    const target = document.getElementById('deliver-btn') ?? document.querySelector('.order-card');
+    if (!target) return;
+    const tr = (target as HTMLElement).getBoundingClientRect();
+    const to = { x: tr.left + tr.width / 2, y: tr.top + tr.height / 2 };
+    const orb = document.createElement('img');
+    orb.src = url;
+    orb.className = 'fx-orb';
+    orb.style.left = `${from.x}px`;
+    orb.style.top = `${from.y}px`;
+    this.fxLayer.appendChild(orb);
+    requestAnimationFrame(() => {
+      orb.style.transform = `translate(calc(-50% + ${to.x - from.x}px), calc(-50% + ${to.y - from.y}px)) scale(0.5)`;
+      orb.style.opacity = '0.15';
+    });
+    setTimeout(() => orb.remove(), 640);
+  }
+
+  private boardCentre(): { x: number; y: number } {
+    const r = this.root.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }
 }
