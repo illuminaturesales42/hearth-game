@@ -559,16 +559,30 @@ export class MapView {
       }
       ctx.globalAlpha = 1;
     }
-    ctx.fillStyle = night ? 'rgba(230,235,250,0.9)' : 'rgba(255,240,200,0.95)';
-    ctx.beginPath();
-    ctx.arc(W * 0.78, H * 0.14, night ? 11 : 14, 0, Math.PI * 2);
-    ctx.fill();
-    if (!night) {
-      const glow = ctx.createRadialGradient(W * 0.78, H * 0.14, 5, W * 0.78, H * 0.14, 52);
-      glow.addColorStop(0, `rgba(255,220,150,${(0.5 * (1 - mood.cloudCover * 0.7)).toFixed(3)})`);
+    const sunX = W * 0.78;
+    const sunY = H * 0.14;
+    if (night) {
+      // a pale moon
+      ctx.fillStyle = 'rgba(230,235,250,0.9)';
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, 11, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // warm bloom
+      const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 66);
+      glow.addColorStop(0, `rgba(255,224,160,${(0.6 * (1 - mood.cloudCover * 0.7)).toFixed(3)})`);
       glow.addColorStop(1, 'rgba(255,220,150,0)');
       ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, W, H * 0.4);
+      ctx.fillRect(0, 0, W, H * 0.42);
+      // a dimensional sun: bright core → golden rim (not a flat moon-disc)
+      const disc = ctx.createRadialGradient(sunX - 5, sunY - 5, 1, sunX, sunY, 16);
+      disc.addColorStop(0, 'rgba(255,252,238,1)');
+      disc.addColorStop(0.6, 'rgba(255,232,168,1)');
+      disc.addColorStop(1, 'rgba(255,204,118,0.95)');
+      ctx.fillStyle = disc;
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, 16, 0, Math.PI * 2);
+      ctx.fill();
     }
     // Clouds always drift the sky — soft, warm wisps, not hard blobs. Each is
     // a cluster of radial puffs so the edges feather into the sky.
@@ -1174,80 +1188,41 @@ export class MapView {
       }
     }
 
-    // --- the lighthouse keeps its watch on the point (painted-style tower) ---
+    // --- the painted lighthouse keeps its watch on the northern point ---
     {
+      const img = this.sprite('prop_lighthouse');
       const lx = W * 0.93;
       const baseY = H * 0.5; // sits on the north headland
-      const th = H * 0.24; // tower height
-      const topY = baseY - th;
-      const wBot = W * 0.05;
-      const wTop = W * 0.032;
       const lit = delivered >= 9; // the beacon story beat
-      // rocky footing
-      ctx.fillStyle = night ? '#2c3242' : '#5a5648';
-      ctx.beginPath();
-      ctx.ellipse(lx, baseY, wBot * 0.9, H * 0.02, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // tapered tower body
-      ctx.beginPath();
-      ctx.moveTo(lx - wBot / 2, baseY);
-      ctx.lineTo(lx - wTop / 2, topY);
-      ctx.lineTo(lx + wTop / 2, topY);
-      ctx.lineTo(lx + wBot / 2, baseY);
-      ctx.closePath();
-      const body = ctx.createLinearGradient(lx - wBot / 2, 0, lx + wBot / 2, 0);
-      body.addColorStop(0, night ? '#b9b3a4' : '#efe9db');
-      body.addColorStop(0.5, night ? '#d4cfc0' : '#fbf7ec');
-      body.addColorStop(1, night ? '#a49e8f' : '#ddd6c6');
-      ctx.fillStyle = body;
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(90,74,50,0.35)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      // two red bands
-      ctx.fillStyle = '#c14a35';
-      for (const f of [0.34, 0.66]) {
-        const y = baseY - th * f;
-        const wb = wBot + (wTop - wBot) * f;
-        ctx.fillRect(lx - wb / 2, y - th * 0.05, wb, th * 0.09);
-      }
-      // gallery deck + lantern room
-      const galW = wTop * 1.7;
-      const galY = topY;
-      ctx.fillStyle = night ? '#3a4152' : '#4a5568';
-      ctx.fillRect(lx - galW / 2, galY - 2, galW, 4);
-      const lampH = th * 0.14;
-      ctx.beginPath();
-      ctx.fillStyle = lit ? '#ffe6a8' : night ? '#39415a' : '#7a8494';
-      ctx.fillRect(lx - wTop * 0.6, galY - lampH, wTop * 1.2, lampH);
-      if (lit) {
-        ctx.fillStyle = 'rgba(255,230,160,0.5)';
-        ctx.beginPath();
-        ctx.arc(lx, galY - lampH / 2, wTop * 0.9, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      // little roof cap
-      ctx.fillStyle = '#7a4a34';
-      ctx.beginPath();
-      ctx.moveTo(lx - wTop * 0.7, galY - lampH);
-      ctx.lineTo(lx, galY - lampH - th * 0.08);
-      ctx.lineTo(lx + wTop * 0.7, galY - lampH);
-      ctx.closePath();
-      ctx.fill();
-      // sweeping beam
-      if (lit && !this.reduce) {
-        const oy = galY - lampH / 2;
-        const ang = Math.sin(t / 1500) * 0.5 - 0.25;
-        const beam = ctx.createLinearGradient(lx, oy, lx - 170 * Math.cos(ang), oy - 90 * Math.sin(ang));
-        beam.addColorStop(0, 'rgba(255,232,168,0.42)');
-        beam.addColorStop(1, 'rgba(255,232,168,0)');
-        ctx.fillStyle = beam;
-        ctx.beginPath();
-        ctx.moveTo(lx, oy);
-        ctx.lineTo(lx - 180 * Math.cos(ang - 0.11), oy - 110 * Math.sin(ang - 0.11));
-        ctx.lineTo(lx - 180 * Math.cos(ang + 0.11), oy - 110 * Math.sin(ang + 0.11));
-        ctx.closePath();
-        ctx.fill();
+      if (img) {
+        const lw = W * 0.15;
+        const lh = lw * (img.naturalHeight / img.naturalWidth);
+        ctx.drawImage(img, lx - lw / 2, baseY - lh, lw, lh);
+        const oy = baseY - lh * 0.82; // the lantern room, ~82% up the sprite
+        if (lit) {
+          // warm lantern-room bloom
+          const g = ctx.createRadialGradient(lx, oy, 2, lx, oy, lw * 0.55);
+          g.addColorStop(0, 'rgba(255, 232, 168, 0.8)');
+          g.addColorStop(1, 'rgba(255, 232, 168, 0)');
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(lx, oy, lw * 0.55, 0, Math.PI * 2);
+          ctx.fill();
+          // sweeping beam
+          if (!this.reduce) {
+            const ang = Math.sin(t / 1500) * 0.5 - 0.25;
+            const beam = ctx.createLinearGradient(lx, oy, lx - 170 * Math.cos(ang), oy - 90 * Math.sin(ang));
+            beam.addColorStop(0, 'rgba(255, 232, 168, 0.42)');
+            beam.addColorStop(1, 'rgba(255, 232, 168, 0)');
+            ctx.fillStyle = beam;
+            ctx.beginPath();
+            ctx.moveTo(lx, oy);
+            ctx.lineTo(lx - 180 * Math.cos(ang - 0.11), oy - 110 * Math.sin(ang - 0.11));
+            ctx.lineTo(lx - 180 * Math.cos(ang + 0.11), oy - 110 * Math.sin(ang + 0.11));
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
       }
     }
 

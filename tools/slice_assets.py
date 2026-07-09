@@ -761,10 +761,12 @@ def define() -> None:
         TOLERANCE[k] = 30
         # clean_sprite (via the debris_ prefix) drops the blue section label
         # letters as small components, then autocrops — no AUTOCROP needed.
-    # tide pool + a shore rock cluster for coastal detail (same sheet)
+    # tide pool + a shore rock cluster for coastal detail (same sheet) + the
+    # painted lighthouse on its rocky islet (replaces the procedural tower)
     coast_extra = {
         "prop_tidepool": (832, 700, 962, 802),
         "prop_shorerock": (8, 546, 100, 656),
+        "prop_lighthouse": (1378, 532, 1512, 674),
     }
     add("trans_coastal", coast_extra)
     for k in coast_extra:

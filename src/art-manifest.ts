@@ -207,6 +207,7 @@ export const ART_IDS: ReadonlySet<string> = new Set([
   'prop_bench',
   'prop_crate',
   'prop_lamp',
+  'prop_lighthouse',
   'prop_rock',
   'prop_shorerock',
   'prop_sign',
