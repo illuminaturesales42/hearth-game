@@ -14,6 +14,10 @@ export class BoardView {
   private reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   /** last cell that was deliverable, captured pre-delivery for the orb origin */
   private lastDeliverable = -1;
+  /** tap-to-merge: the first-tapped item awaiting a partner (-1 = none) */
+  private selected = -1;
+  /** true once a pointer press has crossed the drag threshold */
+  private dragging = false;
 
   constructor(private game: Game, rootEl: HTMLElement) {
     this.root = rootEl;
@@ -57,6 +61,7 @@ export class BoardView {
     const { board } = this.game.snapshot;
     const deliverable = this.game.deliverableIndex();
     if (deliverable >= 0) this.lastDeliverable = deliverable; // orb origin for the next delivery
+    if (this.selected >= 0 && !this.game.itemAt(this.selected)) this.selected = -1; // stale selection
     board.cells.forEach((c, i) => {
       const el = this.root.children[i] as HTMLElement;
       // checkerboard aligned to the REAL gameplay grid (the art's baked
@@ -70,9 +75,12 @@ export class BoardView {
       } else if (c.kind === 'item') {
         el.classList.add('item');
         const def = chainDef(c.item.chain);
-        el.innerHTML = `${tileMarkup(c.item.chain, c.item.level)}<span class="lv">${c.item.level + 1}</span>`;
-        el.setAttribute('aria-label', `${def.levelNames[c.item.level]} level ${c.item.level + 1}`);
+        const lock = c.item.locked ? '<span class="pin" aria-hidden="true">🔒</span>' : '';
+        el.innerHTML = `${tileMarkup(c.item.chain, c.item.level)}<span class="lv">${c.item.level + 1}</span>${lock}`;
+        el.setAttribute('aria-label', `${def.levelNames[c.item.level]} level ${c.item.level + 1}${c.item.locked ? ', locked' : ''}`);
         if (i === deliverable) el.classList.add('deliverable');
+        if (i === this.selected) el.classList.add('selected');
+        if (c.item.locked) el.classList.add('locked');
       }
     });
   }
@@ -91,24 +99,22 @@ export class BoardView {
       const idx = this.cellIndexFromPoint(e.clientX, e.clientY);
       if (idx < 0) return;
       if (idx === PRODUCER_INDEX) {
+        this.clearSelection();
         this.game.tapProducer();
         return;
       }
-      const item = this.game.itemAt(idx);
-      if (!item) return;
+      if (!this.game.itemAt(idx)) {
+        this.clearSelection(); // tap on empty cancels a pending selection
+        return;
+      }
       this.dragFrom = idx;
+      this.dragging = false;
       this.root.setPointerCapture(e.pointerId);
-      this.ghost = document.createElement('div');
-      this.ghost.id = 'drag-ghost';
-      this.ghost.innerHTML = tileMarkup(item.chain, item.level);
-      document.body.appendChild(this.ghost);
-      this.moveGhost(e.clientX, e.clientY);
-      (this.root.children[idx] as HTMLElement).style.opacity = '0.35';
-      // Hold in place to inspect the item instead of dragging it.
+      // Ghost is created lazily on first real drag so a plain tap stays clean.
       this.holdStart = { x: e.clientX, y: e.clientY };
       clearTimeout(this.holdTimer);
       this.holdTimer = setTimeout(() => {
-        if (this.dragFrom === idx) {
+        if (this.dragFrom === idx && !this.dragging) {
           this.cancelDrag(idx);
           this.showItemInfo(idx);
         }
@@ -117,9 +123,12 @@ export class BoardView {
 
     this.root.addEventListener('pointermove', (e) => {
       if (this.dragFrom < 0) return;
-      if (this.holdStart && Math.hypot(e.clientX - this.holdStart.x, e.clientY - this.holdStart.y) > 9) {
-        clearTimeout(this.holdTimer);
-        this.holdStart = null;
+      if (!this.dragging) {
+        if (this.holdStart && Math.hypot(e.clientX - this.holdStart.x, e.clientY - this.holdStart.y) > 9) {
+          this.startDrag(e);
+        } else {
+          return;
+        }
       }
       this.moveGhost(e.clientX, e.clientY);
       const over = this.cellIndexFromPoint(e.clientX, e.clientY);
@@ -130,19 +139,66 @@ export class BoardView {
 
     const finish = (e: PointerEvent) => {
       clearTimeout(this.holdTimer);
-      this.holdStart = null;
-      if (this.dragFrom < 0) return;
       const from = this.dragFrom;
+      const wasDragging = this.dragging;
+      this.holdStart = null;
+      if (from < 0) return;
       this.cancelDrag(from);
       const to = this.cellIndexFromPoint(e.clientX, e.clientY);
-      if (to >= 0 && to !== from) this.game.drop(from, to);
+      if (wasDragging) {
+        if (to >= 0 && to !== from) this.game.drop(from, to);
+      } else {
+        this.handleTap(from); // a clean tap → tap-to-merge selection
+      }
     };
     this.root.addEventListener('pointerup', finish);
     this.root.addEventListener('pointercancel', finish);
   }
 
+  /** Promote a press into a drag once it crosses the movement threshold. */
+  private startDrag(e: PointerEvent): void {
+    this.dragging = true;
+    clearTimeout(this.holdTimer);
+    this.clearSelection();
+    const item = this.game.itemAt(this.dragFrom);
+    if (!item || item.locked) return; // pinned items don't drag (drop() also guards)
+    this.ghost = document.createElement('div');
+    this.ghost.id = 'drag-ghost';
+    this.ghost.innerHTML = tileMarkup(item.chain, item.level);
+    document.body.appendChild(this.ghost);
+    (this.root.children[this.dragFrom] as HTMLElement).style.opacity = '0.35';
+  }
+
+  /** Tap-to-merge: first tap selects, a matching second tap merges. */
+  private handleTap(from: number): void {
+    const item = this.game.itemAt(from);
+    if (!item) {
+      this.clearSelection();
+      return;
+    }
+    if (this.selected === from) {
+      this.clearSelection();
+      return;
+    }
+    if (this.selected >= 0) {
+      const sel = this.selected;
+      this.selected = -1;
+      this.game.drop(sel, from); // merges if it matches; a no-op reject otherwise
+      return;
+    }
+    this.selected = from;
+    this.render();
+  }
+
+  private clearSelection(): void {
+    if (this.selected < 0) return;
+    this.selected = -1;
+    this.render();
+  }
+
   private cancelDrag(from: number): void {
     this.dragFrom = -1;
+    this.dragging = false;
     this.ghost?.remove();
     this.ghost = null;
     const cell = this.root.children[from] as HTMLElement | undefined;
@@ -169,6 +225,30 @@ export class BoardView {
     const modal = document.getElementById('item-modal');
     if (!modal) return;
     modal.hidden = false;
+    // Lock / unlock (pin against accidental drag, auto-merge, bulk-clear)
+    const lockBtn = document.getElementById('item-lock') as HTMLButtonElement | null;
+    if (lockBtn) {
+      lockBtn.textContent = item.locked ? '🔓 Unlock' : '🔒 Lock';
+      lockBtn.onclick = () => {
+        this.game.toggleLock(index);
+        modal.hidden = true;
+      };
+    }
+    // Bulk-clear this chain's clutter at or below this tier (locks are spared)
+    const clearBtn = document.getElementById('item-clear') as HTMLButtonElement | null;
+    if (clearBtn) {
+      clearBtn.textContent = `Clear ${def.name} ≤ L${item.level + 1}`;
+      let armed = false;
+      clearBtn.onclick = () => {
+        if (!armed) {
+          armed = true;
+          clearBtn.textContent = 'Tap again to clear';
+          return;
+        }
+        this.game.clearMatching(item.chain, item.level);
+        modal.hidden = true;
+      };
+    }
     const trash = document.getElementById('item-trash') as HTMLButtonElement | null;
     if (trash) {
       trash.textContent = 'Discard';

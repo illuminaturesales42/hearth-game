@@ -68,8 +68,9 @@
       <section class="screen" id="screen-create">
         <section class="tools-bar" aria-label="Board tools">
           <button id="undo-btn" class="tool-btn" title="Take back the last merge" hidden>↩ Undo</button>
+          <button id="tidy-btn" class="tool-btn" title="Tidy the board">✦ Tidy</button>
           <button id="duel-create-btn" class="tool-btn" title="Bonfire Duel">⚔ Duel</button>
-          <span class="tools-hint">Hold an item for details.</span>
+          <span class="tools-hint">Tap two to merge · hold for details.</span>
           <label class="auto-toggle" title="Automatically merge matching items">
             <input type="checkbox" id="auto-merge" />
             <span>Auto-merge</span>
@@ -357,6 +358,10 @@
       <div id="item-art" class="item-art" aria-hidden="true"></div>
       <p id="item-name" class="bldg-name"></p>
       <p id="item-next" class="bldg-story"></p>
+      <div class="duel-result-actions">
+        <button id="item-lock" class="tool-btn">🔒 Lock</button>
+        <button id="item-clear" class="tool-btn danger">Clear low</button>
+      </div>
       <div class="duel-result-actions">
         <button id="item-trash" class="btn-ghost danger">Discard</button>
         <button id="item-close" class="btn-primary">Keep it</button>

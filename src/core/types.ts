@@ -19,6 +19,8 @@ export interface Item {
   level: number;
   /** Unique instance id for animation tracking. */
   uid: number;
+  /** Pinned by the player: can't be dragged, auto-merged, or bulk-discarded. */
+  locked?: boolean;
 }
 
 /** A board cell is empty, an item, or the producer crate. */

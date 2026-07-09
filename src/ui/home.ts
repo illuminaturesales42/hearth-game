@@ -28,6 +28,10 @@ export class Home {
         case 'spawn':
           feedback.spawn();
           break;
+        case 'reject':
+          if (ev.reason === 'full') toast('The board is full — merge or tidy to make room.');
+          else if (ev.reason === 'energy') toast('Not enough energy — a real-world action refills it.');
+          break;
         case 'delivered': {
           feedback.deliver();
           const order = ORDERS.find((o) => o.id === ev.orderId);

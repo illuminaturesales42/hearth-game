@@ -119,6 +119,8 @@ export class AppShell {
         else if (ev.type !== 'state') undoBtn.hidden = !game.canUndoMerge();
       });
     }
+    const tidyBtn = document.getElementById('tidy-btn');
+    if (tidyBtn) tidyBtn.addEventListener('click', () => game.tidy());
     const duelCreate = document.getElementById('duel-create-btn');
     if (duelCreate) duelCreate.addEventListener('click', () => duel.start());
   }

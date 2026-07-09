@@ -3,7 +3,7 @@
  * UI layers subscribe; core stays DOM-free.
  */
 import type { GameState, Item } from './types';
-import { chainDef, createBoard, dropItem, emptyIndices, findItem, findMergePair, itemAt, withEmpty, withItem } from './board';
+import { chainDef, createBoard, dropItem, emptyIndices, findItem, findMergePair, itemAt, tidyBoard, toggleLock, trashMatching, withEmpty, withItem } from './board';
 import { accrueRegen, canSpend, grant, initialEnergy, spend } from './energy';
 import { BOARD_COLS, BOARD_ROWS, CHAPTERS, ENERGY, ORDERS, PRODUCER_INDEX, SPAWN_TABLE, stageFor } from '../data/economy';
 import { appendEntry, composeEntry, rolloverStats } from './chronicle';
@@ -322,6 +322,29 @@ export class Game {
     this.undoBoard = null;
     this.state = { ...this.state, board: withEmpty(this.state.board, index) };
     this.emit({ type: 'state' });
+  }
+
+  /** Compact + group the board so it reads tidy. */
+  tidy(): void {
+    this.undoBoard = null;
+    this.state = { ...this.state, board: tidyBoard(this.state.board) };
+    this.emit({ type: 'state' });
+  }
+
+  /** Pin/unpin an item so it can't be dragged, auto-merged, or bulk-cleared. */
+  toggleLock(index: number): void {
+    this.state = { ...this.state, board: toggleLock(this.state.board, index) };
+    this.emit({ type: 'state' });
+  }
+
+  /** Clear all unlocked items of a chain at or below `maxLvl`. Returns count. */
+  clearMatching(chain: ChainId, maxLvl: number): number {
+    const res = trashMatching(this.state.board, chain, maxLvl);
+    if (res.cleared === 0) return 0;
+    this.undoBoard = null;
+    this.state = { ...this.state, board: res.board };
+    this.emit({ type: 'state' });
+    return res.cleared;
   }
 
   /** Index of the board item satisfying the current order, or -1. */

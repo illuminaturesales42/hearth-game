@@ -66,6 +66,7 @@ export function dropItem(board: BoardState, from: number, to: number, nextUid: n
   if (from === to) return { board, merged: false, result: null };
   const src = itemAt(board, from);
   if (!src) return { board, merged: false, result: null };
+  if (src.locked) return { board, merged: false, result: null }; // pinned items don't move
   const dstCell = board.cells[to];
   if (!dstCell) return { board, merged: false, result: null };
 
@@ -73,7 +74,7 @@ export function dropItem(board: BoardState, from: number, to: number, nextUid: n
     const next = withItem(withEmpty(board, from), to, src);
     return { board: next, merged: false, result: src };
   }
-  if (dstCell.kind === 'item' && canMerge(src, dstCell.item)) {
+  if (dstCell.kind === 'item' && !dstCell.item.locked && canMerge(src, dstCell.item)) {
     const mergedItem: Item = { chain: src.chain, level: src.level + 1, uid: nextUid };
     const next = withItem(withEmpty(board, from), to, mergedItem);
     return { board: next, merged: true, result: mergedItem };
@@ -86,11 +87,61 @@ export function findItem(board: BoardState, chain: ChainId, level: number): numb
   return board.cells.findIndex((c) => c.kind === 'item' && c.item.chain === chain && c.item.level === level);
 }
 
+/**
+ * Compact all items to the front of the board (skipping the producer cell) and
+ * group them by chain (in CHAINS order) then by level (highest first), so the
+ * board reads tidy. Pure — returns a new board. Locks are preserved.
+ */
+export function tidyBoard(board: BoardState): BoardState {
+  const order = new Map(CHAINS.map((c, i) => [c.id, i] as const));
+  const items: Item[] = [];
+  board.cells.forEach((c) => {
+    if (c.kind === 'item') items.push(c.item);
+  });
+  items.sort((a, b) => {
+    const ca = order.get(a.chain) ?? 0;
+    const cb = order.get(b.chain) ?? 0;
+    if (ca !== cb) return ca - cb;
+    return b.level - a.level;
+  });
+  const cells: Cell[] = board.cells.map((c) => (c.kind === 'producer' ? c : { kind: 'empty' as const }));
+  let cursor = 0;
+  for (const item of items) {
+    while (cursor < cells.length && cells[cursor]!.kind === 'producer') cursor++;
+    cells[cursor] = { kind: 'item', item };
+    cursor++;
+  }
+  return { ...board, cells };
+}
+
+/**
+ * Empty every unlocked item of `chain` at or below `maxLvl`. Returns the new
+ * board and how many were cleared (for feedback). Locked items are spared.
+ */
+export function trashMatching(board: BoardState, chain: ChainId, maxLvl: number): { board: BoardState; cleared: number } {
+  let cleared = 0;
+  const cells = board.cells.map((c) => {
+    if (c.kind === 'item' && c.item.chain === chain && c.item.level <= maxLvl && !c.item.locked) {
+      cleared++;
+      return { kind: 'empty' as const };
+    }
+    return c;
+  });
+  return { board: { ...board, cells }, cleared };
+}
+
+/** Toggle the lock flag on the item at `index` (no-op if not an item). */
+export function toggleLock(board: BoardState, index: number): BoardState {
+  const c = board.cells[index];
+  if (!c || c.kind !== 'item') return board;
+  return withItem(board, index, { ...c.item, locked: !c.item.locked });
+}
+
 /** First mergeable pair on the board as [keepIndex, consumeIndex], or null. */
 export function findMergePair(board: BoardState): [number, number] | null {
   const items: { i: number; item: Item }[] = [];
   board.cells.forEach((c, i) => {
-    if (c.kind === 'item') items.push({ i, item: c.item });
+    if (c.kind === 'item' && !c.item.locked) items.push({ i, item: c.item });
   });
   for (let a = 0; a < items.length; a++) {
     for (let b = a + 1; b < items.length; b++) {
