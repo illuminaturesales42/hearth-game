@@ -563,6 +563,186 @@ export const ORDERS: readonly OrderDef[] = [
     resolution: 'Emberhollow isn’t just restored — it’s growing. The light stays lit, and it reaches further than anyone dreamed.',
     rewardEnergy: 22, rewardCoins: 750,
   },
+
+  // ============================================================
+  // Chapter 5 — The Long Winter. The town’s first winter together.
+  // Not a threat to survive, but a season to share: warmth stored,
+  // ships guided in, neighbours minding neighbours. Gentle and cosy.
+  // ============================================================
+  {
+    id: 'c5-01', who: 'Bran the baker',
+    need: { chain: 'harvest', level: 4 },
+    text: 'First frost tonight. Fill a basket — no cupboard in this town goes bare in winter.',
+    resolution: 'Baskets go door to door. Winter finds Emberhollow ready, and unafraid.',
+    rewardEnergy: 22, rewardCoins: 760,
+  },
+  {
+    id: 'c5-02', who: 'Old Keeper Sorin',
+    need: { chain: 'hearthfire', level: 2 },
+    text: 'Keep the square’s hearth burning through the dark months. Kindle it well.',
+    resolution: 'The fire never dies now. Someone always tends it — that’s what a town is.',
+    rewardEnergy: 23, rewardCoins: 780,
+  },
+  {
+    id: 'c5-03', who: 'Fisher Joss',
+    need: { chain: 'keepsake', level: 5 },
+    text: 'The winter fleet needs strong nets — the good fish run cold and deep.',
+    resolution: 'Even in the grey months, the harbour gives. No one wants for supper.',
+    rewardEnergy: 23, rewardCoins: 800,
+  },
+  {
+    id: 'c5-04', who: 'Marta',
+    need: { chain: 'wood', level: 5 },
+    text: 'A new door for the schoolhouse — the children shouldn’t learn in a draught.',
+    resolution: 'A warm room, a full class. The town’s youngest carry its future now.',
+    rewardEnergy: 24, rewardCoins: 830,
+  },
+  {
+    id: 'c5-05', who: 'Wren the postmistress',
+    need: { chain: 'keepsake', level: 3 },
+    text: 'A bench in the post office. Folk linger in winter, and I don’t mind the company.',
+    resolution: 'The post office becomes the town’s warm heart — letters, gossip, and tea.',
+    rewardEnergy: 24, rewardCoins: 860,
+  },
+  {
+    id: 'c5-06', who: 'Bran the baker',
+    need: { chain: 'harvest', level: 3 },
+    text: 'A cake for the shortest night. We celebrate the dark — because we know the light.',
+    resolution: 'Midwinter, and the square is full of song. The dark holds no fear here.',
+    rewardEnergy: 25, rewardCoins: 900,
+  },
+  {
+    id: 'c5-07', who: 'Old Keeper Sorin',
+    need: { chain: 'hearthfire', level: 3 },
+    text: 'A ship’s caught in the sleet off the point. Blaze the beacon — bring her in.',
+    resolution: 'The beacon parts the storm. The crew stumble ashore to warmth and welcome.',
+    rewardEnergy: 25, rewardCoins: 940,
+  },
+  {
+    id: 'c5-08', who: 'Fisher Joss',
+    need: { chain: 'harvest', level: 2 },
+    text: 'Those half-frozen sailors need something hot before anything else.',
+    resolution: 'Strangers by the fire become friends by morning. Winter makes quick kin.',
+    rewardEnergy: 26, rewardCoins: 980,
+  },
+  {
+    id: 'c5-09', who: 'Marta',
+    need: { chain: 'keepsake', level: 6 },
+    text: 'Sorin’s chill has settled deep. Ready the rowboat — the healer’s a cove north.',
+    resolution: 'They fetch the healer through the snow. Sorin grumbles that he’s fine. He isn’t, quite — but he will be.',
+    rewardEnergy: 26, rewardCoins: 1020,
+  },
+  {
+    id: 'c5-10', who: 'Wren the postmistress',
+    need: { chain: 'wood', level: 6 },
+    text: 'Build the old keeper a snug cottage by the square — no more draughty tower for him.',
+    resolution: 'Sorin protests all the way to his own warm hearth, and is asleep by the fire within the hour.',
+    rewardEnergy: 27, rewardCoins: 1080,
+  },
+  {
+    id: 'c5-11', who: 'The whole village',
+    need: { chain: 'harvest', level: 5 },
+    text: 'Set the long table indoors. A midwinter feast — every soul, out of the cold.',
+    resolution: 'The hall glows against the dark. Outside, snow; inside, more warmth than any storm could take.',
+    rewardEnergy: 27, rewardCoins: 1140,
+  },
+  {
+    id: 'c5-12', who: 'Marta',
+    need: { chain: 'harvest', level: 6 },
+    text: 'The first thaw’s coming. A feast to thank the winter — and to greet the green.',
+    resolution: 'Icicles drip; a snowdrop shows by the well. Emberhollow weathered its winter, together. Spring is near.',
+    rewardEnergy: 28, rewardCoins: 1200,
+  },
+
+  // ============================================================
+  // Chapter 6 — Spring Tides. The green returns, and with it every
+  // good thing the town has grown toward: blossom, a wedding, new
+  // life, and a light that now guides a whole coast home. Joyful.
+  // ============================================================
+  {
+    id: 'c6-01', who: 'Marta',
+    need: { chain: 'keepsake', level: 4 },
+    text: 'Spring, and letters flooding in from every harbour the light touched. A desk to answer them all.',
+    resolution: 'Emberhollow’s become a name spoken warmly up and down the coast. The desk is never idle.',
+    rewardEnergy: 24, rewardCoins: 850,
+  },
+  {
+    id: 'c6-02', who: 'Fisher Joss',
+    need: { chain: 'keepsake', level: 6 },
+    text: 'I’m… asking Wren to marry me. Mend the good rowboat — I’ll do it out on the calm water.',
+    resolution: 'She says yes before he’s finished asking. The harbour cheers from the quay.',
+    rewardEnergy: 24, rewardCoins: 880,
+  },
+  {
+    id: 'c6-03', who: 'Bran the baker',
+    need: { chain: 'harvest', level: 3 },
+    text: 'A wedding cake, then — the finest this oven’s ever seen. No pressure.',
+    resolution: 'Three tiers, iced with spring flowers. Bran weeps a little, and blames the onions he wasn’t cutting.',
+    rewardEnergy: 25, rewardCoins: 920,
+  },
+  {
+    id: 'c6-04', who: 'Marta',
+    need: { chain: 'wood', level: 4 },
+    text: 'Chairs for the whole harbour — everyone sits for Joss and Wren.',
+    resolution: 'The square fills. Two people who found their way home are married under the light.',
+    rewardEnergy: 25, rewardCoins: 960,
+  },
+  {
+    id: 'c6-05', who: 'Old Keeper Sorin',
+    need: { chain: 'hearthfire', level: 3 },
+    text: 'Light the beacon for the wedding night — not to warn, just to shine. Because we can.',
+    resolution: 'The beam sweeps a calm sea, joyful for once. Sorin, mended and merry, dances badly and doesn’t care.',
+    rewardEnergy: 26, rewardCoins: 1000,
+  },
+  {
+    id: 'c6-06', who: 'Wren the postmistress',
+    need: { chain: 'harvest', level: 4 },
+    text: 'A basket for the sea-child’s first spring — she’s walking now, and hungry for everything.',
+    resolution: 'The child born at sea takes her first steps on solid, blooming ground. The town cheers her every wobble.',
+    rewardEnergy: 26, rewardCoins: 1050,
+  },
+  {
+    id: 'c6-07', who: 'Marta',
+    need: { chain: 'wood', level: 6 },
+    text: 'Build a cottage for the newlyweds, on the rise where you can see the whole harbour.',
+    resolution: 'Joss and Wren’s door opens to the sea and the light both. A fine place to begin.',
+    rewardEnergy: 27, rewardCoins: 1120,
+  },
+  {
+    id: 'c6-08', who: 'Bran the baker',
+    need: { chain: 'harvest', level: 5 },
+    text: 'Word’s out — folk are sailing in just for the Beacon Fair. Feast enough for a whole coast!',
+    resolution: 'Boats crowd the harbour. Emberhollow’s fair is famous now, from headland to headland.',
+    rewardEnergy: 27, rewardCoins: 1180,
+  },
+  {
+    id: 'c6-09', who: 'Fisher Joss',
+    need: { chain: 'keepsake', level: 5 },
+    text: 'Nets for every visiting boat — no one leaves our harbour empty-handed.',
+    resolution: 'The generosity that rebuilt the town now spills out to everyone who comes. It only ever grows.',
+    rewardEnergy: 28, rewardCoins: 1240,
+  },
+  {
+    id: 'c6-10', who: 'Old Keeper Sorin',
+    need: { chain: 'hearthfire', level: 3 },
+    text: 'A second beacon on the south point — the light should reach further still.',
+    resolution: 'Two lights now, watching the whole coast. No ship within sight of Emberhollow sails in the dark again.',
+    rewardEnergy: 28, rewardCoins: 1320,
+  },
+  {
+    id: 'c6-11', who: 'The whole village',
+    need: { chain: 'harvest', level: 5 },
+    text: 'One great table down the length of the square — everyone we’ve ever welcomed, home for the feast.',
+    resolution: 'Founders and returnees, neighbours and newcomers, all at one table. There are no strangers left in Emberhollow.',
+    rewardEnergy: 29, rewardCoins: 1400,
+  },
+  {
+    id: 'c6-12', who: 'Marta',
+    need: { chain: 'harvest', level: 6 },
+    text: 'One last fair, the greatest yet — for the town, for the light, for all of us who came home.',
+    resolution: 'The lights blaze; the harbour sings; and Marta, home for good, watches the town she saved go on without needing saving. Keep the light. It’s lit.',
+    rewardEnergy: 30, rewardCoins: 1600,
+  },
 ] as const;
 
 /** Chapters: metadata over the flat ORDERS spine. */
@@ -588,6 +768,14 @@ export const CHAPTERS: readonly {
   {
     id: 4, title: 'New Sails', start: 36, end: 48,
     cliffhanger: 'The beacon reaches further than anyone dreamed — and more are coming home.',
+  },
+  {
+    id: 5, title: 'The Long Winter', start: 48, end: 60,
+    cliffhanger: 'The town weathers its first winter together — and the first snowdrop shows.',
+  },
+  {
+    id: 6, title: 'Spring Tides', start: 60, end: 72,
+    cliffhanger: 'A wedding, new life, and a light that guides a whole coast home.',
   },
 ] as const;
 
