@@ -84,6 +84,9 @@ GLOBALKEY_TOL = 20
 # ids cut from already-transparent sheets: no keying — just crop the region and
 # trim to the sprite's alpha bounding box (+ small pad). Cleanest possible cut.
 AUTOCROP: set[str] = set()
+# ids that are a whole single-image file (icon, banner, frame, one card...) —
+# the crop box is ignored and the entire image is used at its native size.
+WHOLE: set[str] = set()
 
 
 def alpha_autocrop(im: Image.Image, pad_frac: float = 0.04) -> Image.Image:
@@ -182,6 +185,18 @@ def add(sheet: str, entries: dict[str, tuple[int, int, int, int]]) -> None:
         MANIFEST[k] = (sheet, v)
 
 
+def register_whole(ident: str, filename: str, opaque: bool = False) -> None:
+    """Register a whole single-image file as one asset id. Drop the PNG in
+    Core/Final Assets/Generated/ and call this in define(). Transparent art is
+    alpha-trimmed; pass opaque=True for full scenes (banners, cards, tiles)."""
+    key = f"gen_{ident}"
+    SHEETS[key] = f"Core/Final Assets/Generated/{filename}"
+    add(key, {ident: (0, 0, 1, 1)})  # box ignored — WHOLE takes the full image
+    WHOLE.add(ident)
+    if not opaque:
+        AUTOCROP.add(ident)
+
+
 def row(sheet: str, prefix: str, ids: list[str], x0: int, y0: int, x1: int, y1: int, inset: int = 0) -> None:
     """Evenly split [x0,x1] into len(ids) cells at rows y0..y1.
     `inset` shrinks each cell on every side — kills neighbour-sprite bleed."""
@@ -267,8 +282,8 @@ def slice_all() -> None:
             opened[key] = Image.open(sheet_path).convert("RGBA")
         if opened[key] is None:
             continue
-        if ident == "map_island_plate":
-            # whole painted plate, whatever resolution it was generated at
+        if ident in WHOLE or ident == "map_island_plate":
+            # take the whole image at whatever resolution it was generated at
             box = (0, 0, *opened[key].size)
         im = opened[key].crop(box)
         if ident in KEYED:

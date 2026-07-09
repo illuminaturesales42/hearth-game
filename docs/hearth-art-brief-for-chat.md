@@ -84,3 +84,86 @@ Work top to bottom — the order is roughly launch-priority. Paste one at a time
 - For sets (avatars, chapter cards, badges), ask it to **make the first one, then match the rest to it** so the set stays consistent.
 
 That's the full set — once these exist, HEARTH has every piece of art it needs.
+
+---
+
+## 🔧 Drop each batch into the game
+
+The moment you've generated a batch, this makes it live in the game.
+
+**Step 1 — Save the files.** Put every finished PNG in:
+`C:\Users\illum\OneDrive\Desktop\Hearth\Graphics and UI\Core\Final Assets\Generated\`
+**Save each item as its own PNG** (one file per icon / card / avatar / badge, etc.) — that's the foolproof path. Name them exactly as shown below.
+
+**Step 2 — Register them.** Open `tools/slice_assets.py`, find the `define()` function, and paste that batch's snippet **at the end of `define()`** (just before the final `define()` call line). Each uses the built-in helper `register_whole(id, filename, opaque=?)` — transparent cut-outs get alpha-trimmed automatically; pass `opaque=True` for full rectangular scenes (banners, cards, tiles).
+
+**Step 3 — Run it:** `python tools/slice_assets.py` — the art appears in `public/art/` and the game picks it up on next build. Done.
+
+> **If a batch came back as ONE combined sheet** (items in a padded grid) instead of separate files, use the grid cutter instead:
+> ```python
+> SHEETS["gen_fx"] = "Core/Final Assets/Generated/fx_sheet.png"
+> cells = grid_sheet_cells("gen_fx")          # auto-detects the grid by transparent gaps
+> ids = ["fx_burst_1", "fx_ring", "fx_orb_trail", "fx_levelup"]  # left→right, top→bottom
+> for (r, c), box in sorted(cells.items()):
+>     if r * 99 + c < len(ids):
+>         add("gen_fx", {ids[r * 99 + c]: box}); AUTOCROP.add(ids[r * 99 + c])
+> ```
+
+### Per-batch snippets (paste into `define()`)
+
+```python
+# Batch 1 — App icon
+register_whole("app_icon", "app_icon.png", opaque=True)
+
+# Batch 2 — Store banner (scene)
+register_whole("feature_graphic", "feature_graphic.png", opaque=True)
+
+# Batch 3 — Board frame (transparent centre)
+register_whole("board_frame", "board_frame.png")
+
+# Batch 4 — Board sparkle effects (save each effect as its own file)
+for _fx in ("fx_burst_1", "fx_burst_2", "fx_burst_3", "fx_burst_4", "fx_ring", "fx_orb_trail", "fx_levelup"):
+    register_whole(_fx, f"{_fx}.png")
+
+# Batch 5 — Chapter cards (scenes)
+for _n in range(1, 7):
+    register_whole(f"chapter_{_n}", f"chapter_{_n}.png", opaque=True)
+
+# Batch 6 — Friend avatars
+for _n in range(1, 7):
+    register_whole(f"avatar_{_n}", f"avatar_{_n}.png")
+
+# Batch 7 — Location cards (scenes)
+for _loc in ("lighthouse", "bakery", "market", "pier", "docks", "cove"):
+    register_whole(f"loc_{_loc}", f"loc_{_loc}.png", opaque=True)
+
+# Batch 8 — Collection badges
+for _c in ("timberline", "harvest", "hearthfire", "keepsakes", "builders"):
+    register_whole(f"crest_{_c}", f"crest_{_c}.png")
+
+# Batch 9 — Map markers
+for _m in ("marker_order", "marker_quest", "marker_glow", "marker_new"):
+    register_whole(_m, f"{_m}.png")
+
+# Batch 10 — Festival & wedding decorations
+for _p in ("prop_bunting", "prop_arch", "prop_lantern_string", "prop_maypole", "prop_flower_arch", "prop_banquet_table"):
+    register_whole(_p, f"{_p}.png")
+
+# Batch 11 — Fair / event banner (scene)
+register_whole("event_beacon_fair", "event_beacon_fair.png", opaque=True)
+
+# Batch 12 — Seasonal ground tiles (scenes)
+for _t in ("autumn", "twilight", "rose", "frost"):
+    register_whole(f"turf_{_t}", f"turf_{_t}.png", opaque=True)
+
+# Batch 13 — Story backdrops (scenes)
+for _s in ("warm", "night", "sea", "winter", "spring"):
+    register_whole(f"story_bg_{_s}", f"story_bg_{_s}.png", opaque=True)
+
+# Batch 14 — Extra character portraits
+register_whole("char_keeper_bust", "char_keeper_bust.png")
+register_whole("char_seachild_bust", "char_seachild_bust.png")
+```
+
+**One caveat:** slicing a batch makes each asset *available* to the game under its `id` (in `public/art/<id>.png`, looked up via `artUrl(id)`). A few already have a home and light up immediately (e.g. resource/board art). The new ones — board frame, chapter cards, avatars, crests, markers, festival props — need a **small one-line UI hookup** to appear in their spot (swap a CSS gradient for the avatar image, draw the frame around the board, show the card in the Journal, etc.). Those are quick — generate the art, then I (or whoever's in the code) point the relevant UI at the new `id`. The naming above is chosen to match where each will plug in.
+
