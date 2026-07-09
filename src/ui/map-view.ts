@@ -875,7 +875,9 @@ export class MapView {
     const nextUnlock = upcoming.length ? upcoming[0]! : -1; // the one being rebuilt now → scaffold
     const pieces: ScenePiece[] = [
       ...TOWN_TERRAIN.filter((t) => !FLAT.has(t.art) && delivered >= t.unlockAt),
-      ...TOWN_NATURE.filter((n) => stage >= n.stage && delivered >= n.unlockAt),
+      ...TOWN_NATURE.filter(
+        (n) => stage >= n.stage && delivered >= n.unlockAt && (n.untilStage === undefined || stage <= n.untilStage),
+      ),
       ...TOWN_BUILDINGS.filter((b) => delivered >= b.unlockAt || b.unlockAt <= ghostCutoff).map((b) => ({
         ...b,
         ruined: delivered < b.unlockAt,

@@ -60,6 +60,8 @@ SHEETS = {
     "trans_nature": "Core/Final Assets/Transparent/Nature.png",
     "trans_animals": "Core/Final Assets/Transparent/Animals.png",
     "trans_terrain": "Core/Final Assets/Transparent/Map terrain.png",
+    "trans_coastal": "Core/Final Assets/Transparent/Costal Effect.png",
+    "trans_buildmerge": "Core/Final Assets/Transparent/Build Merg.png",
 }
 
 # id -> (sheet_key, (x0, y0, x1, y1)) in native sheet pixels (all sheets 1536x1024
@@ -277,7 +279,7 @@ def slice_all() -> None:
         if ident in AUTOCROP:
             # transparent (or freshly-keyed) art: trim to the alpha bounding box
             im = alpha_autocrop(im)
-        elif ident.startswith(("item_", "res_", "action_", "energy_")):
+        elif ident.startswith(("item_", "res_", "action_", "energy_", "debris_")):
             im = clean_sprite(im)
         elif ident.startswith("town_"):
             im = clean_sprite(im, rel=0.03)  # gentle: buildings are one big mass
@@ -740,6 +742,44 @@ def define() -> None:
             ruinwip[f"town_ruin_{r}"] = b2[(r, 4)]
     add("trans_buildings2", ruinwip)
     for k in ruinwip:
+        AUTOCROP.add(k)
+
+    # ---- Storm debris (Coastal pack "Beached & Weathered", RGB-on-white) +
+    # dead trees (Nature.png, alpha) — early-game dressing that makes the
+    # Storm-Wrecked island read wrecked-but-alive, then clears as it restores.
+    debris = {
+        "debris_a": (10, 918, 118, 1012),   # driftwood pile
+        "debris_b": (120, 918, 214, 1012),  # broken planks
+        "debris_c": (222, 918, 308, 1012),  # smashed crate
+        "debris_d": (312, 918, 408, 1012),  # split barrel
+        "debris_e": (412, 918, 500, 1012),  # ship's wheel
+    }
+    add("trans_coastal", debris)
+    for k in debris:
+        KEYED.add(k)
+        KEYCOLOR[k] = (255, 255, 255)
+        TOLERANCE[k] = 30
+        # clean_sprite (via the debris_ prefix) drops the blue section label
+        # letters as small components, then autocrops — no AUTOCROP needed.
+    # tide pool + a shore rock cluster for coastal detail (same sheet)
+    coast_extra = {
+        "prop_tidepool": (832, 700, 962, 802),
+        "prop_shorerock": (8, 546, 100, 656),
+    }
+    add("trans_coastal", coast_extra)
+    for k in coast_extra:
+        KEYED.add(k)
+        KEYCOLOR[k] = (255, 255, 255)
+        TOLERANCE[k] = 30
+        AUTOCROP.add(k)
+    # dead/storm-bent trees from Nature.png (already alpha)
+    deadtrees = {
+        "tree_dead_a": (128, 636, 236, 804),
+        "tree_dead_b": (250, 636, 350, 804),
+        "tree_dead_c": (356, 636, 474, 804),
+    }
+    add("trans_nature", deadtrees)
+    for k in deadtrees:
         AUTOCROP.add(k)
 
 

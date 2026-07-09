@@ -18,6 +18,9 @@ export interface TownPiece {
   /** Which Buildings2 ruin/scaffold row (0..7) represents this building before
    *  it's restored. Omitted for props, which fall back to the shade filter. */
   ruinVariant?: number;
+  /** For transient dressing (storm debris, dead trees): the last homestead
+   *  stage at which this piece still shows. Omit for permanent pieces. */
+  untilStage?: number;
 }
 
 /** Buildings, in story order. One returns roughly every two deliveries. */
@@ -113,6 +116,21 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   // fences frame the farm and the garden once they're tended
   { art: 'fence_wood', x: 0.095, y: 0.685, w: 0.11, unlockAt: 16, stage: 0 },
   { art: 'fence_wood', x: 0.73, y: 0.705, w: 0.11, unlockAt: 10, stage: 0 },
+  // ── Storm wreckage: the island washed up broken but alive. Scattered at the
+  //    edges early, cleared away as Emberhollow is rebuilt (untilStage).
+  { art: 'debris_a', x: 0.62, y: 0.70, w: 0.06, unlockAt: 0, stage: 0, untilStage: 1 },
+  { art: 'debris_b', x: 0.35, y: 0.665, w: 0.055, unlockAt: 0, stage: 0, untilStage: 1 },
+  { art: 'debris_c', x: 0.50, y: 0.72, w: 0.045, unlockAt: 0, stage: 0, untilStage: 0 },
+  { art: 'debris_d', x: 0.815, y: 0.70, w: 0.035, unlockAt: 0, stage: 0, untilStage: 1 },
+  { art: 'debris_e', x: 0.19, y: 0.71, w: 0.05, unlockAt: 0, stage: 0, untilStage: 0 },
+  { art: 'debris_a', x: 0.44, y: 0.50, w: 0.045, unlockAt: 0, stage: 0, untilStage: 0 },
+  // storm-bent dead trees give way to healthy ones as the land heals
+  { art: 'tree_dead_a', x: 0.885, y: 0.43, w: 0.05, unlockAt: 0, stage: 0, untilStage: 2 },
+  { art: 'tree_dead_b', x: 0.145, y: 0.55, w: 0.045, unlockAt: 0, stage: 0, untilStage: 2 },
+  { art: 'tree_dead_c', x: 0.60, y: 0.31, w: 0.05, unlockAt: 0, stage: 0, untilStage: 1 },
+  // permanent coastal detail
+  { art: 'prop_tidepool', x: 0.90, y: 0.90, w: 0.08, unlockAt: 0, stage: 0 },
+  { art: 'prop_shorerock', x: 0.06, y: 0.84, w: 0.05, unlockAt: 0, stage: 0 },
 ] as const;
 
 /**
