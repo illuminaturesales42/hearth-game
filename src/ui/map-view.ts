@@ -845,6 +845,7 @@ export class MapView {
       smoke?: { dx: number; dy: number };
       decorId?: number;
       ruined?: boolean;
+      ruinVariant?: number;
     }
     const decor: ScenePiece[] = this.game.snapshot.decor.map((d) => ({
       art: d.art,
@@ -871,6 +872,7 @@ export class MapView {
       .map((b) => b.unlockAt)
       .sort((a, b) => a - b);
     const ghostCutoff = upcoming.length ? upcoming[Math.min(2, upcoming.length - 1)]! : -1;
+    const nextUnlock = upcoming.length ? upcoming[0]! : -1; // the one being rebuilt now → scaffold
     const pieces: ScenePiece[] = [
       ...TOWN_TERRAIN.filter((t) => !FLAT.has(t.art) && delivered >= t.unlockAt),
       ...TOWN_NATURE.filter((n) => stage >= n.stage && delivered >= n.unlockAt),
@@ -911,9 +913,30 @@ export class MapView {
         });
       }
       if (p.ruined) {
-        // storm-worn, not a grey ghost: keep the building's warmth but drop it
-        // into shadow. Rendered through a radial mask so the slice's square
-        // vignette backdrop dissolves — only the building's shade lingers.
+        // Purpose-built storm-damage / scaffold art (Buildings2). The next
+        // building to be restored shows as under-construction (scaffold); the
+        // ones further out show as storm-damaged ruins. Props with no variant
+        // fall back to the procedural shade.
+        const variant = p.ruinVariant;
+        let ruinArt: string | undefined;
+        if (variant !== undefined) {
+          const isNext = p.unlockAt === nextUnlock;
+          const wip = `town_wip_${variant}`;
+          const ruin = `town_ruin_${variant}`;
+          if (isNext && this.sprite(wip)) ruinArt = wip;
+          else if (this.sprite(ruin)) ruinArt = ruin;
+        }
+        const rimg = ruinArt ? this.sprite(ruinArt) : undefined;
+        if (rimg) {
+          const rw = p.w * W * (plate && BUILDING_INFO[p.art] ? 1.16 : 1);
+          const rh = rw * (rimg.naturalHeight / rimg.naturalWidth);
+          ctx.save();
+          ctx.globalAlpha = p.unlockAt === nextUnlock ? 0.97 : 0.85; // distant ruins recede a touch
+          ctx.drawImage(rimg, p.x * W - rw / 2, p.y * H - rh, rw, rh);
+          ctx.restore();
+          continue;
+        }
+        // fallback: procedural shade for props / any missing variant art
         ctx.save();
         ctx.globalAlpha = 0.55;
         ctx.drawImage(this.ruinShade(img, artId), p.x * W - w / 2, p.y * H - h, w, h);

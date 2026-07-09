@@ -388,6 +388,40 @@ def detect_merge_boxes(names: list[str], stages: int, pad: int = 5) -> dict[str,
     return out
 
 
+def _alpha_bands(proj: list[int], thr: int, minlen: int) -> list[tuple[int, int]]:
+    out: list[tuple[int, int]] = []
+    s: int | None = None
+    for i, v in enumerate(proj):
+        on = v > thr
+        if on and s is None:
+            s = i
+        elif not on and s is not None:
+            if i - s >= minlen:
+                out.append((s, i))
+            s = None
+    if s is not None:
+        out.append((s, len(proj)))
+    return out
+
+
+def grid_sheet_cells(key: str, thr: int = 30, minlen: int = 40) -> dict[tuple[int, int], tuple[int, int, int, int]]:
+    """Reusable grid cutter for evenly-laid ALPHA sheets. Detects rows and
+    columns by transparent gaps (so it needs no hand-measured pitch and skips
+    thin/low-alpha label text between cells), returning {(r,c): box}. Callers
+    name the cells and add them to AUTOCROP so each is alpha-trimmed + padded.
+    Generalises detect_merge_boxes' content-aware approach to a 2-D grid."""
+    import numpy as np
+
+    al = np.asarray(Image.open(SRC / SHEETS[key]).convert("RGBA"))[:, :, 3]
+    rows = _alpha_bands(list((al > 60).sum(1)), thr, minlen)
+    cols = _alpha_bands(list((al > 60).sum(0)), thr, minlen)
+    cells: dict[tuple[int, int], tuple[int, int, int, int]] = {}
+    for r, (y0, y1) in enumerate(rows):
+        for c, (x0, x1) in enumerate(cols):
+            cells[(r, c)] = (int(x0), int(y0), int(x1), int(y1))
+    return cells
+
+
 def define() -> None:
     # ---- batch34: merge item icons (the board's face) ----
     # ---- FINAL merge chains (Batch 3, cream bg, individually boxed) ----
@@ -691,6 +725,22 @@ def define() -> None:
         KEYED.add(k)
         KEYCOLOR[k] = (255, 255, 255)
         TOLERANCE[k] = 30
+
+    # ---- Ruined + under-construction building states (Buildings2.png, alpha ✓).
+    # 8 building rows × [under-construction, L1, L2, L3, damaged]. We cut the two
+    # states the town needs — col 0 (scaffold/WIP) and col 4 (storm-damaged) —
+    # into a shared library the map assigns per building, replacing the old
+    # procedural sepia ruin filter with purpose-built painted art. ----
+    b2 = grid_sheet_cells("trans_buildings2")
+    ruinwip: dict[str, tuple[int, int, int, int]] = {}
+    for r in range(8):
+        if (r, 0) in b2:
+            ruinwip[f"town_wip_{r}"] = b2[(r, 0)]
+        if (r, 4) in b2:
+            ruinwip[f"town_ruin_{r}"] = b2[(r, 4)]
+    add("trans_buildings2", ruinwip)
+    for k in ruinwip:
+        AUTOCROP.add(k)
 
 
 define()

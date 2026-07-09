@@ -15,24 +15,27 @@ export interface TownPiece {
   unlockAt: number;
   /** Chimney smoke offset (fraction of sprite size) for cosy stages. */
   smoke?: { dx: number; dy: number };
+  /** Which Buildings2 ruin/scaffold row (0..7) represents this building before
+   *  it's restored. Omitted for props, which fall back to the shade filter. */
+  ruinVariant?: number;
 }
 
 /** Buildings, in story order. One returns roughly every two deliveries. */
 export const TOWN_BUILDINGS: readonly TownPiece[] = [
   { art: 'prop_sign', x: 0.535, y: 0.56, w: 0.045, unlockAt: 1 },
-  { art: 'town_cottage', x: 0.27, y: 0.52, w: 0.17, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 } },
-  { art: 'town_bakery', x: 0.64, y: 0.485, w: 0.165, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 } },
+  { art: 'town_cottage', x: 0.27, y: 0.52, w: 0.17, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
+  { art: 'town_bakery', x: 0.64, y: 0.485, w: 0.165, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
   { art: 'prop_well', x: 0.475, y: 0.635, w: 0.055, unlockAt: 6 },
-  { art: 'town_market', x: 0.43, y: 0.44, w: 0.155, unlockAt: 8 },
-  { art: 'town_garden', x: 0.73, y: 0.66, w: 0.17, unlockAt: 10 },
-  { art: 'town_townhall', x: 0.505, y: 0.375, w: 0.185, unlockAt: 12 },
-  { art: 'town_workshop', x: 0.155, y: 0.43, w: 0.16, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 } },
-  { art: 'town_farm', x: 0.095, y: 0.635, w: 0.17, unlockAt: 16 },
-  { art: 'town_fisherhut', x: 0.865, y: 0.56, w: 0.165, unlockAt: 18 },
-  { art: 'town_sawmill', x: 0.21, y: 0.76, w: 0.165, unlockAt: 20 },
-  { art: 'town_blacksmith', x: 0.36, y: 0.72, w: 0.16, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 } },
-  { art: 'town_dock', x: 0.79, y: 0.84, w: 0.21, unlockAt: 22 },
-  { art: 'town_library', x: 0.585, y: 0.74, w: 0.165, unlockAt: 23 },
+  { art: 'town_market', x: 0.43, y: 0.44, w: 0.155, unlockAt: 8, ruinVariant: 7 },
+  { art: 'town_garden', x: 0.73, y: 0.66, w: 0.17, unlockAt: 10, ruinVariant: 4 },
+  { art: 'town_townhall', x: 0.505, y: 0.375, w: 0.185, unlockAt: 12, ruinVariant: 3 },
+  { art: 'town_workshop', x: 0.155, y: 0.43, w: 0.16, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
+  { art: 'town_farm', x: 0.095, y: 0.635, w: 0.17, unlockAt: 16, ruinVariant: 5 },
+  { art: 'town_fisherhut', x: 0.865, y: 0.56, w: 0.165, unlockAt: 18, ruinVariant: 6 },
+  { art: 'town_sawmill', x: 0.21, y: 0.76, w: 0.165, unlockAt: 20, ruinVariant: 1 },
+  { art: 'town_blacksmith', x: 0.36, y: 0.72, w: 0.16, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
+  { art: 'town_dock', x: 0.79, y: 0.84, w: 0.21, unlockAt: 22, ruinVariant: 5 },
+  { art: 'town_library', x: 0.585, y: 0.74, w: 0.165, unlockAt: 23, ruinVariant: 3 },
 ] as const;
 
 /** Friendly names + story links for tappable buildings. */
