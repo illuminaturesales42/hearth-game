@@ -51,6 +51,15 @@ SHEETS = {
     # people/time-of-day on top. Skipped gracefully until this file is generated
     # (see PLOT_MASK_map_island_plate.png + tools/make_plot_mask.py for the guide).
     "batch15_plate": "Core/Final Assets/Batch 15/map_island_plate.png",
+    # Transparent production sheets (2026-07-09): pre-cut alpha art — no keying,
+    # just alpha-autocrop each region (see AUTOCROP). Highest-quality source.
+    "trans_large": "Core/Final Assets/Transparent/Large transparent.png",
+    "trans_large2": "Core/Final Assets/Transparent/Large transparent2.png",
+    "trans_buildings2": "Core/Final Assets/Transparent/Buildings2.png",
+    "trans_merge": "Core/Final Assets/Transparent/Merg chain sprites.png",
+    "trans_nature": "Core/Final Assets/Transparent/Nature.png",
+    "trans_animals": "Core/Final Assets/Transparent/Animals.png",
+    "trans_terrain": "Core/Final Assets/Transparent/Map terrain.png",
 }
 
 # id -> (sheet_key, (x0, y0, x1, y1)) in native sheet pixels (all sheets 1536x1024
@@ -70,6 +79,21 @@ DARKEN: dict[str, float] = {}
 # holes the edge flood can't reach. Swept tightly so dark art pixels survive.
 GLOBALKEY: dict[str, tuple] = {}
 GLOBALKEY_TOL = 20
+# ids cut from already-transparent sheets: no keying — just crop the region and
+# trim to the sprite's alpha bounding box (+ small pad). Cleanest possible cut.
+AUTOCROP: set[str] = set()
+
+
+def alpha_autocrop(im: Image.Image, pad_frac: float = 0.04) -> Image.Image:
+    """Trim a transparent sprite to its alpha content + a little padding."""
+    im = im.convert("RGBA")
+    box = im.getchannel("A").getbbox()
+    if not box:
+        return im
+    w, h = im.size
+    pw = int((box[2] - box[0]) * pad_frac)
+    ph = int((box[3] - box[1]) * pad_frac)
+    return im.crop((max(0, box[0] - pw), max(0, box[1] - ph), min(w, box[2] + pw), min(h, box[3] + ph)))
 
 
 def remove_bg(im: Image.Image, tolerance: int = 52, key: tuple | None = None) -> Image.Image:
@@ -250,7 +274,10 @@ def slice_all() -> None:
             if ident in GLOBALKEY:
                 im = global_key(im, GLOBALKEY[ident])
             im = defringe(im)
-        if ident.startswith(("item_", "res_", "action_", "energy_")):
+        if ident in AUTOCROP:
+            # transparent (or freshly-keyed) art: trim to the alpha bounding box
+            im = alpha_autocrop(im)
+        elif ident.startswith(("item_", "res_", "action_", "energy_")):
             im = clean_sprite(im)
         elif ident.startswith("town_"):
             im = clean_sprite(im, rel=0.03)  # gentle: buildings are one big mass
@@ -514,6 +541,25 @@ def define() -> None:
         KEYED.add(k)
         KEYCOLOR[k] = (244, 240, 229)  # Batch 13/14 sheet cream
         TOLERANCE[k] = 34
+
+    # ---- Transparent hero assets (Large transparent.png, 1536×1024) — clean
+    # isolated replacements for the four scene-vignette buildings + the two
+    # keying-damaged villagers. Alpha-autocropped, no keying. ----
+    add("trans_large", {
+        "town_market": (10, 120, 405, 465),
+        "town_townhall": (405, 15, 752, 485),  # right edge before the stray garden lamp
+        "town_fisherhut": (775, 135, 1105, 475),
+        "town_bakery": (1095, 115, 1515, 475),
+        "npc_man": (225, 505, 455, 925),
+        "npc_child": (525, 515, 795, 925),
+    })
+    # "Large transparent.png" is actually RGB on WHITE — key the white (edge
+    # flood keeps interior whites like awning stripes), defringe, then autocrop.
+    for k in ("town_market", "town_townhall", "town_fisherhut", "town_bakery", "npc_man", "npc_child"):
+        KEYED.add(k)
+        KEYCOLOR[k] = (255, 255, 255)
+        TOLERANCE[k] = 30
+        AUTOCROP.add(k)
     # two real turf squares from the reference board — used as the cell
     # textures so the aligned checker carries the painted mossy look
     # board turf: green INTERIOR of Batch 6 grass tile (01_grass). The tile
