@@ -890,7 +890,9 @@ export class MapView {
       }
       const img = this.sprite(artId) ?? this.sprite(p.art);
       if (!img) continue;
-      const w = p.w * W;
+      // buildings read bigger against the detailed painted plate so the town
+      // stands out from the landscape; props/nature keep their scale.
+      const w = p.w * W * (plate && BUILDING_INFO[p.art] ? 1.16 : 1);
       const h = w * (img.naturalHeight / img.naturalWidth);
       if (p.decorId !== undefined) {
         this.decorHit.push({ x0: p.x * W - w / 2, y0: p.y * H - h, x1: p.x * W + w / 2, y1: p.y * H, id: p.decorId });

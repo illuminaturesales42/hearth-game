@@ -241,6 +241,9 @@ def slice_all() -> None:
             opened[key] = Image.open(sheet_path).convert("RGBA")
         if opened[key] is None:
             continue
+        if ident == "map_island_plate":
+            # whole painted plate, whatever resolution it was generated at
+            box = (0, 0, *opened[key].size)
         im = opened[key].crop(box)
         if ident in KEYED:
             im = remove_bg(im, TOLERANCE.get(ident, 52), KEYCOLOR.get(ident))
