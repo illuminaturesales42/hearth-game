@@ -14,3 +14,4 @@ tools/contact_sheet.png
 tools/verify_fixes.png
 test-results/
 playwright-report/
+tools/*_contact.png
