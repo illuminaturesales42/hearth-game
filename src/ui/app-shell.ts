@@ -121,6 +121,19 @@ export class AppShell {
     }
     const tidyBtn = document.getElementById('tidy-btn');
     if (tidyBtn) tidyBtn.addEventListener('click', () => game.tidy());
+    // Workshop toggle: appears once unlocked; flips the crate's spawn table.
+    const workshopBtn = document.getElementById('workshop-btn') as HTMLButtonElement | null;
+    if (workshopBtn) {
+      const syncWorkshop = () => {
+        workshopBtn.hidden = !game.workshopUnlocked();
+        const on = game.workshopMode();
+        workshopBtn.textContent = on ? '⚒ Workshop ✓' : '⚒ Workshop';
+        workshopBtn.classList.toggle('on', on);
+      };
+      workshopBtn.addEventListener('click', () => game.toggleProducerMode());
+      game.subscribe(syncWorkshop);
+      syncWorkshop();
+    }
     const duelCreate = document.getElementById('duel-create-btn');
     if (duelCreate) duelCreate.addEventListener('click', () => duel.start());
   }

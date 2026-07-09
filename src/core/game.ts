@@ -5,7 +5,7 @@
 import type { GameState, Item } from './types';
 import { chainDef, createBoard, dropItem, emptyIndices, findItem, findMergePair, itemAt, tidyBoard, toggleLock, trashMatching, withEmpty, withItem } from './board';
 import { accrueRegen, canSpend, grant, initialEnergy, spend } from './energy';
-import { BOARD_COLS, BOARD_ROWS, CHAPTERS, ENERGY, ORDERS, PRODUCER_INDEX, SPAWN_TABLE, stageFor } from '../data/economy';
+import { BOARD_COLS, BOARD_ROWS, CHAPTERS, ENERGY, ORDERS, PRODUCER_INDEX, RESOURCE_SPAWN_TABLE, SPAWN_TABLE, WORKSHOP_UNLOCK_AT, sellValue, stageFor } from '../data/economy';
 import { appendEntry, composeEntry, rolloverStats } from './chronicle';
 import { newlyEarned } from './achievements';
 import { questsForDay } from '../data/daily-quests';
@@ -34,6 +34,7 @@ export type GameEvent =
   | { type: 'spawn'; index: number }
   | { type: 'merge'; index: number; item: Item }
   | { type: 'reject'; index: number; reason: 'energy' | 'full' | 'invalid' }
+  | { type: 'sold'; coins: number }
   | { type: 'delivered'; orderId: string; resolution: string; rewardEnergy: number; rewardCoins: number }
   | { type: 'action'; actionId: string; energy: number }
   | { type: 'chest'; coins: number }
@@ -266,7 +267,8 @@ export class Game {
       this.emit({ type: 'reject', index: PRODUCER_INDEX, reason: 'full' });
       return;
     }
-    const chain = pickSpawnChain(Math.random);
+    const table = this.workshopMode() ? RESOURCE_SPAWN_TABLE : SPAWN_TABLE;
+    const chain = pickSpawnChain(Math.random, table);
     const index = empties[Math.floor(Math.random() * empties.length)]!;
     const item: Item = { chain, level: 0, uid: this.state.nextUid };
     this.undoBoard = null;
@@ -277,6 +279,35 @@ export class Game {
       nextUid: this.state.nextUid + 1,
     };
     this.emit({ type: 'spawn', index });
+  }
+
+  /** The Workshop side-economy unlocks part-way through Chapter 1. */
+  workshopUnlocked(): boolean {
+    return this.state.orderIndex >= WORKSHOP_UNLOCK_AT;
+  }
+
+  /** Whether the producer is currently spawning craft resources. */
+  workshopMode(): boolean {
+    return this.workshopUnlocked() && this.state.producerMode === 'workshop';
+  }
+
+  /** Flip the producer between story goods and craft resources. */
+  toggleProducerMode(): void {
+    if (!this.workshopUnlocked()) return;
+    const producerMode = this.state.producerMode === 'workshop' ? 'story' : 'workshop';
+    this.state = { ...this.state, producerMode };
+    this.emit({ type: 'state' });
+  }
+
+  /** Sell a board item for coins (a modest sink for surplus resources). */
+  sellItem(index: number): number {
+    const it = itemAt(this.state.board, index);
+    if (!it || it.locked) return 0;
+    const coins = sellValue(it.level);
+    this.undoBoard = null;
+    this.state = { ...this.state, coins: this.state.coins + coins, board: withEmpty(this.state.board, index) };
+    this.emit({ type: 'sold', coins });
+    return coins;
   }
 
   /** Session-only snapshot for single-step merge undo (never saved). */
@@ -867,12 +898,15 @@ function hashCode(s: string): number {
   return h;
 }
 
-export function pickSpawnChain(rand: () => number): Item['chain'] {
-  const total = SPAWN_TABLE.reduce((s, e) => s + e.weight, 0);
+export function pickSpawnChain(
+  rand: () => number,
+  table: readonly { chain: Item['chain']; weight: number }[] = SPAWN_TABLE,
+): Item['chain'] {
+  const total = table.reduce((s, e) => s + e.weight, 0);
   let roll = rand() * total;
-  for (const e of SPAWN_TABLE) {
+  for (const e of table) {
     roll -= e.weight;
     if (roll <= 0) return e.chain;
   }
-  return SPAWN_TABLE[SPAWN_TABLE.length - 1]!.chain;
+  return table[table.length - 1]!.chain;
 }

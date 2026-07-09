@@ -244,6 +244,8 @@ export interface GameState {
   /** Consecutive duel wins → reward multiplier. */
   duelStreak: number;
   coins: number;
+  /** Producer mode: 'story' goods or 'workshop' craft resources (defaults story). */
+  producerMode?: 'story' | 'workshop';
   xp: number;
   orderIndex: number;
   storySeen: readonly string[];

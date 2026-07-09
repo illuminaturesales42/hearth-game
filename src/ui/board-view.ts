@@ -3,7 +3,7 @@
  */
 import type { Game } from '../core/game';
 import { chainDef } from '../core/board';
-import { PRODUCER_INDEX } from '../data/economy';
+import { PRODUCER_INDEX, sellValue } from '../data/economy';
 import { artUrl, tileMarkup } from './art';
 
 export class BoardView {
@@ -231,6 +231,16 @@ export class BoardView {
       lockBtn.textContent = item.locked ? '🔓 Unlock' : '🔒 Lock';
       lockBtn.onclick = () => {
         this.game.toggleLock(index);
+        modal.hidden = true;
+      };
+    }
+    // Sell this item for coins (a modest sink for surplus, esp. resources)
+    const sellBtn = document.getElementById('item-sell') as HTMLButtonElement | null;
+    if (sellBtn) {
+      sellBtn.textContent = `Sell +${sellValue(item.level)}`;
+      sellBtn.disabled = !!item.locked;
+      sellBtn.onclick = () => {
+        this.game.sellItem(index);
         modal.hidden = true;
       };
     }

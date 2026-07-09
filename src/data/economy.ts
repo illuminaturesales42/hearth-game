@@ -122,6 +122,29 @@ export const SPAWN_TABLE: readonly { chain: ChainId; weight: number }[] = [
   { chain: 'keepsake', weight: 18 },
 ];
 
+/**
+ * The Workshop side-economy. Once unlocked, the producer can be switched to
+ * "workshop" mode to spawn craft resources instead of story goods — kept fully
+ * separate from SPAWN_TABLE so it never dilutes order pacing. Resources are
+ * earned into coins (sold or via Town Requests), never into energy or power.
+ */
+export const RESOURCE_SPAWN_TABLE: readonly { chain: ChainId; weight: number }[] = [
+  { chain: 'stone', weight: 22 },
+  { chain: 'clay', weight: 18 },
+  { chain: 'flowers', weight: 16 },
+  { chain: 'water', weight: 16 },
+  { chain: 'herbs', weight: 14 },
+  { chain: 'wool', weight: 14 },
+];
+
+/** Deliveries completed before the Workshop mode unlocks (mid Chapter 1). */
+export const WORKSHOP_UNLOCK_AT = 6;
+
+/** Coins a sold item is worth: base + level, scaled by chain tier count. */
+export function sellValue(level: number): number {
+  return 2 + level * 2;
+}
+
 export const ENERGY = {
   /** Starting balance for a fresh save. */
   initial: 12,

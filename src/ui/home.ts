@@ -32,6 +32,9 @@ export class Home {
           if (ev.reason === 'full') toast('The board is full — merge or tidy to make room.');
           else if (ev.reason === 'energy') toast('Not enough energy — a real-world action refills it.');
           break;
+        case 'sold':
+          toast(`Sold for +${ev.coins} coins.`);
+          break;
         case 'delivered': {
           feedback.deliver();
           const order = ORDERS.find((o) => o.id === ev.orderId);
