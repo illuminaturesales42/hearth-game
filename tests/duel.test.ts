@@ -10,6 +10,7 @@ import {
 } from '../src/core/duel';
 import { findMergePair } from '../src/core/board';
 import { Game } from '../src/core/game';
+import { ACHIEVEMENTS } from '../src/core/achievements';
 
 describe('duel engine', () => {
   it('creates a full board with mergeable pairs', () => {
@@ -73,7 +74,9 @@ describe('duel → repository → story', () => {
     g.finishDuel(true, [{ chain: 'wood', level: 2 }], 100);
     expect(g.duelStreak).toBe(1);
     expect(g.repository.some((r) => r.chain === 'wood' && r.level === 2)).toBe(true);
-    expect(g.snapshot.coins).toBe(coinsBefore + Math.round(100 * duelMultiplier(1)));
+    // duel coins + the first-win achievement payoff granted in the same sweep
+    const firstWin = ACHIEVEMENTS.find((a) => a.id === 'first-duel-win')!.coins;
+    expect(g.snapshot.coins).toBe(coinsBefore + Math.round(100 * duelMultiplier(1)) + firstWin);
   });
 
   it('a loss resets the streak with no other penalty', () => {

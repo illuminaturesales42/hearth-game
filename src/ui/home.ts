@@ -94,7 +94,11 @@ export class Home {
           break;
         case 'achievement':
           feedback.chime(660);
-          toast(`${ev.icon} Achievement: ${ev.title}`);
+          toast(`${ev.icon} Achievement: ${ev.title} · +${ev.coins} coins`);
+          break;
+        case 'milestone':
+          feedback.chapter();
+          this.showReward(`${ev.days}-day streak — ${ev.title}`, `${ev.note} +${ev.coins} coins`);
           break;
         case 'questDone':
           feedback.chime(587);

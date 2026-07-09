@@ -223,6 +223,8 @@ export interface GameState {
   achievements: readonly string[];
   /** Daily-quest ids claimed today (rotate with stats.day). */
   questsClaimed: readonly string[];
+  /** Streak-milestone ids already celebrated (never re-awarded). */
+  milestonesSeen?: readonly string[];
   flags: FlagsState;
   board: BoardState;
   energy: EnergyState;

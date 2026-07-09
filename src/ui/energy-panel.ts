@@ -7,6 +7,7 @@ import type { Game } from '../core/game';
 import type { EnergyAction } from '../core/types';
 import { DAILY_GAUGE, featuredActions, moreActions } from '../data/actions';
 import { chestDaysLeft, doneCount } from '../core/actions';
+import { nextMilestone } from '../data/milestones';
 import { capturePhoto } from './photo-action';
 import { runMotion } from './motion-action';
 import { actionIcon } from './art';
@@ -56,6 +57,16 @@ export class EnergyPanel {
     if (fill) fill.style.width = `${pct}%`;
     el('energy-streak')!.textContent = `${s.actions.streak}`;
     el('energy-chest')!.textContent = `${chestDaysLeft(s.actions)}`;
+    const ms = el('energy-milestone');
+    if (ms) {
+      const next = nextMilestone(s.actions.streak);
+      if (next) {
+        ms.textContent = `Next milestone: ${next.title} at ${next.at} days — +${next.coins} coins.`;
+        ms.hidden = false;
+      } else {
+        ms.hidden = true;
+      }
+    }
 
     const list = el('energy-list');
     if (list) {

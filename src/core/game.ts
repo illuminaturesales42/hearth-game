@@ -8,7 +8,8 @@ import { accrueRegen, canSpend, grant, initialEnergy, spend } from './energy';
 import { BOARD_COLS, BOARD_ROWS, CHAPTERS, ENERGY, ORDERS, PRODUCER_INDEX, RESOURCE_SPAWN_TABLE, SPAWN_TABLE, WORKSHOP_UNLOCK_AT, sellValue, stageFor } from '../data/economy';
 import { appendEntry, composeEntry, rolloverStats } from './chronicle';
 import { newlyEarned } from './achievements';
-import { questsForDay } from '../data/daily-quests';
+import { questMultiplier, questsForDay } from '../data/daily-quests';
+import { newMilestones } from '../data/milestones';
 import { CURRENT_VERSION, defaultPrefs, loadState, saveState } from './save';
 import { applySnapshot, initialLedger } from '../health/health-energy';
 import type { HealthSnapshot } from '../health/health-provider';
@@ -48,8 +49,9 @@ export type GameEvent =
   | { type: 'flashback'; text: string; energy: number }
   | { type: 'stargaze'; energy: number; moon: string }
   | { type: 'kindness'; energy: number; selfie: boolean }
-  | { type: 'achievement'; id: string; title: string; icon: string }
+  | { type: 'achievement'; id: string; title: string; icon: string; coins: number }
   | { type: 'questDone'; label: string; coins: number }
+  | { type: 'milestone'; days: number; coins: number; title: string; note: string }
   | { type: 'chronicle'; day: string }
   | { type: 'bond'; villagerId: string; name: string; hearts: number; grew: boolean }
   | { type: 'upgrade'; art: string; tier: number; coins: number }
@@ -203,19 +205,30 @@ export class Game {
     const extra: GameEvent[] = [];
     if (!this.processing) {
       this.processing = true;
+      const streak = this.state.actions.streak;
+      const mult = questMultiplier(streak);
       for (const q of questsForDay(this.state.stats.day)) {
         if (!this.state.questsClaimed.includes(q.id) && q.progress(this.state) >= q.target) {
+          const coins = Math.round(q.coins * mult); // regulars earn a little more
           this.state = {
             ...this.state,
             questsClaimed: [...this.state.questsClaimed, q.id],
-            coins: this.state.coins + q.coins,
+            coins: this.state.coins + coins,
           };
-          extra.push({ type: 'questDone', label: q.label, coins: q.coins });
+          extra.push({ type: 'questDone', label: q.label, coins });
         }
       }
       for (const a of newlyEarned(this.state)) {
-        this.state = { ...this.state, achievements: [...this.state.achievements, a.id] };
-        extra.push({ type: 'achievement', id: a.id, title: a.title, icon: a.icon });
+        this.state = { ...this.state, achievements: [...this.state.achievements, a.id], coins: this.state.coins + a.coins };
+        extra.push({ type: 'achievement', id: a.id, title: a.title, icon: a.icon, coins: a.coins });
+      }
+      for (const m of newMilestones(streak, this.state.milestonesSeen ?? [])) {
+        this.state = {
+          ...this.state,
+          milestonesSeen: [...(this.state.milestonesSeen ?? []), m.id],
+          coins: this.state.coins + m.coins,
+        };
+        extra.push({ type: 'milestone', days: m.at, coins: m.coins, title: m.title, note: m.note });
       }
       this.processing = false;
     }
