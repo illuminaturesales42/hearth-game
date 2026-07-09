@@ -431,6 +431,97 @@ export const ORDERS: readonly OrderDef[] = [
     resolution: 'The eleventh letter was to Emberhollow itself: "Keep the light. I’m coming home." She is. The fair blazes till dawn.',
     rewardEnergy: 16, rewardCoins: 400,
   },
+
+  // ============================================================
+  // Chapter 4 — New Sails. With the true beacon lit, the ships and
+  // people the storm once scattered begin finding their way back.
+  // Emberhollow isn’t only restored now — it’s growing. A warm arc
+  // about homecoming, welcome, and a town that outlasts its worst night.
+  // ============================================================
+  {
+    id: 'c4-01', who: 'Wren the postmistress',
+    need: { chain: 'hearthfire', level: 1 },
+    text: 'A sail on the horizon, holding to the light. Hang a lantern so they know they’re seen.',
+    resolution: 'It’s the Marigold’s lost crew — carried off the night of the storm, guided home at last.',
+    rewardEnergy: 16, rewardCoins: 410,
+  },
+  {
+    id: 'c4-02', who: 'Fisher Joss',
+    need: { chain: 'harvest', level: 2 },
+    text: 'They’re half-starved and salt-worn. Something hot in their hands first.',
+    resolution: 'Over the food they talk: they sailed north with Marta, all those years, and never stopped hoping.',
+    rewardEnergy: 16, rewardCoins: 425,
+  },
+  {
+    id: 'c4-03', who: 'Old Keeper Sorin',
+    need: { chain: 'wood', level: 4 },
+    text: 'Their eldest can barely stand. Build a chair by my fire for him.',
+    resolution: 'He was the keeper before Sorin. The two old men sit late, and forgive each other everything.',
+    rewardEnergy: 17, rewardCoins: 445,
+  },
+  {
+    id: 'c4-04', who: 'Bran the baker',
+    need: { chain: 'harvest', level: 3 },
+    text: 'There’s a child among them — born at sea, never seen a harbour. Bake her a cake.',
+    resolution: 'The town’s first cake for its newest arrival. Emberhollow remembers how to celebrate a beginning.',
+    rewardEnergy: 17, rewardCoins: 465,
+  },
+  {
+    id: 'c4-05', who: 'Marta',
+    need: { chain: 'keepsake', level: 4 },
+    text: 'A writing desk. I’ll send to every family the light might reach.',
+    resolution: 'The letters go out — no longer warnings, but invitations. Come home. The light is lit.',
+    rewardEnergy: 18, rewardCoins: 485,
+  },
+  {
+    id: 'c4-06', who: 'Wren the postmistress',
+    need: { chain: 'keepsake', level: 1 },
+    text: 'Copies for every harbour down the coast. Paper — a great deal of it.',
+    resolution: 'Word runs the coastline like a tide. More sails turn toward Emberhollow.',
+    rewardEnergy: 18, rewardCoins: 505,
+  },
+  {
+    id: 'c4-07', who: 'Fisher Joss',
+    need: { chain: 'keepsake', level: 5 },
+    text: 'The fleet’s growing faster than our nets. Bring more — good, strong ones.',
+    resolution: 'The harbour bustles as it hasn’t in a generation. Joss can’t stop grinning.',
+    rewardEnergy: 18, rewardCoins: 525,
+  },
+  {
+    id: 'c4-08', who: 'Bran the baker',
+    need: { chain: 'harvest', level: 4 },
+    text: 'A basket of provisions for the newcomers’ first week. No one arrives hungry here.',
+    resolution: 'The town shares what the storm nearly took from it. It’s enough. It’s always enough now.',
+    rewardEnergy: 19, rewardCoins: 550,
+  },
+  {
+    id: 'c4-09', who: 'Old Keeper Sorin',
+    need: { chain: 'hearthfire', level: 2 },
+    text: 'The square’s too full for one fire. Kindle a second hearth.',
+    resolution: 'Two fires burning now, and room around both. Warmth to spare, and to give.',
+    rewardEnergy: 19, rewardCoins: 570,
+  },
+  {
+    id: 'c4-10', who: 'Marta',
+    need: { chain: 'wood', level: 6 },
+    text: 'The old keeper’s family need a home. Build a cottage where the ruin stood.',
+    resolution: 'A warm-windowed cottage rises on the last bare plot. Not a shell — a home.',
+    rewardEnergy: 20, rewardCoins: 600,
+  },
+  {
+    id: 'c4-11', who: 'The whole village',
+    need: { chain: 'harvest', level: 5 },
+    text: 'A welcome feast — every soul who found their way back, at one long table.',
+    resolution: 'Strangers become neighbours over shared bread. By dessert, no one’s a stranger at all.',
+    rewardEnergy: 20, rewardCoins: 640,
+  },
+  {
+    id: 'c4-12', who: 'Marta',
+    need: { chain: 'harvest', level: 6 },
+    text: 'Make it a fair to remember. The Beacon Fair — from now on, every autumn.',
+    resolution: 'Emberhollow isn’t just restored — it’s growing. The light stays lit, and it reaches further than anyone dreamed.',
+    rewardEnergy: 22, rewardCoins: 750,
+  },
 ] as const;
 
 /** Chapters: metadata over the flat ORDERS spine. */
@@ -452,6 +543,10 @@ export const CHAPTERS: readonly {
   {
     id: 3, title: 'The Ninth Night', start: 24, end: 36,
     cliffhanger: 'The true beacon is lit, Vale is undone, and Marta is home for good.',
+  },
+  {
+    id: 4, title: 'New Sails', start: 36, end: 48,
+    cliffhanger: 'The beacon reaches further than anyone dreamed — and more are coming home.',
   },
 ] as const;
 
