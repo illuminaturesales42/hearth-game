@@ -131,6 +131,29 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   // permanent coastal detail
   { art: 'prop_tidepool', x: 0.90, y: 0.90, w: 0.08, unlockAt: 0, stage: 0 },
   { art: 'prop_shorerock', x: 0.06, y: 0.84, w: 0.05, unlockAt: 0, stage: 0 },
+
+  // ── Phase 2c dressing: fill the open meadow so the healed town reads lush,
+  //    not empty. Flower beds, grass copses, path lamps and benches, placed in
+  //    the gaps between plots and keyed to stage so growth feels earned.
+  // wildflower beds bloom as the land recovers
+  { art: 'terrain_flowers1', x: 0.60, y: 0.865, w: 0.07, unlockAt: 0, stage: 2 },
+  { art: 'terrain_flowers2', x: 0.30, y: 0.885, w: 0.07, unlockAt: 0, stage: 2 },
+  { art: 'terrain_flowers1', x: 0.83, y: 0.75, w: 0.06, unlockAt: 0, stage: 3 },
+  { art: 'terrain_flowers2', x: 0.47, y: 0.83, w: 0.06, unlockAt: 0, stage: 3 },
+  { art: 'tree_flowerbush', x: 0.40, y: 0.63, w: 0.05, unlockAt: 0, stage: 3 },
+  { art: 'tree_flowerbush', x: 0.90, y: 0.64, w: 0.05, unlockAt: 0, stage: 4 },
+  // small copses of green break up the meadow
+  { art: 'tree_bush', x: 0.66, y: 0.80, w: 0.05, unlockAt: 0, stage: 1 },
+  { art: 'tree_bush', x: 0.12, y: 0.72, w: 0.05, unlockAt: 0, stage: 2 },
+  { art: 'tree_pine', x: 0.47, y: 0.31, w: 0.045, unlockAt: 0, stage: 2 },
+  { art: 'tree_oak', x: 0.30, y: 0.40, w: 0.06, unlockAt: 0, stage: 3 },
+  { art: 'prop_rock', x: 0.70, y: 0.885, w: 0.035, unlockAt: 0, stage: 1 },
+  { art: 'prop_rock', x: 0.55, y: 0.90, w: 0.03, unlockAt: 0, stage: 2 },
+  // lamplight lines the square and the paths once the town stirs at dusk
+  { art: 'prop_lamp', x: 0.66, y: 0.62, w: 0.028, unlockAt: 0, stage: 3 },
+  { art: 'prop_lamp', x: 0.30, y: 0.68, w: 0.028, unlockAt: 0, stage: 3 },
+  { art: 'prop_lamp', x: 0.50, y: 0.80, w: 0.028, unlockAt: 0, stage: 4 },
+  { art: 'prop_bench', x: 0.44, y: 0.68, w: 0.055, unlockAt: 0, stage: 4 },
 ] as const;
 
 /**

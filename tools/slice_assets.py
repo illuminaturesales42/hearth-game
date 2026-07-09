@@ -758,6 +758,29 @@ def define() -> None:
     for k in ruinwip:
         AUTOCROP.add(k)
 
+    # ---- Cohesive building L2/L3 tiers (Buildings2 cols 2 & 3 = the SAME
+    # building upgraded, so a plot's L1→L2→L3 reads as one place levelling up).
+    # This replaces the Batch-5 tiers where several were broken (market L3 was a
+    # scaffold, bakery/library L3 were clipped slivers) or a resolution/style
+    # step from the hero L1s. Each building borrows the Buildings2 row that its
+    # ruin/scaffold already uses (BUILDING_RUIN_VARIANT in town-layout.ts). ----
+    BUILDING_RUIN_VARIANT = {
+        "town_cottage": 0, "town_bakery": 2, "town_market": 7, "town_garden": 4,
+        "town_townhall": 3, "town_workshop": 1, "town_farm": 5, "town_fisherhut": 6,
+        "town_sawmill": 1, "town_blacksmith": 2, "town_dock": 5, "town_library": 3,
+    }
+    tiers: dict[str, tuple[int, int, int, int]] = {}
+    for art, v in BUILDING_RUIN_VARIANT.items():
+        if (v, 2) in b2:
+            tiers[f"{art}_l2"] = b2[(v, 2)]
+        if (v, 3) in b2:
+            tiers[f"{art}_l3"] = b2[(v, 3)]
+    add("trans_buildings2", tiers)  # overrides the Batch-5 tier definitions
+    for k in tiers:
+        KEYED.discard(k)  # Buildings2 is alpha — no keying, just autocrop
+        KEYCOLOR.pop(k, None)
+        AUTOCROP.add(k)
+
     # ---- Storm debris (Coastal pack "Beached & Weathered", RGB-on-white) +
     # dead trees (Nature.png, alpha) — early-game dressing that makes the
     # Storm-Wrecked island read wrecked-but-alive, then clears as it restores.
