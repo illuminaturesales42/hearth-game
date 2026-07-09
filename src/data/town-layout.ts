@@ -207,4 +207,8 @@ export const DECOR_CATALOG: readonly DecorDef[] = [
   { art: 'prop_barrel', name: 'Rain barrel', cost: 20, w: 0.035 },
   { art: 'tree_pine', name: 'Pine sapling', cost: 30, w: 0.05 },
   { art: 'prop_well', name: 'Wishing well', cost: 60, w: 0.055 },
+  { art: 'terrain_flowers1', name: 'Wildflower bed', cost: 30, w: 0.06 },
+  { art: 'tree_oak', name: 'Old oak', cost: 45, w: 0.07 },
+  { art: 'prop_tidepool', name: 'Tide pool', cost: 40, w: 0.07 },
+  { art: 'prop_shorerock', name: 'Shore rocks', cost: 20, w: 0.05 },
 ] as const;

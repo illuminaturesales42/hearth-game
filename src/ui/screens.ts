@@ -8,7 +8,7 @@ import { COLLECTIONS, EVENTS, JOURNAL } from '../data/world';
 import { GRATITUDE } from '../data/gratitude';
 import { ACHIEVEMENTS } from '../core/achievements';
 import { BOARD_SKINS } from '../data/shop';
-import { BUILDING_INFO, TOWN_BUILDINGS } from '../data/town-layout';
+import { BUILDING_INFO, DECOR_CATALOG, TOWN_BUILDINGS } from '../data/town-layout';
 import { artUrl } from './art';
 import { toast } from './toast';
 
@@ -187,6 +187,16 @@ export class Screens {
       })
       .join('');
 
+    // ---- Town decorations: preview the decor catalogue + a CTA into the
+    // map's Decorate mode (where pieces are placed and paid for). ----
+    const decor = DECOR_CATALOG.map((d) => {
+      const url = artUrl(d.art);
+      const thumb = url
+        ? `<span class="decor-thumb" style="background-image:url(${url})"></span>`
+        : `<span class="decor-thumb"></span>`;
+      return `<div class="shop-decor">${thumb}<b>${esc(d.name)}</b><em>${d.cost}🪙</em></div>`;
+    }).join('');
+
     host.innerHTML =
       `<h2 class="screen-title">Market</h2>` +
       `<p class="screen-sub">Coins buy beauty and comfort — never power, never energy.</p>` +
@@ -196,6 +206,9 @@ export class Screens {
       (beautify
         ? `<p class="earn-label">Beautify Emberhollow</p><div class="shop-grid">${beautify}</div>`
         : '') +
+      `<p class="earn-label">Town decorations</p>` +
+      `<div class="shop-grid">${decor}</div>` +
+      `<button id="shop-decorate" class="btn-primary shop-cta">🪴 Decorate the town</button>` +
       `<h2 class="screen-title" style="margin-top:20px">Collections</h2>` +
       `<p class="earn-label">Achievements · ${earned.size}/${ACHIEVEMENTS.length}</p>` +
       `<div class="badge-grid">` +
@@ -256,5 +269,16 @@ export class Screens {
         }
       };
     });
+    // Jump to Home and open the map's Decorate mode to place decorations.
+    const decorateBtn = host.querySelector<HTMLButtonElement>('#shop-decorate');
+    if (decorateBtn) {
+      decorateBtn.onclick = () => {
+        (document.querySelector('[data-screen="home"]') as HTMLElement | null)?.click();
+        setTimeout(() => {
+          const db = document.getElementById('decor-btn') as HTMLButtonElement | null;
+          if (db && !db.classList.contains('on')) db.click();
+        }, 80);
+      };
+    }
   }
 }
