@@ -360,6 +360,19 @@ export class MapView {
     this.raf = requestAnimationFrame(step);
   }
 
+  /** Draw one frame of a 7-frame flame sprite strip, its base at (cx, groundY).
+   *  Reduced motion holds a single mid-flame frame. */
+  private drawFlame(ctx: CanvasRenderingContext2D, id: string, cx: number, groundY: number, w: number, t: number): void {
+    const strip = this.sprite(id);
+    if (!strip || !strip.naturalWidth) return;
+    const frames = 7;
+    const cw = Math.round(strip.naturalWidth / frames);
+    const ch = strip.naturalHeight;
+    const fi = this.reduce ? 3 : Math.floor(t / 90) % frames; // ~11fps flicker
+    const h = w * (ch / cw);
+    ctx.drawImage(strip, fi * cw, 0, cw, ch, cx - w / 2, groundY - h, w, h);
+  }
+
   private draw(t: number): void {
     const ctx = this.ctx;
     const cv = this.canvas;
@@ -991,6 +1004,16 @@ export class MapView {
       ctx.globalAlpha = alpha;
       ctx.drawImage(img, p.x * W - (w * scale) / 2, p.y * H - h * scale, w * scale, h * scale);
       ctx.globalAlpha = 1;
+      // a brief flame flourish as a building first rises — Emberhollow rekindled
+      if (born !== undefined && !this.reduce) {
+        const age = (performance.now() - born) / 900;
+        if (age < 1) {
+          ctx.save();
+          ctx.globalAlpha = (1 - age) * 0.85;
+          this.drawFlame(ctx, 'fx_flame_medium', p.x * W, p.y * H, w * (0.45 + age * 0.35), t);
+          ctx.restore();
+        }
+      }
       const dusk = hour >= 17 && hour < 21;
       const dawn = hour >= 5 && hour < 7;
       const dim = night || dusk || dawn;
@@ -999,7 +1022,8 @@ export class MapView {
       if (dim && BUILDING_INFO[p.art] && !this.reduce) {
         const cx = p.x * W;
         const cy = p.y * H - h * 0.4;
-        const k = night ? 0.46 : dusk ? 0.32 : 0.2;
+        // gentle candle-flicker, phase-varied per home so they don't pulse in sync
+        const k = (night ? 0.46 : dusk ? 0.32 : 0.2) * (0.93 + 0.07 * Math.sin(t / 820 + p.x * 40));
         const warm = ctx.createRadialGradient(cx, cy, 1, cx, cy, w * 0.6);
         warm.addColorStop(0, `rgba(255, 198, 120, ${k})`);
         warm.addColorStop(1, 'rgba(255, 190, 110, 0)');
@@ -1010,8 +1034,9 @@ export class MapView {
       if (dim && p.art === 'prop_lamp' && !this.reduce) {
         const lx = p.x * W;
         const ly = p.y * H;
+        const lampFlick = 0.82 + 0.18 * Math.abs(Math.sin(t / 118 + p.x * 25));
         const pool = ctx.createRadialGradient(lx, ly, 1, lx, ly, w * 2.6);
-        pool.addColorStop(0, 'rgba(255, 210, 130, 0.32)');
+        pool.addColorStop(0, `rgba(255, 210, 130, ${0.32 * (0.9 + 0.1 * (lampFlick - 0.82) / 0.18)})`);
         pool.addColorStop(1, 'rgba(255, 200, 120, 0)');
         ctx.fillStyle = pool;
         ctx.save();
@@ -1022,7 +1047,7 @@ export class MapView {
         ctx.fill();
         ctx.restore();
         const head = ctx.createRadialGradient(lx, ly - h * 0.82, 0, lx, ly - h * 0.82, w * 0.9);
-        head.addColorStop(0, 'rgba(255, 226, 150, 0.6)');
+        head.addColorStop(0, `rgba(255, 226, 150, ${0.6 * lampFlick})`);
         head.addColorStop(1, 'rgba(255, 226, 150, 0)');
         ctx.fillStyle = head;
         ctx.fillRect(lx - w, ly - h * 0.82 - w, w * 2, w * 2);
@@ -1190,6 +1215,44 @@ export class MapView {
       }
     }
 
+    // --- a gathering hearth-fire warms the town square once the plaza returns ---
+    if (delivered >= 6) {
+      const fx = W * 0.46;
+      const fy = H * 0.715;
+      // the gathering fire grows as Emberhollow heals: a spark, then a hearth, then a bonfire
+      const fireArt = delivered >= 16 ? 'fx_flame_large' : delivered >= 10 ? 'fx_flame_medium' : 'fx_flame_small';
+      const fw = W * (delivered >= 16 ? 0.084 : delivered >= 10 ? 0.07 : 0.056);
+      // warm, flattened ground glow pooling under the fire
+      const flicker = this.reduce ? 1 : 0.85 + 0.15 * Math.sin(t / 110);
+      const glow = ctx.createRadialGradient(fx, fy, 2, fx, fy, fw * 1.6);
+      glow.addColorStop(0, `rgba(255, 178, 92, ${0.5 * flicker})`);
+      glow.addColorStop(1, 'rgba(255, 168, 80, 0)');
+      ctx.save();
+      ctx.translate(fx, fy);
+      ctx.scale(1, 0.4);
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(0, 0, fw * 1.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      this.drawFlame(ctx, fireArt, fx, fy, fw, t);
+    }
+
+    // --- the forge burns once the blacksmith is raised (a working fire, day + night) ---
+    if (delivered >= 21) {
+      const gx = W * 0.36;
+      const gy = H * 0.70;
+      const fl = this.reduce ? 1 : 0.78 + 0.22 * Math.abs(Math.sin(t / 95));
+      const r = W * 0.052;
+      const fg = ctx.createRadialGradient(gx, gy, 1, gx, gy, r);
+      fg.addColorStop(0, `rgba(255, 150, 60, ${0.55 * fl})`);
+      fg.addColorStop(1, 'rgba(255, 128, 48, 0)');
+      ctx.fillStyle = fg;
+      ctx.beginPath();
+      ctx.arc(gx, gy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     // --- the painted lighthouse keeps its watch on the northern point ---
     {
       const img = this.sprite('prop_lighthouse');
@@ -1202,9 +1265,13 @@ export class MapView {
         ctx.drawImage(img, lx - lw / 2, baseY - lh, lw, lh);
         const oy = baseY - lh * 0.82; // the lantern room, ~82% up the sprite
         if (lit) {
+          // the beacon fire itself, burning in the lantern room
+          this.drawFlame(ctx, 'fx_flame_beacon', lx, oy + lh * 0.09, lw * 0.5, t);
           // warm lantern-room bloom
           const g = ctx.createRadialGradient(lx, oy, 2, lx, oy, lw * 0.55);
-          g.addColorStop(0, 'rgba(255, 232, 168, 0.8)');
+          // the beacon burns, not just glows — a gentle fire flicker on the bloom
+          const bFlick = this.reduce ? 1 : 0.78 + 0.22 * Math.abs(Math.sin(t / 130));
+          g.addColorStop(0, `rgba(255, 232, 168, ${0.8 * bFlick})`);
           g.addColorStop(1, 'rgba(255, 232, 168, 0)');
           ctx.fillStyle = g;
           ctx.beginPath();
@@ -1689,10 +1756,15 @@ export class MapView {
     if (!host) return;
     const delivered = this.game.snapshot.orderIndex;
     const order = ORDERS[delivered];
+    // Painted map pins (Batch 15) replace the emoji markers, with graceful fallback.
+    const mcIco = (art: string | null, emoji: string): string =>
+      art
+        ? `<span class="mc-ico mc-ico-art" style="background-image:url(${art})" aria-hidden="true"></span>`
+        : `<span class="mc-ico">${emoji}</span>`;
     const challenge = order
-      ? `<div class="map-challenge"><span class="mc-ico">📜</span>` +
+      ? `<div class="map-challenge">${mcIco(artUrl('pin_quest'), '📜')}` +
         `<div class="mc-body"><b>${order.who} needs a hand</b><span>${order.text}</span></div></div>`
-      : `<div class="map-challenge"><span class="mc-ico">✨</span>` +
+      : `<div class="map-challenge">${mcIco(artUrl('stake_star'), '✨')}` +
         `<div class="mc-body"><b>Chapter complete</b><span>Emberhollow shines. New challenges await in the next chapter.</span></div></div>`;
     const ch = chapterFor(Math.min(delivered, ORDERS.length - 1));
     const inChapter = Math.min(delivered, ch.end) - ch.start;
@@ -1707,23 +1779,42 @@ export class MapView {
         );
       })
       .join('');
+    // Painted chapter card (Batch 5) for the current story beat.
+    const chArt = artUrl(`chapter_${ch.id}`);
+    const chapterCard = chArt
+      ? `<div class="chapter-card" style="background-image:url(${chArt})" role="img" aria-label="Chapter ${ch.id}: ${ch.title}">` +
+        `<span class="chapter-card-cap">Chapter ${ch.id} · ${ch.title}</span></div>`
+      : '';
+    // Painted location vignettes (Batch 7) keyed to each restorable place.
+    const locArt: Record<string, string> = {
+      lighthouse: 'loc_lighthouse',
+      'bakers-row': 'loc_bakery',
+      market: 'loc_market',
+      pier: 'loc_pier',
+      'north-docks': 'loc_docks',
+      quarry: 'loc_cove',
+    };
     host.innerHTML =
       challenge +
       `<div class="map-tease">🌅 ${tomorrowLine(s)}</div>` +
       `<p class="map-locs-label">Today in Emberhollow</p><div class="dq-list">${quests}</div>` +
+      chapterCard +
       `<p class="map-locs-label">Chapter ${ch.id} · ${ch.title} · ${inChapter}/${ch.end - ch.start} orders · village ${Math.round(
         (delivered / ORDERS.length) * 100,
       )}% restored</p>` +
       `<div class="loc-list">` +
       MAP_LOCATIONS.map((l) => {
         const locked = delivered < l.unlockAt;
+        const thumb = artUrl(locArt[l.id] ?? '');
         return (
           `<div class="loc ${locked ? 'locked' : ''}">` +
+          (thumb ? `<div class="loc-thumb" style="background-image:url(${thumb})" aria-hidden="true"></div>` : '') +
+          `<div class="loc-body">` +
           `<div class="loc-main"><b>${l.name}</b>` +
           (locked
             ? `<span class="loc-lock">Locked · ${l.unlockAt} orders</span>`
             : `<span class="loc-lvl">Level ${l.level}</span>`) +
-          `</div><p>${locked ? 'Keep restoring the harbour to reach it.' : l.blurb}</p></div>`
+          `</div><p>${locked ? 'Keep restoring the harbour to reach it.' : l.blurb}</p></div></div>`
         );
       }).join('') +
       `</div>`;

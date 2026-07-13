@@ -20,7 +20,14 @@ export default defineConfig({
       // load fetches fresh from the tunnel. Flip back to false for the
       // production launch build to restore offline play + installability.
       selfDestroying: true,
-      includeAssets: ['art/*.png', 'icons/*.png'],
+      includeAssets: [
+        'art/*.png',
+        'icons/*.png',
+        'favicon.ico',
+        'favicon-16.png',
+        'favicon-32.png',
+        'apple-touch-icon.png',
+      ],
       manifest: {
         name: 'Hearth: Merge & Mystery',
         short_name: 'Hearth',

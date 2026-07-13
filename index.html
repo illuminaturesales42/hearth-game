@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
   <meta name="theme-color" content="#0f1626" />
   <title>Hearth: Merge &amp; Mystery</title>
+  <!-- App identity: favicon (tab), apple-touch (iOS home screen). The PWA
+       install icons are injected from vite.config's manifest. -->
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <!-- Warm up the weather API connection early so the reactive sky loads fast. -->
   <link rel="preconnect" href="https://api.open-meteo.com" crossorigin />
   <link rel="dns-prefetch" href="https://api.open-meteo.com" />
@@ -14,7 +20,8 @@
   <!-- First-load splash: painted emblem while the town wakes. -->
   <div id="splash" aria-hidden="true">
     <div class="splash-glow" aria-hidden="true"></div>
-    <img class="splash-wordmark" src="/art/wordmark_hearth.png" alt="Hearth — Merge · Care · Restore" fetchpriority="high" decoding="async" />
+    <img class="splash-emblem" src="/art/app_icon.png" alt="" aria-hidden="true" fetchpriority="high" decoding="async" />
+    <img class="splash-wordmark" src="/art/wordmark_hearth.png" alt="Hearth — Merge · Care · Restore" decoding="async" />
     <span class="splash-sub">Emberhollow is waking…</span>
   </div>
   <div id="app">

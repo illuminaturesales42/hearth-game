@@ -72,7 +72,7 @@ export class BoardView {
       el.innerHTML = '';
       if (c.kind === 'producer') {
         el.classList.add('producer');
-        if (!artUrl('prop_crate')) el.innerHTML = '<span class="glyph">📦</span>';
+        if (!artUrl('res_chest_closed')) el.innerHTML = '<span class="glyph">📦</span>';
       } else if (c.kind === 'item') {
         el.classList.add('item');
         const def = chainDef(c.item.chain);
@@ -326,6 +326,17 @@ export class BoardView {
     ring.style.top = `${c.y}px`;
     this.fxLayer.appendChild(ring);
     setTimeout(() => ring.remove(), 480);
+
+    // The ember-heart blooms at the merge — Hearth's signature juice (7-frame
+    // sprite strip, plays once). Only when motion is allowed (this.reduce guards).
+    if (artUrl('fx_heartfire')) {
+      const heart = document.createElement('div');
+      heart.className = 'fx-heart';
+      heart.style.left = `${c.x}px`;
+      heart.style.top = `${c.y}px`;
+      this.fxLayer.appendChild(heart);
+      setTimeout(() => heart.remove(), 620);
+    }
   }
 
   /** Deliver juice: an energy orb floats from the completed cell to the order card. */
@@ -349,6 +360,18 @@ export class BoardView {
       orb.style.opacity = '0.15';
     });
     setTimeout(() => orb.remove(), 640);
+
+    // the order lands: a heartfire bloom greets it at the order card
+    if (artUrl('fx_heartfire')) {
+      setTimeout(() => {
+        const heart = document.createElement('div');
+        heart.className = 'fx-heart';
+        heart.style.left = `${to.x}px`;
+        heart.style.top = `${to.y}px`;
+        this.fxLayer.appendChild(heart);
+        setTimeout(() => heart.remove(), 620);
+      }, 430);
+    }
   }
 
   private boardCentre(): { x: number; y: number } {
