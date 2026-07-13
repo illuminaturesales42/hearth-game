@@ -66,6 +66,54 @@ describe('migrations', () => {
     expect(store.has('hearth:save')).toBe(true);
   });
 
+  // The migration chain (MIGRATIONS) and the final null-guard in migrateState
+  // (save.ts) are two places that must stay in sync: a new required GameState
+  // key needs BOTH a migration step that adds it AND an entry in the guard.
+  // This fixture is a realistic v8 save — stripped of every key introduced
+  // after v8 — so if a future schema bump adds a guarded key without a
+  // migration, migrateState returns null here and this test fails.
+  const GUARDED_KEYS = [
+    'board',
+    'energy',
+    'actions',
+    'social',
+    'gratitude',
+    'settings',
+    'prefs',
+    'stats',
+    'chronicle',
+    'wellbeing',
+    'relationships',
+    'buildingUpgrades',
+  ] as const;
+
+  it('a genuine v8 save climbs the chain with every guarded key reconstructed', () => {
+    // Keys added after v8 by later migrations — absent from a real v8 save.
+    const postV8 = [
+      'prefs', // v9
+      'chronicle',
+      'stats',
+      'achievements',
+      'questsClaimed',
+      'flags', // v10
+      'wellbeing',
+      'decor',
+      'nextDecorId', // v11
+      'relationships', // v12
+      'buildingUpgrades', // v13
+    ];
+    const v8 = { ...Game.freshState(1000), version: 8 } as Record<string, unknown>;
+    for (const k of postV8) delete v8[k];
+
+    const migrated = migrateState(v8);
+    expect(migrated).not.toBeNull();
+    expect(migrated!.version).toBe(CURRENT_VERSION);
+    for (const key of GUARDED_KEYS) {
+      expect(migrated![key as keyof typeof migrated], `guarded key "${key}" must survive migration`).toBeDefined();
+      expect(migrated![key as keyof typeof migrated]).not.toBeNull();
+    }
+  });
+
   it('rejects garbage without throwing', () => {
     expect(migrateState(null)).toBeNull();
     expect(migrateState('nope')).toBeNull();
