@@ -10,13 +10,7 @@
  */
 import { localDayKey } from '../core/energy';
 import { track } from '../analytics';
-import {
-  completeFtue,
-  emptyCohort,
-  recordActive,
-  recordFtueStep,
-  summarize,
-} from '../core/retention';
+import { completeFtue, emptyCohort, recordActive, recordFtueStep, summarize } from '../core/retention';
 import type { CohortRecord, RetentionSummary } from '../core/retention';
 
 const KEY = 'hearth:cohort';
@@ -86,7 +80,7 @@ export class Metrics {
 export function exposeMetricsConsole(metrics: Metrics): void {
   (window as unknown as { hearthMetrics: () => void }).hearthMetrics = () => {
     const s = metrics.summary();
-    // eslint-disable-next-line no-console
+
     console.table({
       'Install day': s.installDay,
       'Days since install': s.daysSinceInstall,

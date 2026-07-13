@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RESOURCE_SPAWN_TABLE, SPAWN_TABLE, sellValue } from '../src/data/economy';
+import { RESOURCE_SPAWN_TABLE, SPAWN_TABLE } from '../src/data/economy';
 import { Game, pickSpawnChain } from '../src/core/game';
 
 const firstItemIndex = (g: Game) => g.snapshot.board.cells.findIndex((c) => c.kind === 'item');

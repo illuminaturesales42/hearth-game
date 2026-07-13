@@ -28,7 +28,10 @@ export class EnergyPanel {
         this.render();
       };
     game.subscribe((ev) => {
-      if (this.isOpen() && (ev.type === 'state' || ev.type === 'action' || ev.type === 'health' || ev.type === 'chest')) {
+      if (
+        this.isOpen() &&
+        (ev.type === 'state' || ev.type === 'action' || ev.type === 'health' || ev.type === 'chest')
+      ) {
         this.render();
       }
     });

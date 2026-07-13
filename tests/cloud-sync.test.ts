@@ -14,7 +14,7 @@ const env = (rev: number, save = '{"v":1}'): SyncEnvelope => ({ rev, updatedAt: 
 
 /** A one-row fake D1 that understands exactly the two statements we issue. */
 function fakeDb(seed: { rev: number; updated_at: number; save: string } | null = null) {
-  const state = { row: seed as { rev: number; updated_at: number; save: string } | null };
+  const state = { row: seed };
   const db: D1Like = {
     prepare(sql: string) {
       return {

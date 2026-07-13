@@ -14,10 +14,28 @@ export interface StreakMilestone {
 
 export const STREAK_MILESTONES: readonly StreakMilestone[] = [
   { id: 'ms-3', at: 3, coins: 40, title: 'Three Days Kindled', note: 'The hearth remembers a steady hand.' },
-  { id: 'ms-7', at: 7, coins: 90, title: 'A Week by the Fire', note: 'Emberhollow keeps a light in the window for you.' },
-  { id: 'ms-14', at: 14, coins: 180, title: 'A Fortnight’s Warmth', note: 'The village has grown used to your footsteps.' },
+  {
+    id: 'ms-7',
+    at: 7,
+    coins: 90,
+    title: 'A Week by the Fire',
+    note: 'Emberhollow keeps a light in the window for you.',
+  },
+  {
+    id: 'ms-14',
+    at: 14,
+    coins: 180,
+    title: 'A Fortnight’s Warmth',
+    note: 'The village has grown used to your footsteps.',
+  },
   { id: 'ms-30', at: 30, coins: 400, title: 'A Month of Mornings', note: 'The harbour feels like home now.' },
-  { id: 'ms-100', at: 100, coins: 1500, title: 'A Hundred Days’ Light', note: 'A keeper of the flame, in the oldest sense.' },
+  {
+    id: 'ms-100',
+    at: 100,
+    coins: 1500,
+    title: 'A Hundred Days’ Light',
+    note: 'A keeper of the flame, in the oldest sense.',
+  },
 ] as const;
 
 /** Milestones now reached but not yet celebrated. */

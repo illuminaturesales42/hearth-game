@@ -21,7 +21,13 @@ export interface WeatherNow {
 }
 
 /** Map a WMO weather code (Open-Meteo `weather_code`) to a render category. */
-export function weatherFromWmo(code: number, cloudCoverPct: number, windKph: number, precipMm: number, fetchedAt: number): WeatherNow {
+export function weatherFromWmo(
+  code: number,
+  cloudCoverPct: number,
+  windKph: number,
+  precipMm: number,
+  fetchedAt: number,
+): WeatherNow {
   let kind: WeatherKind = 'clear';
   if (code >= 95) kind = 'storm';
   else if ((code >= 71 && code <= 77) || code === 85 || code === 86) kind = 'snow';
@@ -59,11 +65,11 @@ export interface WorldMood {
    * Actions Affect the World"). Each 0..1 (or flag); the map reads these to
    * add gentle, non-punishing flourishes.
    */
-  bloom: number;        // nature photo / water → flowers bloom
-  gardenLush: number;   // water / stretch → gardens greener, vines grow
+  bloom: number; // nature photo / water → flowers bloom
+  gardenLush: number; // water / stretch → gardens greener, vines grow
   wellSparkle: boolean; // drink water → wells sparkle
   villagersOut: number; // walk → more villagers ambling outdoors
-  festive: number;      // long streak → festival decorations appear
+  festive: number; // long streak → festival decorations appear
   butterflies: boolean; // a flourishing garden draws butterflies
 }
 
@@ -87,9 +93,9 @@ function tally(counts: Record<string, number>, ids: readonly string[]): number {
 }
 
 // Which real-world gestures map to which action ids (see src/data/actions.ts).
-const WATER_IDS = ['water'] as const;                                            // Fill the Well
-const WALK_IDS = ['steps', 'stairs'] as const;                                   // Walk the Coast Road, Climb the Cliff Steps
-const STRETCH_IDS = ['stretch', 'squats'] as const;                              // Wake the Garden, Turn the Millstone
+const WATER_IDS = ['water'] as const; // Fill the Well
+const WALK_IDS = ['steps', 'stairs'] as const; // Walk the Coast Road, Climb the Cliff Steps
+const STRETCH_IDS = ['stretch', 'squats'] as const; // Wake the Garden, Turn the Millstone
 const NATURE_IDS = ['nature-photo', 'photo-outside', 'sunrise-photo', 'sunset-photo'] as const;
 
 export interface MoodInputs {
@@ -151,27 +157,51 @@ export function computeMood(inp: MoodInputs): WorldMood {
   const butterflies = bloom >= 0.6 && gardenLush >= 0.4;
 
   return {
-    weather: kind, cloudCover, precip, wind, sea, calm: inp.meditatedToday, restless, glow,
-    bloom, gardenLush, wellSparkle, villagersOut, festive, butterflies,
+    weather: kind,
+    cloudCover,
+    precip,
+    wind,
+    sea,
+    calm: inp.meditatedToday,
+    restless,
+    glow,
+    bloom,
+    gardenLush,
+    wellSparkle,
+    villagersOut,
+    festive,
+    butterflies,
   };
 }
 
 /** A short scene note for the progress label ("· soft rain, calm seas"). */
 export function moodCaption(m: WorldMood): string {
   const weather =
-    m.weather === 'rain' ? 'soft rain' :
-    m.weather === 'storm' ? 'a brooding storm' :
-    m.weather === 'snow' ? 'quiet snow' :
-    m.weather === 'fog' ? 'sea fog' :
-    m.weather === 'overcast' ? 'grey skies' : '';
+    m.weather === 'rain'
+      ? 'soft rain'
+      : m.weather === 'storm'
+        ? 'a brooding storm'
+        : m.weather === 'snow'
+          ? 'quiet snow'
+          : m.weather === 'fog'
+            ? 'sea fog'
+            : m.weather === 'overcast'
+              ? 'grey skies'
+              : '';
   const sea = m.calm ? 'still water' : m.sea >= 0.6 ? 'restless seas' : '';
   // One earned flourish, if any — the most "special" the day unlocked.
   const care =
-    m.festive >= 0.5 ? 'festival banners' :
-    m.butterflies ? 'butterflies about' :
-    m.bloom >= 0.6 ? 'flowers blooming' :
-    m.wellSparkle ? 'wells sparkling' :
-    m.gardenLush >= 0.6 ? 'gardens greening' : '';
+    m.festive >= 0.5
+      ? 'festival banners'
+      : m.butterflies
+        ? 'butterflies about'
+        : m.bloom >= 0.6
+          ? 'flowers blooming'
+          : m.wellSparkle
+            ? 'wells sparkling'
+            : m.gardenLush >= 0.6
+              ? 'gardens greening'
+              : '';
   return [weather, sea, care].filter(Boolean).join(', ');
 }
 

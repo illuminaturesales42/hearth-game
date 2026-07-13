@@ -19,7 +19,10 @@ export class BoardView {
   /** true once a pointer press has crossed the drag threshold */
   private dragging = false;
 
-  constructor(private game: Game, rootEl: HTMLElement) {
+  constructor(
+    private game: Game,
+    rootEl: HTMLElement,
+  ) {
     this.root = rootEl;
     this.fxLayer =
       document.getElementById('fx-layer') ??
@@ -78,7 +81,10 @@ export class BoardView {
         const def = chainDef(c.item.chain);
         const lock = c.item.locked ? '<span class="pin" aria-hidden="true">🔒</span>' : '';
         el.innerHTML = `${tileMarkup(c.item.chain, c.item.level)}<span class="lv">${c.item.level + 1}</span>${lock}`;
-        el.setAttribute('aria-label', `${def.levelNames[c.item.level]} level ${c.item.level + 1}${c.item.locked ? ', locked' : ''}`);
+        el.setAttribute(
+          'aria-label',
+          `${def.levelNames[c.item.level]} level ${c.item.level + 1}${c.item.locked ? ', locked' : ''}`,
+        );
         if (i === deliverable) el.classList.add('deliverable');
         if (i === this.selected) el.classList.add('selected');
         if (c.item.locked) el.classList.add('locked');
@@ -157,7 +163,7 @@ export class BoardView {
   }
 
   /** Promote a press into a drag once it crosses the movement threshold. */
-  private startDrag(e: PointerEvent): void {
+  private startDrag(_e: PointerEvent): void {
     this.dragging = true;
     clearTimeout(this.holdTimer);
     this.clearSelection();
@@ -336,7 +342,7 @@ export class BoardView {
     const from = this.cellCentre(this.lastDeliverable) ?? this.boardCentre();
     const target = document.getElementById('deliver-btn') ?? document.querySelector('.order-card');
     if (!target) return;
-    const tr = (target as HTMLElement).getBoundingClientRect();
+    const tr = target.getBoundingClientRect();
     const to = { x: tr.left + tr.width / 2, y: tr.top + tr.height / 2 };
     const orb = document.createElement('img');
     orb.src = url;

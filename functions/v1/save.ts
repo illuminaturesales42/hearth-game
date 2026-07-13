@@ -117,11 +117,10 @@ export async function onRequestPut(ctx: Ctx): Promise<Response> {
   const stored = await readEnvelope(ctx.env.DB, key);
   if (!acceptsWrite(stored, incoming)) return json(409, stored);
 
-  await ctx.env.DB
-    .prepare(
-      'INSERT INTO saves (device_key, rev, updated_at, save) VALUES (?, ?, ?, ?) ' +
-        'ON CONFLICT(device_key) DO UPDATE SET rev = excluded.rev, updated_at = excluded.updated_at, save = excluded.save',
-    )
+  await ctx.env.DB.prepare(
+    'INSERT INTO saves (device_key, rev, updated_at, save) VALUES (?, ?, ?, ?) ' +
+      'ON CONFLICT(device_key) DO UPDATE SET rev = excluded.rev, updated_at = excluded.updated_at, save = excluded.save',
+  )
     .bind(key, incoming.rev, incoming.updatedAt, incoming.save)
     .run();
   return json(200, { ok: true, rev: incoming.rev });

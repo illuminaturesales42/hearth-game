@@ -49,7 +49,10 @@ export class MeditationUI {
       `<p class="earn-label">Log a meditation you did</p>` +
       `<div class="med-log">` +
       LOG_MEDITATION.options
-        .map((min) => `<button class="med-log-btn" data-min="${min}">${min}m<span>+${loggedMinutesToEnergy(min)}</span></button>`)
+        .map(
+          (min) =>
+            `<button class="med-log-btn" data-min="${min}">${min}m<span>+${loggedMinutesToEnergy(min)}</span></button>`,
+        )
         .join('') +
       `</div>` +
       `<p class="med-log-note">Once a day, on your honour.</p>`;

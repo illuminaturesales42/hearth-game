@@ -1,8 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { createBoard, dropItem, findMergePair, tidyBoard, toggleLock, trashMatching, withItem } from '../src/core/board';
+import {
+  createBoard,
+  dropItem,
+  findMergePair,
+  tidyBoard,
+  toggleLock,
+  trashMatching,
+  withItem,
+} from '../src/core/board';
 import type { BoardState, Item } from '../src/core/types';
 
-const item = (chain: Item['chain'], level: number, uid: number, locked = false): Item => ({ chain, level, uid, locked });
+const item = (chain: Item['chain'], level: number, uid: number, locked = false): Item => ({
+  chain,
+  level,
+  uid,
+  locked,
+});
 
 // a 6x7 board with the producer at 21, seeded via withItem at given slots
 function seed(entries: Array<[number, Item]>): BoardState {

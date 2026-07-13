@@ -63,9 +63,22 @@ export function migrateState(raw: unknown): GameState | null {
     s = step(s);
   }
   if (s.version !== CURRENT_VERSION) return null;
-  if (!s.board || !s.energy || !s.actions || !s.social || !s.gratitude || !s.settings || !s.prefs || !s.stats || !s.chronicle || !s.wellbeing || !s.relationships || !s.buildingUpgrades)
+  if (
+    !s.board ||
+    !s.energy ||
+    !s.actions ||
+    !s.social ||
+    !s.gratitude ||
+    !s.settings ||
+    !s.prefs ||
+    !s.stats ||
+    !s.chronicle ||
+    !s.wellbeing ||
+    !s.relationships ||
+    !s.buildingUpgrades
+  )
     return null;
-  return s as GameState;
+  return s;
 }
 
 export function saveState(state: GameState): void {

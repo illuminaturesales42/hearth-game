@@ -3,10 +3,37 @@
  * UI layers subscribe; core stays DOM-free.
  */
 import type { GameState, Item } from './types';
-import { chainDef, createBoard, dropItem, emptyIndices, findItem, findMergePair, itemAt, maxLevel, tidyBoard, toggleLock, trashMatching, withEmpty, withItem } from './board';
+import {
+  chainDef,
+  createBoard,
+  dropItem,
+  emptyIndices,
+  findItem,
+  findMergePair,
+  itemAt,
+  maxLevel,
+  tidyBoard,
+  toggleLock,
+  trashMatching,
+  withEmpty,
+  withItem,
+} from './board';
 import { COLLECTIONS } from '../data/world';
 import { accrueRegen, canSpend, grant, initialEnergy, spend } from './energy';
-import { BOARD_COLS, BOARD_ROWS, CHAPTERS, ENERGY, ORDERS, PRODUCER_INDEX, RESOURCE_SPAWN_TABLE, SPAWN_TABLE, WORKSHOP_UNLOCK_AT, ZONE_STAGES, sellValue, stageFor } from '../data/economy';
+import {
+  BOARD_COLS,
+  BOARD_ROWS,
+  CHAPTERS,
+  ENERGY,
+  ORDERS,
+  PRODUCER_INDEX,
+  RESOURCE_SPAWN_TABLE,
+  SPAWN_TABLE,
+  WORKSHOP_UNLOCK_AT,
+  ZONE_STAGES,
+  sellValue,
+  stageFor,
+} from '../data/economy';
 import { appendEntry, composeEntry, rolloverStats } from './chronicle';
 import { newlyEarned } from './achievements';
 import { questMultiplier, questsForDay } from '../data/daily-quests';
@@ -15,7 +42,14 @@ import { requestsForDay, type TownRequest } from '../data/town-requests';
 import { CURRENT_VERSION, defaultPrefs, loadState, saveState } from './save';
 import { applySnapshot, initialLedger } from '../health/health-energy';
 import type { HealthSnapshot } from '../health/health-provider';
-import { advanceDay, canDoAction, initialActionState, recordAction, rolloverActions, streakMultiplier } from './actions';
+import {
+  advanceDay,
+  canDoAction,
+  initialActionState,
+  recordAction,
+  rolloverActions,
+  streakMultiplier,
+} from './actions';
 import type { RecordResult } from './actions';
 import { localDayKey } from './energy';
 import { LOG_MEDITATION, loggedMinutesToEnergy } from '../data/meditations';
@@ -30,7 +64,16 @@ import { addToRepository, duelMultiplier } from './duel';
 import { DECOR_CATALOG, TOWN_BUILDINGS, BUILDING_INFO } from '../data/town-layout';
 import { bondFor, deliveryMemory, hearts, recordMemory, restoreMemory } from './relationships';
 import { villagerIdFor, villagerDef } from '../data/villagers';
-import type { ActionState, ChainId, GratitudeEntry, GratitudeState, OrderDef, RepositoryItem, Settings, SocialState } from './types';
+import type {
+  ActionState,
+  ChainId,
+  GratitudeEntry,
+  GratitudeState,
+  OrderDef,
+  RepositoryItem,
+  Settings,
+  SocialState,
+} from './types';
 
 export type GameEvent =
   | { type: 'state' }
@@ -45,7 +88,14 @@ export type GameEvent =
   | { type: 'delivered'; orderId: string; resolution: string; rewardEnergy: number; rewardCoins: number }
   | { type: 'action'; actionId: string; energy: number }
   | { type: 'chest'; coins: number }
-  | { type: 'health'; energy: number; fromSteps: number; fromStairs: number; fromSleep: number; sleepFullNight: boolean }
+  | {
+      type: 'health';
+      energy: number;
+      fromSteps: number;
+      fromStairs: number;
+      fromSleep: number;
+      sleepFullNight: boolean;
+    }
   | { type: 'social' }
   | { type: 'friendJoined'; name: string; energy: number }
   | { type: 'help'; from: string; count: number }
@@ -86,10 +136,14 @@ export class Game {
     let board = createBoard(BOARD_COLS, BOARD_ROWS, PRODUCER_INDEX);
     // Opening layout: enough to teach merging in the first 20 seconds.
     const seeds: { i: number; chain: Item['chain']; level: number }[] = [
-      { i: 8, chain: 'wood', level: 0 }, { i: 10, chain: 'wood', level: 0 },
-      { i: 14, chain: 'wood', level: 1 }, { i: 26, chain: 'wood', level: 1 },
-      { i: 27, chain: 'harvest', level: 0 }, { i: 29, chain: 'harvest', level: 0 },
-      { i: 33, chain: 'hearthfire', level: 0 }, { i: 35, chain: 'hearthfire', level: 0 },
+      { i: 8, chain: 'wood', level: 0 },
+      { i: 10, chain: 'wood', level: 0 },
+      { i: 14, chain: 'wood', level: 1 },
+      { i: 26, chain: 'wood', level: 1 },
+      { i: 27, chain: 'harvest', level: 0 },
+      { i: 29, chain: 'harvest', level: 0 },
+      { i: 33, chain: 'hearthfire', level: 0 },
+      { i: 35, chain: 'hearthfire', level: 0 },
     ];
     let uid = 1;
     for (const s of seeds) board = withItem(board, s.i, { chain: s.chain, level: s.level, uid: uid++ });
@@ -103,7 +157,15 @@ export class Game {
       settings: { autoMerge: false },
       prefs: defaultPrefs(),
       chronicle: { entries: [] },
-      stats: { merges: 0, duelWins: 0, flashbacks: 0, day: localDayKey(now), dayMerges: 0, dayDelivers: 0, dayActions: 0 },
+      stats: {
+        merges: 0,
+        duelWins: 0,
+        flashbacks: 0,
+        day: localDayKey(now),
+        dayMerges: 0,
+        dayDelivers: 0,
+        dayActions: 0,
+      },
       achievements: [],
       questsClaimed: [],
       flags: { ftueDone: false, windDownShown: false },
@@ -143,7 +205,10 @@ export class Game {
     const res = invite(this.state.social, name);
     this.state = { ...this.state, social: res.state };
     this.emit({ type: 'social' });
-    return { code: res.friend.id.toUpperCase() + Math.abs(hashCode(res.friend.id)).toString(36).slice(0, 4).toUpperCase(), name };
+    return {
+      code: res.friend.id.toUpperCase() + Math.abs(hashCode(res.friend.id)).toString(36).slice(0, 4).toUpperCase(),
+      name,
+    };
   }
 
   /** Simulate a friend accepting the invite (real backend fires this on their join). */
@@ -225,7 +290,11 @@ export class Game {
         }
       }
       for (const a of newlyEarned(this.state)) {
-        this.state = { ...this.state, achievements: [...this.state.achievements, a.id], coins: this.state.coins + a.coins };
+        this.state = {
+          ...this.state,
+          achievements: [...this.state.achievements, a.id],
+          coins: this.state.coins + a.coins,
+        };
         extra.push({ type: 'achievement', id: a.id, title: a.title, icon: a.icon, coins: a.coins });
       }
       for (const m of newMilestones(streak, this.state.milestonesSeen ?? [])) {
@@ -265,12 +334,23 @@ export class Game {
     const today = localDayKey(now);
     if (this.state.actions.day !== today) {
       const a = this.state.actions;
-      const entry = composeEntry(a.day, a.counts, a.streak, stageFor(this.state.orderIndex), this.state.stats.dayDelivers);
+      const entry = composeEntry(
+        a.day,
+        a.counts,
+        a.streak,
+        stageFor(this.state.orderIndex),
+        this.state.stats.dayDelivers,
+      );
       this.state = { ...this.state, chronicle: { entries: appendEntry(this.state.chronicle.entries, entry) } };
       this.emit({ type: 'chronicle', day: entry.day });
     }
     if (this.state.stats.day !== today) {
-      this.state = { ...this.state, stats: rolloverStats(this.state.stats, today), questsClaimed: [], requestsFilled: [] };
+      this.state = {
+        ...this.state,
+        stats: rolloverStats(this.state.stats, today),
+        questsClaimed: [],
+        requestsFilled: [],
+      };
     }
   }
 
@@ -356,7 +436,13 @@ export class Game {
     // remove qty matching, unlocked items
     let removed = 0;
     const cells = this.state.board.cells.map((c) => {
-      if (removed < req.qty && c.kind === 'item' && c.item.chain === req.chain && c.item.level === req.level && !c.item.locked) {
+      if (
+        removed < req.qty &&
+        c.kind === 'item' &&
+        c.item.chain === req.chain &&
+        c.item.level === req.level &&
+        !c.item.locked
+      ) {
         removed++;
         return { kind: 'empty' as const };
       }
@@ -398,7 +484,12 @@ export class Game {
     this.undoBoard = res.merged ? before : null;
     const tierPatch =
       res.merged && res.result
-        ? { maxTier: { ...(this.state.maxTier ?? {}), [res.result.chain]: Math.max(this.state.maxTier?.[res.result.chain] ?? 0, res.result.level) } }
+        ? {
+            maxTier: {
+              ...(this.state.maxTier ?? {}),
+              [res.result.chain]: Math.max(this.state.maxTier?.[res.result.chain] ?? 0, res.result.level),
+            },
+          }
         : {};
     this.state = {
       ...this.state,
@@ -511,13 +602,23 @@ export class Game {
     const day = this.state.actions.day;
     const before = hearts(bondFor(this.state.relationships, vid).points);
     const itemName = chainDef(order.need.chain).levelNames[order.need.level] ?? 'what they needed';
-    let rel = recordMemory(this.state.relationships, vid, deliveryMemory(day, villagerDef(vid)?.name ?? order.who, itemName));
+    let rel = recordMemory(
+      this.state.relationships,
+      vid,
+      deliveryMemory(day, villagerDef(vid)?.name ?? order.who, itemName),
+    );
     // Did this delivery just bring their home back from the storm?
     const home = TOWN_BUILDINGS.find((b) => b.unlockAt === this.state.orderIndex && b.art === villagerDef(vid)?.home);
     if (home) rel = recordMemory(rel, vid, restoreMemory(day, BUILDING_INFO[home.art] ?? 'their home'));
     this.state = { ...this.state, relationships: rel };
     const after = hearts(bondFor(rel, vid).points);
-    this.emit({ type: 'bond', villagerId: vid, name: villagerDef(vid)?.name ?? order.who, hearts: after, grew: after > before });
+    this.emit({
+      type: 'bond',
+      villagerId: vid,
+      name: villagerDef(vid)?.name ?? order.who,
+      hearts: after,
+      grew: after > before,
+    });
   }
 
   /** The player's standing with a villager, for the Villagers screen. */

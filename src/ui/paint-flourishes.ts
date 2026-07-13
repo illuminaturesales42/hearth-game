@@ -44,14 +44,23 @@ export function drawSparkle(ctx: CanvasRenderingContext2D, x: number, y: number,
   ctx.strokeStyle = 'rgba(240, 252, 255, 0.95)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(x - r, y); ctx.lineTo(x + r, y);
-  ctx.moveTo(x, y - r); ctx.lineTo(x, y + r);
+  ctx.moveTo(x - r, y);
+  ctx.lineTo(x + r, y);
+  ctx.moveTo(x, y - r);
+  ctx.lineTo(x, y + r);
   ctx.stroke();
   ctx.restore();
 }
 
 /** A small butterfly whose wings flap with `flap` (-1..1); `colour` its wings. */
-export function drawButterfly(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, flap: number, colour: string): void {
+export function drawButterfly(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  flap: number,
+  colour: string,
+): void {
   const wing = size * (0.55 + 0.45 * Math.abs(flap));
   ctx.save();
   ctx.translate(x, y);

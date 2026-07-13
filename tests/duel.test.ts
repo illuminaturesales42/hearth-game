@@ -60,7 +60,13 @@ describe('duel engine', () => {
   });
 
   it('addToRepository accumulates counts', () => {
-    let repo = addToRepository([], [{ chain: 'wood', level: 1 }, { chain: 'wood', level: 1 }]);
+    let repo = addToRepository(
+      [],
+      [
+        { chain: 'wood', level: 1 },
+        { chain: 'wood', level: 1 },
+      ],
+    );
     expect(repo).toEqual([{ chain: 'wood', level: 1, count: 2 }]);
     repo = addToRepository(repo, [{ chain: 'harvest', level: 0 }]);
     expect(repo.length).toBe(2);

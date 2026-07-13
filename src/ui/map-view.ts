@@ -12,7 +12,15 @@ import type { Game } from '../core/game';
 import { MAP_LOCATIONS } from '../data/world';
 import { ORDERS, RESTORE_ORDERS, chapterFor, stageFor } from '../data/economy';
 import { questsForDay } from '../data/daily-quests';
-import { BUILDING_INFO, DECOR_CATALOG, TOWN_BOATS, TOWN_BUILDINGS, TOWN_NATURE, TOWN_TERRAIN, TOWN_WALKERS } from '../data/town-layout';
+import {
+  BUILDING_INFO,
+  DECOR_CATALOG,
+  TOWN_BOATS,
+  TOWN_BUILDINGS,
+  TOWN_NATURE,
+  TOWN_TERRAIN,
+  TOWN_WALKERS,
+} from '../data/town-layout';
 import { computeMood, meditatedToday, moodCaption } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
 import { currentWeather } from './weather';
@@ -37,26 +45,26 @@ const STAGE_NAMES = [
  */
 const COASTLINE: readonly [number, number][] = [
   [-0.08, 0.52], // west, off-canvas
-  [0.05, 0.44],  // north-west headland
+  [0.05, 0.44], // north-west headland
   [0.14, 0.465], // cove
   [0.26, 0.395], // rise toward the wooded north
   [0.38, 0.415], // small cove
   [0.52, 0.355], // north headland behind the town hall
-  [0.64, 0.39],  // dip
+  [0.64, 0.39], // dip
   [0.76, 0.385], // rise
-  [0.88, 0.43],  // running out to the lighthouse point
-  [1.02, 0.47],  // east headland, off-canvas
-  [1.09, 0.60],
-  [1.04, 0.74],  // south-east turn
-  [0.90, 0.855], // dock bay, east side
-  [0.80, 0.825], // dock headland
+  [0.88, 0.43], // running out to the lighthouse point
+  [1.02, 0.47], // east headland, off-canvas
+  [1.09, 0.6],
+  [1.04, 0.74], // south-east turn
+  [0.9, 0.855], // dock bay, east side
+  [0.8, 0.825], // dock headland
   [0.68, 0.895], // sheltered bay for the fishing boats
   [0.55, 0.925], // south beach
   [0.42, 0.895],
-  [0.30, 0.935], // south cove
+  [0.3, 0.935], // south cove
   [0.16, 0.895],
   [0.04, 0.925], // south-west
-  [-0.08, 0.80], // west, off-canvas
+  [-0.08, 0.8], // west, off-canvas
 ];
 
 export class MapView {
@@ -104,9 +112,15 @@ export class MapView {
     }
     game.subscribe((ev) => {
       const refresh =
-        ev.type === 'delivered' || ev.type === 'chapterComplete' || ev.type === 'merge' ||
-        ev.type === 'action' || ev.type === 'questDone' || ev.type === 'chronicle' ||
-        ev.type === 'upgrade' || ev.type === 'decor' || ev.type === 'state';
+        ev.type === 'delivered' ||
+        ev.type === 'chapterComplete' ||
+        ev.type === 'merge' ||
+        ev.type === 'action' ||
+        ev.type === 'questDone' ||
+        ev.type === 'chronicle' ||
+        ev.type === 'upgrade' ||
+        ev.type === 'decor' ||
+        ev.type === 'state';
       if (refresh && this.visible) {
         this.renderList();
         if (this.reduce) this.draw(0);
@@ -141,8 +155,12 @@ export class MapView {
     g.filter = 'none';
     g.globalCompositeOperation = 'destination-in';
     const m = g.createRadialGradient(
-      c.width / 2, c.height * 0.55, Math.min(c.width, c.height) * 0.2,
-      c.width / 2, c.height * 0.55, Math.max(c.width, c.height) * 0.62,
+      c.width / 2,
+      c.height * 0.55,
+      Math.min(c.width, c.height) * 0.2,
+      c.width / 2,
+      c.height * 0.55,
+      Math.max(c.width, c.height) * 0.62,
     );
     m.addColorStop(0, 'rgba(0,0,0,1)');
     m.addColorStop(1, 'rgba(0,0,0,0)');
@@ -218,7 +236,11 @@ export class MapView {
           if (!placed) {
             const def = DECOR_CATALOG.find((d) => d.art === this.decorPick);
             const broke = def && this.game.snapshot.coins < def.cost;
-            toast(broke ? 'Not enough coins yet — orders and quests pay well.' : 'That spot is out over the water — try the island.');
+            toast(
+              broke
+                ? 'Not enough coins yet — orders and quests pay well.'
+                : 'That spot is out over the water — try the island.',
+            );
           } else if (this.reduce) this.draw(0);
         }
         return;
@@ -305,7 +327,10 @@ export class MapView {
           : 'It has always stood here, waiting.';
     }
     const meta = document.getElementById('bldg-meta');
-    if (meta) meta.textContent = locked ? `Returns with order ${at} · ${chapterFor(at - 1).title}` : `Returned with order ${at} · ${chapterFor(at - 1).title}`;
+    if (meta)
+      meta.textContent = locked
+        ? `Returns with order ${at} · ${chapterFor(at - 1).title}`
+        : `Returned with order ${at} · ${chapterFor(at - 1).title}`;
 
     // Upgrade affordance — only for buildings that have actually returned.
     const tierEl = document.getElementById('bldg-tier');
@@ -505,7 +530,15 @@ export class MapView {
    * building; nature and lamplight fill in as the village heals. Sky keeps
    * real time; the sea keeps its own counsel at the shore.
    */
-  private drawTown(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, prog: number, stage: number, mood: WorldMood): void {
+  private drawTown(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    t: number,
+    prog: number,
+    stage: number,
+    mood: WorldMood,
+  ): void {
     const delivered = this.game.snapshot.orderIndex;
 
     // pop-in bookkeeping for buildings that just appeared
@@ -599,7 +632,12 @@ export class MapView {
         const cx = (((i * 0.31 + drift) % 1.3) - 0.15) * W;
         const cy = H * (0.06 + (i % 3) * 0.05);
         const cw = W * (0.075 + (i % 2) * 0.03);
-        for (const [ox, oy, r] of [[0, 0, 1], [0.7, 0.1, 0.72], [-0.65, 0.12, 0.62], [0.2, -0.14, 0.55]] as const) {
+        for (const [ox, oy, r] of [
+          [0, 0, 1],
+          [0.7, 0.1, 0.72],
+          [-0.65, 0.12, 0.62],
+          [0.2, -0.14, 0.55],
+        ] as const) {
           const px = cx + ox * cw;
           const py = cy + oy * cw;
           const rad = r * cw;
@@ -623,212 +661,279 @@ export class MapView {
     // part a painted plate replaces — skip it when one is loaded. (Body left
     // un-reindented to keep the diff minimal; all `island()` uses are inside.)
     if (!plate) {
-    // --- sea with an evening sheen, then the rocky island (Batch-2 look) ---
-    const seaGrad = ctx.createLinearGradient(0, H * 0.42, 0, H);
-    seaGrad.addColorStop(0, night ? '#0c1a2c' : '#1c3b4a');
-    seaGrad.addColorStop(1, night ? '#081220' : '#122a3c');
-    ctx.fillStyle = seaGrad;
-    ctx.fillRect(0, H * 0.42, W, H * 0.58);
-    if (!night) {
-      // the low sun lays a soft column on the water
-      const sunCol = ctx.createLinearGradient(0, H * 0.42, 0, H * 0.95);
-      sunCol.addColorStop(0, 'rgba(255, 200, 120, 0.16)');
-      sunCol.addColorStop(1, 'rgba(255, 200, 120, 0)');
-      ctx.fillStyle = sunCol;
-      ctx.fillRect(W * 0.68, H * 0.42, W * 0.2, H * 0.53);
-    }
-    // the horizon water is alive: rolling swell lines behind the town, their
-    // pace + amplitude set by the day's mood (calm after meditation, restless
-    // after none). Drawn before the island so it only shows on open water.
-    if (!this.reduce) {
-      const amp = 1.2 + mood.sea * 3.6;
-      const pace = 640 - mood.sea * 340;
-      ctx.strokeStyle = night ? 'rgba(150, 180, 235, 0.16)' : 'rgba(210, 232, 245, 0.22)';
-      ctx.lineWidth = 1.2;
-      for (let y = H * 0.43; y < H * 0.62; y += 7) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        for (let x = 0; x <= W; x += 20) ctx.lineTo(x, y + Math.sin(x / 24 + t / pace + y * 0.6) * amp);
-        ctx.stroke();
+      // --- sea with an evening sheen, then the rocky island (Batch-2 look) ---
+      const seaGrad = ctx.createLinearGradient(0, H * 0.42, 0, H);
+      seaGrad.addColorStop(0, night ? '#0c1a2c' : '#1c3b4a');
+      seaGrad.addColorStop(1, night ? '#081220' : '#122a3c');
+      ctx.fillStyle = seaGrad;
+      ctx.fillRect(0, H * 0.42, W, H * 0.58);
+      if (!night) {
+        // the low sun lays a soft column on the water
+        const sunCol = ctx.createLinearGradient(0, H * 0.42, 0, H * 0.95);
+        sunCol.addColorStop(0, 'rgba(255, 200, 120, 0.16)');
+        sunCol.addColorStop(1, 'rgba(255, 200, 120, 0)');
+        ctx.fillStyle = sunCol;
+        ctx.fillRect(W * 0.68, H * 0.42, W * 0.2, H * 0.53);
       }
-      if (mood.sea > 0.5) {
-        // whitecaps out on the swell
-        ctx.strokeStyle = 'rgba(238, 244, 250, 0.5)';
-        ctx.lineWidth = 1.6;
-        for (let i = 0; i < 6; i++) {
-          const wx = (((i * 151 + Math.floor(t / 900) * 37) % 100) / 100) * W;
-          const wy = H * (0.45 + ((i * 61) % 14) / 100);
+      // the horizon water is alive: rolling swell lines behind the town, their
+      // pace + amplitude set by the day's mood (calm after meditation, restless
+      // after none). Drawn before the island so it only shows on open water.
+      if (!this.reduce) {
+        const amp = 1.2 + mood.sea * 3.6;
+        const pace = 640 - mood.sea * 340;
+        ctx.strokeStyle = night ? 'rgba(150, 180, 235, 0.16)' : 'rgba(210, 232, 245, 0.22)';
+        ctx.lineWidth = 1.2;
+        for (let y = H * 0.43; y < H * 0.62; y += 7) {
           ctx.beginPath();
-          ctx.moveTo(wx, wy);
-          ctx.lineTo(wx + 8 + mood.sea * 8, wy);
+          ctx.moveTo(0, y);
+          for (let x = 0; x <= W; x += 20) ctx.lineTo(x, y + Math.sin(x / 24 + t / pace + y * 0.6) * amp);
           ctx.stroke();
         }
-      }
-    }
-    // A real coastline, not an oval: hand-laid headlands and coves smoothed
-    // through midpoints. `inset` scales the ring outward (+) / inward (−)
-    // from the island's heart, so rim/sand/meadow layers nest cleanly.
-    const island = (inset: number) => {
-      const cx = W * 0.5;
-      const cy = H * 0.65;
-      ctx.beginPath();
-      const pts = COASTLINE.map(([px, py]) => {
-        const x = px * W;
-        const y = py * H;
-        const d = Math.hypot(x - cx, y - cy) || 1;
-        const k = 1 + inset / d;
-        return [cx + (x - cx) * k, cy + (y - cy) * k] as const;
-      });
-      const n = pts.length;
-      ctx.moveTo((pts[0]![0] + pts[n - 1]![0]) / 2, (pts[0]![1] + pts[n - 1]![1]) / 2);
-      for (let i = 0; i < n; i++) {
-        const p = pts[i]!;
-        const q = pts[(i + 1) % n]!;
-        ctx.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2);
-      }
-      ctx.closePath();
-    };
-    // --- the island as a real landmass rising out of the sea ---
-    // shallow turquoise water hugs the shore before the land begins
-    island(16);
-    ctx.fillStyle = night ? 'rgba(40, 80, 95, 0.35)' : 'rgba(88, 158, 165, 0.35)';
-    ctx.fill();
-    island(8);
-    ctx.fillStyle = night ? 'rgba(52, 96, 110, 0.4)' : 'rgba(116, 182, 182, 0.4)';
-    ctx.fill();
-    // waves lap the whole outskirt: slow foam rings drift out and fade
-    if (!this.reduce) {
-      ctx.save();
-      for (const ph of [0, 0.45]) {
-        const u = (t / 3200 + ph) % 1;
-        island(3 + u * 15);
-        ctx.strokeStyle = night
-          ? `rgba(190, 215, 235, ${(0.28 * (1 - u)).toFixed(3)})`
-          : `rgba(240, 250, 252, ${(0.34 * (1 - u)).toFixed(3)})`;
-        ctx.lineWidth = 1.8 - u;
-        ctx.setLineDash([16, 11]);
-        ctx.lineDashOffset = t / 70 + ph * 40;
-        ctx.stroke();
-      }
-      ctx.setLineDash([]);
-      ctx.restore();
-    }
-    // rocky, wet under-rim in shadow
-    island(5);
-    ctx.fillStyle = night ? '#2c281f' : '#3f382c';
-    ctx.fill();
-    // a warm sand beach hugs the waterline, with a soft foam edge
-    island(1);
-    ctx.fillStyle = night ? '#4d4636' : '#cdb489';
-    ctx.fill();
-    ctx.strokeStyle = night ? 'rgba(150, 170, 205, 0.18)' : 'rgba(245, 234, 205, 0.38)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    // the green cap: storm-mud heals to a warm meadow green
-    island(-3);
-    const grass = mix('#5c5636', '#4f6d34', Math.min(1, stage / 3));
-    ctx.fillStyle = grass;
-    ctx.fill();
-    // give the land volume: clip to the meadow, then top-light + edge-shade,
-    // dapple the tone so it never reads as one flat fill, and lay real turf.
-    ctx.save();
-    island(-3);
-    ctx.clip();
-    // light falls from the sky above; the low edges sit in shadow
-    const litG = ctx.createLinearGradient(0, H * 0.32, 0, H);
-    if (night) {
-      litG.addColorStop(0, 'rgba(130, 150, 185, 0.10)');
-      litG.addColorStop(0.5, 'rgba(0, 0, 0, 0)');
-      litG.addColorStop(1, 'rgba(8, 12, 20, 0.34)');
-    } else {
-      litG.addColorStop(0, 'rgba(255, 240, 190, 0.17)');
-      litG.addColorStop(0.55, 'rgba(0, 0, 0, 0)');
-      litG.addColorStop(1, 'rgba(38, 48, 24, 0.24)');
-    }
-    ctx.fillStyle = litG;
-    ctx.fillRect(0, H * 0.3, W, H * 0.7);
-    // dappled meadow — soft lighter/darker blotches for organic variation
-    const dapple: [number, number, number][] = [
-      [0.30, 0.55, 0.11], [0.55, 0.62, 0.13], [0.70, 0.50, 0.10], [0.20, 0.70, 0.12],
-      [0.80, 0.72, 0.10], [0.46, 0.76, 0.12], [0.62, 0.44, 0.09],
-    ];
-    for (let i = 0; i < dapple.length; i++) {
-      const d = dapple[i]!;
-      const g = ctx.createRadialGradient(d[0] * W, d[1] * H, 0, d[0] * W, d[1] * H, d[2] * W);
-      g.addColorStop(0, i % 2 === 0 ? 'rgba(158, 182, 96, 0.15)' : 'rgba(38, 58, 26, 0.15)');
-      g.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = g;
-      ctx.fillRect((d[0] - d[2]) * W, (d[1] - d[2]) * H, d[2] * 2 * W, d[2] * 2 * H);
-    }
-    // real turf texture — staggered rows, and every other tile mirrored so the
-    // sprite's own edges never repeat into visible vertical banding.
-    const turf = this.sprite('turf_light');
-    if (turf) {
-      const ts = Math.max(44, W * 0.13);
-      ctx.globalAlpha = 0.28 * Math.min(1, stage / 2 + 0.25);
-      let row = 0;
-      for (let yy = H * 0.33; yy < H * 0.98; yy += ts - 1) {
-        const off = (row % 2) * (ts / 2);
-        let col = 0;
-        for (let xx = -ts + off; xx < W + ts; xx += ts - 1) {
-          const flip = (col + row) % 2 === 0 ? 1 : -1;
-          ctx.save();
-          ctx.translate(xx + ts / 2, yy + ts / 2);
-          ctx.scale(flip, 1);
-          ctx.drawImage(turf, -ts / 2, -ts / 2, ts + 1, ts + 1);
-          ctx.restore();
-          col++;
+        if (mood.sea > 0.5) {
+          // whitecaps out on the swell
+          ctx.strokeStyle = 'rgba(238, 244, 250, 0.5)';
+          ctx.lineWidth = 1.6;
+          for (let i = 0; i < 6; i++) {
+            const wx = (((i * 151 + Math.floor(t / 900) * 37) % 100) / 100) * W;
+            const wy = H * (0.45 + ((i * 61) % 14) / 100);
+            ctx.beginPath();
+            ctx.moveTo(wx, wy);
+            ctx.lineTo(wx + 8 + mood.sea * 8, wy);
+            ctx.stroke();
+          }
         }
-        row++;
       }
-      ctx.globalAlpha = 1;
-    }
-    ctx.restore();
-
-    // --- worn dirt paths grow WITH the town: each lane appears only when the
-    // building it leads to has been restored (a path to nowhere reads wrong) ---
-    {
-      const routes: { at: number; pts: [number, number][] }[] = [
-        { at: 2, pts: [[0.47, 0.64], [0.36, 0.59], [0.27, 0.545]] },                 // heart → cottage
-        { at: 8, pts: [[0.475, 0.655], [0.46, 0.55], [0.44, 0.465]] },               // well → market
-        { at: 12, pts: [[0.44, 0.465], [0.505, 0.40]] },                             // market → town hall
-        { at: 15, pts: [[0.27, 0.545], [0.17, 0.455]] },                             // cottage → workshop
-        { at: 16, pts: [[0.13, 0.655], [0.24, 0.625], [0.36, 0.615], [0.47, 0.64]] },// farm → heart
-        { at: 18, pts: [[0.49, 0.65], [0.62, 0.53], [0.72, 0.63], [0.84, 0.60]] },   // heart → bakery → garden → hut
-        { at: 21, pts: [[0.36, 0.615], [0.30, 0.70], [0.335, 0.735]] },              // → sawmill / forge
-        { at: 22, pts: [[0.52, 0.685], [0.66, 0.77], [0.78, 0.85]] },                // heart → the docks
-        { at: 23, pts: [[0.52, 0.685], [0.575, 0.75]] },                             // → library
-      ];
+      // A real coastline, not an oval: hand-laid headlands and coves smoothed
+      // through midpoints. `inset` scales the ring outward (+) / inward (−)
+      // from the island's heart, so rim/sand/meadow layers nest cleanly.
+      const island = (inset: number) => {
+        const cx = W * 0.5;
+        const cy = H * 0.65;
+        ctx.beginPath();
+        const pts = COASTLINE.map(([px, py]) => {
+          const x = px * W;
+          const y = py * H;
+          const d = Math.hypot(x - cx, y - cy) || 1;
+          const k = 1 + inset / d;
+          return [cx + (x - cx) * k, cy + (y - cy) * k] as const;
+        });
+        const n = pts.length;
+        ctx.moveTo((pts[0]![0] + pts[n - 1]![0]) / 2, (pts[0]![1] + pts[n - 1]![1]) / 2);
+        for (let i = 0; i < n; i++) {
+          const p = pts[i]!;
+          const q = pts[(i + 1) % n]!;
+          ctx.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2);
+        }
+        ctx.closePath();
+      };
+      // --- the island as a real landmass rising out of the sea ---
+      // shallow turquoise water hugs the shore before the land begins
+      island(16);
+      ctx.fillStyle = night ? 'rgba(40, 80, 95, 0.35)' : 'rgba(88, 158, 165, 0.35)';
+      ctx.fill();
+      island(8);
+      ctx.fillStyle = night ? 'rgba(52, 96, 110, 0.4)' : 'rgba(116, 182, 182, 0.4)';
+      ctx.fill();
+      // waves lap the whole outskirt: slow foam rings drift out and fade
+      if (!this.reduce) {
+        ctx.save();
+        for (const ph of [0, 0.45]) {
+          const u = (t / 3200 + ph) % 1;
+          island(3 + u * 15);
+          ctx.strokeStyle = night
+            ? `rgba(190, 215, 235, ${(0.28 * (1 - u)).toFixed(3)})`
+            : `rgba(240, 250, 252, ${(0.34 * (1 - u)).toFixed(3)})`;
+          ctx.lineWidth = 1.8 - u;
+          ctx.setLineDash([16, 11]);
+          ctx.lineDashOffset = t / 70 + ph * 40;
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+      // rocky, wet under-rim in shadow
+      island(5);
+      ctx.fillStyle = night ? '#2c281f' : '#3f382c';
+      ctx.fill();
+      // a warm sand beach hugs the waterline, with a soft foam edge
+      island(1);
+      ctx.fillStyle = night ? '#4d4636' : '#cdb489';
+      ctx.fill();
+      ctx.strokeStyle = night ? 'rgba(150, 170, 205, 0.18)' : 'rgba(245, 234, 205, 0.38)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // the green cap: storm-mud heals to a warm meadow green
+      island(-3);
+      const grass = mix('#5c5636', '#4f6d34', Math.min(1, stage / 3));
+      ctx.fillStyle = grass;
+      ctx.fill();
+      // give the land volume: clip to the meadow, then top-light + edge-shade,
+      // dapple the tone so it never reads as one flat fill, and lay real turf.
       ctx.save();
       island(-3);
       ctx.clip();
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      const layers: [number, string][] = [
-        [W * 0.024, night ? 'rgba(26, 22, 15, 0.30)' : 'rgba(122, 98, 62, 0.30)'], // soft shadowed edge
-        [W * 0.014, night ? 'rgba(150, 132, 98, 0.4)' : 'rgba(205, 178, 128, 0.7)'], // warm trodden dirt
+      // light falls from the sky above; the low edges sit in shadow
+      const litG = ctx.createLinearGradient(0, H * 0.32, 0, H);
+      if (night) {
+        litG.addColorStop(0, 'rgba(130, 150, 185, 0.10)');
+        litG.addColorStop(0.5, 'rgba(0, 0, 0, 0)');
+        litG.addColorStop(1, 'rgba(8, 12, 20, 0.34)');
+      } else {
+        litG.addColorStop(0, 'rgba(255, 240, 190, 0.17)');
+        litG.addColorStop(0.55, 'rgba(0, 0, 0, 0)');
+        litG.addColorStop(1, 'rgba(38, 48, 24, 0.24)');
+      }
+      ctx.fillStyle = litG;
+      ctx.fillRect(0, H * 0.3, W, H * 0.7);
+      // dappled meadow — soft lighter/darker blotches for organic variation
+      const dapple: [number, number, number][] = [
+        [0.3, 0.55, 0.11],
+        [0.55, 0.62, 0.13],
+        [0.7, 0.5, 0.1],
+        [0.2, 0.7, 0.12],
+        [0.8, 0.72, 0.1],
+        [0.46, 0.76, 0.12],
+        [0.62, 0.44, 0.09],
       ];
-      for (const [lw, col] of layers) {
-        ctx.strokeStyle = col;
-        ctx.lineWidth = lw;
-        for (const r of routes) {
-          if (delivered < r.at) continue;
-          const pts = r.pts;
-          ctx.beginPath();
-          ctx.moveTo(pts[0]![0] * W, pts[0]![1] * H);
-          // gentle midpoint curves so lanes wander like trodden dirt, not rulers
-          for (let i = 1; i < pts.length - 1; i++) {
-            const p = pts[i]!;
-            const q = pts[i + 1]!;
-            ctx.quadraticCurveTo(p[0] * W, p[1] * H, ((p[0] + q[0]) / 2) * W, ((p[1] + q[1]) / 2) * H);
+      for (let i = 0; i < dapple.length; i++) {
+        const d = dapple[i]!;
+        const g = ctx.createRadialGradient(d[0] * W, d[1] * H, 0, d[0] * W, d[1] * H, d[2] * W);
+        g.addColorStop(0, i % 2 === 0 ? 'rgba(158, 182, 96, 0.15)' : 'rgba(38, 58, 26, 0.15)');
+        g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect((d[0] - d[2]) * W, (d[1] - d[2]) * H, d[2] * 2 * W, d[2] * 2 * H);
+      }
+      // real turf texture — staggered rows, and every other tile mirrored so the
+      // sprite's own edges never repeat into visible vertical banding.
+      const turf = this.sprite('turf_light');
+      if (turf) {
+        const ts = Math.max(44, W * 0.13);
+        ctx.globalAlpha = 0.28 * Math.min(1, stage / 2 + 0.25);
+        let row = 0;
+        for (let yy = H * 0.33; yy < H * 0.98; yy += ts - 1) {
+          const off = (row % 2) * (ts / 2);
+          let col = 0;
+          for (let xx = -ts + off; xx < W + ts; xx += ts - 1) {
+            const flip = (col + row) % 2 === 0 ? 1 : -1;
+            ctx.save();
+            ctx.translate(xx + ts / 2, yy + ts / 2);
+            ctx.scale(flip, 1);
+            ctx.drawImage(turf, -ts / 2, -ts / 2, ts + 1, ts + 1);
+            ctx.restore();
+            col++;
           }
-          const last = pts[pts.length - 1]!;
-          ctx.lineTo(last[0] * W, last[1] * H);
-          ctx.stroke();
+          row++;
         }
+        ctx.globalAlpha = 1;
       }
       ctx.restore();
-    }
+
+      // --- worn dirt paths grow WITH the town: each lane appears only when the
+      // building it leads to has been restored (a path to nowhere reads wrong) ---
+      {
+        const routes: { at: number; pts: [number, number][] }[] = [
+          {
+            at: 2,
+            pts: [
+              [0.47, 0.64],
+              [0.36, 0.59],
+              [0.27, 0.545],
+            ],
+          }, // heart → cottage
+          {
+            at: 8,
+            pts: [
+              [0.475, 0.655],
+              [0.46, 0.55],
+              [0.44, 0.465],
+            ],
+          }, // well → market
+          {
+            at: 12,
+            pts: [
+              [0.44, 0.465],
+              [0.505, 0.4],
+            ],
+          }, // market → town hall
+          {
+            at: 15,
+            pts: [
+              [0.27, 0.545],
+              [0.17, 0.455],
+            ],
+          }, // cottage → workshop
+          {
+            at: 16,
+            pts: [
+              [0.13, 0.655],
+              [0.24, 0.625],
+              [0.36, 0.615],
+              [0.47, 0.64],
+            ],
+          }, // farm → heart
+          {
+            at: 18,
+            pts: [
+              [0.49, 0.65],
+              [0.62, 0.53],
+              [0.72, 0.63],
+              [0.84, 0.6],
+            ],
+          }, // heart → bakery → garden → hut
+          {
+            at: 21,
+            pts: [
+              [0.36, 0.615],
+              [0.3, 0.7],
+              [0.335, 0.735],
+            ],
+          }, // → sawmill / forge
+          {
+            at: 22,
+            pts: [
+              [0.52, 0.685],
+              [0.66, 0.77],
+              [0.78, 0.85],
+            ],
+          }, // heart → the docks
+          {
+            at: 23,
+            pts: [
+              [0.52, 0.685],
+              [0.575, 0.75],
+            ],
+          }, // → library
+        ];
+        ctx.save();
+        island(-3);
+        ctx.clip();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        const layers: [number, string][] = [
+          [W * 0.024, night ? 'rgba(26, 22, 15, 0.30)' : 'rgba(122, 98, 62, 0.30)'], // soft shadowed edge
+          [W * 0.014, night ? 'rgba(150, 132, 98, 0.4)' : 'rgba(205, 178, 128, 0.7)'], // warm trodden dirt
+        ];
+        for (const [lw, col] of layers) {
+          ctx.strokeStyle = col;
+          ctx.lineWidth = lw;
+          for (const r of routes) {
+            if (delivered < r.at) continue;
+            const pts = r.pts;
+            ctx.beginPath();
+            ctx.moveTo(pts[0]![0] * W, pts[0]![1] * H);
+            // gentle midpoint curves so lanes wander like trodden dirt, not rulers
+            for (let i = 1; i < pts.length - 1; i++) {
+              const p = pts[i]!;
+              const q = pts[i + 1]!;
+              ctx.quadraticCurveTo(p[0] * W, p[1] * H, ((p[0] + q[0]) / 2) * W, ((p[1] + q[1]) / 2) * H);
+            }
+            const last = pts[pts.length - 1]!;
+            ctx.lineTo(last[0] * W, last[1] * H);
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+      }
     } // end if (!plate) — the painted plate stands in for the procedural ground
 
     // --- boats first (they sit on the water behind the shore) ---
@@ -925,7 +1030,10 @@ export class MapView {
       }
       if (BUILDING_INFO[p.art] && 'unlockAt' in p && p.unlockAt > 0) {
         this.hitboxes.push({
-          x0: p.x * W - w / 2, y0: p.y * H - h, x1: p.x * W + w / 2, y1: p.y * H,
+          x0: p.x * W - w / 2,
+          y0: p.y * H - h,
+          x1: p.x * W + w / 2,
+          y1: p.y * H,
           art: p.art,
           unlockAt: p.ruined ? -p.unlockAt : p.unlockAt,
         });
@@ -1048,7 +1156,13 @@ export class MapView {
           ctx.fillStyle = `rgba(232, 225, 210, ${0.22 - i * 0.06})`;
           ctx.beginPath();
           // the real wind carries the smoke sideways
-          ctx.arc(sx + Math.sin(t / 700 + i) * 2.5 - mood.wind * 9 * (i + 1) * 0.4, puffY, 2.5 + i * 1.2, 0, Math.PI * 2);
+          ctx.arc(
+            sx + Math.sin(t / 700 + i) * 2.5 - mood.wind * 9 * (i + 1) * 0.4,
+            puffY,
+            2.5 + i * 1.2,
+            0,
+            Math.PI * 2,
+          );
           ctx.fill();
         }
       }
@@ -1095,7 +1209,12 @@ export class MapView {
     {
       const dog = this.sprite('animal_dog');
       if (dog && delivered >= 6) {
-        const path = [[0.34, 0.63], [0.46, 0.665], [0.40, 0.705], [0.30, 0.67]] as const;
+        const path = [
+          [0.34, 0.63],
+          [0.46, 0.665],
+          [0.4, 0.705],
+          [0.3, 0.67],
+        ] as const;
         const total = path.length - 1;
         const phase = this.reduce ? 0.3 : (t / 1000 / 12) % 2;
         const u = phase < 1 ? phase : 2 - phase;
@@ -1130,8 +1249,8 @@ export class MapView {
     // world quietly lives... laundry sways") — cloth catching the sea breeze ---
     if (stage >= 2 && !this.reduce) {
       const lines: [number, number, number, number][] = [
-        [0.20, 0.50, 0.30, 0.50], // by the cottage
-        [0.06, 0.61, 0.15, 0.60], // by the farm
+        [0.2, 0.5, 0.3, 0.5], // by the cottage
+        [0.06, 0.61, 0.15, 0.6], // by the farm
       ];
       const cloths = ['#f0e6d2', '#a8c8e0', '#e6a8b8', '#bcd0a0'];
       for (const [x1n, y1n, x2n, y2n] of lines) {
@@ -1171,7 +1290,13 @@ export class MapView {
       const cat = this.sprite('animal_cat');
       if (cat) {
         const w = 0.032 * W;
-        ctx.drawImage(cat, W * 0.545, H * 0.665 - w * (cat.naturalHeight / cat.naturalWidth), w, w * (cat.naturalHeight / cat.naturalWidth));
+        ctx.drawImage(
+          cat,
+          W * 0.545,
+          H * 0.665 - w * (cat.naturalHeight / cat.naturalWidth),
+          w,
+          w * (cat.naturalHeight / cat.naturalWidth),
+        );
       }
     }
     {
@@ -1245,7 +1370,7 @@ export class MapView {
         ctx.strokeStyle = 'rgba(235, 240, 248, 0.4)';
         ctx.lineWidth = 1.4;
         for (let i = 0; i < 7; i++) {
-          const wx = ((i * 137 + Math.floor(t / 1400) * 41) % 100) / 100 * W;
+          const wx = (((i * 137 + Math.floor(t / 1400) * 41) % 100) / 100) * W;
           const wy = H * (0.9 + ((i * 53) % 10) / 110);
           ctx.beginPath();
           ctx.moveTo(wx, wy);
@@ -1278,8 +1403,8 @@ export class MapView {
       if (snow) {
         ctx.fillStyle = 'rgba(240, 244, 252, 0.8)';
         for (let i = 0; i < n; i++) {
-          const px = ((i * 97 + t * 0.012 * (1 + mood.wind)) % W + W) % W;
-          const py = ((i * 61 + t * (0.02 + mood.precip * 0.015)) % H + H) % H;
+          const px = (((i * 97 + t * 0.012 * (1 + mood.wind)) % W) + W) % W;
+          const py = (((i * 61 + t * (0.02 + mood.precip * 0.015)) % H) + H) % H;
           ctx.beginPath();
           ctx.arc(px + Math.sin(t / 900 + i) * 4, py, 1.3 + (i % 3) * 0.4, 0, Math.PI * 2);
           ctx.fill();
@@ -1289,8 +1414,8 @@ export class MapView {
         ctx.lineWidth = 1;
         const slant = mood.wind * 4;
         for (let i = 0; i < n; i++) {
-          const px = ((i * 83 + t * 0.05) % W + W) % W;
-          const py = ((i * 47 + t * (0.14 + mood.precip * 0.1)) % H + H) % H;
+          const px = (((i * 83 + t * 0.05) % W) + W) % W;
+          const py = (((i * 47 + t * (0.14 + mood.precip * 0.1)) % H) + H) % H;
           ctx.beginPath();
           ctx.moveTo(px, py);
           ctx.lineTo(px - slant, py + 7 + mood.precip * 4);
@@ -1315,8 +1440,13 @@ export class MapView {
    * Kept apart from drawTown's scenery so the mapping stays legible.
    */
   private drawReactions(
-    ctx: CanvasRenderingContext2D, W: number, H: number, t: number,
-    night: boolean, mood: WorldMood, delivered: number,
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    t: number,
+    night: boolean,
+    mood: WorldMood,
+    delivered: number,
   ): void {
     const FLOWER_COLOURS = ['#e6739a', '#ffd27a', '#a06be0', '#f2996b', '#7fbf6a'];
 
@@ -1333,7 +1463,7 @@ export class MapView {
     // Long streak → festival banners gather over the rooftops, more each day.
     if (mood.festive > 0) {
       const flags = 4 + Math.round(mood.festive * 8);
-      const y0 = H * 0.30;
+      const y0 = H * 0.3;
       const x0 = W * 0.14;
       const x1 = W * 0.72;
       const sag = 10 + mood.festive * 6;
@@ -1392,7 +1522,13 @@ export class MapView {
       // a small cluster nestles by the garden plot when it exists
       if (delivered >= 10) {
         for (let i = 0; i < 3; i++) {
-          drawFlower(ctx, W * (0.68 + i * 0.03), H * (0.7 + (i % 2) * 0.015), 2.6, FLOWER_COLOURS[(i + 2) % FLOWER_COLOURS.length]!);
+          drawFlower(
+            ctx,
+            W * (0.68 + i * 0.03),
+            H * (0.7 + (i % 2) * 0.015),
+            2.6,
+            FLOWER_COLOURS[(i + 2) % FLOWER_COLOURS.length]!,
+          );
         }
       }
     }
@@ -1404,7 +1540,7 @@ export class MapView {
       const count = this.reduce ? 3 : 6;
       for (let i = 0; i < count; i++) {
         const seed = i * 1.7;
-        const rise = this.reduce ? (i % 3) * 8 : ((t / 42 + i * 24) % 30);
+        const rise = this.reduce ? (i % 3) * 8 : (t / 42 + i * 24) % 30;
         const sx = wx + Math.cos(t / 520 + seed) * (5 + (i % 3) * 3);
         const sy = wy - rise;
         const k = this.reduce ? 0.8 : 0.45 + 0.5 * Math.sin(t / 200 + seed);
@@ -1440,7 +1576,6 @@ export class MapView {
     }
   }
 
-
   /**
    * Batch 11 — Environment Effects, drawn procedurally: sun rays and cloud
    * shadows by day, fireflies over the meadow at night, and pollen/leaves
@@ -1463,7 +1598,7 @@ export class MapView {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       for (let i = 0; i < 5; i++) {
-        const a = (0.9 + i * 0.34) + Math.sin(t / 5000 + i) * 0.05;
+        const a = 0.9 + i * 0.34 + Math.sin(t / 5000 + i) * 0.05;
         const len = H * 0.7;
         const spread = 0.05;
         const g = ctx.createLinearGradient(sx, sy, sx + Math.cos(a) * len, sy + Math.sin(a) * len);
@@ -1501,7 +1636,7 @@ export class MapView {
       const n = 14;
       for (let i = 0; i < n; i++) {
         const fx = W * (0.12 + 0.76 * ((i / n + Math.sin(t / 3200 + i * 1.7) * 0.06 + 1) % 1));
-        const fy = H * (0.5 + 0.34 * ((0.5 + Math.cos(t / 2600 + i * 2.3) * 0.5)));
+        const fy = H * (0.5 + 0.34 * (0.5 + Math.cos(t / 2600 + i * 2.3) * 0.5));
         const tw = 0.35 + 0.65 * Math.abs(Math.sin(t / 700 + i * 2.1));
         const r = 3.2;
         const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, r);
@@ -1518,7 +1653,7 @@ export class MapView {
       const drift = 0.4 + mood.wind * 2.2;
       ctx.fillStyle = 'rgba(255, 245, 210, 0.5)';
       for (let i = 0; i < 12; i++) {
-        const mx = ((i * 79 + t * 0.01 * drift) % W + W) % W;
+        const mx = (((i * 79 + t * 0.01 * drift) % W) + W) % W;
         const my = H * 0.36 + ((i * 43 + t * 0.006) % (H * 0.55)) + Math.sin(t / 900 + i) * 4;
         ctx.beginPath();
         ctx.arc(mx, my, 0.9 + (i % 3) * 0.4, 0, Math.PI * 2);
@@ -1528,7 +1663,7 @@ export class MapView {
       if (stage >= 1) {
         const leafCols = ['#c98a3a', '#b5642f', '#9a8a3a'];
         for (let i = 0; i < 5; i++) {
-          const lx = ((i * 137 + t * 0.02 * drift) % W + W) % W;
+          const lx = (((i * 137 + t * 0.02 * drift) % W) + W) % W;
           const ly = H * 0.34 + ((i * 91 + t * 0.014) % (H * 0.56));
           const rot = t / 400 + i;
           ctx.save();
@@ -1637,7 +1772,7 @@ export class MapView {
         ctx.fillStyle = '#c9b48a';
         ctx.fillRect(cx - 7, top + h, 14, groundY - (top + h) + 2);
         for (let i = 0; i < 5; i++) {
-          const fx = left - 10 + i * (w + 20) / 4;
+          const fx = left - 10 + (i * (w + 20)) / 4;
           ctx.fillStyle = ['#e6739a', '#ffd27a', '#e6739a', '#a06be0', '#ffd27a'][i] ?? '#ffd27a';
           ctx.beginPath();
           ctx.arc(fx, groundY - 4, 3, 0, Math.PI * 2);
@@ -1681,7 +1816,8 @@ export class MapView {
     if (fill) fill.style.width = `${Math.round(prog * 100)}%`;
     const label = document.getElementById('map-progress');
     const scene = mood ? moodCaption(mood) : '';
-    if (label) label.textContent = `${STAGE_NAMES[stage]} · ${Math.round(prog * 100)}% restored${scene ? ` · ${scene}` : ''}`;
+    if (label)
+      label.textContent = `${STAGE_NAMES[stage]} · ${Math.round(prog * 100)}% restored${scene ? ` · ${scene}` : ''}`;
   }
 
   private renderList(): void {

@@ -29,6 +29,7 @@ export class Home {
           feedback.spawn();
           break;
         case 'reject':
+          feedback.reject();
           if (ev.reason === 'full') toast('The board is full — merge or tidy to make room.');
           else if (ev.reason === 'energy') toast('Not enough energy — a real-world action refills it.');
           break;
@@ -57,7 +58,9 @@ export class Home {
           feedback.chapter();
           this.showStory(
             `Chapter ${ev.chapter} — ${ev.title} — is complete. ${ev.cliffhanger}`,
-            ev.hasNext ? 'The next chapter begins at the notice board.' : 'End of this build. The mystery continues soon.',
+            ev.hasNext
+              ? 'The next chapter begins at the notice board.'
+              : 'End of this build. The mystery continues soon.',
           );
           break;
         case 'action':
@@ -68,7 +71,11 @@ export class Home {
           break;
         case 'friendJoined':
           feedback.chapter();
-          toast(ev.energy > 0 ? `${ev.name} joined your village! +${ev.energy} energy for you both.` : `${ev.name} is back in the village.`);
+          toast(
+            ev.energy > 0
+              ? `${ev.name} joined your village! +${ev.energy} energy for you both.`
+              : `${ev.name} is back in the village.`,
+          );
           break;
         case 'help':
           toast(`${ev.from} sent ${ev.count} to your gifts. Place them on the board to help your task.`);
@@ -77,7 +84,8 @@ export class Home {
           toast(`Day ${ev.streak} at the hearth — +${ev.energy} energy for showing up.`);
           break;
         case 'gratitude':
-          if (ev.energy > 0) toast(`+${ev.energy} energy (×${ev.multiplier.toFixed(1)} streak). A good day, written down.`);
+          if (ev.energy > 0)
+            toast(`+${ev.energy} energy (×${ev.multiplier.toFixed(1)} streak). A good day, written down.`);
           break;
         case 'flashback':
           feedback.chime(660);
@@ -92,7 +100,11 @@ export class Home {
         case 'kindness':
           if (ev.energy > 0) {
             feedback.chime(587);
-            toast(ev.selfie ? `+${ev.energy} energy — a compliment and a new friend. 💛` : `+${ev.energy} energy. A kindness ripples out.`);
+            toast(
+              ev.selfie
+                ? `+${ev.energy} energy — a compliment and a new friend. 💛`
+                : `+${ev.energy} energy. A kindness ripples out.`,
+            );
           }
           break;
         case 'bond':
@@ -131,11 +143,6 @@ export class Home {
           if (parts.length) toast(`The hearth brightens: ${parts.join(', ')}.`);
           break;
         }
-        case 'reject':
-          feedback.reject();
-          if (ev.reason === 'energy') toast('The hearth burns low. Tap it to earn more from your day.');
-          if (ev.reason === 'full') toast('The board is full. Merge something first.');
-          break;
       }
     });
 

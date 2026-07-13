@@ -37,7 +37,9 @@ export class StargazeUI {
 
     if (!this.game.canStargaze(now)) {
       const night = new Date(now).getHours() >= 20 || new Date(now).getHours() < 5;
-      msg.textContent = night ? 'You have already gazed tonight. Rest well.' : 'The stars aren’t out yet. Come back after dark.';
+      msg.textContent = night
+        ? 'You have already gazed tonight. Rest well.'
+        : 'The stars aren’t out yet. Come back after dark.';
       gaze.hidden = true;
       return;
     }
