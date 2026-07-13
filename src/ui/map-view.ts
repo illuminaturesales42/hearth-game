@@ -387,7 +387,14 @@ export class MapView {
 
   /** Draw one frame of a 7-frame flame sprite strip, its base at (cx, groundY).
    *  Reduced motion holds a single mid-flame frame. */
-  private drawFlame(ctx: CanvasRenderingContext2D, id: string, cx: number, groundY: number, w: number, t: number): void {
+  private drawFlame(
+    ctx: CanvasRenderingContext2D,
+    id: string,
+    cx: number,
+    groundY: number,
+    w: number,
+    t: number,
+  ): void {
     const strip = this.sprite(id);
     if (!strip || !strip.naturalWidth) return;
     const frames = 7;
@@ -1144,7 +1151,7 @@ export class MapView {
         const ly = p.y * H;
         const lampFlick = 0.82 + 0.18 * Math.abs(Math.sin(t / 118 + p.x * 25));
         const pool = ctx.createRadialGradient(lx, ly, 1, lx, ly, w * 2.6);
-        pool.addColorStop(0, `rgba(255, 210, 130, ${0.32 * (0.9 + 0.1 * (lampFlick - 0.82) / 0.18)})`);
+        pool.addColorStop(0, `rgba(255, 210, 130, ${0.32 * (0.9 + (0.1 * (lampFlick - 0.82)) / 0.18)})`);
         pool.addColorStop(1, 'rgba(255, 200, 120, 0)');
         ctx.fillStyle = pool;
         ctx.save();
@@ -1366,7 +1373,7 @@ export class MapView {
     // --- the forge burns once the blacksmith is raised (a working fire, day + night) ---
     if (delivered >= 21) {
       const gx = W * 0.36;
-      const gy = H * 0.70;
+      const gy = H * 0.7;
       const fl = this.reduce ? 1 : 0.78 + 0.22 * Math.abs(Math.sin(t / 95));
       const r = W * 0.052;
       const fg = ctx.createRadialGradient(gx, gy, 1, gx, gy, r);

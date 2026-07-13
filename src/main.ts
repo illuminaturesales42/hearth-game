@@ -188,8 +188,7 @@ void sync.start().then((res) => {
     const remote = res.remote;
     void confirmDialog({
       title: 'Two villages found',
-      message:
-        'A saved Emberhollow was found that differs from the one on this device. Which would you like to keep?',
+      message: 'A saved Emberhollow was found that differs from the one on this device. Which would you like to keep?',
       confirmLabel: 'Keep the saved village',
       cancelLabel: 'Keep this device',
     }).then((keepCloud) => {

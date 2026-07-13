@@ -77,9 +77,12 @@ function defaultSend(endpoint: string, batch: WireEvent[]): void {
       const ok = navigator.sendBeacon(endpoint, new Blob([body], { type: 'application/json' }));
       if (ok) return;
     }
-    void fetch(endpoint, { method: 'POST', body, headers: { 'content-type': 'application/json' }, keepalive: true }).catch(
-      () => undefined,
-    );
+    void fetch(endpoint, {
+      method: 'POST',
+      body,
+      headers: { 'content-type': 'application/json' },
+      keepalive: true,
+    }).catch(() => undefined);
   } catch {
     // Analytics must never break the game.
   }
