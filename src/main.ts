@@ -5,6 +5,7 @@ import { feedback } from './ui/feedback';
 import { toast } from './ui/toast';
 import { AppShell } from './ui/app-shell';
 import { confirmDialog } from './ui/confirm-modal';
+import { initNetStatus } from './ui/net-status';
 import { recentEvents, setSink, track } from './analytics';
 import { createNetworkSink } from './platform/analytics-sink';
 import type { HealthSnapshot } from './health/health-provider';
@@ -23,6 +24,9 @@ exposeMetricsConsole(metrics);
 metrics.reportSession();
 
 new AppShell(game, metrics);
+
+// A quiet offline indicator (the game is local-first; this only reassures).
+initNetStatus();
 
 // The splash lifts once the shell is mounted (a breath later, so it never blinks).
 const splash = document.getElementById('splash');
