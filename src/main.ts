@@ -4,6 +4,7 @@ import { stageFor } from './data/economy';
 import { feedback } from './ui/feedback';
 import { toast } from './ui/toast';
 import { AppShell } from './ui/app-shell';
+import { confirmDialog } from './ui/confirm-modal';
 import { recentEvents, setSink, track } from './analytics';
 import { createNetworkSink } from './platform/analytics-sink';
 import type { HealthSnapshot } from './health/health-provider';
@@ -179,12 +180,18 @@ void sync.start().then((res) => {
     toast('Welcome back — your saved village was restored.');
     setTimeout(() => location.reload(), 800);
   } else if (res.outcome === 'conflict' && res.remote) {
-    // Two devices diverged: keep the further-along one, never silently wipe.
-    const keepCloud = window.confirm(
-      'A saved Emberhollow was found that differs from this one. Keep the saved village? (Cancel keeps the one on this device.)',
-    );
-    if (keepCloud) void sync.adoptRemote(res.remote).then((ok) => ok && location.reload());
-    else void sync.keepLocal();
+    // Two devices diverged: let the player choose; never silently wipe.
+    const remote = res.remote;
+    void confirmDialog({
+      title: 'Two villages found',
+      message:
+        'A saved Emberhollow was found that differs from the one on this device. Which would you like to keep?',
+      confirmLabel: 'Keep the saved village',
+      cancelLabel: 'Keep this device',
+    }).then((keepCloud) => {
+      if (keepCloud) void sync.adoptRemote(remote).then((ok) => ok && location.reload());
+      else void sync.keepLocal();
+    });
   }
 });
 

@@ -2307,6 +2307,28 @@ body {
   color: var(--good);
 }
 
+/* ---------- confirm dialog (in-game window.confirm replacement) ---------- */
+.confirm-title {
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-size: 19px;
+  color: var(--cream);
+}
+.confirm-msg {
+  margin: 0 0 20px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--cream-dim, var(--cream));
+}
+.confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.confirm-actions .btn-ghost {
+  width: 100%;
+}
+
 /* ---------- new day (sunrise) ---------- */
 .newday-card {
   max-width: 340px;
