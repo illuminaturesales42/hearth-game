@@ -20,3 +20,5 @@ tools/_*.json
 
 # building-slice preview scratch
 tools/_build_preview/
+
+tools/__pycache__/
