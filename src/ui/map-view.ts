@@ -1064,12 +1064,18 @@ export class MapView {
         // building to be restored shows as under-construction (scaffold); the
         // ones further out show as storm-damaged ruins. Props with no variant
         // fall back to the procedural shade.
-        const variant = p.ruinVariant;
+        const isNext = p.unlockAt === nextUnlock;
         let ruinArt: string | undefined;
-        if (variant !== undefined) {
-          const isNext = p.unlockAt === nextUnlock;
-          const wip = `town_wip_${variant}`;
-          const ruin = `town_ruin_${variant}`;
+        // Prefer this building's OWN storm-damaged / scaffold art (matched
+        // ruin→build→upgrade set), so the ruin actually looks like the building.
+        const ownWip = `${p.art}_wip`;
+        const ownRuin = `${p.art}_ruin`;
+        if (isNext && this.sprite(ownWip)) ruinArt = ownWip;
+        else if (this.sprite(ownRuin)) ruinArt = ownRuin;
+        // fall back to the generic ruin/scaffold pool by variant index
+        if (!ruinArt && p.ruinVariant !== undefined) {
+          const wip = `town_wip_${p.ruinVariant}`;
+          const ruin = `town_ruin_${p.ruinVariant}`;
           if (isNext && this.sprite(wip)) ruinArt = wip;
           else if (this.sprite(ruin)) ruinArt = ruin;
         }
