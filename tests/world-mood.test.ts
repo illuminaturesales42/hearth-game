@@ -3,7 +3,12 @@ import { computeMood, daysBetween, meditatedToday, moodCaption, weatherFromWmo }
 import type { WeatherNow } from '../src/core/world-mood';
 
 const w = (over: Partial<WeatherNow>): WeatherNow => ({
-  kind: 'clear', cloudCover: 0, windKph: 5, precipMm: 0, fetchedAt: 0, ...over,
+  kind: 'clear',
+  cloudCover: 0,
+  windKph: 5,
+  precipMm: 0,
+  fetchedAt: 0,
+  ...over,
 });
 
 describe('weatherFromWmo', () => {
@@ -39,7 +44,12 @@ describe('computeMood — the sea carries the day', () => {
 
   it('meditating today stills the water', () => {
     const restless = computeMood({ ...base, weather: w({ windKph: 15 }) });
-    const still = computeMood({ ...base, weather: w({ windKph: 15 }), meditatedToday: true, lastCalmDay: '2026-07-07' });
+    const still = computeMood({
+      ...base,
+      weather: w({ windKph: 15 }),
+      meditatedToday: true,
+      lastCalmDay: '2026-07-07',
+    });
     expect(still.sea).toBeLessThan(restless.sea);
     expect(still.calm).toBe(true);
     expect(still.restless).toBe(0);
@@ -89,13 +99,25 @@ describe('mood helpers', () => {
     expect(meditatedToday({})).toBe(false);
     expect(meditatedToday({ 'med-box': 1 })).toBe(true);
     expect(meditatedToday({ 'log-meditation': 1 })).toBe(true);
-    expect(meditatedToday({ 'water': 2 })).toBe(false);
+    expect(meditatedToday({ water: 2 })).toBe(false);
   });
 
   it('moodCaption narrates notable weather only', () => {
-    const quiet = computeMood({ weather: w({}), meditatedToday: false, lastCalmDay: '2026-07-07', today: '2026-07-07', sleptWell: false });
+    const quiet = computeMood({
+      weather: w({}),
+      meditatedToday: false,
+      lastCalmDay: '2026-07-07',
+      today: '2026-07-07',
+      sleptWell: false,
+    });
     expect(typeof moodCaption(quiet)).toBe('string');
-    const rainy = computeMood({ weather: w({ kind: 'rain', precipMm: 2 }), meditatedToday: false, lastCalmDay: null, today: '2026-07-07', sleptWell: false });
+    const rainy = computeMood({
+      weather: w({ kind: 'rain', precipMm: 2 }),
+      meditatedToday: false,
+      lastCalmDay: null,
+      today: '2026-07-07',
+      sleptWell: false,
+    });
     expect(moodCaption(rainy)).toContain('rain');
   });
 });
@@ -152,7 +174,8 @@ describe('computeMood — real-world actions bloom the town', () => {
     const loud = computeMood({
       ...base,
       counts: { water: 5, stretch: 3, 'nature-photo': 2, steps: 4, stairs: 2 },
-      walkedToday: true, streak: 40,
+      walkedToday: true,
+      streak: 40,
     });
     for (const v of [loud.bloom, loud.gardenLush, loud.villagersOut, loud.festive]) {
       expect(v).toBeGreaterThanOrEqual(0);

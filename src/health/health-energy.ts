@@ -72,8 +72,7 @@ function sleepTarget(hours: number | null): { energy: number; full: boolean } {
  */
 export function applySnapshot(ledger: HealthLedger, snap: HealthSnapshot, now: number): HealthGrant {
   const day = localDayKey(now);
-  const base: HealthLedger =
-    day === ledger.day ? ledger : { day, stepsGranted: 0, stairsGranted: 0, sleepGranted: 0 };
+  const base: HealthLedger = day === ledger.day ? ledger : { day, stepsGranted: 0, stairsGranted: 0, sleepGranted: 0 };
 
   const fromSteps = Math.max(0, stepsTarget(snap.stepsToday) - base.stepsGranted);
   const fromStairs = Math.max(0, stairsTarget(snap.flightsToday) - base.stairsGranted);

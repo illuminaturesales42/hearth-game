@@ -1,12 +1,28 @@
 /** Shared domain types. Keep this file dependency-free. */
 
 export type ChainId =
-  | 'wood' | 'harvest' | 'hearthfire' | 'keepsake'
+  | 'wood'
+  | 'harvest'
+  | 'hearthfire'
+  | 'keepsake'
   // Resource library from the clean merge-chain sheet (art in item_<id>_<n>).
-  | 'stone' | 'clay' | 'seeds' | 'flowers' | 'water' | 'copper'
-  | 'fish' | 'honey' | 'herbs' | 'wool' | 'books' | 'music'
+  | 'stone'
+  | 'clay'
+  | 'seeds'
+  | 'flowers'
+  | 'water'
+  | 'copper'
+  | 'fish'
+  | 'honey'
+  | 'herbs'
+  | 'wool'
+  | 'books'
+  | 'music'
   // Builder's Yard: chains that climb from materials to a finished building.
-  | 'homestead' | 'greenhouse' | 'smithy' | 'apothecary';
+  | 'homestead'
+  | 'greenhouse'
+  | 'smithy'
+  | 'apothecary';
 
 export interface ChainDef {
   id: ChainId;

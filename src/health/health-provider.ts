@@ -59,11 +59,13 @@ export class SelfReportProvider implements HealthProvider {
  * - Both: read-only, on-device conversion, no health data in analytics. Ever.
  */
 export class CapacitorHealthProvider implements HealthProvider {
-  constructor(private plugin: {
-    requestAuthorization(opts: { read: string[] }): Promise<{ granted: boolean }>;
-    isAvailable(): Promise<{ available: boolean }>;
-    queryAggregated(opts: { dataType: string; bucket: string }): Promise<{ value: number; sourceApp?: string }>;
-  }) {}
+  constructor(
+    private plugin: {
+      requestAuthorization(opts: { read: string[] }): Promise<{ granted: boolean }>;
+      isAvailable(): Promise<{ available: boolean }>;
+      queryAggregated(opts: { dataType: string; bucket: string }): Promise<{ value: number; sourceApp?: string }>;
+    },
+  ) {}
 
   async requestPermission(): Promise<boolean> {
     try {

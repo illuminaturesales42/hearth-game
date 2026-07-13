@@ -89,7 +89,9 @@ export function composeEntry(
   } else {
     const parts: string[] = [];
     parts.push(`${pick(OPENERS, seed)} ${STAGE_SCENES[Math.min(stage, 4)]}.`);
-    const lines = done.slice(0, 3).map((k, i) => ACTION_LINES[k]!.replace(/^./, (c) => (i === 0 ? c.toUpperCase() : c)));
+    const lines = done
+      .slice(0, 3)
+      .map((k, i) => ACTION_LINES[k]!.replace(/^./, (c) => (i === 0 ? c.toUpperCase() : c)));
     if (lines.length === 1) parts.push(`${lines[0]}.`);
     if (lines.length === 2) parts.push(`${lines[0]}, and ${lines[1]}.`);
     if (lines.length === 3) parts.push(`${lines[0]}, ${lines[1]}, and ${lines[2]}.`);

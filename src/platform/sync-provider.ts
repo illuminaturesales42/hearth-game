@@ -91,7 +91,8 @@ export class HttpSyncProvider implements SyncProvider {
       });
       if (!res.ok) return null;
       const body = (await res.json()) as Partial<SyncEnvelope>;
-      if (typeof body.rev !== 'number' || typeof body.updatedAt !== 'number' || typeof body.save !== 'string') return null;
+      if (typeof body.rev !== 'number' || typeof body.updatedAt !== 'number' || typeof body.save !== 'string')
+        return null;
       return { rev: body.rev, updatedAt: body.updatedAt, save: body.save };
     } catch {
       return null;

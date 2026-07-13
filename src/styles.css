@@ -1047,3 +1047,47 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
 /* The hidden attribute always wins — author display rules (flex/grid) on a
    class must never resurrect a [hidden] element (the empty decor-tray strip). */
 [hidden] { display: none !important; }
+
+/* ---------- confirm dialog (in-game window.confirm replacement) ---------- */
+.confirm-title {
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-size: 19px;
+  color: var(--cream);
+}
+.confirm-msg {
+  margin: 0 0 20px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--cream-dim, var(--cream));
+}
+.confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.confirm-actions .btn-ghost {
+  width: 100%;
+}
+
+/* ---------- offline indicator (quiet, reassuring) ---------- */
+.net-offline {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 74px);
+  transform: translateX(-50%);
+  z-index: 40;
+  max-width: min(90vw, 340px);
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  text-align: center;
+  color: var(--cream-dim);
+  background: rgba(20, 16, 26, 0.86);
+  border: 1px solid rgba(255, 210, 122, 0.22);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+.net-offline[hidden] {
+  display: none;
+}

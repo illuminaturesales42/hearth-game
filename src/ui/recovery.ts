@@ -29,7 +29,10 @@ export class RecoveryUI {
             ? `<div class="med-log-note">Logged today. Well done.</div>`
             : `<div class="med-log">` +
               a.options
-                .map((min) => `<button class="med-log-btn" data-act="${a.id}" data-min="${min}">${min}m<span>+${recoveryEnergy(a, min)}</span></button>`)
+                .map(
+                  (min) =>
+                    `<button class="med-log-btn" data-act="${a.id}" data-min="${min}">${min}m<span>+${recoveryEnergy(a, min)}</span></button>`,
+                )
                 .join('') +
               `</div>`)
         );

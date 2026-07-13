@@ -118,7 +118,11 @@ export function tidyBoard(board: BoardState): BoardState {
  * Empty every unlocked item of `chain` at or below `maxLvl`. Returns the new
  * board and how many were cleared (for feedback). Locked items are spared.
  */
-export function trashMatching(board: BoardState, chain: ChainId, maxLvl: number): { board: BoardState; cleared: number } {
+export function trashMatching(
+  board: BoardState,
+  chain: ChainId,
+  maxLvl: number,
+): { board: BoardState; cleared: number } {
   let cleared = 0;
   const cells = board.cells.map((c) => {
     if (c.kind === 'item' && c.item.chain === chain && c.item.level <= maxLvl && !c.item.locked) {

@@ -75,7 +75,13 @@ export async function currentWeather(): Promise<WeatherNow | null> {
     };
     const c = data.current;
     if (!c || typeof c.weather_code !== 'number') return cached;
-    const now = weatherFromWmo(c.weather_code, c.cloud_cover ?? 0, c.wind_speed_10m ?? 0, c.precipitation ?? 0, Date.now());
+    const now = weatherFromWmo(
+      c.weather_code,
+      c.cloud_cover ?? 0,
+      c.wind_speed_10m ?? 0,
+      c.precipitation ?? 0,
+      Date.now(),
+    );
     writeJson(WEATHER_KEY, now);
     return now;
   } catch {

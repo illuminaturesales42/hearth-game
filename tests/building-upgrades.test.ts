@@ -37,10 +37,10 @@ describe('building upgrades — coins buy pride, never power', () => {
     const g = withCoinsAndStory(500, 4);
     const before = g.snapshot.coins;
     g.upgradeBuilding('town_bakery'); // costs 120
-    expect(g.snapshot.coins).toBe(before - Game.UPGRADE_COSTS[0]!);
+    expect(g.snapshot.coins).toBe(before - Game.UPGRADE_COSTS[0]);
     const mid = g.snapshot.coins;
     g.upgradeBuilding('town_bakery'); // costs 320
-    expect(g.snapshot.coins).toBe(mid - Game.UPGRADE_COSTS[1]!);
+    expect(g.snapshot.coins).toBe(mid - Game.UPGRADE_COSTS[1]);
   });
 
   it('cannot upgrade a building that has not returned yet', () => {
@@ -53,7 +53,7 @@ describe('building upgrades — coins buy pride, never power', () => {
   it('cannot upgrade without enough coins', () => {
     const g = new Game(T0);
     g.devPreviewStory(4); // bakery back, but no coins
-    expect(g.snapshot.coins).toBeLessThan(Game.UPGRADE_COSTS[0]!);
+    expect(g.snapshot.coins).toBeLessThan(Game.UPGRADE_COSTS[0]);
     expect(g.canUpgrade('town_bakery')).toBe(false);
     expect(g.upgradeBuilding('town_bakery')).toBe(false);
   });
@@ -61,7 +61,9 @@ describe('building upgrades — coins buy pride, never power', () => {
   it('emits an upgrade event', () => {
     const g = withCoinsAndStory(500, 4);
     const seen: number[] = [];
-    g.subscribe((ev) => { if (ev.type === 'upgrade') seen.push(ev.tier); });
+    g.subscribe((ev) => {
+      if (ev.type === 'upgrade') seen.push(ev.tier);
+    });
     g.upgradeBuilding('town_bakery');
     expect(seen).toEqual([1]);
   });

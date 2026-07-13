@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  localDayWindow,
-  mainSleepHours,
-  snapshotFromRecords,
-  sumForDay,
-} from '../src/health/health-connect';
+import { localDayWindow, mainSleepHours, snapshotFromRecords, sumForDay } from '../src/health/health-connect';
 import type { QuantityRecord, SleepSession } from '../src/health/health-connect';
 
 const HOUR = 3_600_000;

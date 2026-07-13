@@ -105,7 +105,7 @@ export class SyncController {
 
   private schedulePush(): void {
     clearTimeout(this.timer);
-    this.timer = (setTimeout as typeof globalThis.setTimeout)(() => void this.pushNow(), PUSH_DEBOUNCE_MS) as unknown as number;
+    this.timer = setTimeout(() => void this.pushNow(), PUSH_DEBOUNCE_MS) as unknown as number;
   }
 
   async pushNow(): Promise<void> {

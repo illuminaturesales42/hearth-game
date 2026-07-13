@@ -114,7 +114,12 @@ export function advanceDay(state: ActionState, now: number): DayAdvance {
     chestProgress = 0;
     chestCoins = CHEST_COINS;
   }
-  return { state: { ...s, streak, lastActiveDay: today, chestProgress }, dailyBonus: dailyBonus(streak), chestCoins, advanced: true };
+  return {
+    state: { ...s, streak, lastActiveDay: today, chestProgress },
+    dailyBonus: dailyBonus(streak),
+    chestCoins,
+    advanced: true,
+  };
 }
 
 export function recordAction(state: ActionState, id: string, now: number, energyOverride?: number): RecordResult {

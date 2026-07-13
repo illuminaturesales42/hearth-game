@@ -101,7 +101,9 @@ export class SettingsUI {
     URL.revokeObjectURL(a.href);
     try {
       localStorage.setItem(EXPORT_STAMP_KEY, String(Date.now()));
-    } catch { /* fine */ }
+    } catch {
+      /* fine */
+    }
     toast('Save exported. Keep it somewhere warm.');
   }
 
