@@ -181,25 +181,30 @@ declare global {
     hearthSeeTown: (orders?: number) => void;
   }
 }
-window.hearthReset = () => {
-  clearSave();
-  location.reload();
-};
-// Preview the composed town: jump the story forward so buildings appear.
-// e.g. hearthSeeTown(12) = end of Chapter 1; hearthSeeTown() = everything.
-window.hearthSeeTown = (orders = 24) => {
-  game.devPreviewStory(orders);
-  document.querySelector<HTMLButtonElement>('.nav-btn[data-screen="home"]')?.click();
-};
-window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {
-  const snap: HealthSnapshot = {
-    stepsToday: steps,
-    flightsToday: flights ?? 0,
-    sleepHoursLastNight: sleepHours ?? null,
-    source: 'healthkit',
+// DEV-only: these console helpers can skip the story or wipe the save, so they
+// must never ship to players. Vite tree-shakes the whole block out of the prod
+// build (import.meta.env.DEV === false).
+if (import.meta.env.DEV) {
+  window.hearthReset = () => {
+    clearSave();
+    location.reload();
   };
-  game.syncHealth(snap);
-};
-window.hearthEvents = () => {
-  console.table(recentEvents().map((e) => ({ name: e.name, ...e.props })));
-};
+  // Preview the composed town: jump the story forward so buildings appear.
+  // e.g. hearthSeeTown(12) = end of Chapter 1; hearthSeeTown() = everything.
+  window.hearthSeeTown = (orders = 24) => {
+    game.devPreviewStory(orders);
+    document.querySelector<HTMLButtonElement>('.nav-btn[data-screen="home"]')?.click();
+  };
+  window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {
+    const snap: HealthSnapshot = {
+      stepsToday: steps,
+      flightsToday: flights ?? 0,
+      sleepHoursLastNight: sleepHours ?? null,
+      source: 'healthkit',
+    };
+    game.syncHealth(snap);
+  };
+  window.hearthEvents = () => {
+    console.table(recentEvents().map((e) => ({ name: e.name, ...e.props })));
+  };
+}
