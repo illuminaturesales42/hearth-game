@@ -1006,20 +1006,21 @@ export class MapView {
       const h = w * (img.naturalHeight / img.naturalWidth);
       ctx.drawImage(img, f.x * W - w / 2, f.y * H - h, w, h);
     }
-    // Only the next ~3 not-yet-restored buildings appear as storm-worn ruins —
-    // enough to promise what's coming without cluttering the island with a
-    // dozen grey shells.
+    // Every building stands on the island from the very first day as a storm-worn
+    // ruin, so the player can see the whole town they're rebuilding. Each turns to
+    // scaffold when it's next in line, then to its finished (and later upgraded)
+    // sprite once restored. Props (well, notice board) have no ruin art, so they
+    // wait until they're unlocked rather than showing an odd shaded ghost.
     const upcoming = TOWN_BUILDINGS.filter((b) => b.unlockAt > delivered)
       .map((b) => b.unlockAt)
       .sort((a, b) => a - b);
-    const ghostCutoff = upcoming.length ? upcoming[Math.min(2, upcoming.length - 1)]! : -1;
     const nextUnlock = upcoming.length ? upcoming[0]! : -1; // the one being rebuilt now → scaffold
     const pieces: ScenePiece[] = [
       ...TOWN_TERRAIN.filter((t) => !FLAT.has(t.art) && delivered >= t.unlockAt),
       ...TOWN_NATURE.filter(
         (n) => stage >= n.stage && delivered >= n.unlockAt && (n.untilStage === undefined || stage <= n.untilStage),
       ),
-      ...TOWN_BUILDINGS.filter((b) => delivered >= b.unlockAt || b.unlockAt <= ghostCutoff).map((b) => ({
+      ...TOWN_BUILDINGS.filter((b) => delivered >= b.unlockAt || b.ruinVariant !== undefined).map((b) => ({
         ...b,
         ruined: delivered < b.unlockAt,
       })),
