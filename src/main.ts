@@ -4,7 +4,8 @@ import { stageFor } from './data/economy';
 import { feedback } from './ui/feedback';
 import { toast } from './ui/toast';
 import { AppShell } from './ui/app-shell';
-import { recentEvents, track } from './analytics';
+import { recentEvents, setSink, track } from './analytics';
+import { createNetworkSink } from './platform/analytics-sink';
 import type { HealthSnapshot } from './health/health-provider';
 import { pickHealthProvider } from './platform/providers';
 import { HttpSyncProvider, LocalMirrorSyncProvider } from './platform/sync-provider';
@@ -56,7 +57,22 @@ setInterval(() => {
   toast('The hearth burns low and steady. Emberhollow will keep — rest is progress too.');
 }, 5 * 60_000);
 
-// Crash telemetry stays local: errors land in the diagnostics buffer only.
+// Analytics + crash reporting sink. In production, when an endpoint is
+// configured (VITE_ANALYTICS_ENDPOINT), events + client errors are batched to
+// it (health values stripped at the boundary — see analytics-sink.ts). Without
+// an endpoint, or in dev, everything stays in the local in-memory buffer.
+const analyticsEndpoint = (import.meta.env.VITE_ANALYTICS_ENDPOINT as string | undefined)?.trim();
+if (import.meta.env.PROD && analyticsEndpoint) {
+  const { sink, flush } = createNetworkSink(analyticsEndpoint);
+  setSink(sink);
+  // A closing/backgrounded tab still reports its last events.
+  window.addEventListener('pagehide', flush);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flush();
+  });
+}
+
+// Uncaught errors + promise rejections flow through the same sink.
 window.addEventListener('error', (e) => {
   track('client_error', { message: String(e.message).slice(0, 200) });
 });
