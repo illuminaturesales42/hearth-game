@@ -3,10 +3,37 @@
  * UI layers subscribe; core stays DOM-free.
  */
 import type { GameState, Item } from './types';
-import { chainDef, createBoard, dropItem, emptyIndices, findItem, findMergePair, itemAt, maxLevel, tidyBoard, toggleLock, trashMatching, withEmpty, withItem } from './board';
+import {
+  chainDef,
+  createBoard,
+  dropItem,
+  emptyIndices,
+  findItem,
+  findMergePair,
+  itemAt,
+  maxLevel,
+  tidyBoard,
+  toggleLock,
+  trashMatching,
+  withEmpty,
+  withItem,
+} from './board';
 import { COLLECTIONS } from '../data/world';
 import { accrueRegen, canSpend, grant, initialEnergy, spend } from './energy';
-import { BOARD_COLS, BOARD_ROWS, CHAPTERS, ENERGY, ORDERS, PRODUCER_INDEX, RESOURCE_SPAWN_TABLE, SPAWN_TABLE, WORKSHOP_UNLOCK_AT, ZONE_STAGES, sellValue, stageFor } from '../data/economy';
+import {
+  BOARD_COLS,
+  BOARD_ROWS,
+  CHAPTERS,
+  ENERGY,
+  ORDERS,
+  PRODUCER_INDEX,
+  RESOURCE_SPAWN_TABLE,
+  SPAWN_TABLE,
+  WORKSHOP_UNLOCK_AT,
+  ZONE_STAGES,
+  sellValue,
+  stageFor,
+} from '../data/economy';
 import { appendEntry, composeEntry, rolloverStats } from './chronicle';
 import { newlyEarned } from './achievements';
 import { questMultiplier, questsForDay } from '../data/daily-quests';
@@ -15,7 +42,14 @@ import { requestsForDay, type TownRequest } from '../data/town-requests';
 import { CURRENT_VERSION, defaultPrefs, loadState, saveState } from './save';
 import { applySnapshot, initialLedger } from '../health/health-energy';
 import type { HealthSnapshot } from '../health/health-provider';
-import { advanceDay, canDoAction, initialActionState, recordAction, rolloverActions, streakMultiplier } from './actions';
+import {
+  advanceDay,
+  canDoAction,
+  initialActionState,
+  recordAction,
+  rolloverActions,
+  streakMultiplier,
+} from './actions';
 import type { RecordResult } from './actions';
 import { localDayKey } from './energy';
 import { LOG_MEDITATION, loggedMinutesToEnergy } from '../data/meditations';
@@ -27,10 +61,36 @@ import { STARGAZE, fullMoonBonus, phaseName } from '../data/moon';
 import { isNight } from './sun';
 import type { Coords } from './sun';
 import { addToRepository, duelMultiplier } from './duel';
+import {
+  MINIGAME_ENERGY_COST,
+  addEmber,
+  grantToken,
+  initialMinigames,
+  isEligible,
+  isUnlocked,
+  rolloverMinigames,
+  spendToken,
+  storyComplete,
+  tryUnlock,
+  type MgReward,
+  type UnlockOutcome,
+} from './minigames';
+import { MINIGAME_BY_ID, WISHES, minigameForBuilding, type MinigameDef } from '../data/minigames';
+import { orderAt } from '../data/endless';
 import { DECOR_CATALOG, TOWN_BUILDINGS, BUILDING_INFO } from '../data/town-layout';
 import { bondFor, deliveryMemory, hearts, recordMemory, restoreMemory } from './relationships';
 import { villagerIdFor, villagerDef } from '../data/villagers';
-import type { ActionState, ChainId, GratitudeEntry, GratitudeState, OrderDef, RepositoryItem, Settings, SocialState } from './types';
+import type {
+  ActionState,
+  ChainId,
+  GratitudeEntry,
+  GratitudeState,
+  MinigameState,
+  OrderDef,
+  RepositoryItem,
+  Settings,
+  SocialState,
+} from './types';
 
 export type GameEvent =
   | { type: 'state' }
@@ -45,7 +105,14 @@ export type GameEvent =
   | { type: 'delivered'; orderId: string; resolution: string; rewardEnergy: number; rewardCoins: number }
   | { type: 'action'; actionId: string; energy: number }
   | { type: 'chest'; coins: number }
-  | { type: 'health'; energy: number; fromSteps: number; fromStairs: number; fromSleep: number; sleepFullNight: boolean }
+  | {
+      type: 'health';
+      energy: number;
+      fromSteps: number;
+      fromStairs: number;
+      fromSleep: number;
+      sleepFullNight: boolean;
+    }
   | { type: 'social' }
   | { type: 'friendJoined'; name: string; energy: number }
   | { type: 'help'; from: string; count: number }
@@ -64,6 +131,8 @@ export type GameEvent =
   | { type: 'decor' }
   | { type: 'settings' }
   | { type: 'duelEnd'; won: boolean; streak: number; multiplier: number; coins: number; itemCount: number }
+  | { type: 'minigameUnlocked'; id: string; title: string }
+  | { type: 'minigameEnd'; id: string; title: string; coins: number; ember: number; itemCount: number; wish?: string }
   | { type: 'chapterComplete'; chapter: number; title: string; cliffhanger: string; hasNext: boolean };
 
 type Listener = (ev: GameEvent) => void;
@@ -86,10 +155,14 @@ export class Game {
     let board = createBoard(BOARD_COLS, BOARD_ROWS, PRODUCER_INDEX);
     // Opening layout: enough to teach merging in the first 20 seconds.
     const seeds: { i: number; chain: Item['chain']; level: number }[] = [
-      { i: 8, chain: 'wood', level: 0 }, { i: 10, chain: 'wood', level: 0 },
-      { i: 14, chain: 'wood', level: 1 }, { i: 26, chain: 'wood', level: 1 },
-      { i: 27, chain: 'harvest', level: 0 }, { i: 29, chain: 'harvest', level: 0 },
-      { i: 33, chain: 'hearthfire', level: 0 }, { i: 35, chain: 'hearthfire', level: 0 },
+      { i: 8, chain: 'wood', level: 0 },
+      { i: 9, chain: 'wood', level: 0 }, // adjacent to i:8 so the first taught merge needs no reach
+      { i: 14, chain: 'wood', level: 1 },
+      { i: 26, chain: 'wood', level: 1 },
+      { i: 27, chain: 'harvest', level: 0 },
+      { i: 29, chain: 'harvest', level: 0 },
+      { i: 33, chain: 'hearthfire', level: 0 },
+      { i: 35, chain: 'hearthfire', level: 0 },
     ];
     let uid = 1;
     for (const s of seeds) board = withItem(board, s.i, { chain: s.chain, level: s.level, uid: uid++ });
@@ -103,7 +176,15 @@ export class Game {
       settings: { autoMerge: false },
       prefs: defaultPrefs(),
       chronicle: { entries: [] },
-      stats: { merges: 0, duelWins: 0, flashbacks: 0, day: localDayKey(now), dayMerges: 0, dayDelivers: 0, dayActions: 0 },
+      stats: {
+        merges: 0,
+        duelWins: 0,
+        flashbacks: 0,
+        day: localDayKey(now),
+        dayMerges: 0,
+        dayDelivers: 0,
+        dayActions: 0,
+      },
       achievements: [],
       questsClaimed: [],
       flags: { ftueDone: false, windDownShown: false },
@@ -112,6 +193,7 @@ export class Game {
       buildingUpgrades: {},
       decor: [],
       nextDecorId: 1,
+      minigames: initialMinigames(localDayKey(now)),
       repository: [],
       duelStreak: 0,
       coins: 0,
@@ -124,6 +206,11 @@ export class Game {
 
   get snapshot(): GameState {
     return this.state;
+  }
+
+  /** The order the village currently wants: authored story order, then endless town-needs. */
+  currentOrder(): OrderDef {
+    return orderAt(this.state.orderIndex);
   }
 
   get actionState(): ActionState {
@@ -143,7 +230,10 @@ export class Game {
     const res = invite(this.state.social, name);
     this.state = { ...this.state, social: res.state };
     this.emit({ type: 'social' });
-    return { code: res.friend.id.toUpperCase() + Math.abs(hashCode(res.friend.id)).toString(36).slice(0, 4).toUpperCase(), name };
+    return {
+      code: res.friend.id.toUpperCase() + Math.abs(hashCode(res.friend.id)).toString(36).slice(0, 4).toUpperCase(),
+      name,
+    };
   }
 
   /** Simulate a friend accepting the invite (real backend fires this on their join). */
@@ -161,8 +251,7 @@ export class Game {
 
   /** Ask a friend for help; they send starter items of the current task's chain. */
   askFriendForHelp(id: string, now = Date.now()): void {
-    const order = ORDERS[this.state.orderIndex];
-    const chain: ChainId = order ? order.need.chain : 'wood';
+    const chain: ChainId = this.currentOrder().need.chain;
     const res = askFriend(this.state.social, id, chain, now);
     if (res.gifts.length === 0) {
       this.emit({ type: 'social' });
@@ -225,7 +314,11 @@ export class Game {
         }
       }
       for (const a of newlyEarned(this.state)) {
-        this.state = { ...this.state, achievements: [...this.state.achievements, a.id], coins: this.state.coins + a.coins };
+        this.state = {
+          ...this.state,
+          achievements: [...this.state.achievements, a.id],
+          coins: this.state.coins + a.coins,
+        };
         extra.push({ type: 'achievement', id: a.id, title: a.title, icon: a.icon, coins: a.coins });
       }
       for (const m of newMilestones(streak, this.state.milestonesSeen ?? [])) {
@@ -252,9 +345,21 @@ export class Game {
       this.processing = false;
     }
     saveState(this.state);
-    for (const l of this.listeners) l(ev);
-    for (const e of extra) for (const l of this.listeners) l(e);
-    if (ev.type !== 'state') for (const l of this.listeners) l({ type: 'state' });
+    this.dispatch(ev);
+    for (const e of extra) this.dispatch(e);
+    if (ev.type !== 'state') this.dispatch({ type: 'state' });
+  }
+
+  /** Fan an event out to every subscriber; one throwing listener can't wedge the rest. */
+  private dispatch(ev: GameEvent): void {
+    for (const l of this.listeners) {
+      try {
+        l(ev);
+      } catch (err) {
+        // A broken UI subscriber must never halt the game loop or other views.
+        console.error('Hearth: listener error', err);
+      }
+    }
   }
 
   /**
@@ -265,12 +370,24 @@ export class Game {
     const today = localDayKey(now);
     if (this.state.actions.day !== today) {
       const a = this.state.actions;
-      const entry = composeEntry(a.day, a.counts, a.streak, stageFor(this.state.orderIndex), this.state.stats.dayDelivers);
+      const entry = composeEntry(
+        a.day,
+        a.counts,
+        a.streak,
+        stageFor(this.state.orderIndex),
+        this.state.stats.dayDelivers,
+      );
       this.state = { ...this.state, chronicle: { entries: appendEntry(this.state.chronicle.entries, entry) } };
       this.emit({ type: 'chronicle', day: entry.day });
     }
     if (this.state.stats.day !== today) {
-      this.state = { ...this.state, stats: rolloverStats(this.state.stats, today), questsClaimed: [], requestsFilled: [] };
+      this.state = {
+        ...this.state,
+        stats: rolloverStats(this.state.stats, today),
+        questsClaimed: [],
+        requestsFilled: [],
+        minigames: rolloverMinigames(this.state.minigames, today),
+      };
     }
   }
 
@@ -356,7 +473,13 @@ export class Game {
     // remove qty matching, unlocked items
     let removed = 0;
     const cells = this.state.board.cells.map((c) => {
-      if (removed < req.qty && c.kind === 'item' && c.item.chain === req.chain && c.item.level === req.level && !c.item.locked) {
+      if (
+        removed < req.qty &&
+        c.kind === 'item' &&
+        c.item.chain === req.chain &&
+        c.item.level === req.level &&
+        !c.item.locked
+      ) {
         removed++;
         return { kind: 'empty' as const };
       }
@@ -398,7 +521,12 @@ export class Game {
     this.undoBoard = res.merged ? before : null;
     const tierPatch =
       res.merged && res.result
-        ? { maxTier: { ...(this.state.maxTier ?? {}), [res.result.chain]: Math.max(this.state.maxTier?.[res.result.chain] ?? 0, res.result.level) } }
+        ? {
+            maxTier: {
+              ...(this.state.maxTier ?? {}),
+              [res.result.chain]: Math.max(this.state.maxTier?.[res.result.chain] ?? 0, res.result.level),
+            },
+          }
         : {};
     this.state = {
       ...this.state,
@@ -459,16 +587,15 @@ export class Game {
 
   /** Index of the board item satisfying the current order, or -1. */
   deliverableIndex(): number {
-    const order = ORDERS[this.state.orderIndex];
-    if (!order) return -1;
+    const order = this.currentOrder();
     return findItem(this.state.board, order.need.chain, order.need.level);
   }
 
   deliver(): void {
     this.beginDay(Date.now());
-    const order = ORDERS[this.state.orderIndex];
+    const order = this.currentOrder();
     const idx = this.deliverableIndex();
-    if (!order || idx < 0) {
+    if (idx < 0) {
       this.emit({ type: 'reject', index: -1, reason: 'invalid' });
       return;
     }
@@ -511,13 +638,23 @@ export class Game {
     const day = this.state.actions.day;
     const before = hearts(bondFor(this.state.relationships, vid).points);
     const itemName = chainDef(order.need.chain).levelNames[order.need.level] ?? 'what they needed';
-    let rel = recordMemory(this.state.relationships, vid, deliveryMemory(day, villagerDef(vid)?.name ?? order.who, itemName));
+    let rel = recordMemory(
+      this.state.relationships,
+      vid,
+      deliveryMemory(day, villagerDef(vid)?.name ?? order.who, itemName),
+    );
     // Did this delivery just bring their home back from the storm?
     const home = TOWN_BUILDINGS.find((b) => b.unlockAt === this.state.orderIndex && b.art === villagerDef(vid)?.home);
     if (home) rel = recordMemory(rel, vid, restoreMemory(day, BUILDING_INFO[home.art] ?? 'their home'));
     this.state = { ...this.state, relationships: rel };
     const after = hearts(bondFor(rel, vid).points);
-    this.emit({ type: 'bond', villagerId: vid, name: villagerDef(vid)?.name ?? order.who, hearts: after, grew: after > before });
+    this.emit({
+      type: 'bond',
+      villagerId: vid,
+      name: villagerDef(vid)?.name ?? order.who,
+      hearts: after,
+      grew: after > before,
+    });
   }
 
   /** The player's standing with a villager, for the Villagers screen. */
@@ -550,6 +687,7 @@ export class Game {
     this.state = { ...this.state, healthLedger: res.ledger };
     if (res.energy > 0) {
       this.state = { ...this.state, energy: grant(this.state.energy, res.energy) };
+      this.earnMinigameToken(); // a real walk/night's sleep earns a Village Life go
       this.emit({
         type: 'health',
         energy: res.energy,
@@ -637,7 +775,10 @@ export class Game {
       energy: grant(this.state.energy, total),
       coins: this.state.coins + res.chestCoins,
     };
-    if (res.energy > 0) this.bumpStat({ dayActions: this.state.stats.dayActions + 1 });
+    if (res.energy > 0) {
+      this.bumpStat({ dayActions: this.state.stats.dayActions + 1 });
+      this.earnMinigameToken(); // living well earns another go at Village Life
+    }
     this.emit({ type: 'action', actionId, energy: res.energy });
     if (res.dailyBonus > 0) this.emit({ type: 'daily', energy: res.dailyBonus, streak: res.state.streak });
     if (res.chestCoins > 0) this.emit({ type: 'chest', coins: res.chestCoins });
@@ -881,8 +1022,7 @@ export class Game {
 
   /** Whether the Repository holds the item the current story order needs. */
   canDeliverFromRepository(): boolean {
-    const order = ORDERS[this.state.orderIndex];
-    if (!order) return false;
+    const order = this.currentOrder();
     return this.state.repository.some(
       (r) => r.chain === order.need.chain && r.level === order.need.level && r.count > 0,
     );
@@ -891,8 +1031,7 @@ export class Game {
   /** Spend a Repository item to complete the current order — duels feeding the story. */
   deliverFromRepository(): void {
     this.beginDay(Date.now());
-    const order = ORDERS[this.state.orderIndex];
-    if (!order) return;
+    const order = this.currentOrder();
     const idx = this.state.repository.findIndex(
       (r) => r.chain === order.need.chain && r.level === order.need.level && r.count > 0,
     );
@@ -923,6 +1062,125 @@ export class Game {
     this.recordBond(order);
     this.checkZoneRestored();
     this.emitChapterBoundary();
+  }
+
+  // ---------- Village Life mini-games (post-story building games) ----------
+
+  get minigameState(): MinigameState {
+    return this.state.minigames;
+  }
+
+  /** The story is complete once every order is delivered — the gate to Village Life. */
+  isStoryComplete(): boolean {
+    return storyComplete(this.state.orderIndex, ORDERS.length);
+  }
+
+  /** Whether a building supports upgrades at all (props/specials like the lighthouse don't). */
+  isUpgradeable(art: string): boolean {
+    return TOWN_BUILDINGS.some((b) => b.art === art);
+  }
+
+  /** The mini-game a building offers and its current playability, for the building card. */
+  minigameStatus(art: string): {
+    def: MinigameDef;
+    unlocked: boolean;
+    canPlay: boolean;
+    tokens: number;
+    reason: 'ready' | 'no-tokens' | 'no-energy' | 'locked-story' | 'locked-l2';
+  } | null {
+    const def = minigameForBuilding(art);
+    if (!def) return null;
+    const done = this.isStoryComplete();
+    const eligible = isEligible(def.unlock, done, this.upgradeTier(art));
+    const unlocked = isUnlocked(this.state.minigames, def.id);
+    const tokens = this.state.minigames.tokens;
+    let reason: 'ready' | 'no-tokens' | 'no-energy' | 'locked-story' | 'locked-l2' = 'ready';
+    if (!done) reason = 'locked-story';
+    else if (!eligible) reason = 'locked-l2';
+    else if (tokens <= 0) reason = 'no-tokens';
+    else if (this.state.energy.current < MINIGAME_ENERGY_COST) reason = 'no-energy';
+    return { def, unlocked, canPlay: unlocked && reason === 'ready', tokens, reason };
+  }
+
+  /** Open a building's doors — at most one new game opens per day. */
+  openMinigameDoors(art: string, now = Date.now()): UnlockOutcome {
+    this.beginDay(now);
+    const def = minigameForBuilding(art);
+    if (!def) return 'ineligible';
+    const eligible = isEligible(def.unlock, this.isStoryComplete(), this.upgradeTier(art));
+    const res = tryUnlock(this.state.minigames, def.id, eligible, localDayKey(now));
+    if (res.outcome === 'opened') {
+      this.state = { ...this.state, minigames: res.state };
+      this.emit({ type: 'minigameUnlocked', id: def.id, title: def.title });
+    }
+    return res.outcome;
+  }
+
+  canPlayMinigame(id: string): boolean {
+    const def = MINIGAME_BY_ID[id];
+    const st = def ? this.minigameStatus(def.buildingArt) : null;
+    return !!st && st.canPlay;
+  }
+
+  /** Enter a mini-game: spend a token + the energy cost, return a run seed. Null if blocked. */
+  startMinigame(id: string, now = Date.now()): { seed: number } | null {
+    this.beginDay(now);
+    if (!this.canPlayMinigame(id)) return null;
+    this.state = {
+      ...this.state,
+      energy: spend(this.state.energy, MINIGAME_ENERGY_COST),
+      minigames: spendToken(this.state.minigames),
+    };
+    this.emit({ type: 'state' });
+    return { seed: ((now >>> 0) ^ 0x9e3779b9 ^ (this.state.nextUid * 2654435761)) >>> 0 };
+  }
+
+  /** How many wishes the well can draw from (for seeding the UI's pick). */
+  wishCount(): number {
+    return WISHES.length;
+  }
+
+  /**
+   * Bank a finished run's rewards: coins + Repository items now (deliverable once
+   * the endless orders land), embers capped so play never out-earns real life,
+   * and any drawn wish kept as a small keepsake.
+   */
+  finishMinigame(id: string, reward: MgReward, wish?: { who: string; text: string }): void {
+    const def = MINIGAME_BY_ID[id];
+    if (!def) return;
+    const em = addEmber(this.state.minigames, reward.ember);
+    let minigames = em.state;
+    if (wish) {
+      minigames = {
+        ...minigames,
+        wishes: [
+          { id: `wish-${this.state.nextUid}`, who: wish.who, text: wish.text, day: this.state.actions.day },
+          ...minigames.wishes,
+        ].slice(0, 24),
+      };
+    }
+    this.state = {
+      ...this.state,
+      coins: this.state.coins + reward.coins,
+      repository: addToRepository(this.state.repository, reward.items),
+      energy: em.granted > 0 ? grant(this.state.energy, em.granted) : this.state.energy,
+      minigames,
+      nextUid: this.state.nextUid + 1,
+    };
+    this.emit({
+      type: 'minigameEnd',
+      id,
+      title: def.title,
+      coins: reward.coins,
+      ember: em.granted,
+      itemCount: reward.items.length,
+      ...(wish ? { wish: `${wish.who} ${wish.text}` } : {}),
+    });
+  }
+
+  /** Living well tops up a mini-game attempt (never bought). Capped per day. */
+  private earnMinigameToken(): void {
+    this.state = { ...this.state, minigames: grantToken(this.state.minigames) };
   }
 
   // ---------- kindness to a stranger ----------

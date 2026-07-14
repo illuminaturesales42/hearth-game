@@ -1,12 +1,28 @@
 /** Shared domain types. Keep this file dependency-free. */
 
 export type ChainId =
-  | 'wood' | 'harvest' | 'hearthfire' | 'keepsake'
+  | 'wood'
+  | 'harvest'
+  | 'hearthfire'
+  | 'keepsake'
   // Resource library from the clean merge-chain sheet (art in item_<id>_<n>).
-  | 'stone' | 'clay' | 'seeds' | 'flowers' | 'water' | 'copper'
-  | 'fish' | 'honey' | 'herbs' | 'wool' | 'books' | 'music'
+  | 'stone'
+  | 'clay'
+  | 'seeds'
+  | 'flowers'
+  | 'water'
+  | 'copper'
+  | 'fish'
+  | 'honey'
+  | 'herbs'
+  | 'wool'
+  | 'books'
+  | 'music'
   // Builder's Yard: chains that climb from materials to a finished building.
-  | 'homestead' | 'greenhouse' | 'smithy' | 'apothecary';
+  | 'homestead'
+  | 'greenhouse'
+  | 'smithy'
+  | 'apothecary';
 
 export interface ChainDef {
   id: ChainId;
@@ -213,6 +229,35 @@ export interface VillagerBond {
 /** villagerId -> bond. Absent = not yet met meaningfully. (save v12) */
 export type RelationshipState = Record<string, VillagerBond>;
 
+/** A wish surfaced by the Wishing Well — a villager's small hope (save v14). */
+export interface Wish {
+  id: string;
+  who: string;
+  text: string;
+  day: string; // YYYY-MM-DD local it was drawn
+}
+
+/**
+ * Village Life: the post-story mini-game layer (save v14). Buildings "open their
+ * doors" once the story is complete; attempts come from a daily token pool that
+ * living well tops up — never bought. Energy is the entry cost (the late-game
+ * sink). Rewards bank into the Repository + coins, with capped daily embers.
+ */
+export interface MinigameState {
+  /** Mini-game ids the player has opened (one may open per day). */
+  unlocked: readonly string[];
+  /** Local day a game was last opened, so only one opens per day. */
+  lastUnlockDay: string | null;
+  /** Day the token/ember pool belongs to (resets at midnight). */
+  day: string;
+  /** Attempts available across all games today (living well tops this up). */
+  tokens: number;
+  /** Energy granted from mini-games today (capped, so play never out-earns life). */
+  emberToday: number;
+  /** Villager wishes drawn at the well, kept as small keepsakes. */
+  wishes: readonly Wish[];
+}
+
 /** A player-placed decoration on the town map (normalized coords). */
 export interface DecorPiece {
   id: number;
@@ -253,6 +298,8 @@ export interface GameState {
   /** Player-placed town decorations (coins buy beauty, never power). */
   decor: readonly DecorPiece[];
   nextDecorId: number;
+  /** Village Life mini-games: unlock + daily attempt state (save v14). */
+  minigames: MinigameState;
   /** Items won from duels, spendable to progress the story. */
   repository: readonly RepositoryItem[];
   /** Consecutive duel wins → reward multiplier. */

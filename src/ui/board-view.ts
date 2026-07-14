@@ -12,6 +12,10 @@ export class BoardView {
   private dragFrom = -1;
   private fxLayer: HTMLElement;
   private reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /** Motion off if the OS asks OR the in-app Settings toggle is on — re-checked per event. */
+  private reduced(): boolean {
+    return this.reduce || document.body.classList.contains('reduce-motion');
+  }
   /** last cell that was deliverable, captured pre-delivery for the orb origin */
   private lastDeliverable = -1;
   /** tap-to-merge: the first-tapped item awaiting a partner (-1 = none) */
@@ -19,7 +23,10 @@ export class BoardView {
   /** true once a pointer press has crossed the drag threshold */
   private dragging = false;
 
-  constructor(private game: Game, rootEl: HTMLElement) {
+  constructor(
+    private game: Game,
+    rootEl: HTMLElement,
+  ) {
     this.root = rootEl;
     this.fxLayer =
       document.getElementById('fx-layer') ??
@@ -72,13 +79,16 @@ export class BoardView {
       el.innerHTML = '';
       if (c.kind === 'producer') {
         el.classList.add('producer');
-        if (!artUrl('prop_crate')) el.innerHTML = '<span class="glyph">📦</span>';
+        if (!artUrl('res_chest_closed')) el.innerHTML = '<span class="glyph">📦</span>';
       } else if (c.kind === 'item') {
         el.classList.add('item');
         const def = chainDef(c.item.chain);
         const lock = c.item.locked ? '<span class="pin" aria-hidden="true">🔒</span>' : '';
         el.innerHTML = `${tileMarkup(c.item.chain, c.item.level)}<span class="lv">${c.item.level + 1}</span>${lock}`;
-        el.setAttribute('aria-label', `${def.levelNames[c.item.level]} level ${c.item.level + 1}${c.item.locked ? ', locked' : ''}`);
+        el.setAttribute(
+          'aria-label',
+          `${def.levelNames[c.item.level]} level ${c.item.level + 1}${c.item.locked ? ', locked' : ''}`,
+        );
         if (i === deliverable) el.classList.add('deliverable');
         if (i === this.selected) el.classList.add('selected');
         if (c.item.locked) el.classList.add('locked');
@@ -157,7 +167,7 @@ export class BoardView {
   }
 
   /** Promote a press into a drag once it crosses the movement threshold. */
-  private startDrag(e: PointerEvent): void {
+  private startDrag(_e: PointerEvent): void {
     this.dragging = true;
     clearTimeout(this.holdTimer);
     this.clearSelection();
@@ -307,7 +317,7 @@ export class BoardView {
 
   /** Merge juice: a sparkle burst + an expanding ember ring at the target cell. */
   private mergeBurst(i: number): void {
-    if (this.reduce) return;
+    if (this.reduced()) return;
     const c = this.cellCentre(i);
     if (!c) return;
     const url = artUrl('fx_merge_sparkle');
@@ -326,17 +336,28 @@ export class BoardView {
     ring.style.top = `${c.y}px`;
     this.fxLayer.appendChild(ring);
     setTimeout(() => ring.remove(), 480);
+
+    // The ember-heart blooms at the merge — Hearth's signature juice (7-frame
+    // sprite strip, plays once). Only when motion is allowed (this.reduce guards).
+    if (artUrl('fx_heartfire')) {
+      const heart = document.createElement('div');
+      heart.className = 'fx-heart';
+      heart.style.left = `${c.x}px`;
+      heart.style.top = `${c.y}px`;
+      this.fxLayer.appendChild(heart);
+      setTimeout(() => heart.remove(), 620);
+    }
   }
 
   /** Deliver juice: an energy orb floats from the completed cell to the order card. */
   private deliverFly(): void {
-    if (this.reduce) return;
+    if (this.reduced()) return;
     const url = artUrl('fx_energy_orb');
     if (!url) return;
     const from = this.cellCentre(this.lastDeliverable) ?? this.boardCentre();
     const target = document.getElementById('deliver-btn') ?? document.querySelector('.order-card');
     if (!target) return;
-    const tr = (target as HTMLElement).getBoundingClientRect();
+    const tr = target.getBoundingClientRect();
     const to = { x: tr.left + tr.width / 2, y: tr.top + tr.height / 2 };
     const orb = document.createElement('img');
     orb.src = url;
@@ -349,6 +370,18 @@ export class BoardView {
       orb.style.opacity = '0.15';
     });
     setTimeout(() => orb.remove(), 640);
+
+    // the order lands: a heartfire bloom greets it at the order card
+    if (artUrl('fx_heartfire')) {
+      setTimeout(() => {
+        const heart = document.createElement('div');
+        heart.className = 'fx-heart';
+        heart.style.left = `${to.x}px`;
+        heart.style.top = `${to.y}px`;
+        this.fxLayer.appendChild(heart);
+        setTimeout(() => heart.remove(), 620);
+      }, 430);
+    }
   }
 
   private boardCentre(): { x: number; y: number } {

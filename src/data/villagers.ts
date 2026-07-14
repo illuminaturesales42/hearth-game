@@ -17,11 +17,46 @@ export interface VillagerDef {
 }
 
 export const VILLAGER_DEFS: readonly VillagerDef[] = [
-  { id: 'wren', name: 'Wren', role: 'Postmistress', home: 'town_market', trait: 'reads every letter twice', favouritePlace: 'the notice board' },
-  { id: 'bran', name: 'Bran', role: 'Baker', home: 'town_bakery', trait: 'up before the gulls, flour to the elbows', favouritePlace: 'a warm oven' },
-  { id: 'sorin', name: 'Sorin', role: 'Old Keeper', home: 'town_library', trait: 'keeps what the tide throws away', favouritePlace: 'the lighthouse path' },
-  { id: 'joss', name: 'Joss', role: 'Boatswain', home: 'town_fisherhut', trait: 'trusts the tide more than most people', favouritePlace: 'the north docks' },
-  { id: 'marta', name: 'Marta', role: 'the returned', home: 'town_cottage', trait: 'came back from the sea full of questions', favouritePlace: 'the old cottage window' },
+  {
+    id: 'wren',
+    name: 'Wren',
+    role: 'Postmistress',
+    home: 'town_market',
+    trait: 'reads every letter twice',
+    favouritePlace: 'the notice board',
+  },
+  {
+    id: 'bran',
+    name: 'Bran',
+    role: 'Baker',
+    home: 'town_bakery',
+    trait: 'up before the gulls, flour to the elbows',
+    favouritePlace: 'a warm oven',
+  },
+  {
+    id: 'sorin',
+    name: 'Sorin',
+    role: 'Old Keeper',
+    home: 'town_library',
+    trait: 'keeps what the tide throws away',
+    favouritePlace: 'the lighthouse path',
+  },
+  {
+    id: 'joss',
+    name: 'Joss',
+    role: 'Boatswain',
+    home: 'town_fisherhut',
+    trait: 'trusts the tide more than most people',
+    favouritePlace: 'the north docks',
+  },
+  {
+    id: 'marta',
+    name: 'Marta',
+    role: 'the returned',
+    home: 'town_cottage',
+    trait: 'came back from the sea full of questions',
+    favouritePlace: 'the old cottage window',
+  },
 ];
 
 /** Resolve an order's `who` string (e.g. "Bran the baker") to a villager id. */

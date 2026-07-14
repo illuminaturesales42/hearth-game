@@ -26,7 +26,12 @@ describe('streak milestones', () => {
     expect(newMilestones(1, []).length).toBe(0);
     expect(newMilestones(3, []).map((m) => m.id)).toEqual(['ms-3']);
     expect(newMilestones(7, ['ms-3']).map((m) => m.id)).toEqual(['ms-7']);
-    expect(newMilestones(100, STREAK_MILESTONES.map((m) => m.id)).length).toBe(0);
+    expect(
+      newMilestones(
+        100,
+        STREAK_MILESTONES.map((m) => m.id),
+      ).length,
+    ).toBe(0);
   });
 
   it('nextMilestone points at the next unreached target', () => {

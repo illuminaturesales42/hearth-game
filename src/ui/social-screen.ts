@@ -42,17 +42,14 @@ export class SocialScreen {
     el.innerHTML =
       `<h2 class="screen-title">Your Village</h2>` +
       `<p class="screen-sub">Invite friends to Emberhollow. When they join, your hearth flares. Ask a friend for a hand when a task runs tough.</p>` +
-
       `<div class="invite-card">` +
       `<div class="invite-copy"><b>Invite a friend</b><span>You both get +${JOIN_BONUS} energy the moment they join.</span></div>` +
       `<button class="btn-primary" id="invite-btn">Copy invite link</button>` +
       `</div>` +
-
       `<button class="med-cta duel-cta" id="duel-start">` +
       `<span class="med-cta-ico">⚔️</span>` +
       `<span class="med-cta-body"><b>Bonfire Duel</b><span>Play a friend hot-seat · win streak ×${this.game.duelStreak}</span></span>` +
       `<span class="med-cta-go">›</span></button>` +
-
       (reqs.length
         ? `<p class="earn-label">Town requests</p>` +
           `<p class="screen-sub folk-sub">Craft resources at the Workshop and hand them over for coins.</p>` +
@@ -74,7 +71,6 @@ export class SocialScreen {
             .join('') +
           `</div>`
         : '') +
-
       (s.gifts.length
         ? `<p class="earn-label">Gifts waiting</p><div class="gift-list">` +
           s.gifts
@@ -89,7 +85,6 @@ export class SocialScreen {
             .join('') +
           `</div>`
         : '') +
-
       `<p class="earn-label">Village friends</p>` +
       `<div class="friend-list">` +
       joined
@@ -115,7 +110,6 @@ export class SocialScreen {
         .join('') +
       `</div>` +
       `<p class="med-log-note">Friends and trading are simulated in this build; the multiplayer service arrives in M3.</p>` +
-
       `<p class="earn-label">Village folk</p>` +
       `<p class="screen-sub folk-sub">The people of Emberhollow remember what you do for them. Help them, and the hearts fill.</p>` +
       `<div class="friend-list folk-list">` +
@@ -134,7 +128,9 @@ export class SocialScreen {
           `<div class="friend-body"><b>${v.name}</b><span>${v.role} · ${v.trait}</span></div>` +
           `<span class="friend-hearts" title="${b.hearts}/5">${hearts(b.hearts)}</span></div>` +
           `<p class="folk-greet">${greeting}</p>` +
-          (memory && b.hearts > 0 ? '' : `<p class="folk-hint">Deliver ${v.name}’s orders to earn their trust — you’ll find them near ${v.favouritePlace}.</p>`) +
+          (memory && b.hearts > 0
+            ? ''
+            : `<p class="folk-hint">Deliver ${v.name}’s orders to earn their trust — you’ll find them near ${v.favouritePlace}.</p>`) +
           `</div>`
         );
       }).join('') +

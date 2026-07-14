@@ -57,6 +57,7 @@ export const BUILDING_INFO: Record<string, string> = {
   town_blacksmith: 'The Forge',
   town_dock: 'North Docks',
   town_library: 'The Library',
+  prop_lighthouse: 'The Lighthouse',
 };
 
 /** Villagers walk the town once their part of the story has been told. */
@@ -73,14 +74,83 @@ export interface TownWalker {
 // workplace, pausing at the ends (the ping-pong dwells there). A place feels
 // lived-in when people belong somewhere, not when they wander mid-map.
 export const TOWN_WALKERS: readonly TownWalker[] = [
-  { art: 'npc_bran', unlockAt: 4, period: 24, path: [{ x: 0.60, y: 0.535 }, { x: 0.67, y: 0.55 }, { x: 0.62, y: 0.53 }] }, // Bran tends the bakery step
-  { art: 'npc_wren', unlockAt: 8, period: 28, path: [{ x: 0.49, y: 0.61 }, { x: 0.56, y: 0.585 }, { x: 0.52, y: 0.62 }] }, // Wren by the notice board
-  { art: 'npc_sorin', unlockAt: 9, period: 32, path: [{ x: 0.82, y: 0.62 }, { x: 0.90, y: 0.61 }] }, // Sorin near his hut
-  { art: 'npc_marta', unlockAt: 12, period: 30, path: [{ x: 0.30, y: 0.585 }, { x: 0.24, y: 0.61 }, { x: 0.29, y: 0.58 }] }, // Marta at the old cottage
-  { art: 'npc_child', unlockAt: 16, period: 14, path: [{ x: 0.50, y: 0.68 }, { x: 0.60, y: 0.70 }, { x: 0.52, y: 0.73 }, { x: 0.45, y: 0.70 }] }, // the child romps by the well
-  { art: 'npc_joss', unlockAt: 18, period: 26, path: [{ x: 0.72, y: 0.81 }, { x: 0.82, y: 0.83 }] }, // Joss works the docks
-  { art: 'npc_woman', unlockAt: 20, period: 28, path: [{ x: 0.15, y: 0.68 }, { x: 0.22, y: 0.66 }] }, // by the farm
-  { art: 'npc_man', unlockAt: 22, period: 26, path: [{ x: 0.32, y: 0.76 }, { x: 0.42, y: 0.78 }] }, // by the forge
+  {
+    art: 'npc_bran',
+    unlockAt: 4,
+    period: 24,
+    path: [
+      { x: 0.6, y: 0.535 },
+      { x: 0.67, y: 0.55 },
+      { x: 0.62, y: 0.53 },
+    ],
+  }, // Bran tends the bakery step
+  {
+    art: 'npc_wren',
+    unlockAt: 8,
+    period: 28,
+    path: [
+      { x: 0.49, y: 0.61 },
+      { x: 0.56, y: 0.585 },
+      { x: 0.52, y: 0.62 },
+    ],
+  }, // Wren by the notice board
+  {
+    art: 'npc_sorin',
+    unlockAt: 9,
+    period: 32,
+    path: [
+      { x: 0.82, y: 0.62 },
+      { x: 0.9, y: 0.61 },
+    ],
+  }, // Sorin near his hut
+  {
+    art: 'npc_marta',
+    unlockAt: 12,
+    period: 30,
+    path: [
+      { x: 0.3, y: 0.585 },
+      { x: 0.24, y: 0.61 },
+      { x: 0.29, y: 0.58 },
+    ],
+  }, // Marta at the old cottage
+  {
+    art: 'npc_child',
+    unlockAt: 16,
+    period: 14,
+    path: [
+      { x: 0.5, y: 0.68 },
+      { x: 0.6, y: 0.7 },
+      { x: 0.52, y: 0.73 },
+      { x: 0.45, y: 0.7 },
+    ],
+  }, // the child romps by the well
+  {
+    art: 'npc_joss',
+    unlockAt: 18,
+    period: 26,
+    path: [
+      { x: 0.72, y: 0.81 },
+      { x: 0.82, y: 0.83 },
+    ],
+  }, // Joss works the docks
+  {
+    art: 'npc_woman',
+    unlockAt: 20,
+    period: 28,
+    path: [
+      { x: 0.15, y: 0.68 },
+      { x: 0.22, y: 0.66 },
+    ],
+  }, // by the farm
+  {
+    art: 'npc_man',
+    unlockAt: 22,
+    period: 26,
+    path: [
+      { x: 0.32, y: 0.76 },
+      { x: 0.42, y: 0.78 },
+    ],
+  }, // by the forge
 ] as const;
 
 /** Boats moored and returning as the harbour comes back to life. */
@@ -118,41 +188,41 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   { art: 'fence_wood', x: 0.73, y: 0.705, w: 0.11, unlockAt: 10, stage: 0 },
   // ── Storm wreckage: the island washed up broken but alive. Scattered at the
   //    edges early, cleared away as Emberhollow is rebuilt (untilStage).
-  { art: 'debris_a', x: 0.62, y: 0.70, w: 0.06, unlockAt: 0, stage: 0, untilStage: 1 },
+  { art: 'debris_a', x: 0.62, y: 0.7, w: 0.06, unlockAt: 0, stage: 0, untilStage: 1 },
   { art: 'debris_b', x: 0.35, y: 0.665, w: 0.055, unlockAt: 0, stage: 0, untilStage: 1 },
-  { art: 'debris_c', x: 0.50, y: 0.72, w: 0.045, unlockAt: 0, stage: 0, untilStage: 0 },
-  { art: 'debris_d', x: 0.815, y: 0.70, w: 0.035, unlockAt: 0, stage: 0, untilStage: 1 },
+  { art: 'debris_c', x: 0.5, y: 0.72, w: 0.045, unlockAt: 0, stage: 0, untilStage: 0 },
+  { art: 'debris_d', x: 0.815, y: 0.7, w: 0.035, unlockAt: 0, stage: 0, untilStage: 1 },
   { art: 'debris_e', x: 0.19, y: 0.71, w: 0.05, unlockAt: 0, stage: 0, untilStage: 0 },
-  { art: 'debris_a', x: 0.44, y: 0.50, w: 0.045, unlockAt: 0, stage: 0, untilStage: 0 },
+  { art: 'debris_a', x: 0.44, y: 0.5, w: 0.045, unlockAt: 0, stage: 0, untilStage: 0 },
   // storm-bent dead trees give way to healthy ones as the land heals
   { art: 'tree_dead_a', x: 0.885, y: 0.43, w: 0.05, unlockAt: 0, stage: 0, untilStage: 2 },
   { art: 'tree_dead_b', x: 0.145, y: 0.55, w: 0.045, unlockAt: 0, stage: 0, untilStage: 2 },
-  { art: 'tree_dead_c', x: 0.60, y: 0.31, w: 0.05, unlockAt: 0, stage: 0, untilStage: 1 },
+  { art: 'tree_dead_c', x: 0.6, y: 0.31, w: 0.05, unlockAt: 0, stage: 0, untilStage: 1 },
   // permanent coastal detail
-  { art: 'prop_tidepool', x: 0.90, y: 0.90, w: 0.08, unlockAt: 0, stage: 0 },
+  { art: 'prop_tidepool', x: 0.9, y: 0.9, w: 0.08, unlockAt: 0, stage: 0 },
   { art: 'prop_shorerock', x: 0.06, y: 0.84, w: 0.05, unlockAt: 0, stage: 0 },
 
   // ── Phase 2c dressing: fill the open meadow so the healed town reads lush,
   //    not empty. Flower beds, grass copses, path lamps and benches, placed in
   //    the gaps between plots and keyed to stage so growth feels earned.
   // wildflower beds bloom as the land recovers
-  { art: 'terrain_flowers1', x: 0.60, y: 0.865, w: 0.07, unlockAt: 0, stage: 2 },
-  { art: 'terrain_flowers2', x: 0.30, y: 0.885, w: 0.07, unlockAt: 0, stage: 2 },
+  { art: 'terrain_flowers1', x: 0.6, y: 0.865, w: 0.07, unlockAt: 0, stage: 2 },
+  { art: 'terrain_flowers2', x: 0.3, y: 0.885, w: 0.07, unlockAt: 0, stage: 2 },
   { art: 'terrain_flowers1', x: 0.83, y: 0.75, w: 0.06, unlockAt: 0, stage: 3 },
   { art: 'terrain_flowers2', x: 0.47, y: 0.83, w: 0.06, unlockAt: 0, stage: 3 },
-  { art: 'tree_flowerbush', x: 0.40, y: 0.63, w: 0.05, unlockAt: 0, stage: 3 },
-  { art: 'tree_flowerbush', x: 0.90, y: 0.64, w: 0.05, unlockAt: 0, stage: 4 },
+  { art: 'tree_flowerbush', x: 0.4, y: 0.63, w: 0.05, unlockAt: 0, stage: 3 },
+  { art: 'tree_flowerbush', x: 0.9, y: 0.64, w: 0.05, unlockAt: 0, stage: 4 },
   // small copses of green break up the meadow
-  { art: 'tree_bush', x: 0.66, y: 0.80, w: 0.05, unlockAt: 0, stage: 1 },
+  { art: 'tree_bush', x: 0.66, y: 0.8, w: 0.05, unlockAt: 0, stage: 1 },
   { art: 'tree_bush', x: 0.12, y: 0.72, w: 0.05, unlockAt: 0, stage: 2 },
   { art: 'tree_pine', x: 0.47, y: 0.31, w: 0.045, unlockAt: 0, stage: 2 },
-  { art: 'tree_oak', x: 0.30, y: 0.40, w: 0.06, unlockAt: 0, stage: 3 },
-  { art: 'prop_rock', x: 0.70, y: 0.885, w: 0.035, unlockAt: 0, stage: 1 },
-  { art: 'prop_rock', x: 0.55, y: 0.90, w: 0.03, unlockAt: 0, stage: 2 },
+  { art: 'tree_oak', x: 0.3, y: 0.4, w: 0.06, unlockAt: 0, stage: 3 },
+  { art: 'prop_rock', x: 0.7, y: 0.885, w: 0.035, unlockAt: 0, stage: 1 },
+  { art: 'prop_rock', x: 0.55, y: 0.9, w: 0.03, unlockAt: 0, stage: 2 },
   // lamplight lines the square and the paths once the town stirs at dusk
   { art: 'prop_lamp', x: 0.66, y: 0.62, w: 0.028, unlockAt: 0, stage: 3 },
-  { art: 'prop_lamp', x: 0.30, y: 0.68, w: 0.028, unlockAt: 0, stage: 3 },
-  { art: 'prop_lamp', x: 0.50, y: 0.80, w: 0.028, unlockAt: 0, stage: 4 },
+  { art: 'prop_lamp', x: 0.3, y: 0.68, w: 0.028, unlockAt: 0, stage: 3 },
+  { art: 'prop_lamp', x: 0.5, y: 0.8, w: 0.028, unlockAt: 0, stage: 4 },
   { art: 'prop_bench', x: 0.44, y: 0.68, w: 0.055, unlockAt: 0, stage: 4 },
 ] as const;
 

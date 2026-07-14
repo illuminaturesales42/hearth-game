@@ -61,10 +61,13 @@ export function greetingFor(state: RelationshipState, id: string): string {
   const bond = bondFor(state, id);
   const h = hearts(bond.points);
   const tier =
-    h >= HEARTS_MAX ? `${name} lights up the moment you appear.` :
-    h >= 3 ? `${name} greets you like an old friend.` :
-    h >= 1 ? `${name} gives you a warm nod.` :
-    `${name} is still getting to know you.`;
+    h >= HEARTS_MAX
+      ? `${name} lights up the moment you appear.`
+      : h >= 3
+        ? `${name} greets you like an old friend.`
+        : h >= 1
+          ? `${name} gives you a warm nod.`
+          : `${name} is still getting to know you.`;
   const latest = bond.memories[0];
   return latest ? `${tier} They remember: “${latest.text}.”` : tier;
 }

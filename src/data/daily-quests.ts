@@ -39,11 +39,7 @@ function hash(s: string): number {
 /** Three distinct quests for a given local day key, stable all day. */
 export function questsForDay(day: string): DailyQuestDef[] {
   const seed = hash(day);
-  return [
-    MERGE[seed % MERGE.length]!,
-    DELIVER[(seed >> 2) % DELIVER.length]!,
-    ACTION[(seed >> 4) % ACTION.length]!,
-  ];
+  return [MERGE[seed % MERGE.length]!, DELIVER[(seed >> 2) % DELIVER.length]!, ACTION[(seed >> 4) % ACTION.length]!];
 }
 
 /**

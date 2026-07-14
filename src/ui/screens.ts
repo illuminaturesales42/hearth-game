@@ -45,7 +45,9 @@ export class Screens {
     host.innerHTML =
       `<h2 class="screen-title">Journal</h2>` +
       `<div class="jtabs">` +
-      TABS.map((t) => `<button class="jtab ${t === this.journalTab ? 'on' : ''}" data-tab="${t}">${t}</button>`).join('') +
+      TABS.map((t) => `<button class="jtab ${t === this.journalTab ? 'on' : ''}" data-tab="${t}">${t}</button>`).join(
+        '',
+      ) +
       `</div>` +
       (this.journalTab === 'Chronicle'
         ? this.chronicle()
@@ -125,7 +127,10 @@ export class Screens {
     const list = g.entries.length
       ? `<p class="earn-label">Your good days</p><div class="gd-list">` +
         g.entries
-          .map((e) => `<div class="gd-entry"><span class="gd-when">${ago(now, e.createdAt)}</span><p>“${esc(e.text)}”</p></div>`)
+          .map(
+            (e) =>
+              `<div class="gd-entry"><span class="gd-when">${ago(now, e.createdAt)}</span><p>“${esc(e.text)}”</p></div>`,
+          )
           .join('') +
         `</div>`
       : '';
@@ -203,9 +208,7 @@ export class Screens {
       `<p class="earn-label">Your coins · ${coins}🪙</p>` +
       `<p class="earn-label">Board skins</p>` +
       `<div class="shop-grid">${skins}</div>` +
-      (beautify
-        ? `<p class="earn-label">Beautify Emberhollow</p><div class="shop-grid">${beautify}</div>`
-        : '') +
+      (beautify ? `<p class="earn-label">Beautify Emberhollow</p><div class="shop-grid">${beautify}</div>` : '') +
       `<p class="earn-label">Town decorations</p>` +
       `<div class="shop-grid">${decor}</div>` +
       `<button id="shop-decorate" class="btn-primary shop-cta">🪴 Decorate the town</button>` +
@@ -276,7 +279,7 @@ export class Screens {
     const decorateBtn = host.querySelector<HTMLButtonElement>('#shop-decorate');
     if (decorateBtn) {
       decorateBtn.onclick = () => {
-        (document.querySelector('[data-screen="home"]') as HTMLElement | null)?.click();
+        document.querySelector<HTMLElement>('[data-screen="home"]')?.click();
         setTimeout(() => {
           const db = document.getElementById('decor-btn') as HTMLButtonElement | null;
           if (db && !db.classList.contains('on')) db.click();

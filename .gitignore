@@ -17,3 +17,8 @@ playwright-report/
 tools/*_contact.png
 tools/_*.png
 tools/_*.json
+
+# building-slice preview scratch
+tools/_build_preview/
+
+tools/__pycache__/

@@ -80,7 +80,10 @@ export function mainSleepHours(
 
   const main = inBand.reduce((a, b) => (b.endTime > a.endTime ? b : a));
   const asleepMs = main.stages?.length
-    ? main.stages.reduce((sum, st) => sum + (AWAKE_STAGES.has(st.stage) ? 0 : Math.max(0, st.endTime - st.startTime)), 0)
+    ? main.stages.reduce(
+        (sum, st) => sum + (AWAKE_STAGES.has(st.stage) ? 0 : Math.max(0, st.endTime - st.startTime)),
+        0,
+      )
     : Math.max(0, main.endTime - main.startTime);
 
   const hours = asleepMs / HOUR;

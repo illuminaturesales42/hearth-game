@@ -87,8 +87,10 @@ export class AppShell {
     }
     // painted wellness medallions on the energy-panel CTAs (Batch 10)
     for (const [btnId, subject] of [
-      ['med-open', 'meditate'], ['recovery-open', 'cold_plunge'],
-      ['star-open', 'sleep'], ['kind-open', 'kindness'],
+      ['med-open', 'meditate'],
+      ['recovery-open', 'cold_plunge'],
+      ['star-open', 'sleep'],
+      ['kind-open', 'kindness'],
     ] as const) {
       const url = actionArt(subject);
       const ico = document.querySelector<HTMLElement>(`#${btnId} .med-cta-ico`);

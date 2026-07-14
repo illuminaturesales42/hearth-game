@@ -94,7 +94,9 @@ describe('relationships integrate with delivery', () => {
   it('emits a bond event on delivery', () => {
     const g = new Game(1000);
     const events: string[] = [];
-    g.subscribe((ev) => { if (ev.type === 'bond') events.push(ev.villagerId); });
+    g.subscribe((ev) => {
+      if (ev.type === 'bond') events.push(ev.villagerId);
+    });
     deliverFirstOrder(g);
     expect(events.length).toBeGreaterThan(0);
   });
@@ -118,9 +120,15 @@ describe('relationships integrate with delivery', () => {
   it('seed helper places a deliverable item', () => {
     const g = new Game(1000);
     const order = ORDERS[0]!;
-    const board = withItem(g.snapshot.board, g.snapshot.board.cells.findIndex((c) => c.kind === 'empty'), {
-      chain: order.need.chain, level: order.need.level, uid: 1,
-    });
+    const board = withItem(
+      g.snapshot.board,
+      g.snapshot.board.cells.findIndex((c) => c.kind === 'empty'),
+      {
+        chain: order.need.chain,
+        level: order.need.level,
+        uid: 1,
+      },
+    );
     expect(findItem(board, order.need.chain, order.need.level)).toBeGreaterThanOrEqual(0);
   });
 });

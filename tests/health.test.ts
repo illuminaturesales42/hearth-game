@@ -31,7 +31,9 @@ describe('steps', () => {
 describe('stairs', () => {
   it('grants 1 energy per flight up to the cap', () => {
     expect(applySnapshot(initialLedger(T0), snap({ flightsToday: 4 }), T0).fromStairs).toBe(4);
-    expect(applySnapshot(initialLedger(T0), snap({ flightsToday: 99 }), T0).fromStairs).toBe(HEALTH_RULES.stairsDailyCap);
+    expect(applySnapshot(initialLedger(T0), snap({ flightsToday: 99 }), T0).fromStairs).toBe(
+      HEALTH_RULES.stairsDailyCap,
+    );
   });
 
   it('pays only the delta as more flights are climbed', () => {
@@ -70,13 +72,25 @@ describe('sleep tiers', () => {
 
 describe('combined + daily reset', () => {
   it('sums all three sources in one grant', () => {
-    const res = applySnapshot(initialLedger(T0), snap({ stepsToday: 5000, flightsToday: 3, sleepHoursLastNight: 8 }), T0);
+    const res = applySnapshot(
+      initialLedger(T0),
+      snap({ stepsToday: 5000, flightsToday: 3, sleepHoursLastNight: 8 }),
+      T0,
+    );
     expect(res.energy).toBe(10 + 3 + 20);
   });
 
   it('resets at local midnight', () => {
-    const first = applySnapshot(initialLedger(T0), snap({ stepsToday: 10_000, flightsToday: 5, sleepHoursLastNight: 8 }), T0);
-    const nextDay = applySnapshot(first.ledger, snap({ stepsToday: 1000, flightsToday: 1, sleepHoursLastNight: 8 }), T0 + 24 * 3600_000);
+    const first = applySnapshot(
+      initialLedger(T0),
+      snap({ stepsToday: 10_000, flightsToday: 5, sleepHoursLastNight: 8 }),
+      T0,
+    );
+    const nextDay = applySnapshot(
+      first.ledger,
+      snap({ stepsToday: 1000, flightsToday: 1, sleepHoursLastNight: 8 }),
+      T0 + 24 * 3600_000,
+    );
     expect(nextDay.fromSteps).toBe(2);
     expect(nextDay.fromStairs).toBe(1);
     expect(nextDay.fromSleep).toBe(20);

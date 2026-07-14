@@ -84,15 +84,19 @@ export class SyncController {
     return true;
   }
 
-  /** Force-push local over remote (UI's answer to a conflict). */
-  async keepLocal(): Promise<void> {
+  /**
+   * Force-push local over remote (UI's answer to a conflict). Returns whether the
+   * push reached the cloud. The rev must clear BOTH sides — the server rejects any
+   * write that isn't strictly newer, so bumping only past the local baseline lets a
+   * higher remote rev 409 the push and silently lose the save the player chose.
+   */
+  async keepLocal(remote?: SyncEnvelope): Promise<boolean> {
     const env = this.localEnvelope();
-    if (env) {
-      const bumped = { ...env, rev: env.rev + 1 };
-      writeRev(bumped.rev);
-      this.baselineRev = bumped.rev;
-      await this.provider.push(bumped);
-    }
+    if (!env) return false;
+    const rev = Math.max(env.rev, remote?.rev ?? 0) + 1;
+    writeRev(rev);
+    this.baselineRev = rev;
+    return this.provider.push({ ...env, rev });
   }
 
   /** After reconciliation, every meaningful change schedules a debounced push. */
@@ -105,7 +109,7 @@ export class SyncController {
 
   private schedulePush(): void {
     clearTimeout(this.timer);
-    this.timer = (setTimeout as typeof globalThis.setTimeout)(() => void this.pushNow(), PUSH_DEBOUNCE_MS) as unknown as number;
+    this.timer = setTimeout(() => void this.pushNow(), PUSH_DEBOUNCE_MS) as unknown as number;
   }
 
   async pushNow(): Promise<void> {

@@ -24,7 +24,8 @@ export class NewDayUI {
       p.streak > 1
         ? `${p.streak}-day streak — the longer you tend the hearth, the more it gives.`
         : 'Return tomorrow to start a streak and grow the reward.';
-    el('newday-streak')!.textContent = p.chestCoins > 0 ? `${streakLine} A milestone chest, too: +${p.chestCoins} coins.` : streakLine;
+    el('newday-streak')!.textContent =
+      p.chestCoins > 0 ? `${streakLine} A milestone chest, too: +${p.chestCoins} coins.` : streakLine;
     // Give today a face: who's waiting, and what for.
     const tease = nextTease(this.game.snapshot.orderIndex);
     const teaseEl = el('newday-tease');

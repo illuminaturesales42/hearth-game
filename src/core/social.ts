@@ -63,7 +63,11 @@ export function askFriend(
     level: 0,
   }));
   const friends = state.friends.map((x) => (x.id === id ? { ...x, askedDay: localDayKey(now) } : x));
-  return { state: { ...state, friends, gifts: [...state.gifts, ...gifts], nextId: state.nextId + 1 }, gifts, name: f.name };
+  return {
+    state: { ...state, friends, gifts: [...state.gifts, ...gifts], nextId: state.nextId + 1 },
+    gifts,
+    name: f.name,
+  };
 }
 
 export function takeGift(state: SocialState, giftId: string): { state: SocialState; gift: Gift | undefined } {

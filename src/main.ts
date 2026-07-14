@@ -4,7 +4,11 @@ import { stageFor } from './data/economy';
 import { feedback } from './ui/feedback';
 import { toast } from './ui/toast';
 import { AppShell } from './ui/app-shell';
-import { recentEvents, track } from './analytics';
+import { MinigameUI } from './ui/minigames';
+import { confirmDialog } from './ui/confirm-modal';
+import { initNetStatus } from './ui/net-status';
+import { recentEvents, setSink, track } from './analytics';
+import { createNetworkSink } from './platform/analytics-sink';
 import type { HealthSnapshot } from './health/health-provider';
 import { pickHealthProvider } from './platform/providers';
 import { HttpSyncProvider, LocalMirrorSyncProvider } from './platform/sync-provider';
@@ -21,6 +25,13 @@ exposeMetricsConsole(metrics);
 metrics.reportSession();
 
 new AppShell(game, metrics);
+
+// Village Life: building mini-games, launched from the map building cards via a
+// 'hearth:play-minigame' event (unlock at story-complete; attempts from living well).
+new MinigameUI(game);
+
+// A quiet offline indicator (the game is local-first; this only reassures).
+initNetStatus();
 
 // The splash lifts once the shell is mounted (a breath later, so it never blinks).
 const splash = document.getElementById('splash');
@@ -56,7 +67,22 @@ setInterval(() => {
   toast('The hearth burns low and steady. Emberhollow will keep — rest is progress too.');
 }, 5 * 60_000);
 
-// Crash telemetry stays local: errors land in the diagnostics buffer only.
+// Analytics + crash reporting sink. In production, when an endpoint is
+// configured (VITE_ANALYTICS_ENDPOINT), events + client errors are batched to
+// it (health values stripped at the boundary — see analytics-sink.ts). Without
+// an endpoint, or in dev, everything stays in the local in-memory buffer.
+const analyticsEndpoint = (import.meta.env.VITE_ANALYTICS_ENDPOINT as string | undefined)?.trim();
+if (import.meta.env.PROD && analyticsEndpoint) {
+  const { sink, flush } = createNetworkSink(analyticsEndpoint);
+  setSink(sink);
+  // A closing/backgrounded tab still reports its last events.
+  window.addEventListener('pagehide', flush);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flush();
+  });
+}
+
+// Uncaught errors + promise rejections flow through the same sink.
 window.addEventListener('error', (e) => {
   track('client_error', { message: String(e.message).slice(0, 200) });
 });
@@ -132,6 +158,12 @@ game.subscribe((ev) => {
     case 'duelEnd':
       track('duel_end', { won: ev.won, streak: ev.streak, coins: ev.coins, items: ev.itemCount });
       break;
+    case 'minigameUnlocked':
+      track('minigame_unlocked', { id: ev.id });
+      break;
+    case 'minigameEnd':
+      track('minigame_end', { id: ev.id, coins: ev.coins, ember: ev.ember, items: ev.itemCount });
+      break;
     case 'health':
       track('health_grant', {
         energy: ev.energy,
@@ -163,12 +195,20 @@ void sync.start().then((res) => {
     toast('Welcome back — your saved village was restored.');
     setTimeout(() => location.reload(), 800);
   } else if (res.outcome === 'conflict' && res.remote) {
-    // Two devices diverged: keep the further-along one, never silently wipe.
-    const keepCloud = window.confirm(
-      'A saved Emberhollow was found that differs from this one. Keep the saved village? (Cancel keeps the one on this device.)',
-    );
-    if (keepCloud) void sync.adoptRemote(res.remote).then((ok) => ok && location.reload());
-    else void sync.keepLocal();
+    // Two devices diverged: let the player choose; never silently wipe.
+    const remote = res.remote;
+    void confirmDialog({
+      title: 'Two villages found',
+      message: 'A saved Emberhollow was found that differs from the one on this device. Which would you like to keep?',
+      confirmLabel: 'Keep the saved village',
+      cancelLabel: 'Keep this device',
+    }).then((keepCloud) => {
+      if (keepCloud) void sync.adoptRemote(remote).then((ok) => ok && location.reload());
+      else
+        void sync.keepLocal(remote).then((ok) => {
+          if (!ok) toast('Could not reach the cloud just now — your village is safe on this device.');
+        });
+    });
   }
 });
 
@@ -181,25 +221,49 @@ declare global {
     hearthSeeTown: (orders?: number) => void;
   }
 }
-window.hearthReset = () => {
-  clearSave();
-  location.reload();
-};
-// Preview the composed town: jump the story forward so buildings appear.
-// e.g. hearthSeeTown(12) = end of Chapter 1; hearthSeeTown() = everything.
-window.hearthSeeTown = (orders = 24) => {
-  game.devPreviewStory(orders);
-  document.querySelector<HTMLButtonElement>('.nav-btn[data-screen="home"]')?.click();
-};
-window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {
-  const snap: HealthSnapshot = {
-    stepsToday: steps,
-    flightsToday: flights ?? 0,
-    sleepHoursLastNight: sleepHours ?? null,
-    source: 'healthkit',
+// Tester hooks (hearthSeeTown, hearthReset, …). Always on in dev; in the
+// deployed build they're OFF for normal players but a friends-and-family tester
+// can opt in by visiting the site once with ?tester (the flag is remembered).
+// This is a closed-test convenience, not a launch feature.
+const _params = new URLSearchParams(location.search);
+if (_params.has('tester')) {
+  try {
+    localStorage.setItem('hearth:tester', '1');
+  } catch {
+    /* ignore */
+  }
+}
+const testerMode =
+  import.meta.env.DEV ||
+  _params.has('tester') ||
+  (() => {
+    try {
+      return localStorage.getItem('hearth:tester') === '1';
+    } catch {
+      return false;
+    }
+  })();
+if (testerMode) {
+  window.hearthReset = () => {
+    clearSave();
+    location.reload();
   };
-  game.syncHealth(snap);
-};
-window.hearthEvents = () => {
-  console.table(recentEvents().map((e) => ({ name: e.name, ...e.props })));
-};
+  // Preview the composed town: jump the story forward so buildings appear.
+  // e.g. hearthSeeTown(12) = end of Chapter 1; hearthSeeTown() = everything.
+  window.hearthSeeTown = (orders = 24) => {
+    game.devPreviewStory(orders);
+    document.querySelector<HTMLButtonElement>('.nav-btn[data-screen="home"]')?.click();
+  };
+  window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {
+    const snap: HealthSnapshot = {
+      stepsToday: steps,
+      flightsToday: flights ?? 0,
+      sleepHoursLastNight: sleepHours ?? null,
+      source: 'healthkit',
+    };
+    game.syncHealth(snap);
+  };
+  window.hearthEvents = () => {
+    console.table(recentEvents().map((e) => ({ name: e.name, ...e.props })));
+  };
+}

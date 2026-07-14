@@ -6,6 +6,7 @@ import type { Game } from '../core/game';
 import { chainDef } from '../core/board';
 import { artUrl, portraitFor, itemIconInline } from './art';
 import { ORDERS, ZONE_STAGES } from '../data/economy';
+import { orderAt } from '../data/endless';
 import { feedback } from './feedback';
 import { toast } from './toast';
 
@@ -29,6 +30,7 @@ export class Home {
           feedback.spawn();
           break;
         case 'reject':
+          feedback.reject();
           if (ev.reason === 'full') toast('The board is full — merge or tidy to make room.');
           else if (ev.reason === 'energy') toast('Not enough energy — a real-world action refills it.');
           break;
@@ -57,7 +59,9 @@ export class Home {
           feedback.chapter();
           this.showStory(
             `Chapter ${ev.chapter} — ${ev.title} — is complete. ${ev.cliffhanger}`,
-            ev.hasNext ? 'The next chapter begins at the notice board.' : 'End of this build. The mystery continues soon.',
+            ev.hasNext
+              ? 'The next chapter begins at the notice board.'
+              : 'End of this build. The mystery continues soon.',
           );
           break;
         case 'action':
@@ -68,7 +72,11 @@ export class Home {
           break;
         case 'friendJoined':
           feedback.chapter();
-          toast(ev.energy > 0 ? `${ev.name} joined your village! +${ev.energy} energy for you both.` : `${ev.name} is back in the village.`);
+          toast(
+            ev.energy > 0
+              ? `${ev.name} joined your village! +${ev.energy} energy for you both.`
+              : `${ev.name} is back in the village.`,
+          );
           break;
         case 'help':
           toast(`${ev.from} sent ${ev.count} to your gifts. Place them on the board to help your task.`);
@@ -77,7 +85,8 @@ export class Home {
           toast(`Day ${ev.streak} at the hearth — +${ev.energy} energy for showing up.`);
           break;
         case 'gratitude':
-          if (ev.energy > 0) toast(`+${ev.energy} energy (×${ev.multiplier.toFixed(1)} streak). A good day, written down.`);
+          if (ev.energy > 0)
+            toast(`+${ev.energy} energy (×${ev.multiplier.toFixed(1)} streak). A good day, written down.`);
           break;
         case 'flashback':
           feedback.chime(660);
@@ -92,7 +101,11 @@ export class Home {
         case 'kindness':
           if (ev.energy > 0) {
             feedback.chime(587);
-            toast(ev.selfie ? `+${ev.energy} energy — a compliment and a new friend. 💛` : `+${ev.energy} energy. A kindness ripples out.`);
+            toast(
+              ev.selfie
+                ? `+${ev.energy} energy — a compliment and a new friend. 💛`
+                : `+${ev.energy} energy. A kindness ripples out.`,
+            );
           }
           break;
         case 'bond':
@@ -122,6 +135,15 @@ export class Home {
             toast(`Duel won! ${ev.itemCount} items to your Repository · streak ×${ev.streak} · +${ev.coins} coins.`);
           }
           break;
+        case 'minigameUnlocked':
+          feedback.chapter();
+          toast(`✦ ${ev.title} has opened its doors. Tap the building to play.`);
+          break;
+        case 'minigameEnd':
+          toast(
+            `${ev.title}: 🪙 +${ev.coins}${ev.ember > 0 ? ` · 🔥 +${ev.ember}` : ''}${ev.itemCount > 0 ? ` · ${ev.itemCount} to your Repository` : ''}.`,
+          );
+          break;
         case 'health': {
           const parts = [
             ev.fromSteps > 0 ? `+${ev.fromSteps} from steps` : '',
@@ -131,11 +153,6 @@ export class Home {
           if (parts.length) toast(`The hearth brightens: ${parts.join(', ')}.`);
           break;
         }
-        case 'reject':
-          feedback.reject();
-          if (ev.reason === 'energy') toast('The hearth burns low. Tap it to earn more from your day.');
-          if (ev.reason === 'full') toast('The board is full. Merge something first.');
-          break;
       }
     });
 
@@ -171,7 +188,7 @@ export class Home {
       }
     }
 
-    const order = ORDERS[s.orderIndex];
+    const order = this.game.currentOrder();
     const text = $('order-text');
     const deliver = $<HTMLButtonElement>('deliver-btn');
     const face = document.querySelector<HTMLElement>('.order-face');
@@ -192,7 +209,7 @@ export class Home {
     }
 
     // Order queue: show what's coming so players can plan their chains.
-    const next = ORDERS[s.orderIndex + 1];
+    const next = orderAt(s.orderIndex + 1);
     const nextEl = document.getElementById('order-next');
     if (nextEl) {
       if (next) {

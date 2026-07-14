@@ -20,7 +20,9 @@ export default defineConfig({
       // load fetches fresh from the tunnel. Flip back to false for the
       // production launch build to restore offline play + installability.
       selfDestroying: true,
-      includeAssets: ['art/*.png', 'icons/*.png'],
+      // Shell assets only — the ~44 MB of art in /art is cached lazily at
+      // runtime (see workbox.runtimeCaching), never precached with the shell.
+      includeAssets: ['icons/*.png', 'favicon.ico', 'favicon-16.png', 'favicon-32.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'Hearth: Merge & Mystery',
         short_name: 'Hearth',
@@ -39,9 +41,25 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
-        // The whole game is offline-first; art is precached with the shell.
-        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // Precache the SHELL only (JS/CSS/HTML + icons) — NOT the ~44 MB of art
+        // PNGs. This is the fix that must land before selfDestroying flips to
+        // false for launch: otherwise every SW install would download all 400+
+        // sprites up front (minutes on 3G, likely eviction on low-end phones)
+        // and re-validate the whole manifest on any single art change.
+        globPatterns: ['**/*.{js,css,html,webmanifest}', 'icons/*.png', 'favicon*.png', 'apple-touch-icon.png'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        // Art is fetched lazily and cached on first use, with a bounded cache.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith('/art/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'hearth-art',
+              expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
     }),
   ],

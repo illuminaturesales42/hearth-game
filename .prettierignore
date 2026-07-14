@@ -1,0 +1,11 @@
+dist
+node_modules
+.wrangler
+test-results
+playwright-report
+src/art-manifest.ts
+public/art
+pnpm-lock.yaml
+# Prose/content docs — keep author formatting, don't reflow.
+*.md
+**/*.md

@@ -8,7 +8,7 @@
  * All of it is invitation-only: dismissible, snoozed, never a gate.
  */
 import type { Game } from '../core/game';
-import { ORDERS, RESTORE_ORDERS } from '../data/economy';
+import { RESTORE_ORDERS } from '../data/economy';
 import { toast } from './toast';
 
 /** Swap for a real list address/endpoint when one exists. */
@@ -57,14 +57,18 @@ export class GrowthUI {
       window.open(`mailto:${LIST_EMAIL}?subject=${subject}&body=${body}`, '_self');
       try {
         localStorage.setItem(EMAIL_KEY, 'joined');
-      } catch { /* fine */ }
+      } catch {
+        /* fine */
+      }
       this.renderEmailCard();
       toast('Thank you — you’ll hear when the next chapter is ready.');
     });
     document.getElementById('email-later')?.addEventListener('click', () => {
       try {
         localStorage.setItem(EMAIL_KEY, `later:${Date.now()}`);
-      } catch { /* fine */ }
+      } catch {
+        /* fine */
+      }
       this.renderEmailCard();
     });
   }
@@ -75,7 +79,9 @@ export class GrowthUI {
     let flag = '';
     try {
       flag = localStorage.getItem(EMAIL_KEY) ?? '';
-    } catch { /* fine */ }
+    } catch {
+      /* fine */
+    }
     const snoozed = flag.startsWith('later:') && Date.now() - Number(flag.slice(6)) < 3 * DAY;
     const engaged = this.game.snapshot.orderIndex >= 2;
     card.hidden = !engaged || flag === 'joined' || snoozed;
@@ -127,7 +133,11 @@ export class GrowthUI {
     const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
     if (nav.share && nav.canShare?.({ files: [file] })) {
       try {
-        await nav.share({ files: [file], title: 'My Emberhollow', text: `Emberhollow, ${pct}% restored — grown by my real days.` });
+        await nav.share({
+          files: [file],
+          title: 'My Emberhollow',
+          text: `Emberhollow, ${pct}% restored — grown by my real days.`,
+        });
         return;
       } catch {
         /* user cancelled — fall through to download */
@@ -156,13 +166,17 @@ export class GrowthUI {
     let snoozedAt = 0;
     try {
       snoozedAt = Number(localStorage.getItem(KEEPSAFE_KEY) ?? 0);
-    } catch { /* fine */ }
+    } catch {
+      /* fine */
+    }
     const snoozed = Date.now() - snoozedAt < 7 * DAY;
 
     let lastExport = 0;
     try {
       lastExport = Number(localStorage.getItem(EXPORT_STAMP_KEY) ?? 0);
-    } catch { /* fine */ }
+    } catch {
+      /* fine */
+    }
     const exportStale = Date.now() - lastExport > 5 * DAY;
 
     const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -184,7 +198,8 @@ export class GrowthUI {
         this.renderKeepsafe();
       };
     } else {
-      text.textContent = 'It’s been a while since your last save export. A copy in Settings keeps Emberhollow safe, whatever happens to this device.';
+      text.textContent =
+        'It’s been a while since your last save export. A copy in Settings keeps Emberhollow safe, whatever happens to this device.';
       btn.hidden = true;
     }
     document.getElementById('keepsafe-later')?.addEventListener(
@@ -192,7 +207,9 @@ export class GrowthUI {
       () => {
         try {
           localStorage.setItem(KEEPSAFE_KEY, String(Date.now()));
-        } catch { /* fine */ }
+        } catch {
+          /* fine */
+        }
         card.hidden = true;
       },
       { once: true },

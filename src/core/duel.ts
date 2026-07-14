@@ -96,7 +96,14 @@ export function duelMerge(state: DuelState, from: number, to: number): DuelMove 
   moves[state.turn] += 1;
   const over = findMergePair(board) === null;
   return {
-    state: { board, scores, turn: over ? state.turn : ((state.turn ^ 1) as 0 | 1), moves, over, nextUid: state.nextUid + 1 },
+    state: {
+      board,
+      scores,
+      turn: over ? state.turn : ((state.turn ^ 1) as 0 | 1),
+      moves,
+      over,
+      nextUid: state.nextUid + 1,
+    },
     merged: true,
     resultLevel: level,
   };
