@@ -1120,11 +1120,14 @@ export class MapView {
         }
       }
       if (BUILDING_INFO[p.art] && 'unlockAt' in p && p.unlockAt > 0) {
+        // Small props (the well) draw at a fraction of a building's footprint —
+        // pad their tap target so they're not needle-thin to hit on a touch screen.
+        const pad = Math.max(0, 22 - w / 2);
         this.hitboxes.push({
-          x0: p.x * W - w / 2,
-          y0: p.y * H - h,
-          x1: p.x * W + w / 2,
-          y1: p.y * H,
+          x0: p.x * W - w / 2 - pad,
+          y0: p.y * H - h - pad,
+          x1: p.x * W + w / 2 + pad,
+          y1: p.y * H + pad,
           art: p.art,
           unlockAt: p.ruined ? -p.unlockAt : p.unlockAt,
         });
