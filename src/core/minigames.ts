@@ -214,3 +214,101 @@ export function forgeReward(hits: number, count: number): MgReward {
     heart: acc >= 0.8 ? 'Struck true — a bar of bright copper.' : 'Good, honest work at the forge.',
   };
 }
+
+// ---------- 4) Joss's Catch (fisher hut) — bobber timing ----------
+// Cast, wait for the dip, strike. The closer to the dip, the deeper the fish.
+
+export function fishBite(seed: number): { delayMs: number; windowMs: number } {
+  const rand = lcg(seed);
+  return { delayMs: 1800 + Math.floor(rand() * 2600), windowMs: 700 };
+}
+
+/** quality 0..1 = how clean the strike was; always lands *something* (no-fail). */
+export function catchReward(quality: number): MgReward {
+  const q = Math.max(0, Math.min(1, quality));
+  const level = q >= 0.75 ? 2 : q >= 0.4 ? 1 : 0;
+  return {
+    coins: 6 + Math.round(q * 12),
+    items: [{ chain: 'fish', level }],
+    ember: q >= 0.6 ? 2 : 1,
+    heart:
+      level === 2 ? 'A fine fish, landed clean.' : level === 1 ? 'A good catch off Joss’s line.' : 'A nibble — enough for the pot.',
+  };
+}
+
+// ---------- 5) The Foraging Expedition (garden) — a fog-covered dig ----------
+// Uncover a corner of the coast tile by tile, keep everything, head home when you
+// like. Revives the herbs/flowers/honey chains; a heart tile hides a honeycomb.
+
+export type ForageKind = 'item' | 'coins' | 'ember' | 'view' | 'heart';
+export const FORAGE_SIZE = 25; // 5×5
+export const FORAGE_STEPS = 12;
+const FORAGE_ITEM_CHAINS: readonly ChainId[] = ['herbs', 'flowers', 'honey'];
+
+export function forageField(seed: number): { kinds: ForageKind[]; heartIndex: number } {
+  const rand = lcg(seed);
+  const bag: ForageKind[] = [];
+  const add = (k: ForageKind, n: number) => {
+    for (let i = 0; i < n; i++) bag.push(k);
+  };
+  add('item', 9);
+  add('coins', 5);
+  add('ember', 3);
+  add('view', FORAGE_SIZE - 1 - 9 - 5 - 3); // the rest are lovely-but-empty views
+  for (let i = bag.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [bag[i], bag[j]] = [bag[j]!, bag[i]!];
+  }
+  const heartIndex = Math.floor(rand() * FORAGE_SIZE);
+  const kinds: ForageKind[] = [];
+  let b = 0;
+  for (let i = 0; i < FORAGE_SIZE; i++) kinds.push(i === heartIndex ? 'heart' : bag[b++]!);
+  return { kinds, heartIndex };
+}
+
+/** What a single uncovered tile yields (a partial reward, summed by the UI). */
+export function forageTile(seed: number, i: number, kind: ForageKind): {
+  coins: number;
+  items: { chain: ChainId; level: number }[];
+  ember: number;
+} {
+  const rand = lcg(seed * 131 + i * 977 + 7);
+  switch (kind) {
+    case 'item':
+      return { coins: 0, items: [{ chain: FORAGE_ITEM_CHAINS[Math.floor(rand() * FORAGE_ITEM_CHAINS.length)]!, level: rand() < 0.35 ? 1 : 0 }], ember: 0 };
+    case 'coins':
+      return { coins: 5 + Math.floor(rand() * 10), items: [], ember: 0 };
+    case 'ember':
+      return { coins: 0, items: [], ember: 1 };
+    case 'heart':
+      return { coins: 12, items: [{ chain: 'honey', level: 2 }], ember: 2 };
+    default:
+      return { coins: 0, items: [], ember: 0 }; // a lovely view — the empty tile IS content
+  }
+}
+
+// ---------- 6) Sorting the Stacks (library) — a pairs match ----------
+// Match the shelves to set the library right; a clean sort turns up a fine volume.
+
+export const STACKS_PAIRS = 6;
+
+export function stacksDeck(seed: number, pairs = STACKS_PAIRS): number[] {
+  const rand = lcg(seed);
+  const deck: number[] = [];
+  for (let v = 0; v < pairs; v++) deck.push(v, v);
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [deck[i], deck[j]] = [deck[j]!, deck[i]!];
+  }
+  return deck;
+}
+
+export function stacksReward(flips: number, pairs = STACKS_PAIRS): MgReward {
+  const clean = flips <= pairs * 2 + 2; // near-perfect recall
+  return {
+    coins: clean ? 20 : 12,
+    items: [{ chain: 'books', level: clean ? 2 : 1 }],
+    ember: clean ? 2 : 1,
+    heart: clean ? 'Every shelf in order — a scholar’s eye.' : 'The stacks are sorted, near enough.',
+  };
+}

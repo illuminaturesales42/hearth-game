@@ -7,6 +7,10 @@ import {
   beaconPath,
   beaconReward,
   beaconSlot,
+  catchReward,
+  fishBite,
+  forageField,
+  forageTile,
   forgeReward,
   forgeSchedule,
   grantToken,
@@ -14,9 +18,13 @@ import {
   isEligible,
   rolloverMinigames,
   spendToken,
+  stacksDeck,
+  stacksReward,
   tryUnlock,
   wishingWell,
   BEACON_ROWS,
+  FORAGE_SIZE,
+  STACKS_PAIRS,
 } from '../src/core/minigames';
 import { ORDERS } from '../src/data/economy';
 import { Game } from '../src/core/game';
@@ -54,6 +62,33 @@ describe('minigame engines are deterministic', () => {
     // a clean run forges a bar (level 2); a total miss still yields copper
     expect(forgeReward(14, 14).items.some((i) => i.level === 2)).toBe(true);
     expect(forgeReward(0, 14).items.length).toBeGreaterThan(0);
+  });
+
+  it('joss’s catch: a clean strike lands a deeper fish, a miss still lands one', () => {
+    expect(fishBite(4)).toEqual(fishBite(4)); // seeded bite timing
+    expect(catchReward(1).items[0]).toEqual({ chain: 'fish', level: 2 });
+    expect(catchReward(0).items[0]!.chain).toBe('fish'); // no-fail: still a fish
+    expect(catchReward(0).items[0]!.level).toBe(0);
+  });
+
+  it('foraging: seeded field with exactly one heart; every tile pays a bounded find', () => {
+    const a = forageField(11);
+    const b = forageField(11);
+    expect(a.kinds).toEqual(b.kinds);
+    expect(a.kinds.length).toBe(FORAGE_SIZE);
+    expect(a.kinds.filter((k) => k === 'heart').length).toBe(1);
+    expect(a.kinds[a.heartIndex]).toBe('heart');
+    expect(forageTile(11, a.heartIndex, 'heart').items[0]).toEqual({ chain: 'honey', level: 2 });
+    expect(forageTile(11, 3, 'view')).toEqual({ coins: 0, items: [], ember: 0 }); // a lovely view is empty
+  });
+
+  it('sorting the stacks: seeded deck of pairs; a clean sort turns up a fine volume', () => {
+    const d = stacksDeck(5);
+    expect(d).toEqual(stacksDeck(5));
+    expect(d.length).toBe(STACKS_PAIRS * 2);
+    for (let v = 0; v < STACKS_PAIRS; v++) expect(d.filter((x) => x === v).length).toBe(2);
+    expect(stacksReward(STACKS_PAIRS * 2).items[0]).toEqual({ chain: 'books', level: 2 }); // perfect
+    expect(stacksReward(99).items[0]!.level).toBe(1); // sloppy but still books
   });
 });
 

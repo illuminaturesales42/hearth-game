@@ -41,6 +41,30 @@ export const MINIGAMES: readonly MinigameDef[] = [
     blurb: 'The forge blooms with heat — strike each glowing spot before it cools. No harm in a miss; the copper still comes.',
     unlock: 'l2',
   },
+  {
+    id: 'joss-catch',
+    buildingArt: 'town_fisherhut',
+    title: 'Joss’s Catch',
+    verb: 'Cast the line',
+    blurb: 'Watch the bobber. Strike the moment it dips — the longer the wait, the deeper the fish.',
+    unlock: 'l2',
+  },
+  {
+    id: 'foraging',
+    buildingArt: 'town_garden',
+    title: 'The Foraging Expedition',
+    verb: 'Set out',
+    blurb: 'Wander a fog-covered corner of the coast, uncovering what the storm scattered. Keep everything; head home whenever you like.',
+    unlock: 'l2',
+  },
+  {
+    id: 'sorting-stacks',
+    buildingArt: 'town_library',
+    title: 'Sorting the Stacks',
+    verb: 'Open the ledger',
+    blurb: 'The library’s in disarray — match the shelves to set it right, and a clean sort turns up a lost volume.',
+    unlock: 'l2',
+  },
 ];
 
 export const MINIGAME_BY_ID: Record<string, MinigameDef> = Object.fromEntries(
