@@ -434,7 +434,7 @@ export class MinigameUI {
     const face = (v: number) => tileMarkup(FACES[v]![0], FACES[v]![1]);
     let cards = '';
     deck.forEach(
-      (v, i) => (cards += `<button class="mg-card" data-i="${i}" data-v="${v}" aria-label="card"></button>`),
+      (v, i) => (cards += `<button class="mg-stack-card" data-i="${i}" data-v="${v}" aria-label="card"></button>`),
     );
     stage.innerHTML =
       `<div class="mg-stacks"><div class="mg-stacks-grid">${cards}</div>` +
@@ -444,7 +444,7 @@ export class MinigameUI {
     let matched = 0;
     let first = -1;
     let busy = false;
-    const cardEls = Array.from(stage.querySelectorAll<HTMLButtonElement>('.mg-card'));
+    const cardEls = Array.from(stage.querySelectorAll<HTMLButtonElement>('.mg-stack-card'));
     const actions = el('mg-actions');
     if (actions) actions.innerHTML = '';
     cardEls.forEach((c) => {

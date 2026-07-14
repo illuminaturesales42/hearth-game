@@ -1289,11 +1289,14 @@ export class MapView {
         }
       }
       if (BUILDING_INFO[p.art] && 'unlockAt' in p && p.unlockAt > 0) {
+        // Small props (the well) draw at a fraction of a building's footprint —
+        // pad their tap target so they're not needle-thin to hit on a touch screen.
+        const pad = Math.max(0, 22 - w / 2);
         this.hitboxes.push({
-          x0: p.x * W - w / 2,
-          y0: p.y * H - h,
-          x1: p.x * W + w / 2,
-          y1: p.y * H,
+          x0: p.x * W - w / 2 - pad,
+          y0: p.y * H - h - pad,
+          x1: p.x * W + w / 2 + pad,
+          y1: p.y * H + pad,
           art: p.art,
           unlockAt: p.ruined ? -p.unlockAt : p.unlockAt,
         });
@@ -2192,6 +2195,13 @@ export class MapView {
       'north-docks': 'loc_docks',
       quarry: 'loc_cove',
     };
+    // Two of these vignettes are the same buildings tappable on the town map
+    // above (with a Village Life game behind them) — wire them to the same
+    // building card so this list is a second way in, not a dead end.
+    const locBuilding: Record<string, { art: string; unlockAt: number }> = {
+      lighthouse: { art: 'prop_lighthouse', unlockAt: 9 },
+      pier: { art: 'town_fisherhut', unlockAt: 18 },
+    };
     host.innerHTML =
       challenge +
       `<div class="map-tease">🌅 ${tomorrowLine(s)}</div>` +
@@ -2205,8 +2215,10 @@ export class MapView {
       MAP_LOCATIONS.map((l) => {
         const locked = delivered < l.unlockAt;
         const thumb = artUrl(locArt[l.id] ?? '');
+        const bld = locBuilding[l.id];
+        const playable = bld !== undefined && !locked;
         return (
-          `<div class="loc ${locked ? 'locked' : ''}">` +
+          `<div class="loc ${locked ? 'locked' : ''} ${playable ? 'loc-playable' : ''}" ${playable ? `data-art="${bld.art}" data-unlock-at="${bld.unlockAt}" role="button" tabindex="0"` : ''}>` +
           (thumb ? `<div class="loc-thumb" style="background-image:url(${thumb})" aria-hidden="true"></div>` : '') +
           `<div class="loc-body">` +
           `<div class="loc-main"><b>${l.name}</b>` +
