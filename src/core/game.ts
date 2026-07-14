@@ -76,6 +76,7 @@ import {
   type UnlockOutcome,
 } from './minigames';
 import { MINIGAME_BY_ID, WISHES, minigameForBuilding, type MinigameDef } from '../data/minigames';
+import { orderAt } from '../data/endless';
 import { DECOR_CATALOG, TOWN_BUILDINGS, BUILDING_INFO } from '../data/town-layout';
 import { bondFor, deliveryMemory, hearts, recordMemory, restoreMemory } from './relationships';
 import { villagerIdFor, villagerDef } from '../data/villagers';
@@ -207,6 +208,11 @@ export class Game {
     return this.state;
   }
 
+  /** The order the village currently wants: authored story order, then endless town-needs. */
+  currentOrder(): OrderDef {
+    return orderAt(this.state.orderIndex);
+  }
+
   get actionState(): ActionState {
     return this.state.actions;
   }
@@ -245,8 +251,7 @@ export class Game {
 
   /** Ask a friend for help; they send starter items of the current task's chain. */
   askFriendForHelp(id: string, now = Date.now()): void {
-    const order = ORDERS[this.state.orderIndex];
-    const chain: ChainId = order ? order.need.chain : 'wood';
+    const chain: ChainId = this.currentOrder().need.chain;
     const res = askFriend(this.state.social, id, chain, now);
     if (res.gifts.length === 0) {
       this.emit({ type: 'social' });
@@ -570,16 +575,15 @@ export class Game {
 
   /** Index of the board item satisfying the current order, or -1. */
   deliverableIndex(): number {
-    const order = ORDERS[this.state.orderIndex];
-    if (!order) return -1;
+    const order = this.currentOrder();
     return findItem(this.state.board, order.need.chain, order.need.level);
   }
 
   deliver(): void {
     this.beginDay(Date.now());
-    const order = ORDERS[this.state.orderIndex];
+    const order = this.currentOrder();
     const idx = this.deliverableIndex();
-    if (!order || idx < 0) {
+    if (idx < 0) {
       this.emit({ type: 'reject', index: -1, reason: 'invalid' });
       return;
     }
@@ -1006,8 +1010,7 @@ export class Game {
 
   /** Whether the Repository holds the item the current story order needs. */
   canDeliverFromRepository(): boolean {
-    const order = ORDERS[this.state.orderIndex];
-    if (!order) return false;
+    const order = this.currentOrder();
     return this.state.repository.some(
       (r) => r.chain === order.need.chain && r.level === order.need.level && r.count > 0,
     );
@@ -1016,8 +1019,7 @@ export class Game {
   /** Spend a Repository item to complete the current order — duels feeding the story. */
   deliverFromRepository(): void {
     this.beginDay(Date.now());
-    const order = ORDERS[this.state.orderIndex];
-    if (!order) return;
+    const order = this.currentOrder();
     const idx = this.state.repository.findIndex(
       (r) => r.chain === order.need.chain && r.level === order.need.level && r.count > 0,
     );

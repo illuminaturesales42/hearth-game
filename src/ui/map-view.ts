@@ -11,6 +11,7 @@
 import type { Game } from '../core/game';
 import { MAP_LOCATIONS } from '../data/world';
 import { ORDERS, RESTORE_ORDERS, chapterFor, stageFor } from '../data/economy';
+import { orderAt } from '../data/endless';
 import { questsForDay } from '../data/daily-quests';
 import {
   BUILDING_INFO,
@@ -1975,7 +1976,7 @@ export class MapView {
     const host = document.getElementById('map-body');
     if (!host) return;
     const delivered = this.game.snapshot.orderIndex;
-    const order = ORDERS[delivered];
+    const order = orderAt(delivered);
     // Painted map pins (Batch 15) replace the emoji markers, with graceful fallback.
     const mcIco = (art: string | null, emoji: string): string =>
       art
