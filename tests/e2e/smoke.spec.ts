@@ -29,10 +29,18 @@ test.describe('Hearth smoke', () => {
     await page.reload();
     await expect(page.locator('#hud-energy')).toBeVisible();
 
-    // A healthy real-world day grants energy, which the game persists to the save.
-    await page.evaluate(() => {
-      (window as unknown as { hearthHealthSim: (s: number, h?: number) => void }).hearthHealthSim(12000, 8);
-    });
+    // Dismiss the FTUE coach-marks, then welcome the sunrise "New Day" — a real,
+    // persisted energy grant (no dev-only helpers, which the prod build strips).
+    const ftue = page.locator('#ftue-overlay');
+    await ftue.waitFor({ state: 'visible', timeout: 3000 }).catch(() => undefined);
+    if (await ftue.isVisible().catch(() => false)) {
+      await page.locator('#ftue-skip').click();
+      await ftue.waitFor({ state: 'hidden' });
+    }
+    const newday = page.locator('#newday-modal');
+    await newday.waitFor({ state: 'visible', timeout: 4000 });
+    await page.locator('#newday-claim').click();
+    await newday.waitFor({ state: 'hidden' });
 
     // Let the state settle and the autosave flush.
     await page.waitForTimeout(400);
