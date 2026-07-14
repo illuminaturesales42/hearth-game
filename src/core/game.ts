@@ -142,6 +142,9 @@ type Listener = (ev: GameEvent) => void;
 export class Game {
   private state: GameState;
   private listeners: Listener[] = [];
+  /** Tester convenience: unlimited mini-game goes (no token/energy cost). Off in
+   *  normal play; turned on by the ?tester opt-in (see main.ts). Never persisted. */
+  private testerUnlimited = false;
 
   constructor(now = Date.now()) {
     this.state = loadState() ?? Game.freshState(now);
@@ -1125,6 +1128,9 @@ export class Game {
     let reason: 'ready' | 'no-tokens' | 'no-energy' | 'locked-story' | 'locked-l2' = 'ready';
     if (!done) reason = 'locked-story';
     else if (!eligible) reason = 'locked-l2';
+    // Tester mode gives unlimited goes so the mechanics can be tried freely —
+    // the token + energy gates are skipped (see startMinigame too).
+    else if (this.testerUnlimited) reason = 'ready';
     else if (tokens <= 0) reason = 'no-tokens';
     else if (this.state.energy.current < MINIGAME_ENERGY_COST) reason = 'no-energy';
     return { def, unlocked, canPlay: unlocked && reason === 'ready', tokens, reason };
@@ -1150,15 +1156,26 @@ export class Game {
     return !!st && st.canPlay;
   }
 
+  /** Tester opt-in: unlimited mini-game goes so mechanics can be tried freely. */
+  setTesterUnlimited(on: boolean): void {
+    this.testerUnlimited = on;
+  }
+  get isTesterUnlimited(): boolean {
+    return this.testerUnlimited;
+  }
+
   /** Enter a mini-game: spend a token + the energy cost, return a run seed. Null if blocked. */
   startMinigame(id: string, now = Date.now()): { seed: number } | null {
     this.beginDay(now);
     if (!this.canPlayMinigame(id)) return null;
-    this.state = {
-      ...this.state,
-      energy: spend(this.state.energy, MINIGAME_ENERGY_COST),
-      minigames: spendToken(this.state.minigames),
-    };
+    // Tester mode: unlimited goes — don't spend the token or energy.
+    if (!this.testerUnlimited) {
+      this.state = {
+        ...this.state,
+        energy: spend(this.state.energy, MINIGAME_ENERGY_COST),
+        minigames: spendToken(this.state.minigames),
+      };
+    }
     this.emit({ type: 'state' });
     return { seed: ((now >>> 0) ^ 0x9e3779b9 ^ (this.state.nextUid * 2654435761)) >>> 0 };
   }

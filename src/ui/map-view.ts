@@ -537,7 +537,9 @@ export class MapView {
       return;
     }
     // Unlocked: play, if there's a token + the energy.
-    note.textContent = `${st.tokens} ${st.tokens === 1 ? 'go' : 'goes'} today · costs 4 energy. More goes come from living well.`;
+    note.textContent = this.game.isTesterUnlimited
+      ? 'Unlimited goes — tester mode.'
+      : `${st.tokens} ${st.tokens === 1 ? 'go' : 'goes'} today · costs 4 energy. More goes come from living well.`;
     btn.disabled = st.reason !== 'ready';
     btn.textContent =
       st.reason === 'no-tokens'
@@ -2256,7 +2258,9 @@ export class MapView {
         }
       } else if (st.reason === 'ready') {
         action = `<button class="vl-play" data-play="${m.id}">${m.verb}</button>`;
-        sub = `${st.tokens} ${st.tokens === 1 ? 'go' : 'goes'} today · 4 energy`;
+        sub = this.game.isTesterUnlimited
+          ? 'Unlimited goes — tester mode'
+          : `${st.tokens} ${st.tokens === 1 ? 'go' : 'goes'} today · 4 energy`;
       } else {
         action = `<button class="vl-play" data-play="${m.id}" disabled>${st.reason === 'no-energy' ? 'Need energy' : 'No goes left'}</button>`;
         sub = st.reason === 'no-energy' ? 'A real-world action refills energy' : 'More goes come from living well';

@@ -244,6 +244,8 @@ const testerMode =
     }
   })();
 if (testerMode) {
+  // Unlimited mini-game goes so a tester can try every mechanic freely.
+  game.setTesterUnlimited(true);
   window.hearthReset = () => {
     clearSave();
     location.reload();
