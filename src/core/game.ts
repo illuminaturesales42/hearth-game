@@ -61,6 +61,7 @@ import { STARGAZE, fullMoonBonus, phaseName } from '../data/moon';
 import { isNight } from './sun';
 import type { Coords } from './sun';
 import { addToRepository, duelMultiplier } from './duel';
+import { repoRequestsFor, takeFromRepository, type RepoRequest } from './repository';
 import {
   MINIGAME_ENERGY_COST,
   addEmber,
@@ -133,6 +134,7 @@ export type GameEvent =
   | { type: 'duelEnd'; won: boolean; streak: number; multiplier: number; coins: number; itemCount: number }
   | { type: 'minigameUnlocked'; id: string; title: string }
   | { type: 'minigameEnd'; id: string; title: string; coins: number; ember: number; itemCount: number; wish?: string }
+  | { type: 'repoGiven'; who: string; chain: ChainId; level: number; coins: number }
   | { type: 'chapterComplete'; chapter: number; title: string; cliffhanger: string; hasNext: boolean };
 
 type Listener = (ev: GameEvent) => void;
@@ -1062,6 +1064,32 @@ export class Game {
     this.recordBond(order);
     this.checkZoneRestored();
     this.emitChapterBoundary();
+  }
+
+  // ---------- Repository: gathered loot & standing village requests ----------
+
+  /**
+   * Standing village requests for the mini-game loot you're holding — the town
+   * "asking for your caught fish/honey/copper…". Only ever lists things you
+   * actually hold, so they can never block the main merge→deliver loop.
+   */
+  repositoryRequests(): RepoRequest[] {
+    return repoRequestsFor(this.state.repository, this.state.actions.day);
+  }
+
+  /** Gift one held item to the villager who wants it, for coins. Keeps-everything: your choice. */
+  giveFromRepository(chain: ChainId, level: number): boolean {
+    const req = this.repositoryRequests().find((r) => r.chain === chain && r.level === level);
+    if (!req) return false;
+    this.beginDay(Date.now());
+    this.state = {
+      ...this.state,
+      repository: takeFromRepository(this.state.repository, chain, level),
+      coins: this.state.coins + req.coins,
+    };
+    this.emit({ type: 'repoGiven', who: req.who, chain, level, coins: req.coins });
+    this.emit({ type: 'state' });
+    return true;
   }
 
   // ---------- Village Life mini-games (post-story building games) ----------

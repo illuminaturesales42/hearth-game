@@ -180,4 +180,24 @@ describe('Game ↔ Village Life', () => {
     g.completeAction('breathe'); // living well earns another go
     expect(g.minigameState.tokens).toBe(1);
   });
+
+  it('gathered loot can be gifted for coins from the Repository', () => {
+    const g = new Game(1000);
+    g.devPreviewStory(ORDERS.length);
+    g.openMinigameDoors('town_fisherhut');
+    // Bank a fish (a mini-game chain the town orders never ask for).
+    g.finishMinigame('joss-catch', { coins: 0, items: [{ chain: 'fish', level: 2 }], ember: 0, heart: '' });
+    expect(g.repository.some((r) => r.chain === 'fish' && r.level === 2)).toBe(true);
+
+    const reqs = g.repositoryRequests();
+    const fishReq = reqs.find((r) => r.chain === 'fish' && r.level === 2);
+    expect(fishReq).toBeTruthy();
+
+    const coinsBefore = g.snapshot.coins;
+    expect(g.giveFromRepository('fish', 2)).toBe(true);
+    expect(g.snapshot.coins).toBe(coinsBefore + fishReq!.coins);
+    expect(g.repository.some((r) => r.chain === 'fish' && r.level === 2)).toBe(false);
+    // Nothing left to give → the request is gone and a second gift fails.
+    expect(g.giveFromRepository('fish', 2)).toBe(false);
+  });
 });
