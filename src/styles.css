@@ -3632,6 +3632,28 @@ body.reduce-motion *::after {
   text-align: center;
   color: #ecdcb6;
 }
+/* Painted backdrop (mg_bg_<game>): cover the card, then lay a dark scrim over it
+   so the game pieces + text stay readable. Applied only when the art exists. */
+.mg-card.mg-has-bg {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.mg-card.mg-has-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 80% at 50% 42%, rgba(12, 16, 30, 0.35), rgba(12, 16, 30, 0.72) 85%),
+    linear-gradient(180deg, rgba(12, 16, 30, 0.55), rgba(12, 16, 30, 0.4));
+  pointer-events: none;
+  z-index: 0;
+}
+.mg-card.mg-has-bg > * {
+  position: relative;
+  z-index: 1;
+}
 .mg-title {
   font-family: var(--ff-display, Georgia, serif);
   font-size: var(--fs-xl, 22px);
@@ -3999,6 +4021,12 @@ body.reduce-motion *::after {
 }
 .mg-fog-ico {
   font-size: 20px;
+}
+.mg-fog-art {
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
 }
 .mg-fog-view {
   opacity: 0.5;
