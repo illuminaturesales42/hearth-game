@@ -221,10 +221,29 @@ declare global {
     hearthSeeTown: (orders?: number) => void;
   }
 }
-// DEV-only: these console helpers can skip the story or wipe the save, so they
-// must never ship to players. Vite tree-shakes the whole block out of the prod
-// build (import.meta.env.DEV === false).
-if (import.meta.env.DEV) {
+// Tester hooks (hearthSeeTown, hearthReset, …). Always on in dev; in the
+// deployed build they're OFF for normal players but a friends-and-family tester
+// can opt in by visiting the site once with ?tester (the flag is remembered).
+// This is a closed-test convenience, not a launch feature.
+const _params = new URLSearchParams(location.search);
+if (_params.has('tester')) {
+  try {
+    localStorage.setItem('hearth:tester', '1');
+  } catch {
+    /* ignore */
+  }
+}
+const testerMode =
+  import.meta.env.DEV ||
+  _params.has('tester') ||
+  (() => {
+    try {
+      return localStorage.getItem('hearth:tester') === '1';
+    } catch {
+      return false;
+    }
+  })();
+if (testerMode) {
   window.hearthReset = () => {
     clearSave();
     location.reload();
