@@ -27,6 +27,7 @@ import { currentWeather } from './weather';
 import { artUrl } from './art';
 import { drawButterfly, drawFlower, drawSparkle, drawStroller } from './paint-flourishes';
 import { toast } from './toast';
+import { feedback } from './feedback';
 import { tomorrowLine } from './tease';
 
 const STAGE_NAMES = [
@@ -84,6 +85,8 @@ export class MapView {
   private lastOrderIndex = -1;
   /** Last-drawn building rectangles for tap-to-inspect. */
   private hitboxes: { x0: number; y0: number; x1: number; y1: number; art: string; unlockAt: number }[] = [];
+  /** unlockAt of the building currently shown in the card (for in-place refreshes). */
+  private cardUnlockAt = 0;
   /** Real weather outside the window (best-effort; null renders clear). */
   private weather: WeatherNow | null = null;
   private weatherAskedAt = 0;
@@ -307,6 +310,7 @@ export class MapView {
 
   /** Building card. Negative unlockAt marks a ghost — still lost to the storm. */
   private showBuilding(art: string, unlockAt: number): void {
+    this.cardUnlockAt = unlockAt;
     const locked = unlockAt < 0;
     const at = Math.abs(unlockAt);
     const img = document.getElementById('bldg-art') as HTMLImageElement | null;
@@ -332,12 +336,13 @@ export class MapView {
         ? `Returns with order ${at} · ${chapterFor(at - 1).title}`
         : `Returned with order ${at} · ${chapterFor(at - 1).title}`;
 
-    // Upgrade affordance — only for buildings that have actually returned.
+    // Upgrade affordance — only for buildings that have actually returned AND
+    // can be upgraded (props/the lighthouse can't).
     const tierEl = document.getElementById('bldg-tier');
     const upBtn = document.getElementById('bldg-upgrade') as HTMLButtonElement | null;
     const tierNames = ['Restored', 'Cared-for', 'Beloved'];
     if (tierEl && upBtn) {
-      if (locked) {
+      if (locked || !this.game.isUpgradeable(art)) {
         tierEl.hidden = true;
         upBtn.hidden = true;
       } else {
@@ -363,8 +368,64 @@ export class MapView {
         }
       }
     }
+    // Village Life: once the story's told, buildings open their doors.
+    this.renderMinigameCta(art, locked);
+
     const m = document.getElementById('bldg-modal');
     if (m) m.hidden = false;
+  }
+
+  /** The "play the building's mini-game" affordance on the building card. */
+  private renderMinigameCta(art: string, locked: boolean): void {
+    const btn = document.getElementById('bldg-play') as HTMLButtonElement | null;
+    const note = document.getElementById('bldg-play-note');
+    if (!btn || !note) return;
+    const st = locked ? null : this.game.minigameStatus(art);
+    if (!st) {
+      btn.hidden = true;
+      note.hidden = true;
+      return;
+    }
+    btn.hidden = false;
+    note.hidden = false;
+    if (!st.unlocked) {
+      // Not opened yet: offer to open the doors (throttled to one/day).
+      if (st.reason === 'locked-story') {
+        btn.hidden = true;
+        note.textContent = `${st.def.title} opens here once Emberhollow's story is told.`;
+      } else if (st.reason === 'locked-l2') {
+        btn.hidden = true;
+        note.textContent = `Care for this building (upgrade it) and ${st.def.title} will open its doors.`;
+      } else {
+        btn.disabled = false;
+        btn.textContent = `✦ Open ${st.def.title}`;
+        note.textContent = st.def.blurb;
+        btn.onclick = () => {
+          const outcome = this.game.openMinigameDoors(art);
+          if (outcome === 'throttled') toast('One new game opens each day — come back tomorrow.');
+          else if (outcome === 'opened') {
+            feedback.chime(520);
+            this.showBuilding(art, this.cardUnlockAt); // refresh into the "play" state
+          }
+        };
+      }
+      return;
+    }
+    // Unlocked: play, if there's a token + the energy.
+    note.textContent = `${st.tokens} ${st.tokens === 1 ? 'go' : 'goes'} today · costs 4 energy. More goes come from living well.`;
+    btn.disabled = st.reason !== 'ready';
+    btn.textContent =
+      st.reason === 'no-tokens'
+        ? 'No goes left today'
+        : st.reason === 'no-energy'
+          ? 'Need more energy'
+          : `${st.def.verb}`;
+    btn.onclick = () => {
+      if (st.reason !== 'ready') return;
+      const m = document.getElementById('bldg-modal');
+      if (m) m.hidden = true;
+      document.dispatchEvent(new CustomEvent('hearth:play-minigame', { detail: { id: st.def.id } }));
+    };
   }
 
   private resize(): void {
@@ -1402,6 +1463,15 @@ export class MapView {
         const lw = W * 0.15;
         const lh = lw * (img.naturalHeight / img.naturalWidth);
         ctx.drawImage(img, lx - lw / 2, baseY - lh, lw, lh);
+        // Tappable once the beacon is lit — opens The Lighthouse card (Beacon Drop).
+        this.hitboxes.push({
+          x0: lx - lw / 2,
+          y0: baseY - lh,
+          x1: lx + lw / 2,
+          y1: baseY,
+          art: 'prop_lighthouse',
+          unlockAt: lit ? 9 : -9,
+        });
         const oy = baseY - lh * 0.82; // the lantern room, ~82% up the sprite
         if (lit) {
           // the beacon fire itself, burning in the lantern room

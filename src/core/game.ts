@@ -61,6 +61,21 @@ import { STARGAZE, fullMoonBonus, phaseName } from '../data/moon';
 import { isNight } from './sun';
 import type { Coords } from './sun';
 import { addToRepository, duelMultiplier } from './duel';
+import {
+  MINIGAME_ENERGY_COST,
+  addEmber,
+  grantToken,
+  initialMinigames,
+  isEligible,
+  isUnlocked,
+  rolloverMinigames,
+  spendToken,
+  storyComplete,
+  tryUnlock,
+  type MgReward,
+  type UnlockOutcome,
+} from './minigames';
+import { MINIGAME_BY_ID, WISHES, minigameForBuilding, type MinigameDef } from '../data/minigames';
 import { DECOR_CATALOG, TOWN_BUILDINGS, BUILDING_INFO } from '../data/town-layout';
 import { bondFor, deliveryMemory, hearts, recordMemory, restoreMemory } from './relationships';
 import { villagerIdFor, villagerDef } from '../data/villagers';
@@ -69,6 +84,7 @@ import type {
   ChainId,
   GratitudeEntry,
   GratitudeState,
+  MinigameState,
   OrderDef,
   RepositoryItem,
   Settings,
@@ -114,6 +130,8 @@ export type GameEvent =
   | { type: 'decor' }
   | { type: 'settings' }
   | { type: 'duelEnd'; won: boolean; streak: number; multiplier: number; coins: number; itemCount: number }
+  | { type: 'minigameUnlocked'; id: string; title: string }
+  | { type: 'minigameEnd'; id: string; title: string; coins: number; ember: number; itemCount: number; wish?: string }
   | { type: 'chapterComplete'; chapter: number; title: string; cliffhanger: string; hasNext: boolean };
 
 type Listener = (ev: GameEvent) => void;
@@ -174,6 +192,7 @@ export class Game {
       buildingUpgrades: {},
       decor: [],
       nextDecorId: 1,
+      minigames: initialMinigames(localDayKey(now)),
       repository: [],
       duelStreak: 0,
       coins: 0,
@@ -350,6 +369,7 @@ export class Game {
         stats: rolloverStats(this.state.stats, today),
         questsClaimed: [],
         requestsFilled: [],
+        minigames: rolloverMinigames(this.state.minigames, today),
       };
     }
   }
@@ -651,6 +671,7 @@ export class Game {
     this.state = { ...this.state, healthLedger: res.ledger };
     if (res.energy > 0) {
       this.state = { ...this.state, energy: grant(this.state.energy, res.energy) };
+      this.earnMinigameToken(); // a real walk/night's sleep earns a Village Life go
       this.emit({
         type: 'health',
         energy: res.energy,
@@ -738,7 +759,10 @@ export class Game {
       energy: grant(this.state.energy, total),
       coins: this.state.coins + res.chestCoins,
     };
-    if (res.energy > 0) this.bumpStat({ dayActions: this.state.stats.dayActions + 1 });
+    if (res.energy > 0) {
+      this.bumpStat({ dayActions: this.state.stats.dayActions + 1 });
+      this.earnMinigameToken(); // living well earns another go at Village Life
+    }
     this.emit({ type: 'action', actionId, energy: res.energy });
     if (res.dailyBonus > 0) this.emit({ type: 'daily', energy: res.dailyBonus, streak: res.state.streak });
     if (res.chestCoins > 0) this.emit({ type: 'chest', coins: res.chestCoins });
@@ -1024,6 +1048,122 @@ export class Game {
     this.recordBond(order);
     this.checkZoneRestored();
     this.emitChapterBoundary();
+  }
+
+  // ---------- Village Life mini-games (post-story building games) ----------
+
+  get minigameState(): MinigameState {
+    return this.state.minigames;
+  }
+
+  /** The story is complete once every order is delivered — the gate to Village Life. */
+  isStoryComplete(): boolean {
+    return storyComplete(this.state.orderIndex, ORDERS.length);
+  }
+
+  /** Whether a building supports upgrades at all (props/specials like the lighthouse don't). */
+  isUpgradeable(art: string): boolean {
+    return TOWN_BUILDINGS.some((b) => b.art === art);
+  }
+
+  /** The mini-game a building offers and its current playability, for the building card. */
+  minigameStatus(art: string): {
+    def: MinigameDef;
+    unlocked: boolean;
+    canPlay: boolean;
+    tokens: number;
+    reason: 'ready' | 'no-tokens' | 'no-energy' | 'locked-story' | 'locked-l2';
+  } | null {
+    const def = minigameForBuilding(art);
+    if (!def) return null;
+    const done = this.isStoryComplete();
+    const eligible = isEligible(def.unlock, done, this.upgradeTier(art));
+    const unlocked = isUnlocked(this.state.minigames, def.id);
+    const tokens = this.state.minigames.tokens;
+    let reason: 'ready' | 'no-tokens' | 'no-energy' | 'locked-story' | 'locked-l2' = 'ready';
+    if (!done) reason = 'locked-story';
+    else if (!eligible) reason = 'locked-l2';
+    else if (tokens <= 0) reason = 'no-tokens';
+    else if (this.state.energy.current < MINIGAME_ENERGY_COST) reason = 'no-energy';
+    return { def, unlocked, canPlay: unlocked && reason === 'ready', tokens, reason };
+  }
+
+  /** Open a building's doors — at most one new game opens per day. */
+  openMinigameDoors(art: string, now = Date.now()): UnlockOutcome {
+    this.beginDay(now);
+    const def = minigameForBuilding(art);
+    if (!def) return 'ineligible';
+    const eligible = isEligible(def.unlock, this.isStoryComplete(), this.upgradeTier(art));
+    const res = tryUnlock(this.state.minigames, def.id, eligible, localDayKey(now));
+    if (res.outcome === 'opened') {
+      this.state = { ...this.state, minigames: res.state };
+      this.emit({ type: 'minigameUnlocked', id: def.id, title: def.title });
+    }
+    return res.outcome;
+  }
+
+  canPlayMinigame(id: string): boolean {
+    const def = MINIGAME_BY_ID[id];
+    const st = def ? this.minigameStatus(def.buildingArt) : null;
+    return !!st && st.canPlay;
+  }
+
+  /** Enter a mini-game: spend a token + the energy cost, return a run seed. Null if blocked. */
+  startMinigame(id: string, now = Date.now()): { seed: number } | null {
+    this.beginDay(now);
+    if (!this.canPlayMinigame(id)) return null;
+    this.state = {
+      ...this.state,
+      energy: spend(this.state.energy, MINIGAME_ENERGY_COST),
+      minigames: spendToken(this.state.minigames),
+    };
+    this.emit({ type: 'state' });
+    return { seed: ((now >>> 0) ^ 0x9e3779b9 ^ (this.state.nextUid * 2654435761)) >>> 0 };
+  }
+
+  /** How many wishes the well can draw from (for seeding the UI's pick). */
+  wishCount(): number {
+    return WISHES.length;
+  }
+
+  /**
+   * Bank a finished run's rewards: coins + Repository items now (deliverable once
+   * the endless orders land), embers capped so play never out-earns real life,
+   * and any drawn wish kept as a small keepsake.
+   */
+  finishMinigame(id: string, reward: MgReward, wish?: { who: string; text: string }): void {
+    const def = MINIGAME_BY_ID[id];
+    if (!def) return;
+    const em = addEmber(this.state.minigames, reward.ember);
+    let minigames = em.state;
+    if (wish) {
+      minigames = {
+        ...minigames,
+        wishes: [{ id: `wish-${this.state.nextUid}`, who: wish.who, text: wish.text, day: this.state.actions.day }, ...minigames.wishes].slice(0, 24),
+      };
+    }
+    this.state = {
+      ...this.state,
+      coins: this.state.coins + reward.coins,
+      repository: addToRepository(this.state.repository, reward.items),
+      energy: em.granted > 0 ? grant(this.state.energy, em.granted) : this.state.energy,
+      minigames,
+      nextUid: this.state.nextUid + 1,
+    };
+    this.emit({
+      type: 'minigameEnd',
+      id,
+      title: def.title,
+      coins: reward.coins,
+      ember: em.granted,
+      itemCount: reward.items.length,
+      ...(wish ? { wish: `${wish.who} ${wish.text}` } : {}),
+    });
+  }
+
+  /** Living well tops up a mini-game attempt (never bought). Capped per day. */
+  private earnMinigameToken(): void {
+    this.state = { ...this.state, minigames: grantToken(this.state.minigames) };
   }
 
   // ---------- kindness to a stranger ----------

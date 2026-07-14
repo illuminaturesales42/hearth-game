@@ -134,6 +134,15 @@ export class Home {
             toast(`Duel won! ${ev.itemCount} items to your Repository · streak ×${ev.streak} · +${ev.coins} coins.`);
           }
           break;
+        case 'minigameUnlocked':
+          feedback.chapter();
+          toast(`✦ ${ev.title} has opened its doors. Tap the building to play.`);
+          break;
+        case 'minigameEnd':
+          toast(
+            `${ev.title}: 🪙 +${ev.coins}${ev.ember > 0 ? ` · 🔥 +${ev.ember}` : ''}${ev.itemCount > 0 ? ` · ${ev.itemCount} to your Repository` : ''}.`,
+          );
+          break;
         case 'health': {
           const parts = [
             ev.fromSteps > 0 ? `+${ev.fromSteps} from steps` : '',
