@@ -14,6 +14,8 @@ import { localDayKey } from './energy';
 
 export const CHEST_EVERY = 3;
 export const CHEST_COINS = 100;
+/** Hearthstones you can hold — each auto-saves a streak across one missed day. */
+export const FREEZE_CAP = 2;
 
 export function findAction(id: string) {
   return ACTIONS.find((a) => a.id === id);
@@ -40,7 +42,7 @@ export function earnableById(id: string): Earnable | undefined {
 }
 
 export function initialActionState(now: number): ActionState {
-  return { day: localDayKey(now), counts: {}, streak: 0, lastActiveDay: null, chestProgress: 0 };
+  return { day: localDayKey(now), counts: {}, streak: 0, lastActiveDay: null, chestProgress: 0, freezes: 0 };
 }
 
 export function rolloverActions(state: ActionState, now: number): ActionState {
@@ -79,6 +81,8 @@ export interface RecordResult {
   chestCoins: number;
   /** Streak-scaled bonus, paid once on the first action of a new day. */
   dailyBonus: number;
+  /** True when a hearthstone saved the streak on this call. */
+  usedFreeze: boolean;
 }
 
 /**
@@ -95,6 +99,8 @@ export interface DayAdvance {
   chestCoins: number;
   /** True when this call crossed into a new active day. */
   advanced: boolean;
+  /** True when a hearthstone was spent to save the streak across a missed day. */
+  usedFreeze: boolean;
 }
 
 /**
@@ -106,26 +112,41 @@ export interface DayAdvance {
 export function advanceDay(state: ActionState, now: number): DayAdvance {
   const s = rolloverActions(state, now);
   const today = localDayKey(now);
-  if (s.lastActiveDay === today) return { state: s, dailyBonus: 0, chestCoins: 0, advanced: false };
-  const streak = s.lastActiveDay === null ? 1 : dayGap(s.lastActiveDay, today) === 1 ? s.streak + 1 : 1;
+  if (s.lastActiveDay === today) return { state: s, dailyBonus: 0, chestCoins: 0, advanced: false, usedFreeze: false };
+  const gap = s.lastActiveDay === null ? 1 : dayGap(s.lastActiveDay, today);
+  let freezes = s.freezes ?? 0;
+  let usedFreeze = false;
+  let streak: number;
+  if (s.lastActiveDay === null || gap === 1) {
+    streak = s.lastActiveDay === null ? 1 : s.streak + 1; // fresh, or an unbroken day
+  } else if (gap === 2 && freezes > 0) {
+    streak = s.streak + 1; // a hearthstone kept the fire lit across one missed day
+    freezes -= 1;
+    usedFreeze = true;
+  } else {
+    streak = 1; // a longer gap (or no hearthstone) resets — gently, no penalty
+  }
   let chestProgress = s.chestProgress + 1;
   let chestCoins = 0;
   if (chestProgress >= CHEST_EVERY) {
     chestProgress = 0;
     chestCoins = CHEST_COINS;
+    freezes = Math.min(FREEZE_CAP, freezes + 1); // the chest also holds a hearthstone
   }
   return {
-    state: { ...s, streak, lastActiveDay: today, chestProgress },
+    state: { ...s, streak, lastActiveDay: today, chestProgress, freezes },
     dailyBonus: dailyBonus(streak),
     chestCoins,
     advanced: true,
+    usedFreeze,
   };
 }
 
 export function recordAction(state: ActionState, id: string, now: number, energyOverride?: number): RecordResult {
   const e = earnableById(id);
   const s0 = rolloverActions(state, now);
-  if (!e || doneCount(s0, id) >= e.timesPerDay) return { state: s0, energy: 0, chestCoins: 0, dailyBonus: 0 };
+  if (!e || doneCount(s0, id) >= e.timesPerDay)
+    return { state: s0, energy: 0, chestCoins: 0, dailyBonus: 0, usedFreeze: false };
 
   const adv = advanceDay(s0, now);
   const counts = { ...adv.state.counts, [id]: doneCount(adv.state, id) + 1 };
@@ -134,6 +155,7 @@ export function recordAction(state: ActionState, id: string, now: number, energy
     energy: energyOverride ?? e.energy,
     chestCoins: adv.chestCoins,
     dailyBonus: adv.dailyBonus,
+    usedFreeze: adv.usedFreeze,
   };
 }
 
