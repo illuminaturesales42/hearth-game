@@ -268,6 +268,16 @@ export class MapView {
         if (this.reduce) this.draw(0);
       }
     });
+    // Stop animating a town nobody's looking at — a backgrounded tab shouldn't
+    // burn battery on the canvas loop. Resume when we're foregrounded again.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        cancelAnimationFrame(this.raf);
+        this.raf = 0;
+      } else if (this.visible && !this.reduce && !this.raf) {
+        this.loop();
+      }
+    });
   }
 
   /** The decorate tray: pick a piece, tap the town. Coins buy beauty, never power. */

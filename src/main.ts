@@ -204,7 +204,10 @@ void sync.start().then((res) => {
       cancelLabel: 'Keep this device',
     }).then((keepCloud) => {
       if (keepCloud) void sync.adoptRemote(remote).then((ok) => ok && location.reload());
-      else void sync.keepLocal();
+      else
+        void sync.keepLocal(remote).then((ok) => {
+          if (!ok) toast('Could not reach the cloud just now — your village is safe on this device.');
+        });
     });
   }
 });

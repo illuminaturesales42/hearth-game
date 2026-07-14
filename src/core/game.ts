@@ -156,7 +156,7 @@ export class Game {
     // Opening layout: enough to teach merging in the first 20 seconds.
     const seeds: { i: number; chain: Item['chain']; level: number }[] = [
       { i: 8, chain: 'wood', level: 0 },
-      { i: 10, chain: 'wood', level: 0 },
+      { i: 9, chain: 'wood', level: 0 }, // adjacent to i:8 so the first taught merge needs no reach
       { i: 14, chain: 'wood', level: 1 },
       { i: 26, chain: 'wood', level: 1 },
       { i: 27, chain: 'harvest', level: 0 },
@@ -345,9 +345,21 @@ export class Game {
       this.processing = false;
     }
     saveState(this.state);
-    for (const l of this.listeners) l(ev);
-    for (const e of extra) for (const l of this.listeners) l(e);
-    if (ev.type !== 'state') for (const l of this.listeners) l({ type: 'state' });
+    this.dispatch(ev);
+    for (const e of extra) this.dispatch(e);
+    if (ev.type !== 'state') this.dispatch({ type: 'state' });
+  }
+
+  /** Fan an event out to every subscriber; one throwing listener can't wedge the rest. */
+  private dispatch(ev: GameEvent): void {
+    for (const l of this.listeners) {
+      try {
+        l(ev);
+      } catch (err) {
+        // A broken UI subscriber must never halt the game loop or other views.
+        console.error('Hearth: listener error', err);
+      }
+    }
   }
 
   /**

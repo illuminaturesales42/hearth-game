@@ -30,7 +30,7 @@ const STEPS: Step[] = [
     screen: 'home',
   },
   {
-    text: 'Merge two matching items — drag one onto its twin. Try joining the two saplings.',
+    text: 'Merge two matching items — tap one, then tap its twin. Try joining the two saplings. (You can drag them together too, if you like.)',
     button: null,
     waitFor: 'merge',
     screen: 'create',
@@ -50,7 +50,7 @@ const STEPS: Step[] = [
     screen: 'home',
   },
   {
-    text: 'One more thing: merging spends Hearth Energy — and energy is earned from your real day. Walks, sleep, sunlight, a kind word to a stranger. It is never sold. Tap the flame any time to see today’s ways.',
+    text: 'One more thing: tapping the crate for new pieces spends Hearth Energy — and energy is earned from your real day. Walks, sleep, sunlight, a kind word to a stranger. It is never sold. Tap the flame any time to see today’s ways.',
     button: 'Understood',
     highlight: '#energy-pill',
   },
