@@ -402,6 +402,25 @@
     </div>
 
     <!-- ================= BUILDING CARD (tap a building on the town) ================= -->
+    <!-- ================= VILLAGE LIFE: building mini-games ================= -->
+    <div id="minigame-overlay" class="mg-overlay" role="dialog" aria-modal="true" aria-label="Village Life" hidden>
+      <div class="mg-card">
+        <button id="mg-close" class="sheet-close" aria-label="Leave the game">✕</button>
+        <h3 id="mg-title" class="mg-title"></h3>
+        <p id="mg-sub" class="mg-sub"></p>
+        <div id="mg-stage" class="mg-stage"></div>
+        <div id="mg-actions" class="mg-actions"></div>
+        <div id="mg-result" class="mg-result" hidden>
+          <h4 id="mg-result-title" class="mg-result-title"></h4>
+          <div id="mg-result-body" class="mg-result-body"></div>
+          <div class="mg-result-actions">
+            <button id="mg-again" class="btn-primary">Play again</button>
+            <button id="mg-done" class="btn-ghost">Back to the village</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="bldg-modal" class="modal" role="dialog" aria-modal="true" aria-label="Building" hidden>
       <div class="modal-card">
         <img id="bldg-art" class="bldg-art" alt="" />
@@ -410,6 +429,8 @@
         <p id="bldg-meta" class="story-reward"></p>
         <p id="bldg-tier" class="bldg-tier" hidden></p>
         <button id="bldg-upgrade" class="btn-primary bldg-upgrade" hidden></button>
+        <button id="bldg-play" class="btn-primary bldg-play" hidden></button>
+        <p id="bldg-play-note" class="bldg-play-note" hidden></p>
         <button id="bldg-close" class="btn-ghost">Back to the village</button>
       </div>
     </div>

@@ -193,6 +193,89 @@ export const JOURNAL: readonly JournalEntry[] = [
     note: 'A name in invisible ink. Payments. Silence. The letters A.V. on torn oilskin.',
     fresh: true,
   },
+  // ── Chapter 3 · The Ninth Night — the mystery answered.
+  {
+    id: 'j-confession',
+    tab: 'People',
+    title: 'Sorin’s Confession',
+    at: 26,
+    note: 'He shuttered the light for coin — Vale paid him to let the ships founder. Seventeen years he carried it. Tonight he set it down.',
+  },
+  {
+    id: 'j-ledgers',
+    tab: 'Clues',
+    title: 'Vale’s Ledgers',
+    at: 28,
+    note: 'Recovered from the strongbox below the tideline: every payment, every silence, in Alden Vale’s own hand.',
+  },
+  {
+    id: 'j-vale-answered',
+    tab: 'People',
+    title: 'Alden Vale, Answered',
+    at: 33,
+    note: 'The magistrate came at first light. Vale is gone from Emberhollow, and the shoals are safe to sail again.',
+  },
+  {
+    id: 'j-letter11-open',
+    tab: 'Letters',
+    title: '“Keep the light. I’m coming home.”',
+    at: 35,
+    note: 'The eleventh letter, opened at last. Marta wrote it the night she rowed north — to the one person she trusted to keep the beacon burning.',
+    fresh: true,
+  },
+  // ── Chapter 4 · New Sails — the harbour lives again.
+  {
+    id: 'j-newsails',
+    tab: 'Places',
+    title: 'The Harbour Reopens',
+    at: 38,
+    note: 'The first honest sail in seventeen years slips out past a lit beacon. Half the village came down to watch.',
+  },
+  {
+    id: 'j-blueboat',
+    tab: 'People',
+    title: 'Joss’s Blue Boat',
+    at: 43,
+    note: 'The tide brought it back — or Joss finally rowed out and fetched it. He won’t say which, and he’s grinning either way.',
+  },
+  // ── Chapter 5 · The Long Winter — Emberhollow keeps warm.
+  {
+    id: 'j-midwinter',
+    tab: 'Places',
+    title: 'The Midwinter Hearth',
+    at: 50,
+    note: 'One fire kept through the long dark, by turns. No one in Emberhollow sits cold this winter.',
+  },
+  {
+    id: 'j-beacon-watch',
+    tab: 'Clues',
+    title: 'The Beacon’s Winter Watch',
+    at: 56,
+    note: 'Lit every night now. Sorin takes the coldest hour himself — his way of keeping a promise he once broke.',
+  },
+  // ── Chapter 6 · Spring Tides — the village in full bloom.
+  {
+    id: 'j-thaw',
+    tab: 'Places',
+    title: 'The First Thaw',
+    at: 62,
+    note: 'Meltwater in the gutters, green at the cliff’s edge. Emberhollow lets out a long breath.',
+  },
+  {
+    id: 'j-wedding',
+    tab: 'People',
+    title: 'A Spring Wedding',
+    at: 68,
+    note: 'The square fills with music on a Sunday again — just as someone once wished at the old well.',
+  },
+  {
+    id: 'j-fullbloom',
+    tab: 'Places',
+    title: 'Spring Tides',
+    at: 71,
+    note: 'The roses came back to Marta’s wall. Emberhollow is more itself than it has ever been — and you are the reason.',
+    fresh: true,
+  },
 ];
 
 /**

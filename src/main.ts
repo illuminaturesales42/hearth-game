@@ -4,6 +4,7 @@ import { stageFor } from './data/economy';
 import { feedback } from './ui/feedback';
 import { toast } from './ui/toast';
 import { AppShell } from './ui/app-shell';
+import { MinigameUI } from './ui/minigames';
 import { confirmDialog } from './ui/confirm-modal';
 import { initNetStatus } from './ui/net-status';
 import { recentEvents, setSink, track } from './analytics';
@@ -24,6 +25,10 @@ exposeMetricsConsole(metrics);
 metrics.reportSession();
 
 new AppShell(game, metrics);
+
+// Village Life: building mini-games, launched from the map building cards via a
+// 'hearth:play-minigame' event (unlock at story-complete; attempts from living well).
+new MinigameUI(game);
 
 // A quiet offline indicator (the game is local-first; this only reassures).
 initNetStatus();
@@ -153,6 +158,12 @@ game.subscribe((ev) => {
     case 'duelEnd':
       track('duel_end', { won: ev.won, streak: ev.streak, coins: ev.coins, items: ev.itemCount });
       break;
+    case 'minigameUnlocked':
+      track('minigame_unlocked', { id: ev.id });
+      break;
+    case 'minigameEnd':
+      track('minigame_end', { id: ev.id, coins: ev.coins, ember: ev.ember, items: ev.itemCount });
+      break;
     case 'health':
       track('health_grant', {
         energy: ev.energy,
@@ -193,7 +204,10 @@ void sync.start().then((res) => {
       cancelLabel: 'Keep this device',
     }).then((keepCloud) => {
       if (keepCloud) void sync.adoptRemote(remote).then((ok) => ok && location.reload());
-      else void sync.keepLocal();
+      else
+        void sync.keepLocal(remote).then((ok) => {
+          if (!ok) toast('Could not reach the cloud just now — your village is safe on this device.');
+        });
     });
   }
 });
@@ -207,10 +221,29 @@ declare global {
     hearthSeeTown: (orders?: number) => void;
   }
 }
-// DEV-only: these console helpers can skip the story or wipe the save, so they
-// must never ship to players. Vite tree-shakes the whole block out of the prod
-// build (import.meta.env.DEV === false).
-if (import.meta.env.DEV) {
+// Tester hooks (hearthSeeTown, hearthReset, …). Always on in dev; in the
+// deployed build they're OFF for normal players but a friends-and-family tester
+// can opt in by visiting the site once with ?tester (the flag is remembered).
+// This is a closed-test convenience, not a launch feature.
+const _params = new URLSearchParams(location.search);
+if (_params.has('tester')) {
+  try {
+    localStorage.setItem('hearth:tester', '1');
+  } catch {
+    /* ignore */
+  }
+}
+const testerMode =
+  import.meta.env.DEV ||
+  _params.has('tester') ||
+  (() => {
+    try {
+      return localStorage.getItem('hearth:tester') === '1';
+    } catch {
+      return false;
+    }
+  })();
+if (testerMode) {
   window.hearthReset = () => {
     clearSave();
     location.reload();

@@ -6,6 +6,7 @@ import type { Game } from '../core/game';
 import { chainDef } from '../core/board';
 import { artUrl, portraitFor, itemIconInline } from './art';
 import { ORDERS, ZONE_STAGES } from '../data/economy';
+import { orderAt } from '../data/endless';
 import { feedback } from './feedback';
 import { toast } from './toast';
 
@@ -134,6 +135,15 @@ export class Home {
             toast(`Duel won! ${ev.itemCount} items to your Repository · streak ×${ev.streak} · +${ev.coins} coins.`);
           }
           break;
+        case 'minigameUnlocked':
+          feedback.chapter();
+          toast(`✦ ${ev.title} has opened its doors. Tap the building to play.`);
+          break;
+        case 'minigameEnd':
+          toast(
+            `${ev.title}: 🪙 +${ev.coins}${ev.ember > 0 ? ` · 🔥 +${ev.ember}` : ''}${ev.itemCount > 0 ? ` · ${ev.itemCount} to your Repository` : ''}.`,
+          );
+          break;
         case 'health': {
           const parts = [
             ev.fromSteps > 0 ? `+${ev.fromSteps} from steps` : '',
@@ -178,7 +188,7 @@ export class Home {
       }
     }
 
-    const order = ORDERS[s.orderIndex];
+    const order = this.game.currentOrder();
     const text = $('order-text');
     const deliver = $<HTMLButtonElement>('deliver-btn');
     const face = document.querySelector<HTMLElement>('.order-face');
@@ -199,7 +209,7 @@ export class Home {
     }
 
     // Order queue: show what's coming so players can plan their chains.
-    const next = ORDERS[s.orderIndex + 1];
+    const next = orderAt(s.orderIndex + 1);
     const nextEl = document.getElementById('order-next');
     if (nextEl) {
       if (next) {

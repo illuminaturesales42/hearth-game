@@ -12,6 +12,10 @@ export class BoardView {
   private dragFrom = -1;
   private fxLayer: HTMLElement;
   private reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /** Motion off if the OS asks OR the in-app Settings toggle is on — re-checked per event. */
+  private reduced(): boolean {
+    return this.reduce || document.body.classList.contains('reduce-motion');
+  }
   /** last cell that was deliverable, captured pre-delivery for the orb origin */
   private lastDeliverable = -1;
   /** tap-to-merge: the first-tapped item awaiting a partner (-1 = none) */
@@ -313,7 +317,7 @@ export class BoardView {
 
   /** Merge juice: a sparkle burst + an expanding ember ring at the target cell. */
   private mergeBurst(i: number): void {
-    if (this.reduce) return;
+    if (this.reduced()) return;
     const c = this.cellCentre(i);
     if (!c) return;
     const url = artUrl('fx_merge_sparkle');
@@ -347,7 +351,7 @@ export class BoardView {
 
   /** Deliver juice: an energy orb floats from the completed cell to the order card. */
   private deliverFly(): void {
-    if (this.reduce) return;
+    if (this.reduced()) return;
     const url = artUrl('fx_energy_orb');
     if (!url) return;
     const from = this.cellCentre(this.lastDeliverable) ?? this.boardCentre();

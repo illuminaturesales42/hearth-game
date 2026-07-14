@@ -57,6 +57,7 @@ export const BUILDING_INFO: Record<string, string> = {
   town_blacksmith: 'The Forge',
   town_dock: 'North Docks',
   town_library: 'The Library',
+  prop_lighthouse: 'The Lighthouse',
 };
 
 /** Villagers walk the town once their part of the story has been told. */

@@ -3,7 +3,7 @@
  * note (docs/market-research-2026-07.md): below D1 20% nothing saves a game —
  * the cheapest lever is a reason to come back that's story, not pressure.
  */
-import { ORDERS } from '../data/economy';
+import { orderAt } from '../data/endless';
 import { chainDef } from '../core/board';
 import { BUILDING_INFO, TOWN_BUILDINGS } from '../data/town-layout';
 import { dailyBonus } from '../core/actions';
@@ -11,8 +11,7 @@ import type { GameState } from '../core/types';
 
 /** "Wren waits for a lantern. The Market returns when it arrives." */
 export function nextTease(orderIndex: number): string | null {
-  const order = ORDERS[orderIndex];
-  if (!order) return null;
+  const order = orderAt(orderIndex);
   const def = chainDef(order.need.chain);
   const item = def.levelNames[order.need.level] ?? 'something special';
   const building = TOWN_BUILDINGS.find((b) => b.unlockAt === orderIndex + 1);

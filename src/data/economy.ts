@@ -215,7 +215,7 @@ export const ORDERS: readonly OrderDef[] = [
     text: 'Welcome to Emberhollow. The storm took half the square and the post office took the other half. Cut me planks and we’ll start with the notice board.',
     resolution:
       'The notice board goes up. Pinned dead centre: a letter addressed to nobody, postmarked seventeen years ago.',
-    rewardEnergy: 3,
+    rewardEnergy: 2,
     rewardCoins: 15,
   },
   {
@@ -233,7 +233,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'hearthfire', level: 1 },
     text: 'A letter with no name wants reading by proper light. Bring me a lantern and keep your voice down.',
     resolution: 'Wren reads twice, then folds it fast. "It’s dated three days from now. That’s not possible."',
-    rewardEnergy: 4,
+    rewardEnergy: 2,
     rewardCoins: 25,
   },
   {
@@ -242,7 +242,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 2 },
     text: 'The keeper won’t talk to strangers. Everyone talks over pie. Bake one.',
     resolution: 'The keeper eats in silence, then whispers: "Marta didn’t drown. She rowed north."',
-    rewardEnergy: 5,
+    rewardEnergy: 2,
     rewardCoins: 30,
   },
   {
@@ -252,7 +252,7 @@ export const ORDERS: readonly OrderDef[] = [
     text: 'You want the rest of it, you sit like a guest. My last chair went into the stove the winter the light went out.',
     resolution:
       'Sorin sits, finally. "The light didn’t fail that night. Somebody shuttered it. I kept the bolt they used."',
-    rewardEnergy: 5,
+    rewardEnergy: 7,
     rewardCoins: 35,
   },
   {
@@ -262,7 +262,7 @@ export const ORDERS: readonly OrderDef[] = [
     text: 'If she rowed north she followed the old light. Kindle a hearthfire so she can find her way back.',
     resolution:
       'The fire takes. Far out on the water, something answers with a flash. The square lamps come on for the first time in years.',
-    rewardEnergy: 6,
+    rewardEnergy: 2,
     rewardCoins: 40,
   },
   {
@@ -272,7 +272,7 @@ export const ORDERS: readonly OrderDef[] = [
     text: 'Half the village saw that flash and now they’re all in my post office asking questions. Feed them. A full basket buys us an hour of quiet.',
     resolution:
       'Over bread and quiet, Wren lays out the letters. Nine of them. All Marta’s hand. All dated after she vanished.',
-    rewardEnergy: 6,
+    rewardEnergy: 7,
     rewardCoins: 45,
   },
   {
@@ -282,7 +282,7 @@ export const ORDERS: readonly OrderDef[] = [
     text: 'The bakery cellar has a door I nailed shut the year she left. I’m ready to open it. Build me a new one first, so I can close it again if I’m wrong.',
     resolution:
       'Behind the old door: an oilskin chart of the northern shoals, marked in Marta’s ink. One cove is circled twice.',
-    rewardEnergy: 7,
+    rewardEnergy: 14,
     rewardCoins: 55,
   },
   {
@@ -292,7 +292,7 @@ export const ORDERS: readonly OrderDef[] = [
     text: 'That cove sits behind the black rocks. A hearthfire won’t reach it. Build me a beacon and I’ll aim it myself.',
     resolution:
       'The beacon sweeps the shoals. On the third pass it catches a rowboat, hauled above the tideline. Recently.',
-    rewardEnergy: 8,
+    rewardEnergy: 4,
     rewardCoins: 65,
   },
   {
@@ -302,7 +302,7 @@ export const ORDERS: readonly OrderDef[] = [
     text: 'If she’s coming in off that water she’ll be hungrier than pride allows. Set a proper feast. We’ll do the asking after.',
     resolution:
       'Nobody comes to the feast. But in the morning a tenth letter is on the notice board. It says: "Fix the cottage. Please."',
-    rewardEnergy: 8,
+    rewardEnergy: 14,
     rewardCoins: 75,
   },
   {
@@ -311,7 +311,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'wood', level: 6 },
     text: 'She’ll need a roof when she lands. The old cottage went to ruin the year she left. Build it back.',
     resolution: 'At dawn, smoke rises from the cottage chimney. Someone is home.',
-    rewardEnergy: 9,
+    rewardEnergy: 20,
     rewardCoins: 90,
   },
   {
@@ -321,7 +321,7 @@ export const ORDERS: readonly OrderDef[] = [
     text: 'Seventeen missed birthdays. We are fixing one of them tonight. Make a cake.',
     resolution:
       'Marta sets a slice by the window, "for whoever is still out there." Behind her, unread, the eleventh letter.',
-    rewardEnergy: 10,
+    rewardEnergy: 4,
     rewardCoins: 120,
   },
 
@@ -335,7 +335,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'hearthfire', level: 1 },
     text: 'Bring me a lantern. The square gets dark early.',
     resolution: 'Its light reveals faint bootprints in the sand — leading to the north cove.',
-    rewardEnergy: 4,
+    rewardEnergy: 2,
     rewardCoins: 25,
   },
   {
@@ -344,7 +344,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 1 },
     text: 'Bake a loaf of bread. My hands are full.',
     resolution: 'He shares that Marta used to leave notes in his flour sacks.',
-    rewardEnergy: 4,
+    rewardEnergy: 2,
     rewardCoins: 30,
   },
   {
@@ -353,7 +353,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 3 },
     text: 'I’ll need a sturdy bench. The old one won’t do.',
     resolution: 'Underneath it, he finds a rusted coin from a ship called The Marigold.',
-    rewardEnergy: 5,
+    rewardEnergy: 4,
     rewardCoins: 35,
   },
   {
@@ -362,7 +362,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 0 },
     text: 'Sort through these letters with me.',
     resolution: 'One is addressed to Marta… but the postmark is yesterday.',
-    rewardEnergy: 5,
+    rewardEnergy: 2,
     rewardCoins: 40,
   },
   {
@@ -371,7 +371,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 2 },
     text: 'Bring me a pie. Something to warm the belly.',
     resolution: 'He remembers the night of the storm — a stranger argued with Marta.',
-    rewardEnergy: 6,
+    rewardEnergy: 2,
     rewardCoins: 45,
   },
   {
@@ -380,7 +380,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 5 },
     text: 'I need a fishing net. The tide’s been strange.',
     resolution: 'He caught a torn scrap of oilskin with the letters A.V. stitched inside.',
-    rewardEnergy: 6,
+    rewardEnergy: 14,
     rewardCoins: 50,
   },
   {
@@ -398,7 +398,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 2 },
     text: 'A kettle. The tea here is worse than the weather.',
     resolution: 'He softens, and admits the old keeper wasn’t alone that night.',
-    rewardEnergy: 7,
+    rewardEnergy: 2,
     rewardCoins: 60,
   },
   {
@@ -407,7 +407,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 3 },
     text: 'Bake a cake for the workers.',
     resolution: 'Overheard: two men whisper about payments and silence.',
-    rewardEnergy: 8,
+    rewardEnergy: 4,
     rewardCoins: 70,
   },
   {
@@ -416,7 +416,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 1 },
     text: 'A stack of paper. I’ll copy these letters.',
     resolution: 'One page has invisible ink — the name Alden Vale appears.',
-    rewardEnergy: 8,
+    rewardEnergy: 2,
     rewardCoins: 80,
   },
   {
@@ -425,7 +425,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 6 },
     text: 'Help me fix the rowboat.',
     resolution: 'He shows where it was locked away — and why: someone followed her.',
-    rewardEnergy: 9,
+    rewardEnergy: 20,
     rewardCoins: 90,
   },
   {
@@ -434,7 +434,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 5 },
     text: 'Prepare a feast for the village. We’ve come far.',
     resolution: 'Trust grows. Marta opens the eleventh letter… but not yet.',
-    rewardEnergy: 10,
+    rewardEnergy: 14,
     rewardCoins: 150,
   },
 
@@ -450,7 +450,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 2 },
     text: 'Boil the kettle. I’ll tell it properly this time — from the ninth night on.',
     resolution: 'She sets the eleventh letter on the sill, still sealed. "Not until it’s finished."',
-    rewardEnergy: 10,
+    rewardEnergy: 2,
     rewardCoins: 160,
   },
   {
@@ -459,7 +459,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 1 },
     text: 'Copy the nine letters out, in order. I think they’re not letters at all.',
     resolution: 'Laid in a row, they read as a keeper’s log — a warning, written forward, night by night.',
-    rewardEnergy: 11,
+    rewardEnergy: 2,
     rewardCoins: 175,
   },
   {
@@ -468,7 +468,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'hearthfire', level: 2 },
     text: 'Kindle the old brazier. I’ll say aloud what I’ve carried too long.',
     resolution: 'Sorin confesses: he took Vale’s coin to shutter the light, told the ships were empty. They were not.',
-    rewardEnergy: 11,
+    rewardEnergy: 2,
     rewardCoins: 190,
   },
   {
@@ -477,7 +477,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 2 },
     text: 'Bake something for the tide — I’m rowing the shoals where the light should have been.',
     resolution: 'Joss finds the wreck Vale profited from, and a strongbox chained to the keel.',
-    rewardEnergy: 12,
+    rewardEnergy: 2,
     rewardCoins: 205,
   },
   {
@@ -486,7 +486,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 4 },
     text: 'The divers work cold water. A full basket keeps them down long enough.',
     resolution: 'The strongbox comes up. Inside: Vale’s ledgers — names, payments, every shuttered night.',
-    rewardEnergy: 12,
+    rewardEnergy: 7,
     rewardCoins: 220,
   },
   {
@@ -495,7 +495,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 5 },
     text: 'The tide’s taking loose pages. Bring a net — we save every word.',
     resolution: 'Netted from the surf: the ledger’s last page, and a threat in Vale’s own hand.',
-    rewardEnergy: 13,
+    rewardEnergy: 14,
     rewardCoins: 235,
   },
   {
@@ -504,7 +504,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'wood', level: 4 },
     text: 'Build a chair for the square. When Vale comes, he’ll sit and hear the town.',
     resolution: 'Vale arrives, all charm and warning. The chair waits. So does Emberhollow.',
-    rewardEnergy: 13,
+    rewardEnergy: 7,
     rewardCoins: 255,
   },
   {
@@ -513,7 +513,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'hearthfire', level: 3 },
     text: 'Build the true beacon — the one I should have lit. Let every ship see it.',
     resolution: 'The beacon blazes over the shoals. No wreck will be made in the dark again.',
-    rewardEnergy: 14,
+    rewardEnergy: 4,
     rewardCoins: 280,
   },
   {
@@ -522,7 +522,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 6 },
     text: 'Mend the rowboat I came home in. I want it seaworthy — but I’m staying.',
     resolution: 'She names it for the harbour. A boat to leave in is a boat that chooses to stay.',
-    rewardEnergy: 14,
+    rewardEnergy: 20,
     rewardCoins: 300,
   },
   {
@@ -531,7 +531,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 5 },
     text: 'Set the feast. Whatever tonight brings, we meet it together — and fed.',
     resolution: 'The revenue men take Vale, undone by his own ledgers. The square lets out a long breath.',
-    rewardEnergy: 15,
+    rewardEnergy: 14,
     rewardCoins: 320,
   },
   {
@@ -540,7 +540,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 3 },
     text: 'A bench by the window. Somewhere to read a thing seventeen years unread.',
     resolution: 'Marta sits, and at last breaks the seal on the eleventh letter.',
-    rewardEnergy: 15,
+    rewardEnergy: 4,
     rewardCoins: 340,
   },
   {
@@ -550,7 +550,7 @@ export const ORDERS: readonly OrderDef[] = [
     text: 'One more, and it’s a proper fair. The whole harbour, out under the light.',
     resolution:
       'The eleventh letter was to Emberhollow itself: "Keep the light. I’m coming home." She is. The fair blazes till dawn.',
-    rewardEnergy: 16,
+    rewardEnergy: 20,
     rewardCoins: 400,
   },
 
@@ -566,7 +566,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'hearthfire', level: 1 },
     text: 'A sail on the horizon, holding to the light. Hang a lantern so they know they’re seen.',
     resolution: 'It’s the Marigold’s lost crew — carried off the night of the storm, guided home at last.',
-    rewardEnergy: 16,
+    rewardEnergy: 2,
     rewardCoins: 410,
   },
   {
@@ -575,7 +575,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 2 },
     text: 'They’re half-starved and salt-worn. Something hot in their hands first.',
     resolution: 'Over the food they talk: they sailed north with Marta, all those years, and never stopped hoping.',
-    rewardEnergy: 16,
+    rewardEnergy: 2,
     rewardCoins: 425,
   },
   {
@@ -584,7 +584,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'wood', level: 4 },
     text: 'Their eldest can barely stand. Build a chair by my fire for him.',
     resolution: 'He was the keeper before Sorin. The two old men sit late, and forgive each other everything.',
-    rewardEnergy: 17,
+    rewardEnergy: 7,
     rewardCoins: 445,
   },
   {
@@ -593,7 +593,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 3 },
     text: 'There’s a child among them — born at sea, never seen a harbour. Bake her a cake.',
     resolution: 'The town’s first cake for its newest arrival. Emberhollow remembers how to celebrate a beginning.',
-    rewardEnergy: 17,
+    rewardEnergy: 4,
     rewardCoins: 465,
   },
   {
@@ -602,7 +602,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 4 },
     text: 'A writing desk. I’ll send to every family the light might reach.',
     resolution: 'The letters go out — no longer warnings, but invitations. Come home. The light is lit.',
-    rewardEnergy: 18,
+    rewardEnergy: 7,
     rewardCoins: 485,
   },
   {
@@ -611,7 +611,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 1 },
     text: 'Copies for every harbour down the coast. Paper — a great deal of it.',
     resolution: 'Word runs the coastline like a tide. More sails turn toward Emberhollow.',
-    rewardEnergy: 18,
+    rewardEnergy: 2,
     rewardCoins: 505,
   },
   {
@@ -620,7 +620,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 5 },
     text: 'The fleet’s growing faster than our nets. Bring more — good, strong ones.',
     resolution: 'The harbour bustles as it hasn’t in a generation. Joss can’t stop grinning.',
-    rewardEnergy: 18,
+    rewardEnergy: 14,
     rewardCoins: 525,
   },
   {
@@ -629,7 +629,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 4 },
     text: 'A basket of provisions for the newcomers’ first week. No one arrives hungry here.',
     resolution: 'The town shares what the storm nearly took from it. It’s enough. It’s always enough now.',
-    rewardEnergy: 19,
+    rewardEnergy: 7,
     rewardCoins: 550,
   },
   {
@@ -638,7 +638,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'hearthfire', level: 2 },
     text: 'The square’s too full for one fire. Kindle a second hearth.',
     resolution: 'Two fires burning now, and room around both. Warmth to spare, and to give.',
-    rewardEnergy: 19,
+    rewardEnergy: 2,
     rewardCoins: 570,
   },
   {
@@ -656,7 +656,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 5 },
     text: 'A welcome feast — every soul who found their way back, at one long table.',
     resolution: 'Strangers become neighbours over shared bread. By dessert, no one’s a stranger at all.',
-    rewardEnergy: 20,
+    rewardEnergy: 14,
     rewardCoins: 640,
   },
   {
@@ -666,7 +666,7 @@ export const ORDERS: readonly OrderDef[] = [
     text: 'Make it a fair to remember. The Beacon Fair — from now on, every autumn.',
     resolution:
       'Emberhollow isn’t just restored — it’s growing. The light stays lit, and it reaches further than anyone dreamed.',
-    rewardEnergy: 22,
+    rewardEnergy: 20,
     rewardCoins: 750,
   },
 
@@ -681,7 +681,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 4 },
     text: 'First frost tonight. Fill a basket — no cupboard in this town goes bare in winter.',
     resolution: 'Baskets go door to door. Winter finds Emberhollow ready, and unafraid.',
-    rewardEnergy: 22,
+    rewardEnergy: 7,
     rewardCoins: 760,
   },
   {
@@ -690,7 +690,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'hearthfire', level: 2 },
     text: 'Keep the square’s hearth burning through the dark months. Kindle it well.',
     resolution: 'The fire never dies now. Someone always tends it — that’s what a town is.',
-    rewardEnergy: 23,
+    rewardEnergy: 2,
     rewardCoins: 780,
   },
   {
@@ -699,7 +699,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 5 },
     text: 'The winter fleet needs strong nets — the good fish run cold and deep.',
     resolution: 'Even in the grey months, the harbour gives. No one wants for supper.',
-    rewardEnergy: 23,
+    rewardEnergy: 14,
     rewardCoins: 800,
   },
   {
@@ -708,7 +708,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'wood', level: 5 },
     text: 'A new door for the schoolhouse — the children shouldn’t learn in a draught.',
     resolution: 'A warm room, a full class. The town’s youngest carry its future now.',
-    rewardEnergy: 24,
+    rewardEnergy: 14,
     rewardCoins: 830,
   },
   {
@@ -717,7 +717,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 3 },
     text: 'A bench in the post office. Folk linger in winter, and I don’t mind the company.',
     resolution: 'The post office becomes the town’s warm heart — letters, gossip, and tea.',
-    rewardEnergy: 24,
+    rewardEnergy: 4,
     rewardCoins: 860,
   },
   {
@@ -726,7 +726,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 3 },
     text: 'A cake for the shortest night. We celebrate the dark — because we know the light.',
     resolution: 'Midwinter, and the square is full of song. The dark holds no fear here.',
-    rewardEnergy: 25,
+    rewardEnergy: 4,
     rewardCoins: 900,
   },
   {
@@ -735,7 +735,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'hearthfire', level: 3 },
     text: 'A ship’s caught in the sleet off the point. Blaze the beacon — bring her in.',
     resolution: 'The beacon parts the storm. The crew stumble ashore to warmth and welcome.',
-    rewardEnergy: 25,
+    rewardEnergy: 4,
     rewardCoins: 940,
   },
   {
@@ -744,7 +744,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 2 },
     text: 'Those half-frozen sailors need something hot before anything else.',
     resolution: 'Strangers by the fire become friends by morning. Winter makes quick kin.',
-    rewardEnergy: 26,
+    rewardEnergy: 2,
     rewardCoins: 980,
   },
   {
@@ -754,7 +754,7 @@ export const ORDERS: readonly OrderDef[] = [
     text: 'Sorin’s chill has settled deep. Ready the rowboat — the healer’s a cove north.',
     resolution:
       'They fetch the healer through the snow. Sorin grumbles that he’s fine. He isn’t, quite — but he will be.',
-    rewardEnergy: 26,
+    rewardEnergy: 20,
     rewardCoins: 1020,
   },
   {
@@ -763,7 +763,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'wood', level: 6 },
     text: 'Build the old keeper a snug cottage by the square — no more draughty tower for him.',
     resolution: 'Sorin protests all the way to his own warm hearth, and is asleep by the fire within the hour.',
-    rewardEnergy: 27,
+    rewardEnergy: 20,
     rewardCoins: 1080,
   },
   {
@@ -772,7 +772,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 5 },
     text: 'Set the long table indoors. A midwinter feast — every soul, out of the cold.',
     resolution: 'The hall glows against the dark. Outside, snow; inside, more warmth than any storm could take.',
-    rewardEnergy: 27,
+    rewardEnergy: 14,
     rewardCoins: 1140,
   },
   {
@@ -782,7 +782,7 @@ export const ORDERS: readonly OrderDef[] = [
     text: 'The first thaw’s coming. A feast to thank the winter — and to greet the green.',
     resolution:
       'Icicles drip; a snowdrop shows by the well. Emberhollow weathered its winter, together. Spring is near.',
-    rewardEnergy: 28,
+    rewardEnergy: 20,
     rewardCoins: 1200,
   },
 
@@ -797,7 +797,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 4 },
     text: 'Spring, and letters flooding in from every harbour the light touched. A desk to answer them all.',
     resolution: 'Emberhollow’s become a name spoken warmly up and down the coast. The desk is never idle.',
-    rewardEnergy: 24,
+    rewardEnergy: 7,
     rewardCoins: 850,
   },
   {
@@ -806,7 +806,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 6 },
     text: 'I’m… asking Wren to marry me. Mend the good rowboat — I’ll do it out on the calm water.',
     resolution: 'She says yes before he’s finished asking. The harbour cheers from the quay.',
-    rewardEnergy: 24,
+    rewardEnergy: 20,
     rewardCoins: 880,
   },
   {
@@ -815,7 +815,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 3 },
     text: 'A wedding cake, then — the finest this oven’s ever seen. No pressure.',
     resolution: 'Three tiers, iced with spring flowers. Bran weeps a little, and blames the onions he wasn’t cutting.',
-    rewardEnergy: 25,
+    rewardEnergy: 4,
     rewardCoins: 920,
   },
   {
@@ -824,7 +824,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'wood', level: 4 },
     text: 'Chairs for the whole harbour — everyone sits for Joss and Wren.',
     resolution: 'The square fills. Two people who found their way home are married under the light.',
-    rewardEnergy: 25,
+    rewardEnergy: 7,
     rewardCoins: 960,
   },
   {
@@ -833,7 +833,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'hearthfire', level: 3 },
     text: 'Light the beacon for the wedding night — not to warn, just to shine. Because we can.',
     resolution: 'The beam sweeps a calm sea, joyful for once. Sorin, mended and merry, dances badly and doesn’t care.',
-    rewardEnergy: 26,
+    rewardEnergy: 4,
     rewardCoins: 1000,
   },
   {
@@ -843,7 +843,7 @@ export const ORDERS: readonly OrderDef[] = [
     text: 'A basket for the sea-child’s first spring — she’s walking now, and hungry for everything.',
     resolution:
       'The child born at sea takes her first steps on solid, blooming ground. The town cheers her every wobble.',
-    rewardEnergy: 26,
+    rewardEnergy: 7,
     rewardCoins: 1050,
   },
   {
@@ -852,7 +852,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'wood', level: 6 },
     text: 'Build a cottage for the newlyweds, on the rise where you can see the whole harbour.',
     resolution: 'Joss and Wren’s door opens to the sea and the light both. A fine place to begin.',
-    rewardEnergy: 27,
+    rewardEnergy: 20,
     rewardCoins: 1120,
   },
   {
@@ -861,7 +861,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'harvest', level: 5 },
     text: 'Word’s out — folk are sailing in just for the Beacon Fair. Feast enough for a whole coast!',
     resolution: 'Boats crowd the harbour. Emberhollow’s fair is famous now, from headland to headland.',
-    rewardEnergy: 27,
+    rewardEnergy: 14,
     rewardCoins: 1180,
   },
   {
@@ -870,7 +870,7 @@ export const ORDERS: readonly OrderDef[] = [
     need: { chain: 'keepsake', level: 5 },
     text: 'Nets for every visiting boat — no one leaves our harbour empty-handed.',
     resolution: 'The generosity that rebuilt the town now spills out to everyone who comes. It only ever grows.',
-    rewardEnergy: 28,
+    rewardEnergy: 14,
     rewardCoins: 1240,
   },
   {
@@ -880,7 +880,7 @@ export const ORDERS: readonly OrderDef[] = [
     text: 'A second beacon on the south point — the light should reach further still.',
     resolution:
       'Two lights now, watching the whole coast. No ship within sight of Emberhollow sails in the dark again.',
-    rewardEnergy: 28,
+    rewardEnergy: 4,
     rewardCoins: 1320,
   },
   {
@@ -890,7 +890,7 @@ export const ORDERS: readonly OrderDef[] = [
     text: 'One great table down the length of the square — everyone we’ve ever welcomed, home for the feast.',
     resolution:
       'Founders and returnees, neighbours and newcomers, all at one table. There are no strangers left in Emberhollow.',
-    rewardEnergy: 29,
+    rewardEnergy: 14,
     rewardCoins: 1400,
   },
   {
@@ -900,7 +900,7 @@ export const ORDERS: readonly OrderDef[] = [
     text: 'One last fair, the greatest yet — for the town, for the light, for all of us who came home.',
     resolution:
       'The lights blaze; the harbour sings; and Marta, home for good, watches the town she saved go on without needing saving. Keep the light. It’s lit.',
-    rewardEnergy: 30,
+    rewardEnergy: 20,
     rewardCoins: 1600,
   },
 ] as const;
@@ -979,11 +979,19 @@ export const ZONE_STAGES: readonly { at: number; label: string }[] = [
   { at: 15, label: 'The workshop repaired' },
   { at: 20, label: 'The lighthouse path cleared' },
   { at: 24, label: 'The docks, revealed' },
+  // Past order 24 the town is physically rebuilt — these later beats are the
+  // village brightening with the story: the mystery kept, the seasons turning.
+  { at: 30, label: 'The ninth night, kept' },
+  { at: 36, label: 'New sails on the water' },
+  { at: 48, label: 'Midwinter hearth aglow' },
+  { at: 60, label: 'The first thaw' },
+  { at: 72, label: 'Spring tides — Emberhollow in full bloom' },
 ] as const;
 
 /**
- * Deliveries that fully rebuild Emberhollow (all buildings + zones restored).
- * Restoration % is capped here so later story chapters — which continue past a
- * fully-restored town — never make the "% restored" bar regress.
+ * Deliveries that fully rebuild Emberhollow (all buildings back). The "% restored"
+ * bar caps here — the town is physically whole by the docks (order 24); the later
+ * ZONE_STAGES beats are seasonal/story flourishes, not more rebuilding, so the bar
+ * never regresses across Chapters 3–6.
  */
-export const RESTORE_ORDERS = Math.max(...ZONE_STAGES.map((z) => z.at));
+export const RESTORE_ORDERS = 24;
