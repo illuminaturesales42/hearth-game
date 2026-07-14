@@ -10,6 +10,7 @@
  */
 import type { Game } from '../core/game';
 import { MAP_LOCATIONS } from '../data/world';
+import { MINIGAMES } from '../data/minigames';
 import { ORDERS, RESTORE_ORDERS, chapterFor, stageFor } from '../data/economy';
 import { orderAt } from '../data/endless';
 import { questsForDay } from '../data/daily-quests';
@@ -95,6 +96,19 @@ export class MapView {
   private decorMode = false;
   private decorPick: string | null = null;
   private decorHit: { x0: number; y0: number; x1: number; y1: number; id: number }[] = [];
+
+  /**
+   * Camera for the "look around the island" pan/zoom. `zoom` 1 = fit (identical
+   * to the classic view); >1 zooms into the same scene. `panX/panY` are viewport
+   * offsets in CSS px, clamped so the viewport never leaves the scaled scene.
+   * draw() and the click hit-test share this transform, so a tap always lands on
+   * what's under the finger at any zoom.
+   */
+  private cam = { zoom: 1, panX: 0, panY: 0 };
+  private static readonly ZOOM_STEPS = [1, 1.8, 2.6] as const;
+  private dragging = false;
+  private dragMoved = false;
+  private dragFrom = { x: 0, y: 0, panX: 0, panY: 0 };
 
   constructor(private game: Game) {
     // The painted stage backdrops are a fallback for when the composed-town art
@@ -220,10 +234,17 @@ export class MapView {
     this.ctx = this.canvas?.getContext('2d') ?? null;
     // Tap a returned building to hear how it came back — or, in decorate
     // mode, tap the town to place a piece / tap a piece to pick it back up.
+    // Coordinates are converted through the camera (screenToWorld) so taps land
+    // true at any zoom; a drag (when zoomed in) pans instead of tapping.
     this.canvas?.addEventListener('click', (e) => {
+      if (this.dragMoved) {
+        this.dragMoved = false;
+        return; // that gesture was a pan, not a tap
+      }
       const rect = this.canvas!.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const p = this.screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+      const x = p.x;
+      const y = p.y;
       if (this.decorMode) {
         const W = this.canvas!.clientWidth || 360;
         for (let i = this.decorHit.length - 1; i >= 0; i--) {
@@ -257,6 +278,7 @@ export class MapView {
         }
       }
     });
+    this.mountCamControls();
     this.mountDecorTray();
     document.getElementById('bldg-close')?.addEventListener('click', () => {
       const m = document.getElementById('bldg-modal');
@@ -278,6 +300,69 @@ export class MapView {
         this.loop();
       }
     });
+  }
+
+  /**
+   * "Look around the island": drag to pan when zoomed in, wheel/pinch to zoom,
+   * and a zoom button as the primary touch-friendly control. Pan is disabled in
+   * decorate mode (there, drags place pieces) and at fit-zoom (nothing to pan).
+   */
+  private mountCamControls(): void {
+    const cv = this.canvas;
+    if (!cv) return;
+
+    // Zoom button (added to the map actions bar).
+    const zoomBtn = document.getElementById('map-zoom-btn');
+    if (zoomBtn) zoomBtn.addEventListener('click', () => this.cycleZoom());
+    this.updateZoomBtn();
+
+    // Desktop wheel-zoom, centred on the cursor.
+    cv.addEventListener(
+      'wheel',
+      (e) => {
+        if (this.decorMode) return;
+        e.preventDefault();
+        const rect = cv.getBoundingClientRect();
+        const steps = MapView.ZOOM_STEPS;
+        const i = steps.indexOf(this.cam.zoom as (typeof steps)[number]);
+        const dir = e.deltaY < 0 ? 1 : -1;
+        const next = steps[Math.min(steps.length - 1, Math.max(0, i + dir))] ?? 1;
+        if (next !== this.cam.zoom) this.zoomTo(next, { x: e.clientX - rect.left, y: e.clientY - rect.top });
+      },
+      { passive: false },
+    );
+
+    // Pointer drag to pan (touch + mouse). A small move threshold distinguishes
+    // a pan from a tap so buildings still open on a clean tap.
+    cv.addEventListener('pointerdown', (e) => {
+      if (this.decorMode || this.cam.zoom <= 1) return;
+      this.dragging = true;
+      this.dragMoved = false;
+      this.dragFrom = { x: e.clientX, y: e.clientY, panX: this.cam.panX, panY: this.cam.panY };
+      cv.setPointerCapture(e.pointerId);
+    });
+    cv.addEventListener('pointermove', (e) => {
+      if (!this.dragging) return;
+      const dx = e.clientX - this.dragFrom.x;
+      const dy = e.clientY - this.dragFrom.y;
+      if (Math.abs(dx) + Math.abs(dy) > 6) this.dragMoved = true;
+      this.cam.panX = this.dragFrom.panX + dx;
+      this.cam.panY = this.dragFrom.panY + dy;
+      this.clampCam();
+      if (this.reduce) this.draw(0);
+    });
+    const endDrag = (e: PointerEvent) => {
+      if (!this.dragging) return;
+      this.dragging = false;
+      try {
+        cv.releasePointerCapture(e.pointerId);
+      } catch {
+        /* pointer already released */
+      }
+    };
+    cv.addEventListener('pointerup', endDrag);
+    cv.addEventListener('pointercancel', endDrag);
+    cv.style.touchAction = 'none'; // let us own drag-pan without the page scrolling
   }
 
   /** The decorate tray: pick a piece, tap the town. Coins buy beauty, never power. */
@@ -445,6 +530,61 @@ export class MapView {
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(h * dpr);
     this.ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.clampCam();
+  }
+
+  // ---------- camera (pan / zoom the same island) ----------
+
+  private get logicalW(): number {
+    return this.canvas?.clientWidth || 360;
+  }
+  private static readonly LOGICAL_H = 285;
+
+  /** Keep the viewport inside the scaled scene; fit-zoom is always centred. */
+  private clampCam(): void {
+    const W = this.logicalW;
+    const H = MapView.LOGICAL_H;
+    const z = this.cam.zoom;
+    if (z <= 1) {
+      this.cam.zoom = 1;
+      this.cam.panX = 0;
+      this.cam.panY = 0;
+      return;
+    }
+    this.cam.panX = Math.min(0, Math.max(W - W * z, this.cam.panX));
+    this.cam.panY = Math.min(0, Math.max(H - H * z, this.cam.panY));
+  }
+
+  /** Viewport CSS px → logical scene coords (undoes the camera transform). */
+  private screenToWorld(x: number, y: number): { x: number; y: number } {
+    return { x: (x - this.cam.panX) / this.cam.zoom, y: (y - this.cam.panY) / this.cam.zoom };
+  }
+
+  /** Zoom to `z`, keeping the world point under `centre` (viewport px) fixed. */
+  private zoomTo(z: number, centre?: { x: number; y: number }): void {
+    const c = centre ?? { x: this.logicalW / 2, y: MapView.LOGICAL_H / 2 };
+    const world = this.screenToWorld(c.x, c.y);
+    this.cam.zoom = z;
+    this.cam.panX = c.x - world.x * z;
+    this.cam.panY = c.y - world.y * z;
+    this.clampCam();
+    this.updateZoomBtn();
+    if (this.reduce) this.draw(0);
+  }
+
+  /** Cycle fit → close → closer → fit (the primary, touch-friendly zoom control). */
+  private cycleZoom(): void {
+    const steps = MapView.ZOOM_STEPS;
+    const i = steps.indexOf(this.cam.zoom as (typeof steps)[number]);
+    this.zoomTo(steps[(i + 1) % steps.length] ?? 1);
+  }
+
+  private updateZoomBtn(): void {
+    const btn = document.getElementById('map-zoom-btn');
+    if (!btn) return;
+    const zoomed = this.cam.zoom > 1;
+    btn.textContent = zoomed ? '🔍 Zoom out' : '🔍 Zoom in';
+    btn.setAttribute('aria-pressed', zoomed ? 'true' : 'false');
   }
 
   private loop(): void {
@@ -485,10 +625,19 @@ export class MapView {
     const stage = this.stage();
     ctx.clearRect(0, 0, W, H);
 
+    // Camera: pan/zoom the same island. At fit-zoom (1) this is the identity, so
+    // the classic view is unchanged; when zoomed in, the whole scene (sky, sea,
+    // town) scales together and the viewport shows a sub-region. draw() and the
+    // click hit-test share this transform (see screenToWorld), so taps stay true.
+    ctx.save();
+    ctx.translate(this.cam.panX, this.cam.panY);
+    ctx.scale(this.cam.zoom, this.cam.zoom);
+
     // Composed living town (building sprites unlock with the story).
     if (artUrl('town_townhall')) {
       const mood = this.mood();
       this.drawTown(ctx, W, H, t, prog, stage, mood);
+      ctx.restore();
       this.updateBar(prog, stage, mood);
       return;
     }
@@ -532,6 +681,7 @@ export class MapView {
           ctx.fill();
         }
       }
+      ctx.restore();
       this.updateBar(prog, stage);
       return;
     }
@@ -600,6 +750,7 @@ export class MapView {
       ctx.stroke();
     }
 
+    ctx.restore();
     this.updateBar(prog, stage);
   }
 
@@ -2028,6 +2179,7 @@ export class MapView {
       `<div class="map-tease">🌅 ${tomorrowLine(s)}</div>` +
       `<p class="map-locs-label">Today in Emberhollow</p><div class="dq-list">${quests}</div>` +
       chapterCard +
+      this.villageLifeSection() +
       `<p class="map-locs-label">Chapter ${ch.id} · ${ch.title} · ${inChapter}/${ch.end - ch.start} orders · village ${Math.round(
         (delivered / ORDERS.length) * 100,
       )}% restored</p>` +
@@ -2047,6 +2199,68 @@ export class MapView {
         );
       }).join('') +
       `</div>`;
+
+    this.wireVillageLife();
+  }
+
+  /**
+   * Village Life index: a single list of the building games with big Play
+   * buttons, so every mini-game is reachable in one tap without hunting for the
+   * building on the map. Appears once the story's told (when the games open).
+   */
+  private villageLifeSection(): string {
+    if (!this.game.isStoryComplete()) return '';
+    const rows = MINIGAMES.map((m) => {
+      const st = this.game.minigameStatus(m.buildingArt);
+      if (!st) return '';
+      const thumb = artUrl(m.buildingArt);
+      let action: string;
+      let sub: string;
+      if (!st.unlocked) {
+        if (st.reason === 'locked-l2') {
+          action = `<button class="vl-play" data-open="${m.buildingArt}" disabled>Locked</button>`;
+          sub = `Care for the building to open it`;
+        } else {
+          action = `<button class="vl-play" data-open="${m.buildingArt}">✦ Open</button>`;
+          sub = m.blurb;
+        }
+      } else if (st.reason === 'ready') {
+        action = `<button class="vl-play" data-play="${m.id}">${m.verb}</button>`;
+        sub = `${st.tokens} ${st.tokens === 1 ? 'go' : 'goes'} today · 4 energy`;
+      } else {
+        action = `<button class="vl-play" data-play="${m.id}" disabled>${st.reason === 'no-energy' ? 'Need energy' : 'No goes left'}</button>`;
+        sub = st.reason === 'no-energy' ? 'A real-world action refills energy' : 'More goes come from living well';
+      }
+      return (
+        `<div class="vl-row">` +
+        (thumb ? `<div class="vl-thumb" style="background-image:url(${thumb})" aria-hidden="true"></div>` : '') +
+        `<div class="vl-body"><b>${m.title}</b><span>${sub}</span></div>${action}</div>`
+      );
+    }).join('');
+    return `<p class="map-locs-label">Village Life · tap to play</p><div class="vl-list">${rows}</div>`;
+  }
+
+  /** Wire the Village Life index Play/Open buttons to the same paths the map uses. */
+  private wireVillageLife(): void {
+    const host = document.getElementById('map-body');
+    if (!host) return;
+    host.querySelectorAll<HTMLButtonElement>('.vl-play[data-play]').forEach((btn) => {
+      btn.onclick = () => {
+        const id = btn.dataset.play!;
+        document.dispatchEvent(new CustomEvent('hearth:play-minigame', { detail: { id } }));
+      };
+    });
+    host.querySelectorAll<HTMLButtonElement>('.vl-play[data-open]').forEach((btn) => {
+      btn.onclick = () => {
+        const art = btn.dataset.open!;
+        if (this.game.openMinigameDoors(art) === 'opened') {
+          feedback.chime(520);
+          this.renderList();
+        } else {
+          toast('One new building opens per day — come back tomorrow for the next.');
+        }
+      };
+    });
   }
 }
 
