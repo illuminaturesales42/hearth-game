@@ -75,7 +75,7 @@ import {
   type MgReward,
   type UnlockOutcome,
 } from './minigames';
-import { MINIGAME_BY_ID, WISHES, minigameForBuilding, type MinigameDef } from '../data/minigames';
+import { MINIGAMES, MINIGAME_BY_ID, WISHES, minigameForBuilding, type MinigameDef } from '../data/minigames';
 import { orderAt } from '../data/endless';
 import { DECOR_CATALOG, TOWN_BUILDINGS, BUILDING_INFO } from '../data/town-layout';
 import { bondFor, deliveryMemory, hearts, recordMemory, restoreMemory } from './relationships';
@@ -912,6 +912,27 @@ export class Game {
   devPreviewStory(orderIndex: number): void {
     const clamped = Math.max(0, Math.min(ORDERS.length, Math.floor(orderIndex)));
     this.state = { ...this.state, orderIndex: clamped };
+    this.emit({ type: 'state' });
+  }
+
+  /**
+   * Dev/tester: complete the story, fund the town, and open every building game
+   * at once (incl. the L2-gated ones, which normally need coin-paced upgrades) —
+   * so a tester can reach all six mini-games in a single call.
+   */
+  devUnlockMinigames(now = Date.now()): void {
+    this.beginDay(now);
+    const buildingUpgrades = { ...this.state.buildingUpgrades };
+    for (const m of MINIGAMES)
+      if (m.unlock === 'l2') buildingUpgrades[m.buildingArt] = Math.max(buildingUpgrades[m.buildingArt] ?? 0, 1);
+    this.state = {
+      ...this.state,
+      orderIndex: Math.max(this.state.orderIndex, ORDERS.length),
+      coins: this.state.coins + 2000,
+      energy: grant(this.state.energy, 100),
+      buildingUpgrades,
+      minigames: { ...this.state.minigames, unlocked: MINIGAMES.map((m) => m.id), tokens: 20 },
+    };
     this.emit({ type: 'state' });
   }
 
