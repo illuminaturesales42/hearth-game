@@ -41,13 +41,14 @@ export const TOWN_BUILDINGS: readonly TownPiece[] = [
   { art: 'town_sawmill', x: 0.25, y: 0.9, w: 0.12, unlockAt: 20, ruinVariant: 1 },
   // centre
   { art: 'town_townhall', x: 0.49, y: 0.42, w: 0.135, unlockAt: 12, ruinVariant: 3 },
-  { art: 'prop_well', x: 0.5, y: 0.6, w: 0.075, unlockAt: 6 },
+  { art: 'prop_well', x: 0.5, y: 0.6, w: 0.09, unlockAt: 6 },
   { art: 'prop_sign', x: 0.575, y: 0.58, w: 0.038, unlockAt: 1 },
   { art: 'town_blacksmith', x: 0.45, y: 0.9, w: 0.12, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
-  // right column (fisher hut stays inboard of the lighthouse point)
+  // right column. The fisher's hut (on stilts) sits down at the harbour cove edge
+  // by the docks — kept at x≈0.8 so it stays inboard of the lighthouse point.
   { art: 'town_bakery', x: 0.72, y: 0.42, w: 0.12, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
   { art: 'town_garden', x: 0.63, y: 0.57, w: 0.13, unlockAt: 10, ruinVariant: 4 },
-  { art: 'town_fisherhut', x: 0.8, y: 0.62, w: 0.12, unlockAt: 18, ruinVariant: 6 },
+  { art: 'town_fisherhut', x: 0.8, y: 0.78, w: 0.12, unlockAt: 18, ruinVariant: 6 },
   { art: 'town_dock', x: 0.67, y: 0.9, w: 0.15, unlockAt: 22, ruinVariant: 5 },
 ] as const;
 

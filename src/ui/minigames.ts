@@ -67,6 +67,17 @@ export class MinigameUI {
   open(id: string): void {
     const def = MINIGAME_BY_ID[id];
     if (!def) return;
+    // Don't flash the overlay open if there's nothing to play — say why instead,
+    // so a tap never looks like it "did nothing" or opened-then-closed.
+    if (!this.game.canPlayMinigame(id)) {
+      const st = this.game.minigameStatus(def.buildingArt);
+      toast(
+        st?.reason === 'no-energy'
+          ? 'Not enough energy for another go — a real-world action refills it.'
+          : 'No goes left today — living well earns more.',
+      );
+      return;
+    }
     const overlay = el('minigame-overlay');
     if (overlay) overlay.hidden = false;
     const title = el('mg-title');

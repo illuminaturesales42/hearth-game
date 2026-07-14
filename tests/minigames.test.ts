@@ -171,6 +171,28 @@ describe('Game ↔ Village Life', () => {
     expect(g.minigameState.emberToday).toBe(2);
   });
 
+  it('story-gated games auto-open the moment the story is told (no extra "open" tap)', () => {
+    const g = new Game(1000);
+    // Before the story is done, the well is locked.
+    expect(g.minigameStatus('prop_well')?.reason).toBe('locked-story');
+    g.devPreviewStory(ORDERS.length);
+    // Now the well is immediately unlocked + playable — the bug was needing a
+    // separate openMinigameDoors tap first, which read as "the game won't launch".
+    const st = g.minigameStatus('prop_well');
+    expect(st?.unlocked).toBe(true);
+    expect(st?.canPlay).toBe(true);
+    expect(g.canPlayMinigame('wishing-well')).toBe(true);
+    expect(g.startMinigame('wishing-well')).not.toBeNull();
+  });
+
+  it('L2 games still require the building be cared for, then opened', () => {
+    const g = new Game(1000);
+    g.devPreviewStory(ORDERS.length);
+    // forge-strike is an L2 game on town_blacksmith — not auto-open.
+    expect(g.minigameStatus('town_blacksmith')?.reason).toBe('locked-l2');
+    expect(g.minigameStatus('town_blacksmith')?.unlocked).toBe(false);
+  });
+
   it('a real-world action tops up a mini-game attempt', () => {
     const g = new Game(1000);
     g.devPreviewStory(ORDERS.length);

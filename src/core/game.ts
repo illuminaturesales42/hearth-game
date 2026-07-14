@@ -1106,9 +1106,10 @@ export class Game {
     return storyComplete(this.state.orderIndex, ORDERS.length);
   }
 
-  /** Whether a building supports upgrades at all (props/specials like the lighthouse don't). */
+  /** Whether a building supports upgrades at all (props like the well/sign and
+   *  specials like the lighthouse don't — they have no L2/L3 art). */
   isUpgradeable(art: string): boolean {
-    return TOWN_BUILDINGS.some((b) => b.art === art);
+    return TOWN_BUILDINGS.some((b) => b.art === art) && !art.startsWith('prop_');
   }
 
   /** The mini-game a building offers and its current playability, for the building card. */
@@ -1124,7 +1125,11 @@ export class Game {
     const done = this.isStoryComplete();
     // Tester mode also bypasses the L2-upgrade gate so all six games are reachable.
     const eligible = isEligible(def.unlock, done, this.testerUnlimited ? 2 : this.upgradeTier(art));
-    const unlocked = isUnlocked(this.state.minigames, def.id);
+    // Story-gated games (the well, the beacon) open automatically the moment the
+    // story is told — there is no upgrade ceremony for them, so requiring a
+    // separate "open the doors" tap made them feel like they didn't launch.
+    // L2 games still open explicitly after their building is cared for.
+    const unlocked = isUnlocked(this.state.minigames, def.id) || (def.unlock === 'story' && done);
     const tokens = this.state.minigames.tokens;
     let reason: 'ready' | 'no-tokens' | 'no-energy' | 'locked-story' | 'locked-l2' = 'ready';
     if (!done) reason = 'locked-story';

@@ -780,6 +780,13 @@ export class MapView {
       const url = artUrl(id);
       if (!url) return null;
       img = new Image();
+      // Once the sprite decodes, redraw so it appears AND its hitbox is created.
+      // Under reduced-motion there is no rAF loop, so without this a building
+      // (the small well especially) could stay untappable until an unrelated
+      // redraw. Harmless under the animated loop (it redraws every frame anyway).
+      img.onload = () => {
+        if (this.visible && this.reduce) this.draw(0);
+      };
       img.src = url;
       this.sprites.set(id, img);
     }
@@ -2210,8 +2217,9 @@ export class MapView {
       `<p class="map-locs-label">Today in Emberhollow</p><div class="dq-list">${quests}</div>` +
       chapterCard +
       this.villageLifeSection() +
-      `<p class="map-locs-label">Chapter ${ch.id} · ${ch.title} · ${inChapter}/${ch.end - ch.start} orders · village ${Math.round(
-        (delivered / ORDERS.length) * 100,
+      `<p class="map-locs-label">Chapter ${ch.id} · ${ch.title} · ${inChapter}/${ch.end - ch.start} orders · village ${Math.min(
+        100,
+        Math.round((delivered / RESTORE_ORDERS) * 100),
       )}% restored</p>` +
       `<div class="loc-list">` +
       MAP_LOCATIONS.map((l) => {
