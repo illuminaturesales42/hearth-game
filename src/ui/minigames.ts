@@ -120,6 +120,21 @@ export class MinigameUI {
     result.hidden = false;
   }
 
+  /** Put a single "start" button in the actions bar — the player's move to begin. */
+  private startButton(label: string, onStart: () => void): void {
+    const actions = el('mg-actions');
+    if (!actions) return;
+    actions.innerHTML = '';
+    const btn = document.createElement('button');
+    btn.className = 'btn-primary mg-go';
+    btn.textContent = label;
+    btn.onclick = () => {
+      btn.disabled = true;
+      onStart();
+    };
+    actions.appendChild(btn);
+  }
+
   // ---------- 1) Wishing Well ----------
 
   private playWell(seed: number): void {
@@ -134,20 +149,23 @@ export class MinigameUI {
       (wellUrl ? `<img class="mg-well-art" src="${wellUrl}" alt="" />` : `<div class="mg-well-fallback" aria-hidden="true">🕳️</div>`) +
       `<div class="mg-pebble"></div><div class="mg-ripple"></div></div>`;
     const done = () => this.finish(res, wish);
-    if (this.reduce()) {
-      done();
-      return;
-    }
-    const pebble = stage.querySelector<HTMLElement>('.mg-pebble');
-    const ripple = stage.querySelector<HTMLElement>('.mg-ripple');
-    requestAnimationFrame(() => pebble?.classList.add('drop'));
-    feedback.chime(300);
-    this.timers.push(window.setTimeout(() => {
-      pebble?.classList.add('gone');
-      ripple?.classList.add('go');
-      feedback.chime(210);
-    }, 950));
-    this.timers.push(window.setTimeout(done, 1550));
+    this.startButton('Drop a pebble', () => {
+      const actions = el('mg-actions');
+      if (actions) actions.innerHTML = '';
+      if (this.reduce()) return done();
+      const pebble = stage.querySelector<HTMLElement>('.mg-pebble');
+      const ripple = stage.querySelector<HTMLElement>('.mg-ripple');
+      pebble?.classList.add('drop');
+      feedback.chime(300);
+      this.timers.push(
+        window.setTimeout(() => {
+          pebble?.classList.add('gone');
+          ripple?.classList.add('go');
+          feedback.chime(210);
+        }, 950),
+      );
+      this.timers.push(window.setTimeout(done, 1550));
+    });
   }
 
   // ---------- 2) Beacon Drop (plinko) ----------
@@ -183,25 +201,31 @@ export class MinigameUI {
       stage.querySelector<HTMLElement>(`.mg-slot[data-slot="${slot}"]`)?.classList.add('lit');
       this.finish(reward);
     };
-    if (this.reduce() || !ember) {
-      land();
-      return;
-    }
-    // Walk the ember down the seeded path: centre → left/right each row.
-    let x = 50; // percent
-    const step = 44 / BEACON_ROWS; // total lateral spread
-    ember.style.left = `${x}%`;
-    ember.style.top = `6%`;
-    feedback.chime(480);
-    path.forEach((dir, i) => {
-      this.timers.push(window.setTimeout(() => {
-        x += (dir === 1 ? 1 : -1) * step;
-        ember.style.left = `${x}%`;
-        ember.style.top = `${10 + ((i + 1) / (BEACON_ROWS + 1)) * 72}%`;
-        feedback.chime(360 + i * 8);
-      }, 220 * (i + 1)));
+    this.startButton('Release the light', () => {
+      const actions = el('mg-actions');
+      if (actions) actions.innerHTML = '';
+      if (this.reduce() || !ember) return land();
+      // Walk the ember down the seeded path: centre → left/right each row.
+      let x = 50; // percent
+      const step = 44 / BEACON_ROWS; // total lateral spread
+      ember.style.left = `${x}%`;
+      ember.style.top = `6%`;
+      feedback.chime(480);
+      path.forEach((dir, i) => {
+        this.timers.push(
+          window.setTimeout(
+            () => {
+              x += (dir === 1 ? 1 : -1) * step;
+              ember.style.left = `${x}%`;
+              ember.style.top = `${10 + ((i + 1) / (BEACON_ROWS + 1)) * 72}%`;
+              feedback.chime(360 + i * 8);
+            },
+            220 * (i + 1),
+          ),
+        );
+      });
+      this.timers.push(window.setTimeout(land, 220 * (BEACON_ROWS + 1) + 200));
     });
-    this.timers.push(window.setTimeout(land, 220 * (BEACON_ROWS + 1) + 200));
   }
 
   // ---------- 3) Strike While Hot (whack-a-mole) ----------
@@ -233,30 +257,37 @@ export class MinigameUI {
         feedback.merge(1);
       };
     });
-    schedule.forEach((sp, si) => {
-      this.timers.push(window.setTimeout(() => {
-        const c = cellEls[sp.cell];
-        if (!c) return;
-        liveSpawn[sp.cell] = si;
-        c.classList.add('hot');
-        if (flameUrl) c.style.backgroundImage = `url(${flameUrl})`;
-        this.timers.push(window.setTimeout(() => {
-          if (liveSpawn[sp.cell] === si) {
-            liveSpawn[sp.cell] = undefined;
-            c.classList.remove('hot');
-            c.style.backgroundImage = '';
-          }
-        }, sp.ttlMs));
-      }, sp.atMs));
-    });
-    // drive the countdown bar + settle up
-    const fill = stage.querySelector<HTMLElement>('.mg-forge-fill');
-    if (fill && !this.reduce()) {
-      requestAnimationFrame(() => {
-        fill.style.transition = `width ${FORGE_DURATION_MS}ms linear`;
-        fill.style.width = '0%';
+    this.startButton('Heat the forge', () => {
+      const actions = el('mg-actions');
+      if (actions) actions.innerHTML = '';
+      schedule.forEach((sp, si) => {
+        this.timers.push(
+          window.setTimeout(() => {
+            const c = cellEls[sp.cell];
+            if (!c) return;
+            liveSpawn[sp.cell] = si;
+            c.classList.add('hot');
+            if (flameUrl) c.style.backgroundImage = `url(${flameUrl})`;
+            this.timers.push(
+              window.setTimeout(() => {
+                if (liveSpawn[sp.cell] === si) {
+                  liveSpawn[sp.cell] = undefined;
+                  c.classList.remove('hot');
+                  c.style.backgroundImage = '';
+                }
+              }, sp.ttlMs),
+            );
+          }, sp.atMs),
+        );
       });
-    }
-    this.timers.push(window.setTimeout(() => this.finish(forgeReward(hits, schedule.length)), FORGE_DURATION_MS + 400));
+      const fill = stage.querySelector<HTMLElement>('.mg-forge-fill');
+      if (fill && !this.reduce()) {
+        requestAnimationFrame(() => {
+          fill.style.transition = `width ${FORGE_DURATION_MS}ms linear`;
+          fill.style.width = '0%';
+        });
+      }
+      this.timers.push(window.setTimeout(() => this.finish(forgeReward(hits, schedule.length)), FORGE_DURATION_MS + 400));
+    });
   }
 }

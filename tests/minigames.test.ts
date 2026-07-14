@@ -65,17 +65,17 @@ describe('minigame unlock, tokens and embers (pure)', () => {
     expect(isEligible('l2', true, 1)).toBe(true); // L2 reached
   });
 
-  it('opens at most one game per day', () => {
+  it('opens each eligible game (no daily throttle); already/ineligible handled', () => {
     let s = initialMinigames('2026-07-14');
     const first = tryUnlock(s, 'wishing-well', true, '2026-07-14');
     expect(first.outcome).toBe('opened');
     s = first.state;
-    // a second, different game the same day is throttled
-    expect(tryUnlock(s, 'beacon-drop', true, '2026-07-14').outcome).toBe('throttled');
+    // a second, different game opens the same day — no throttle
+    const second = tryUnlock(s, 'beacon-drop', true, '2026-07-14');
+    expect(second.outcome).toBe('opened');
+    s = second.state;
     // the same game again is 'already'
     expect(tryUnlock(s, 'wishing-well', true, '2026-07-14').outcome).toBe('already');
-    // the next day it can open
-    expect(tryUnlock(s, 'beacon-drop', true, '2026-07-15').outcome).toBe('opened');
     // ineligible never opens
     expect(tryUnlock(initialMinigames('2026-07-16'), 'x', false, '2026-07-16').outcome).toBe('ineligible');
   });
@@ -115,7 +115,7 @@ describe('Game ↔ Village Life', () => {
     expect(g.isStoryComplete()).toBe(true);
 
     expect(g.openMinigameDoors('prop_well')).toBe('opened');
-    expect(g.openMinigameDoors('prop_lighthouse')).toBe('throttled'); // one per day
+    expect(g.openMinigameDoors('prop_lighthouse')).toBe('opened'); // no daily throttle
 
     const energyBefore = g.snapshot.energy.current;
     const run = g.startMinigame('wishing-well');

@@ -56,9 +56,14 @@ export function isEligible(unlock: 'story' | 'l2', storyDone: boolean, upgradeTi
   return unlock === 'story' || upgradeTier >= 1;
 }
 
-export type UnlockOutcome = 'opened' | 'already' | 'ineligible' | 'throttled';
+export type UnlockOutcome = 'opened' | 'already' | 'ineligible';
 
-/** Open a game's doors — at most one new game per day. */
+/**
+ * Open a game's doors once its building is eligible. Pacing comes from the
+ * eligibility gate itself — 'story' games open when the tale is told, 'l2' games
+ * when their building is cared for (a coin-paced upgrade) — so there's no extra
+ * daily throttle to frustrate a player who's earned the unlock.
+ */
 export function tryUnlock(
   s: MinigameState,
   gameId: string,
@@ -67,7 +72,6 @@ export function tryUnlock(
 ): { state: MinigameState; outcome: UnlockOutcome } {
   if (s.unlocked.includes(gameId)) return { state: s, outcome: 'already' };
   if (!eligible) return { state: s, outcome: 'ineligible' };
-  if (s.lastUnlockDay === today) return { state: s, outcome: 'throttled' };
   return {
     state: { ...s, unlocked: [...s.unlocked, gameId], lastUnlockDay: today },
     outcome: 'opened',

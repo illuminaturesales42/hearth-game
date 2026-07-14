@@ -10,12 +10,12 @@ import type { ChainId, OrderDef } from '../core/types';
 import { chainDef, maxLevel } from '../core/board';
 import { ORDERS } from './economy';
 
-// The chains the village asks for — every resource chain, so the ones the story
-// never demanded (seeds, copper, fish, honey, books, music) finally get used.
-const POOL: readonly ChainId[] = [
-  'wood', 'harvest', 'flowers', 'water', 'stone', 'clay',
-  'fish', 'copper', 'honey', 'herbs', 'wool', 'books', 'music', 'seeds', 'keepsake',
-];
+// Only the chains the default producer can always spawn, so an endless order is
+// ALWAYS buildable on the board without switching to Workshop mode or having
+// mini-game loot on hand. (Workshop resource chains have their own sink in Town
+// Requests; mini-game chains are collectible rewards.) Cycled by index so the
+// village never asks for the same thing two orders running.
+const POOL: readonly ChainId[] = ['wood', 'harvest', 'keepsake', 'hearthfire'];
 
 // Villager names that resolve to painted busts (portraitFor) + villager bonds,
 // with a few gentle strangers mixed in.
@@ -56,7 +56,7 @@ function lcg(seed: number): () => number {
 /** The nth endless order (n ≥ 0), deterministic and self-contained. */
 export function endlessOrderFor(n: number): OrderDef {
   const rand = lcg(n * 2654435761 + 101);
-  const chain = POOL[Math.floor(rand() * POOL.length)]!;
+  const chain = POOL[n % POOL.length]!; // cycle, so no two orders in a row repeat
   // Ask for a gentle mid-tier item, deepening a touch over time, clamped to the
   // chain's real top so it's always buildable.
   const want = 1 + Math.floor(rand() * 2) + (n >= 24 ? 1 : 0);

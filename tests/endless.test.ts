@@ -29,7 +29,8 @@ describe('endless town-needs', () => {
     g.devPreviewStory(ORDERS.length); // finish the tale
     const order = g.currentOrder();
     expect(order.id).toBe('endless-0');
-    expect(g.deliverableIndex()).toBe(-1); // nothing on the board yet — but the order exists
+    // Only board-producible (default-mode) chains, so it's always buildable.
+    expect(['wood', 'harvest', 'keepsake', 'hearthfire']).toContain(order.need.chain);
 
     // A mini-game / duel reward can satisfy it, just like a board merge.
     g.finishDuel(true, [{ chain: order.need.chain, level: order.need.level }], 0);

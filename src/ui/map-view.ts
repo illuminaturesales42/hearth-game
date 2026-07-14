@@ -412,9 +412,7 @@ export class MapView {
         btn.textContent = `✦ Open ${st.def.title}`;
         note.textContent = st.def.blurb;
         btn.onclick = () => {
-          const outcome = this.game.openMinigameDoors(art);
-          if (outcome === 'throttled') toast('One new game opens each day — come back tomorrow.');
-          else if (outcome === 'opened') {
+          if (this.game.openMinigameDoors(art) === 'opened') {
             feedback.chime(520);
             this.showBuilding(art, this.cardUnlockAt); // refresh into the "play" state
           }
