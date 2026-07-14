@@ -472,12 +472,40 @@ export class MapView {
     if (m) m.hidden = false;
   }
 
-  /** The "play the building's mini-game" affordance on the building card. */
+  /** Hide the building card and launch its game. */
+  private launchMinigame(id: string): void {
+    const m = document.getElementById('bldg-modal');
+    if (m) m.hidden = true;
+    document.dispatchEvent(new CustomEvent('hearth:play-minigame', { detail: { id } }));
+  }
+
+  /**
+   * The "play the building's mini-game" affordance on the building card. The
+   * building image itself is the primary control (tap it to play when a game is
+   * ready), with a badge inviting the tap; the button below is the secondary.
+   */
   private renderMinigameCta(art: string, locked: boolean): void {
     const btn = document.getElementById('bldg-play') as HTMLButtonElement | null;
     const note = document.getElementById('bldg-play-note');
+    const artBtn = document.getElementById('bldg-art-btn') as HTMLButtonElement | null;
+    const badge = document.getElementById('bldg-art-badge');
     if (!btn || !note) return;
     const st = locked ? null : this.game.minigameStatus(art);
+
+    // Reset the tappable-image affordance each render.
+    const setArt = (on: boolean, label: string, onTap?: () => void) => {
+      if (badge) {
+        badge.hidden = !on;
+        badge.textContent = label;
+      }
+      if (artBtn) {
+        artBtn.classList.toggle('is-playable', on);
+        artBtn.onclick = on && onTap ? onTap : null;
+        artBtn.style.cursor = on ? 'pointer' : 'default';
+      }
+    };
+    setArt(false, '');
+
     if (!st) {
       btn.hidden = true;
       note.hidden = true;
@@ -494,15 +522,17 @@ export class MapView {
         btn.hidden = true;
         note.textContent = `Care for this building (upgrade it) and ${st.def.title} will open its doors.`;
       } else {
-        btn.disabled = false;
-        btn.textContent = `✦ Open ${st.def.title}`;
-        note.textContent = st.def.blurb;
-        btn.onclick = () => {
+        const open = () => {
           if (this.game.openMinigameDoors(art) === 'opened') {
             feedback.chime(520);
             this.showBuilding(art, this.cardUnlockAt); // refresh into the "play" state
           }
         };
+        btn.disabled = false;
+        btn.textContent = `✦ Open ${st.def.title}`;
+        note.textContent = st.def.blurb;
+        btn.onclick = open;
+        setArt(true, '✦ New — tap to open', open); // the image invites the tap
       }
       return;
     }
@@ -517,10 +547,9 @@ export class MapView {
           : `${st.def.verb}`;
     btn.onclick = () => {
       if (st.reason !== 'ready') return;
-      const m = document.getElementById('bldg-modal');
-      if (m) m.hidden = true;
-      document.dispatchEvent(new CustomEvent('hearth:play-minigame', { detail: { id: st.def.id } }));
+      this.launchMinigame(st.def.id);
     };
+    if (st.reason === 'ready') setArt(true, `✦ ${st.def.verb} — tap to play`, () => this.launchMinigame(st.def.id));
   }
 
   private resize(): void {
@@ -1248,7 +1277,7 @@ export class MapView {
       if (!img) continue;
       // buildings read bigger against the detailed painted plate so the town
       // stands out from the landscape; props/nature keep their scale.
-      const w = p.w * W * (plate && BUILDING_INFO[p.art] ? 1.16 : 1);
+      const w = p.w * W * (plate && BUILDING_INFO[p.art] ? 1.04 : 1);
       const h = w * (img.naturalHeight / img.naturalWidth);
       if (p.decorId !== undefined) {
         this.decorHit.push({ x0: p.x * W - w / 2, y0: p.y * H - h, x1: p.x * W + w / 2, y1: p.y * H, id: p.decorId });
@@ -1291,7 +1320,7 @@ export class MapView {
         }
         const rimg = ruinArt ? this.sprite(ruinArt) : undefined;
         if (rimg) {
-          const rw = p.w * W * (plate && BUILDING_INFO[p.art] ? 1.16 : 1);
+          const rw = p.w * W * (plate && BUILDING_INFO[p.art] ? 1.04 : 1);
           const rh = rw * (rimg.naturalHeight / rimg.naturalWidth);
           ctx.save();
           ctx.globalAlpha = p.unlockAt === nextUnlock ? 0.97 : 0.85; // distant ruins recede a touch
@@ -1589,8 +1618,8 @@ export class MapView {
 
     // --- the forge burns once the blacksmith is raised (a working fire, day + night) ---
     if (delivered >= 21) {
-      const gx = W * 0.36;
-      const gy = H * 0.7;
+      const gx = W * 0.45; // tracks the blacksmith's map position (town-layout)
+      const gy = H * 0.86;
       const fl = this.reduce ? 1 : 0.78 + 0.22 * Math.abs(Math.sin(t / 95));
       const r = W * 0.052;
       const fg = ctx.createRadialGradient(gx, gy, 1, gx, gy, r);

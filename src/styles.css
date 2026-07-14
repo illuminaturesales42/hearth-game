@@ -2926,6 +2926,58 @@ body {
   margin: 0 auto 8px;
   display: block;
 }
+/* The building image doubles as the primary "play the game" control. */
+.bldg-art-wrap {
+  position: relative;
+  display: block;
+  margin: 0 auto 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  width: max-content;
+  border-radius: 16px;
+}
+.bldg-art-wrap .bldg-art {
+  margin: 0;
+}
+.bldg-art-wrap.is-playable {
+  animation: bldgPlayable 2s ease-in-out infinite;
+}
+.bldg-art-wrap.is-playable .bldg-art {
+  filter: drop-shadow(0 0 14px rgba(255, 200, 90, 0.55));
+}
+@keyframes bldgPlayable {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+.bldg-art-badge {
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #1b1206;
+  background: linear-gradient(180deg, #ffd27a, #f4a63b);
+  padding: 4px 12px;
+  border-radius: 999px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+.bldg-art-badge[hidden] {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bldg-art-wrap.is-playable {
+    animation: none;
+  }
+}
 .bldg-name {
   margin: 0 0 6px;
   font-family: var(--serif);

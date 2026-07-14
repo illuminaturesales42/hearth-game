@@ -23,22 +23,32 @@ export interface TownPiece {
   untilStage?: number;
 }
 
-/** Buildings, in story order. One returns roughly every two deliveries. */
+// Buildings, in story order (one returns roughly every two deliveries).
+// Laid out in three loose columns with generous gaps and clear depth bands
+// (back → front by y) so the town reads as a spacious village, not a pile-up.
+// The little well sits open in the front-centre where it stays visible, and the
+// fisher's hut is kept off the far-right point so it never collides with the
+// lighthouse (drawn separately at x≈0.93). Sizes trimmed and the plate scale
+// dropped to 1.0 in map-view for more breathing room. Verified against a
+// composited-sprite render (scratchpad render_town.py / try_layout.py).
 export const TOWN_BUILDINGS: readonly TownPiece[] = [
-  { art: 'prop_sign', x: 0.535, y: 0.56, w: 0.045, unlockAt: 1 },
-  { art: 'town_cottage', x: 0.27, y: 0.52, w: 0.17, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
-  { art: 'town_bakery', x: 0.64, y: 0.485, w: 0.165, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
-  { art: 'prop_well', x: 0.475, y: 0.635, w: 0.055, unlockAt: 6 },
-  { art: 'town_market', x: 0.43, y: 0.44, w: 0.155, unlockAt: 8, ruinVariant: 7 },
-  { art: 'town_garden', x: 0.73, y: 0.66, w: 0.17, unlockAt: 10, ruinVariant: 4 },
-  { art: 'town_townhall', x: 0.505, y: 0.375, w: 0.185, unlockAt: 12, ruinVariant: 3 },
-  { art: 'town_workshop', x: 0.155, y: 0.43, w: 0.16, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
-  { art: 'town_farm', x: 0.095, y: 0.635, w: 0.17, unlockAt: 16, ruinVariant: 5 },
-  { art: 'town_fisherhut', x: 0.865, y: 0.56, w: 0.165, unlockAt: 18, ruinVariant: 6 },
-  { art: 'town_sawmill', x: 0.21, y: 0.76, w: 0.165, unlockAt: 20, ruinVariant: 1 },
-  { art: 'town_blacksmith', x: 0.36, y: 0.72, w: 0.16, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
-  { art: 'town_dock', x: 0.79, y: 0.84, w: 0.21, unlockAt: 22, ruinVariant: 5 },
-  { art: 'town_library', x: 0.585, y: 0.74, w: 0.165, unlockAt: 23, ruinVariant: 3 },
+  // left column
+  { art: 'town_market', x: 0.22, y: 0.43, w: 0.115, unlockAt: 8, ruinVariant: 7 },
+  { art: 'town_cottage', x: 0.35, y: 0.55, w: 0.12, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
+  { art: 'town_workshop', x: 0.115, y: 0.6, w: 0.115, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
+  { art: 'town_library', x: 0.39, y: 0.72, w: 0.125, unlockAt: 23, ruinVariant: 3 },
+  { art: 'town_farm', x: 0.12, y: 0.79, w: 0.125, unlockAt: 16, ruinVariant: 5 },
+  { art: 'town_sawmill', x: 0.25, y: 0.9, w: 0.12, unlockAt: 20, ruinVariant: 1 },
+  // centre
+  { art: 'town_townhall', x: 0.49, y: 0.42, w: 0.135, unlockAt: 12, ruinVariant: 3 },
+  { art: 'prop_well', x: 0.5, y: 0.6, w: 0.075, unlockAt: 6 },
+  { art: 'prop_sign', x: 0.575, y: 0.58, w: 0.038, unlockAt: 1 },
+  { art: 'town_blacksmith', x: 0.45, y: 0.9, w: 0.12, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
+  // right column (fisher hut stays inboard of the lighthouse point)
+  { art: 'town_bakery', x: 0.72, y: 0.42, w: 0.12, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
+  { art: 'town_garden', x: 0.63, y: 0.57, w: 0.13, unlockAt: 10, ruinVariant: 4 },
+  { art: 'town_fisherhut', x: 0.8, y: 0.62, w: 0.12, unlockAt: 18, ruinVariant: 6 },
+  { art: 'town_dock', x: 0.67, y: 0.9, w: 0.15, unlockAt: 22, ruinVariant: 5 },
 ] as const;
 
 /** Friendly names + story links for tappable buildings. */
