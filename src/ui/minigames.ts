@@ -54,8 +54,7 @@ export class MinigameUI {
 
   private reduce(): boolean {
     return (
-      document.body.classList.contains('reduce-motion') ||
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      document.body.classList.contains('reduce-motion') || window.matchMedia('(prefers-reduced-motion: reduce)').matches
     );
   }
 
@@ -89,7 +88,11 @@ export class MinigameUI {
     const run = this.game.startMinigame(id);
     if (!run) {
       const st = this.game.minigameStatus(MINIGAME_BY_ID[id]?.buildingArt ?? '');
-      toast(st?.reason === 'no-energy' ? 'Not enough energy for another go.' : 'No goes left today — living well earns more.');
+      toast(
+        st?.reason === 'no-energy'
+          ? 'Not enough energy for another go.'
+          : 'No goes left today — living well earns more.',
+      );
       const result = el('mg-result');
       if (result?.hidden !== false) this.close(); // nothing on screen: leave
       return;
@@ -160,7 +163,9 @@ export class MinigameUI {
     const wellUrl = artUrl('prop_well');
     stage.innerHTML =
       `<div class="mg-well">` +
-      (wellUrl ? `<img class="mg-well-art" src="${wellUrl}" alt="" />` : `<div class="mg-well-fallback" aria-hidden="true">🕳️</div>`) +
+      (wellUrl
+        ? `<img class="mg-well-art" src="${wellUrl}" alt="" />`
+        : `<div class="mg-well-fallback" aria-hidden="true">🕳️</div>`) +
       `<div class="mg-pebble"></div><div class="mg-ripple"></div></div>`;
     const done = () => this.finish(res, wish);
     this.startButton('Drop a pebble', () => {
@@ -250,7 +255,8 @@ export class MinigameUI {
     const schedule = forgeSchedule(seed);
     const flameUrl = artUrl('fx_flame_forge') ?? artUrl('fx_flame_small');
     let cells = '';
-    for (let i = 0; i < FORGE_CELLS; i++) cells += `<button class="mg-forge-cell" data-cell="${i}" aria-label="anvil"></button>`;
+    for (let i = 0; i < FORGE_CELLS; i++)
+      cells += `<button class="mg-forge-cell" data-cell="${i}" aria-label="anvil"></button>`;
     stage.innerHTML =
       `<div class="mg-forge"><div class="mg-forge-grid">${cells}</div>` +
       `<div class="mg-forge-bar"><span class="mg-forge-fill"></span></div>` +
@@ -301,7 +307,9 @@ export class MinigameUI {
           fill.style.width = '0%';
         });
       }
-      this.timers.push(window.setTimeout(() => this.finish(forgeReward(hits, schedule.length)), FORGE_DURATION_MS + 400));
+      this.timers.push(
+        window.setTimeout(() => this.finish(forgeReward(hits, schedule.length)), FORGE_DURATION_MS + 400),
+      );
     });
   }
 
@@ -337,14 +345,16 @@ export class MinigameUI {
         }
         resolve(Math.max(0, 1 - (performance.now() - dipAt) / windowMs));
       });
-      this.timers.push(window.setTimeout(() => {
-        if (resolved) return;
-        dipAt = performance.now();
-        bobber?.classList.add('dip');
-        if (hint) hint.textContent = 'Strike!';
-        feedback.chime(300);
-        this.timers.push(window.setTimeout(() => resolve(0.2), windowMs + 250)); // slipped, but a nibble
-      }, delayMs));
+      this.timers.push(
+        window.setTimeout(() => {
+          if (resolved) return;
+          dipAt = performance.now();
+          bobber?.classList.add('dip');
+          if (hint) hint.textContent = 'Strike!';
+          feedback.chime(300);
+          this.timers.push(window.setTimeout(() => resolve(0.2), windowMs + 250)); // slipped, but a nibble
+        }, delayMs),
+      );
     });
   }
 
@@ -355,9 +365,14 @@ export class MinigameUI {
     if (!stage) return;
     const { kinds } = forageField(seed);
     let steps = FORAGE_STEPS;
-    const acc: { coins: number; items: { chain: ChainId; level: number }[]; ember: number } = { coins: 0, items: [], ember: 0 };
+    const acc: { coins: number; items: { chain: ChainId; level: number }[]; ember: number } = {
+      coins: 0,
+      items: [],
+      ember: 0,
+    };
     let tiles = '';
-    for (let i = 0; i < FORAGE_SIZE; i++) tiles += `<button class="mg-fog" data-i="${i}" aria-label="uncover"></button>`;
+    for (let i = 0; i < FORAGE_SIZE; i++)
+      tiles += `<button class="mg-fog" data-i="${i}" aria-label="uncover"></button>`;
     stage.innerHTML =
       `<div class="mg-forage"><div class="mg-forage-grid">${tiles}</div>` +
       `<p class="mg-forage-steps">Footsteps left: <b id="mg-forage-steps">${steps}</b></p></div>`;
@@ -373,7 +388,7 @@ export class MinigameUI {
       b.onclick = end;
       actions.appendChild(b);
     }
-    const glyph = (kind: ForageKind, pay: (typeof acc)): string => {
+    const glyph = (kind: ForageKind, pay: typeof acc): string => {
       if (kind === 'item' && pay.items.length) return tileMarkup(pay.items[0]!.chain, pay.items[0]!.level);
       if (kind === 'coins') return `<span class="mg-fog-ico">🪙</span>`;
       if (kind === 'ember') return `<span class="mg-fog-ico">🔥</span>`;
@@ -416,7 +431,9 @@ export class MinigameUI {
     ];
     const face = (v: number) => tileMarkup(FACES[v]![0], FACES[v]![1]);
     let cards = '';
-    deck.forEach((v, i) => (cards += `<button class="mg-card" data-i="${i}" data-v="${v}" aria-label="card"></button>`));
+    deck.forEach(
+      (v, i) => (cards += `<button class="mg-card" data-i="${i}" data-v="${v}" aria-label="card"></button>`),
+    );
     stage.innerHTML =
       `<div class="mg-stacks"><div class="mg-stacks-grid">${cards}</div>` +
       `<p class="mg-stacks-hint">Flips: <b id="mg-stacks-flips">0</b></p></div>`;
@@ -447,17 +464,20 @@ export class MinigameUI {
           matched += 1;
           first = -1;
           feedback.merge(1);
-          if (matched === STACKS_PAIRS) this.timers.push(window.setTimeout(() => this.finish(stacksReward(flips)), 550));
+          if (matched === STACKS_PAIRS)
+            this.timers.push(window.setTimeout(() => this.finish(stacksReward(flips)), 550));
         } else {
           busy = true;
-          this.timers.push(window.setTimeout(() => {
-            c.classList.remove('up');
-            c.innerHTML = '';
-            fc.classList.remove('up');
-            fc.innerHTML = '';
-            first = -1;
-            busy = false;
-          }, 750));
+          this.timers.push(
+            window.setTimeout(() => {
+              c.classList.remove('up');
+              c.innerHTML = '';
+              fc.classList.remove('up');
+              fc.innerHTML = '';
+              first = -1;
+              busy = false;
+            }, 750),
+          );
         }
       };
     });

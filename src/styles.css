@@ -3689,8 +3689,14 @@ body.reduce-motion *::after {
   opacity: 0;
 }
 @keyframes mgPebble {
-  0% { opacity: 1; top: 8px; }
-  100% { opacity: 1; top: 150px; }
+  0% {
+    opacity: 1;
+    top: 8px;
+  }
+  100% {
+    opacity: 1;
+    top: 150px;
+  }
 }
 .mg-ripple {
   position: absolute;
@@ -3706,8 +3712,14 @@ body.reduce-motion *::after {
   animation: mgRipple 0.7s ease-out forwards;
 }
 @keyframes mgRipple {
-  0% { opacity: 0.9; transform: scale(0.4); }
-  100% { opacity: 0; transform: scale(4.5); }
+  0% {
+    opacity: 0.9;
+    transform: scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(4.5);
+  }
 }
 
 /* --- Beacon Drop (plinko) --- */
@@ -3764,8 +3776,12 @@ body.reduce-motion *::after {
   border: 1px solid rgba(236, 220, 182, 0.16);
   transition: background 0.2s;
 }
-.mg-slot.good { background: rgba(244, 166, 59, 0.25); }
-.mg-slot.heart { background: rgba(229, 118, 30, 0.4); }
+.mg-slot.good {
+  background: rgba(244, 166, 59, 0.25);
+}
+.mg-slot.heart {
+  background: rgba(229, 118, 30, 0.4);
+}
 .mg-slot.lit {
   background: #ffd27a;
   box-shadow: 0 0 16px rgba(255, 210, 122, 0.8);
@@ -3778,7 +3794,9 @@ body.reduce-motion *::after {
   background: radial-gradient(circle at 40% 35%, #fff2c8, #f4a63b 60%, #e5761e);
   box-shadow: 0 0 12px rgba(255, 190, 90, 0.9);
   transform: translate(-50%, -50%);
-  transition: left 0.2s ease-in, top 0.2s ease-in;
+  transition:
+    left 0.2s ease-in,
+    top 0.2s ease-in;
 }
 
 /* --- Strike While Hot (forge) --- */
@@ -3797,17 +3815,32 @@ body.reduce-motion *::after {
   background: #20283f center/70% no-repeat;
   background-color: #20283f;
   cursor: pointer;
-  transition: transform 0.08s, box-shadow 0.15s, background-color 0.15s;
+  transition:
+    transform 0.08s,
+    box-shadow 0.15s,
+    background-color 0.15s;
 }
 .mg-forge-cell.hot {
   background-color: #3a2411;
-  box-shadow: 0 0 18px rgba(255, 150, 60, 0.7), inset 0 0 12px rgba(255, 170, 70, 0.5);
+  box-shadow:
+    0 0 18px rgba(255, 150, 60, 0.7),
+    inset 0 0 12px rgba(255, 170, 70, 0.5);
   animation: mgForgePulse 0.6s ease-in-out infinite alternate;
 }
-.mg-forge-cell:active { transform: scale(0.94); }
+.mg-forge-cell:active {
+  transform: scale(0.94);
+}
 @keyframes mgForgePulse {
-  from { box-shadow: 0 0 12px rgba(255, 150, 60, 0.55), inset 0 0 8px rgba(255, 170, 70, 0.4); }
-  to { box-shadow: 0 0 22px rgba(255, 180, 80, 0.85), inset 0 0 16px rgba(255, 190, 90, 0.6); }
+  from {
+    box-shadow:
+      0 0 12px rgba(255, 150, 60, 0.55),
+      inset 0 0 8px rgba(255, 170, 70, 0.4);
+  }
+  to {
+    box-shadow:
+      0 0 22px rgba(255, 180, 80, 0.85),
+      inset 0 0 16px rgba(255, 190, 90, 0.6);
+  }
 }
 .mg-forge-bar {
   height: 6px;
@@ -3826,7 +3859,9 @@ body.reduce-motion *::after {
   font-size: var(--fs-sm, 12px);
   color: #b9c2dc;
 }
-.mg-forge-score b { color: #ffd27a; }
+.mg-forge-score b {
+  color: #ffd27a;
+}
 
 /* --- result card --- */
 .mg-result {
@@ -3847,28 +3882,59 @@ body.reduce-motion *::after {
   flex-wrap: wrap;
   margin-bottom: 6px;
 }
-.mg-reward-item img { width: 44px; height: 44px; }
-.mg-reward-line { font-size: var(--fs-md, 15px); margin: 4px 0; }
+.mg-reward-item img {
+  width: 44px;
+  height: 44px;
+}
+.mg-reward-line {
+  font-size: var(--fs-md, 15px);
+  margin: 4px 0;
+}
 .mg-wish {
   font-style: italic;
   color: #cdd6ea;
   font-size: var(--fs-sm, 12px);
   margin: 8px 12px;
 }
-.mg-reward-hint { font-size: var(--fs-xs, 10px); color: #8f9abb; margin-top: 6px; }
-.mg-result-actions { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+.mg-reward-hint {
+  font-size: var(--fs-xs, 10px);
+  color: #8f9abb;
+  margin-top: 6px;
+}
+.mg-result-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
 
 /* --- building-card play affordance --- */
-.bldg-play { margin-top: 8px; }
-.bldg-play-note { font-size: var(--fs-xs, 10px); color: #8f9abb; margin: 6px 0 0; line-height: 1.4; }
+.bldg-play {
+  margin-top: 8px;
+}
+.bldg-play-note {
+  font-size: var(--fs-xs, 10px);
+  color: #8f9abb;
+  margin: 6px 0 0;
+  line-height: 1.4;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .mg-pebble.drop, .mg-ripple.go, .mg-forge-cell.hot { animation: none; }
-  .mg-ember { transition: none; }
+  .mg-pebble.drop,
+  .mg-ripple.go,
+  .mg-forge-cell.hot {
+    animation: none;
+  }
+  .mg-ember {
+    transition: none;
+  }
 }
 
 /* --- Village Life Wave 2: Catch / Forage / Stacks --- */
-.mg-catch { width: 260px; text-align: center; }
+.mg-catch {
+  width: 260px;
+  text-align: center;
+}
 .mg-catch-water {
   height: 200px;
   border-radius: 14px;
@@ -3889,11 +3955,23 @@ body.reduce-motion *::after {
   box-shadow: 0 0 10px rgba(255, 180, 90, 0.6);
   transition: top 0.18s ease-in;
 }
-.mg-bobber.dip { top: 74%; }
-.mg-catch-hint { font-size: var(--fs-sm, 12px); color: #b9c2dc; margin-top: 10px; }
+.mg-bobber.dip {
+  top: 74%;
+}
+.mg-catch-hint {
+  font-size: var(--fs-sm, 12px);
+  color: #b9c2dc;
+  margin-top: 10px;
+}
 
-.mg-forage { width: 280px; }
-.mg-forage-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.mg-forage {
+  width: 280px;
+}
+.mg-forage-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
 .mg-fog {
   aspect-ratio: 1;
   border-radius: 8px;
@@ -3911,15 +3989,38 @@ body.reduce-motion *::after {
   cursor: default;
   border-color: rgba(127, 191, 106, 0.3);
 }
-.mg-fog.k-heart { background: #3a2411; border-color: rgba(244, 166, 59, 0.5); }
-.mg-fog img { width: 82%; height: 82%; }
-.mg-fog-ico { font-size: 20px; }
-.mg-fog-view { opacity: 0.5; }
-.mg-forage-steps { font-size: var(--fs-sm, 12px); color: #b9c2dc; margin-top: 10px; text-align: center; }
-.mg-forage-steps b { color: #ffd27a; }
+.mg-fog.k-heart {
+  background: #3a2411;
+  border-color: rgba(244, 166, 59, 0.5);
+}
+.mg-fog img {
+  width: 82%;
+  height: 82%;
+}
+.mg-fog-ico {
+  font-size: 20px;
+}
+.mg-fog-view {
+  opacity: 0.5;
+}
+.mg-forage-steps {
+  font-size: var(--fs-sm, 12px);
+  color: #b9c2dc;
+  margin-top: 10px;
+  text-align: center;
+}
+.mg-forage-steps b {
+  color: #ffd27a;
+}
 
-.mg-stacks { width: 280px; }
-.mg-stacks-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.mg-stacks {
+  width: 280px;
+}
+.mg-stacks-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
 .mg-card {
   aspect-ratio: 3 / 4;
   border-radius: 8px;
@@ -3930,11 +4031,34 @@ body.reduce-motion *::after {
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: transform 0.12s, background 0.2s;
+  transition:
+    transform 0.12s,
+    background 0.2s;
 }
-.mg-card.up { background: #1b2138; transform: scale(1.03); cursor: default; }
-.mg-card.done { background: #223018; border-color: rgba(127, 191, 106, 0.35); opacity: 0.85; cursor: default; }
-.mg-card img { width: 80%; height: 80%; }
-.mg-stacks-hint { font-size: var(--fs-sm, 12px); color: #b9c2dc; margin-top: 10px; text-align: center; }
-.mg-stacks-hint b { color: #ffd27a; }
-.mg-go { margin-top: 4px; }
+.mg-card.up {
+  background: #1b2138;
+  transform: scale(1.03);
+  cursor: default;
+}
+.mg-card.done {
+  background: #223018;
+  border-color: rgba(127, 191, 106, 0.35);
+  opacity: 0.85;
+  cursor: default;
+}
+.mg-card img {
+  width: 80%;
+  height: 80%;
+}
+.mg-stacks-hint {
+  font-size: var(--fs-sm, 12px);
+  color: #b9c2dc;
+  margin-top: 10px;
+  text-align: center;
+}
+.mg-stacks-hint b {
+  color: #ffd27a;
+}
+.mg-go {
+  margin-top: 4px;
+}

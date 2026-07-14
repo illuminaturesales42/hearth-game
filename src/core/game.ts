@@ -1153,7 +1153,10 @@ export class Game {
     if (wish) {
       minigames = {
         ...minigames,
-        wishes: [{ id: `wish-${this.state.nextUid}`, who: wish.who, text: wish.text, day: this.state.actions.day }, ...minigames.wishes].slice(0, 24),
+        wishes: [
+          { id: `wish-${this.state.nextUid}`, who: wish.who, text: wish.text, day: this.state.actions.day },
+          ...minigames.wishes,
+        ].slice(0, 24),
       };
     }
     this.state = {

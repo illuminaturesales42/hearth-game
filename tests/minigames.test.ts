@@ -160,7 +160,11 @@ describe('Game ↔ Village Life', () => {
     expect(g.canPlayMinigame('wishing-well')).toBe(false); // out of tokens
 
     const coinsBefore = g.snapshot.coins;
-    g.finishMinigame('wishing-well', { coins: 10, items: [{ chain: 'seeds', level: 1 }], ember: 2, heart: '' }, { who: 'Marta', text: 'wishes for roses.' });
+    g.finishMinigame(
+      'wishing-well',
+      { coins: 10, items: [{ chain: 'seeds', level: 1 }], ember: 2, heart: '' },
+      { who: 'Marta', text: 'wishes for roses.' },
+    );
     expect(g.snapshot.coins).toBe(coinsBefore + 10);
     expect(g.repository.some((r) => r.chain === 'seeds' && r.level === 1)).toBe(true);
     expect(g.minigameState.wishes[0]!.who).toBe('Marta');

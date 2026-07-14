@@ -22,7 +22,8 @@ export const MINIGAMES: readonly MinigameDef[] = [
     buildingArt: 'prop_well',
     title: 'The Wishing Well',
     verb: 'Drop a pebble',
-    blurb: 'Drop a pebble, hear it clink, and a villager’s small wish rises with the ripples. Every wish takes root as a seed.',
+    blurb:
+      'Drop a pebble, hear it clink, and a villager’s small wish rises with the ripples. Every wish takes root as a seed.',
     unlock: 'story',
   },
   {
@@ -30,7 +31,8 @@ export const MINIGAMES: readonly MinigameDef[] = [
     buildingArt: 'prop_lighthouse',
     title: 'Beacon Drop',
     verb: 'Drop a light',
-    blurb: 'Send a light-ember tumbling from the lantern room down to the boats below. Where it lands, the catch follows.',
+    blurb:
+      'Send a light-ember tumbling from the lantern room down to the boats below. Where it lands, the catch follows.',
     unlock: 'story',
   },
   {
@@ -38,7 +40,8 @@ export const MINIGAMES: readonly MinigameDef[] = [
     buildingArt: 'town_blacksmith',
     title: 'Strike While Hot',
     verb: 'Take up the hammer',
-    blurb: 'The forge blooms with heat — strike each glowing spot before it cools. No harm in a miss; the copper still comes.',
+    blurb:
+      'The forge blooms with heat — strike each glowing spot before it cools. No harm in a miss; the copper still comes.',
     unlock: 'l2',
   },
   {
@@ -54,7 +57,8 @@ export const MINIGAMES: readonly MinigameDef[] = [
     buildingArt: 'town_garden',
     title: 'The Foraging Expedition',
     verb: 'Set out',
-    blurb: 'Wander a fog-covered corner of the coast, uncovering what the storm scattered. Keep everything; head home whenever you like.',
+    blurb:
+      'Wander a fog-covered corner of the coast, uncovering what the storm scattered. Keep everything; head home whenever you like.',
     unlock: 'l2',
   },
   {
@@ -67,9 +71,7 @@ export const MINIGAMES: readonly MinigameDef[] = [
   },
 ];
 
-export const MINIGAME_BY_ID: Record<string, MinigameDef> = Object.fromEntries(
-  MINIGAMES.map((m) => [m.id, m]),
-);
+export const MINIGAME_BY_ID: Record<string, MinigameDef> = Object.fromEntries(MINIGAMES.map((m) => [m.id, m]));
 
 export function minigameForBuilding(art: string): MinigameDef | undefined {
   return MINIGAMES.find((m) => m.buildingArt === art);
