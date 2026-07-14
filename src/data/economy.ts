@@ -979,11 +979,19 @@ export const ZONE_STAGES: readonly { at: number; label: string }[] = [
   { at: 15, label: 'The workshop repaired' },
   { at: 20, label: 'The lighthouse path cleared' },
   { at: 24, label: 'The docks, revealed' },
+  // Past order 24 the town is physically rebuilt — these later beats are the
+  // village brightening with the story: the mystery kept, the seasons turning.
+  { at: 30, label: 'The ninth night, kept' },
+  { at: 36, label: 'New sails on the water' },
+  { at: 48, label: 'Midwinter hearth aglow' },
+  { at: 60, label: 'The first thaw' },
+  { at: 72, label: 'Spring tides — Emberhollow in full bloom' },
 ] as const;
 
 /**
- * Deliveries that fully rebuild Emberhollow (all buildings + zones restored).
- * Restoration % is capped here so later story chapters — which continue past a
- * fully-restored town — never make the "% restored" bar regress.
+ * Deliveries that fully rebuild Emberhollow (all buildings back). The "% restored"
+ * bar caps here — the town is physically whole by the docks (order 24); the later
+ * ZONE_STAGES beats are seasonal/story flourishes, not more rebuilding, so the bar
+ * never regresses across Chapters 3–6.
  */
-export const RESTORE_ORDERS = Math.max(...ZONE_STAGES.map((z) => z.at));
+export const RESTORE_ORDERS = 24;
