@@ -25,6 +25,7 @@ import {
 } from '../data/town-layout';
 import { computeMood, meditatedToday, moodCaption } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
+import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
 import { currentWeather } from './weather';
 import { artUrl } from './art';
 import { drawButterfly, drawFlower, drawSparkle, drawStroller } from './paint-flourishes';
@@ -104,7 +105,7 @@ export class MapView {
    * draw() and the click hit-test share this transform, so a tap always lands on
    * what's under the finger at any zoom.
    */
-  private cam = { zoom: 1, panX: 0, panY: 0 };
+  private cam: Camera = { zoom: 1, panX: 0, panY: 0 };
   private static readonly ZOOM_STEPS = [1, 1.8, 2.6] as const;
   private dragging = false;
   private dragMoved = false;
@@ -534,6 +535,8 @@ export class MapView {
   }
 
   // ---------- camera (pan / zoom the same island) ----------
+  // The transform math lives in core/map-camera.ts (pure + unit tested) so the
+  // draw-space ↔ hit-space inverse can never silently drift.
 
   private get logicalW(): number {
     return this.canvas?.clientWidth || 360;
@@ -542,32 +545,18 @@ export class MapView {
 
   /** Keep the viewport inside the scaled scene; fit-zoom is always centred. */
   private clampCam(): void {
-    const W = this.logicalW;
-    const H = MapView.LOGICAL_H;
-    const z = this.cam.zoom;
-    if (z <= 1) {
-      this.cam.zoom = 1;
-      this.cam.panX = 0;
-      this.cam.panY = 0;
-      return;
-    }
-    this.cam.panX = Math.min(0, Math.max(W - W * z, this.cam.panX));
-    this.cam.panY = Math.min(0, Math.max(H - H * z, this.cam.panY));
+    this.cam = clampCamera(this.cam, this.logicalW, MapView.LOGICAL_H);
   }
 
   /** Viewport CSS px → logical scene coords (undoes the camera transform). */
   private screenToWorld(x: number, y: number): { x: number; y: number } {
-    return { x: (x - this.cam.panX) / this.cam.zoom, y: (y - this.cam.panY) / this.cam.zoom };
+    return screenToWorld(this.cam, x, y);
   }
 
   /** Zoom to `z`, keeping the world point under `centre` (viewport px) fixed. */
   private zoomTo(z: number, centre?: { x: number; y: number }): void {
     const c = centre ?? { x: this.logicalW / 2, y: MapView.LOGICAL_H / 2 };
-    const world = this.screenToWorld(c.x, c.y);
-    this.cam.zoom = z;
-    this.cam.panX = c.x - world.x * z;
-    this.cam.panY = c.y - world.y * z;
-    this.clampCam();
+    this.cam = zoomAt(this.cam, z, c.x, c.y, this.logicalW, MapView.LOGICAL_H);
     this.updateZoomBtn();
     if (this.reduce) this.draw(0);
   }
