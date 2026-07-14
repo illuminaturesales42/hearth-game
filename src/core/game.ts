@@ -1122,7 +1122,8 @@ export class Game {
     const def = minigameForBuilding(art);
     if (!def) return null;
     const done = this.isStoryComplete();
-    const eligible = isEligible(def.unlock, done, this.upgradeTier(art));
+    // Tester mode also bypasses the L2-upgrade gate so all six games are reachable.
+    const eligible = isEligible(def.unlock, done, this.testerUnlimited ? 2 : this.upgradeTier(art));
     const unlocked = isUnlocked(this.state.minigames, def.id);
     const tokens = this.state.minigames.tokens;
     let reason: 'ready' | 'no-tokens' | 'no-energy' | 'locked-story' | 'locked-l2' = 'ready';
@@ -1141,7 +1142,7 @@ export class Game {
     this.beginDay(now);
     const def = minigameForBuilding(art);
     if (!def) return 'ineligible';
-    const eligible = isEligible(def.unlock, this.isStoryComplete(), this.upgradeTier(art));
+    const eligible = isEligible(def.unlock, this.isStoryComplete(), this.testerUnlimited ? 2 : this.upgradeTier(art));
     const res = tryUnlock(this.state.minigames, def.id, eligible, localDayKey(now));
     if (res.outcome === 'opened') {
       this.state = { ...this.state, minigames: res.state };
