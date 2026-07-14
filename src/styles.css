@@ -1196,6 +1196,24 @@ body {
 .loc.locked {
   opacity: 0.55;
 }
+.loc-playable {
+  cursor: pointer;
+  transition:
+    transform 0.14s var(--mg-spring, ease),
+    border-color 0.14s ease;
+}
+.loc-playable:hover,
+.loc-playable:focus-visible {
+  border-color: rgba(255, 210, 122, 0.4);
+  transform: translateY(-1px);
+}
+.loc-playable:active {
+  transform: scale(0.99);
+}
+.loc-playable .loc-lvl::after {
+  content: ' · tap to play';
+  color: var(--ink-dim, #b9c2dc);
+}
 .loc-thumb {
   width: 72px;
   height: 72px;

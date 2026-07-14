@@ -2026,6 +2026,13 @@ export class MapView {
       'north-docks': 'loc_docks',
       quarry: 'loc_cove',
     };
+    // Two of these vignettes are the same buildings tappable on the town map
+    // above (with a Village Life game behind them) — wire them to the same
+    // building card so this list is a second way in, not a dead end.
+    const locBuilding: Record<string, { art: string; unlockAt: number }> = {
+      lighthouse: { art: 'prop_lighthouse', unlockAt: 9 },
+      pier: { art: 'town_fisherhut', unlockAt: 18 },
+    };
     host.innerHTML =
       challenge +
       `<div class="map-tease">🌅 ${tomorrowLine(s)}</div>` +
@@ -2038,8 +2045,10 @@ export class MapView {
       MAP_LOCATIONS.map((l) => {
         const locked = delivered < l.unlockAt;
         const thumb = artUrl(locArt[l.id] ?? '');
+        const bld = locBuilding[l.id];
+        const playable = bld !== undefined && !locked;
         return (
-          `<div class="loc ${locked ? 'locked' : ''}">` +
+          `<div class="loc ${locked ? 'locked' : ''} ${playable ? 'loc-playable' : ''}" ${playable ? `data-art="${bld.art}" data-unlock-at="${bld.unlockAt}" role="button" tabindex="0"` : ''}>` +
           (thumb ? `<div class="loc-thumb" style="background-image:url(${thumb})" aria-hidden="true"></div>` : '') +
           `<div class="loc-body">` +
           `<div class="loc-main"><b>${l.name}</b>` +
@@ -2050,6 +2059,18 @@ export class MapView {
         );
       }).join('') +
       `</div>`;
+    // The lighthouse/pier vignettes above double for the same buildings on the
+    // town map — open the same building card (with its Village Life game) here too.
+    host.querySelectorAll<HTMLElement>('.loc-playable').forEach((el) => {
+      const open = () => this.showBuilding(el.dataset.art!, Number(el.dataset.unlockAt));
+      el.addEventListener('click', open);
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          open();
+        }
+      });
+    });
   }
 }
 
