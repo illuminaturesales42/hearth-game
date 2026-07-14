@@ -39,6 +39,18 @@ Small centred icons revealed under fog tiles. Currently 🪙🔥🍯🌿.
 | `mg_forage_honeycomb.png` | *…a little piece of golden honeycomb dripping honey, painterly.* |
 | `mg_forage_leaf.png` | *…a small sprig of fresh green foliage / a fern frond, painterly.* |
 
+## Tier 2b — New map building sprite (replace the tiny well) — 1 asset
+
+The current `prop_well` sprite is small and reads faintly on the map even in the
+open front-centre spot. A larger, more characterful well would make it a proper
+landmark. **Overwrite** `public/art/prop_well.png` (the game already places it).
+
+- **Format:** PNG, **~360 × 460 px**, transparent, 3/4 top-down isometric to match the buildings, a little grassy/cobble base so it grounds on the map.
+
+| Save as | Prompt (after the style anchor) |
+|---|---|
+| `prop_well.png` | *…a charming round stone wishing well with a little peaked wooden roof on posts, a bucket on a rope, mossy stones, a few coins glinting inside, small grassy cobbled base, 3/4 isometric view to match a top-down village map.* |
+
 ## Tier 3 — Section header illustrations (optional polish) — 2 assets
 
 Wide, low banners above the new panels. Soft, decorative, side-weighted (content sits over them).
