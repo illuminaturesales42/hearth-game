@@ -22,13 +22,7 @@ export default defineConfig({
       selfDestroying: true,
       // Shell assets only — the ~44 MB of art in /art is cached lazily at
       // runtime (see workbox.runtimeCaching), never precached with the shell.
-      includeAssets: [
-        'icons/*.png',
-        'favicon.ico',
-        'favicon-16.png',
-        'favicon-32.png',
-        'apple-touch-icon.png',
-      ],
+      includeAssets: ['icons/*.png', 'favicon.ico', 'favicon-16.png', 'favicon-32.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'Hearth: Merge & Mystery',
         short_name: 'Hearth',

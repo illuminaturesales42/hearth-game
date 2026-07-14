@@ -166,7 +166,8 @@ export function beaconReward(slot: number, rows = BEACON_ROWS): MgReward {
     coins,
     items,
     ember,
-    heart: dist === 0 ? 'Dead centre — the finest catch the light drew in.' : 'The light drew a good catch to the boats.',
+    heart:
+      dist === 0 ? 'Dead centre — the finest catch the light drew in.' : 'The light drew a good catch to the boats.',
   };
 }
 
@@ -204,7 +205,8 @@ export function forgeReward(hits: number, count: number): MgReward {
   const acc = count > 0 ? Math.min(1, hits / count) : 0;
   const coins = 6 + Math.round(acc * 14); // 6..20
   const items: { chain: ChainId; level: number }[] = [{ chain: 'copper', level: 1 }];
-  if (acc >= 0.8) items.push({ chain: 'copper', level: 2 }); // a clean run forges a bar
+  if (acc >= 0.8)
+    items.push({ chain: 'copper', level: 2 }); // a clean run forges a bar
   else if (acc >= 0.5) items.push({ chain: 'copper', level: 1 });
   const ember = acc >= 0.6 ? 2 : 1;
   return {
@@ -232,7 +234,11 @@ export function catchReward(quality: number): MgReward {
     items: [{ chain: 'fish', level }],
     ember: q >= 0.6 ? 2 : 1,
     heart:
-      level === 2 ? 'A fine fish, landed clean.' : level === 1 ? 'A good catch off Joss’s line.' : 'A nibble — enough for the pot.',
+      level === 2
+        ? 'A fine fish, landed clean.'
+        : level === 1
+          ? 'A good catch off Joss’s line.'
+          : 'A nibble — enough for the pot.',
   };
 }
 
@@ -267,7 +273,11 @@ export function forageField(seed: number): { kinds: ForageKind[]; heartIndex: nu
 }
 
 /** What a single uncovered tile yields (a partial reward, summed by the UI). */
-export function forageTile(seed: number, i: number, kind: ForageKind): {
+export function forageTile(
+  seed: number,
+  i: number,
+  kind: ForageKind,
+): {
   coins: number;
   items: { chain: ChainId; level: number }[];
   ember: number;
@@ -275,7 +285,13 @@ export function forageTile(seed: number, i: number, kind: ForageKind): {
   const rand = lcg(seed * 131 + i * 977 + 7);
   switch (kind) {
     case 'item':
-      return { coins: 0, items: [{ chain: FORAGE_ITEM_CHAINS[Math.floor(rand() * FORAGE_ITEM_CHAINS.length)]!, level: rand() < 0.35 ? 1 : 0 }], ember: 0 };
+      return {
+        coins: 0,
+        items: [
+          { chain: FORAGE_ITEM_CHAINS[Math.floor(rand() * FORAGE_ITEM_CHAINS.length)]!, level: rand() < 0.35 ? 1 : 0 },
+        ],
+        ember: 0,
+      };
     case 'coins':
       return { coins: 5 + Math.floor(rand() * 10), items: [], ember: 0 };
     case 'ember':

@@ -3689,8 +3689,14 @@ body.reduce-motion *::after {
   opacity: 0;
 }
 @keyframes mgPebble {
-  0% { opacity: 1; top: 8px; }
-  100% { opacity: 1; top: 150px; }
+  0% {
+    opacity: 1;
+    top: 8px;
+  }
+  100% {
+    opacity: 1;
+    top: 150px;
+  }
 }
 .mg-ripple {
   position: absolute;
@@ -3706,8 +3712,14 @@ body.reduce-motion *::after {
   animation: mgRipple 0.7s ease-out forwards;
 }
 @keyframes mgRipple {
-  0% { opacity: 0.9; transform: scale(0.4); }
-  100% { opacity: 0; transform: scale(4.5); }
+  0% {
+    opacity: 0.9;
+    transform: scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(4.5);
+  }
 }
 
 /* --- Beacon Drop (plinko) --- */
@@ -3764,8 +3776,12 @@ body.reduce-motion *::after {
   border: 1px solid rgba(236, 220, 182, 0.16);
   transition: background 0.2s;
 }
-.mg-slot.good { background: rgba(244, 166, 59, 0.25); }
-.mg-slot.heart { background: rgba(229, 118, 30, 0.4); }
+.mg-slot.good {
+  background: rgba(244, 166, 59, 0.25);
+}
+.mg-slot.heart {
+  background: rgba(229, 118, 30, 0.4);
+}
 .mg-slot.lit {
   background: #ffd27a;
   box-shadow: 0 0 16px rgba(255, 210, 122, 0.8);
@@ -3778,7 +3794,9 @@ body.reduce-motion *::after {
   background: radial-gradient(circle at 40% 35%, #fff2c8, #f4a63b 60%, #e5761e);
   box-shadow: 0 0 12px rgba(255, 190, 90, 0.9);
   transform: translate(-50%, -50%);
-  transition: left 0.2s ease-in, top 0.2s ease-in;
+  transition:
+    left 0.2s ease-in,
+    top 0.2s ease-in;
 }
 
 /* --- Strike While Hot (forge) --- */
@@ -3797,17 +3815,32 @@ body.reduce-motion *::after {
   background: #20283f center/70% no-repeat;
   background-color: #20283f;
   cursor: pointer;
-  transition: transform 0.08s, box-shadow 0.15s, background-color 0.15s;
+  transition:
+    transform 0.08s,
+    box-shadow 0.15s,
+    background-color 0.15s;
 }
 .mg-forge-cell.hot {
   background-color: #3a2411;
-  box-shadow: 0 0 18px rgba(255, 150, 60, 0.7), inset 0 0 12px rgba(255, 170, 70, 0.5);
+  box-shadow:
+    0 0 18px rgba(255, 150, 60, 0.7),
+    inset 0 0 12px rgba(255, 170, 70, 0.5);
   animation: mgForgePulse 0.6s ease-in-out infinite alternate;
 }
-.mg-forge-cell:active { transform: scale(0.94); }
+.mg-forge-cell:active {
+  transform: scale(0.94);
+}
 @keyframes mgForgePulse {
-  from { box-shadow: 0 0 12px rgba(255, 150, 60, 0.55), inset 0 0 8px rgba(255, 170, 70, 0.4); }
-  to { box-shadow: 0 0 22px rgba(255, 180, 80, 0.85), inset 0 0 16px rgba(255, 190, 90, 0.6); }
+  from {
+    box-shadow:
+      0 0 12px rgba(255, 150, 60, 0.55),
+      inset 0 0 8px rgba(255, 170, 70, 0.4);
+  }
+  to {
+    box-shadow:
+      0 0 22px rgba(255, 180, 80, 0.85),
+      inset 0 0 16px rgba(255, 190, 90, 0.6);
+  }
 }
 .mg-forge-bar {
   height: 6px;
@@ -3826,7 +3859,9 @@ body.reduce-motion *::after {
   font-size: var(--fs-sm, 12px);
   color: #b9c2dc;
 }
-.mg-forge-score b { color: #ffd27a; }
+.mg-forge-score b {
+  color: #ffd27a;
+}
 
 /* --- result card --- */
 .mg-result {
@@ -3847,28 +3882,59 @@ body.reduce-motion *::after {
   flex-wrap: wrap;
   margin-bottom: 6px;
 }
-.mg-reward-item img { width: 44px; height: 44px; }
-.mg-reward-line { font-size: var(--fs-md, 15px); margin: 4px 0; }
+.mg-reward-item img {
+  width: 44px;
+  height: 44px;
+}
+.mg-reward-line {
+  font-size: var(--fs-md, 15px);
+  margin: 4px 0;
+}
 .mg-wish {
   font-style: italic;
   color: #cdd6ea;
   font-size: var(--fs-sm, 12px);
   margin: 8px 12px;
 }
-.mg-reward-hint { font-size: var(--fs-xs, 10px); color: #8f9abb; margin-top: 6px; }
-.mg-result-actions { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+.mg-reward-hint {
+  font-size: var(--fs-xs, 10px);
+  color: #8f9abb;
+  margin-top: 6px;
+}
+.mg-result-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
 
 /* --- building-card play affordance --- */
-.bldg-play { margin-top: 8px; }
-.bldg-play-note { font-size: var(--fs-xs, 10px); color: #8f9abb; margin: 6px 0 0; line-height: 1.4; }
+.bldg-play {
+  margin-top: 8px;
+}
+.bldg-play-note {
+  font-size: var(--fs-xs, 10px);
+  color: #8f9abb;
+  margin: 6px 0 0;
+  line-height: 1.4;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .mg-pebble.drop, .mg-ripple.go, .mg-forge-cell.hot { animation: none; }
-  .mg-ember { transition: none; }
+  .mg-pebble.drop,
+  .mg-ripple.go,
+  .mg-forge-cell.hot {
+    animation: none;
+  }
+  .mg-ember {
+    transition: none;
+  }
 }
 
 /* --- Village Life Wave 2: Catch / Forage / Stacks --- */
-.mg-catch { width: 260px; text-align: center; }
+.mg-catch {
+  width: 260px;
+  text-align: center;
+}
 .mg-catch-water {
   height: 200px;
   border-radius: 14px;
@@ -3889,11 +3955,23 @@ body.reduce-motion *::after {
   box-shadow: 0 0 10px rgba(255, 180, 90, 0.6);
   transition: top 0.18s ease-in;
 }
-.mg-bobber.dip { top: 74%; }
-.mg-catch-hint { font-size: var(--fs-sm, 12px); color: #b9c2dc; margin-top: 10px; }
+.mg-bobber.dip {
+  top: 74%;
+}
+.mg-catch-hint {
+  font-size: var(--fs-sm, 12px);
+  color: #b9c2dc;
+  margin-top: 10px;
+}
 
-.mg-forage { width: 280px; }
-.mg-forage-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.mg-forage {
+  width: 280px;
+}
+.mg-forage-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
 .mg-fog {
   aspect-ratio: 1;
   border-radius: 8px;
@@ -3911,15 +3989,38 @@ body.reduce-motion *::after {
   cursor: default;
   border-color: rgba(127, 191, 106, 0.3);
 }
-.mg-fog.k-heart { background: #3a2411; border-color: rgba(244, 166, 59, 0.5); }
-.mg-fog img { width: 82%; height: 82%; }
-.mg-fog-ico { font-size: 20px; }
-.mg-fog-view { opacity: 0.5; }
-.mg-forage-steps { font-size: var(--fs-sm, 12px); color: #b9c2dc; margin-top: 10px; text-align: center; }
-.mg-forage-steps b { color: #ffd27a; }
+.mg-fog.k-heart {
+  background: #3a2411;
+  border-color: rgba(244, 166, 59, 0.5);
+}
+.mg-fog img {
+  width: 82%;
+  height: 82%;
+}
+.mg-fog-ico {
+  font-size: 20px;
+}
+.mg-fog-view {
+  opacity: 0.5;
+}
+.mg-forage-steps {
+  font-size: var(--fs-sm, 12px);
+  color: #b9c2dc;
+  margin-top: 10px;
+  text-align: center;
+}
+.mg-forage-steps b {
+  color: #ffd27a;
+}
 
-.mg-stacks { width: 280px; }
-.mg-stacks-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.mg-stacks {
+  width: 280px;
+}
+.mg-stacks-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
 .mg-card {
   aspect-ratio: 3 / 4;
   border-radius: 8px;
@@ -3930,11 +4031,338 @@ body.reduce-motion *::after {
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: transform 0.12s, background 0.2s;
+  transition:
+    transform 0.12s,
+    background 0.2s;
 }
-.mg-card.up { background: #1b2138; transform: scale(1.03); cursor: default; }
-.mg-card.done { background: #223018; border-color: rgba(127, 191, 106, 0.35); opacity: 0.85; cursor: default; }
-.mg-card img { width: 80%; height: 80%; }
-.mg-stacks-hint { font-size: var(--fs-sm, 12px); color: #b9c2dc; margin-top: 10px; text-align: center; }
-.mg-stacks-hint b { color: #ffd27a; }
-.mg-go { margin-top: 4px; }
+.mg-card.up {
+  background: #1b2138;
+  transform: scale(1.03);
+  cursor: default;
+}
+.mg-card.done {
+  background: #223018;
+  border-color: rgba(127, 191, 106, 0.35);
+  opacity: 0.85;
+  cursor: default;
+}
+.mg-card img {
+  width: 80%;
+  height: 80%;
+}
+.mg-stacks-hint {
+  font-size: var(--fs-sm, 12px);
+  color: #b9c2dc;
+  margin-top: 10px;
+  text-align: center;
+}
+.mg-stacks-hint b {
+  color: #ffd27a;
+}
+.mg-go {
+  margin-top: 4px;
+}
+
+/* ===================== VILLAGE LIFE — FEEL POLISH ===================== */
+/* Taste "soft variant": premium-calm, warm, spring motion, satisfying feedback.
+   Appended so these rules win the cascade over the base mini-game styles. */
+:root {
+  --mg-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* gentle overshoot */
+  --mg-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Card: warmer panel + a spring entrance instead of a hard pop-in. */
+.mg-card {
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgba(244, 166, 59, 0.14), transparent 60%),
+    linear-gradient(180deg, #1d2340, #12182b);
+  border-color: rgba(244, 166, 59, 0.34);
+  box-shadow:
+    0 20px 64px rgba(0, 0, 0, 0.58),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  animation: mgCardIn 0.42s var(--mg-spring) both;
+}
+@keyframes mgCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.mg-title {
+  letter-spacing: 0.2px;
+  text-shadow: 0 1px 10px rgba(255, 190, 90, 0.25);
+}
+
+/* The start button: a warm, inviting, springy CTA. */
+.mg-go {
+  min-width: 168px;
+  padding: 11px 22px;
+  border-radius: 14px;
+  font-size: var(--fs-md, 15px);
+  transition:
+    transform 0.16s var(--mg-spring),
+    box-shadow 0.16s ease,
+    filter 0.16s ease;
+}
+.mg-go:not(:disabled):hover {
+  transform: translateY(-1px) scale(1.03);
+  filter: brightness(1.06);
+}
+.mg-go:not(:disabled):active {
+  transform: scale(0.95);
+}
+
+/* Result: a spring pop + a soft golden sweep across the heart line. */
+.mg-result {
+  animation: mgResultIn 0.5s var(--mg-spring) both;
+}
+@keyframes mgResultIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.mg-result-title {
+  background: linear-gradient(100deg, #ffd27a 20%, #fff6df 50%, #ffd27a 80%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: mgSheen 2.2s ease-in-out 0.3s both;
+}
+@keyframes mgSheen {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -60% 0;
+  }
+}
+.mg-reward-item {
+  display: inline-flex;
+  animation: mgPopIn 0.5s var(--mg-spring) both;
+}
+.mg-reward-item:nth-child(2) {
+  animation-delay: 0.08s;
+}
+@keyframes mgPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.3) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Wishing Well: springier pebble, a fuller ripple, a warm water sheen. */
+.mg-well-art {
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.45));
+}
+.mg-pebble.drop {
+  animation: mgPebbleFall 0.95s cubic-bezier(0.5, 0, 0.9, 1) forwards;
+}
+@keyframes mgPebbleFall {
+  0% {
+    opacity: 1;
+    top: 8px;
+    transform: scale(1);
+  }
+  85% {
+    opacity: 1;
+    top: 150px;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 0.6;
+    top: 156px;
+    transform: scale(0.6);
+  }
+}
+.mg-ripple.go {
+  animation: mgRippleOut 0.85s var(--mg-ease-out) forwards;
+}
+@keyframes mgRippleOut {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(6);
+  }
+}
+
+/* Beacon Drop: the ember settles with a little bounce; the slot blooms warm. */
+.mg-ember {
+  transition:
+    left 0.2s var(--mg-ease-out),
+    top 0.22s var(--mg-spring);
+}
+.mg-slot.lit {
+  animation: mgSlotBloom 0.5s var(--mg-spring) both;
+}
+@keyframes mgSlotBloom {
+  0% {
+    transform: translateY(3px) scaleY(0.8);
+    box-shadow: 0 0 0 rgba(255, 210, 122, 0);
+  }
+  60% {
+    transform: translateY(-2px) scaleY(1.08);
+  }
+  100% {
+    transform: none;
+    box-shadow: 0 0 18px rgba(255, 210, 122, 0.85);
+  }
+}
+.mg-beacon-lamp img {
+  filter: drop-shadow(0 0 14px rgba(255, 190, 90, 0.55));
+}
+
+/* Strike While Hot: hotspots bloom with a spring; a struck anvil flashes bright. */
+.mg-forge-cell.hot {
+  animation: mgForgeBloom 0.55s var(--mg-spring) both;
+}
+@keyframes mgForgeBloom {
+  from {
+    transform: scale(0.82);
+    box-shadow: 0 0 4px rgba(255, 150, 60, 0.3);
+  }
+  to {
+    transform: scale(1);
+    box-shadow:
+      0 0 20px rgba(255, 170, 70, 0.75),
+      inset 0 0 14px rgba(255, 190, 90, 0.55);
+  }
+}
+.mg-forge-cell.struck {
+  animation: mgStruck 0.32s ease-out;
+}
+@keyframes mgStruck {
+  0% {
+    background-color: #ffe6b0;
+    transform: scale(1.12);
+  }
+  100% {
+    background-color: #20283f;
+    transform: scale(1);
+  }
+}
+
+/* Joss's Catch: the bobber idles on the swell, then dips with a spring. */
+.mg-bobber {
+  transition: top 0.16s var(--mg-spring);
+  animation: mgBob 2.4s ease-in-out infinite;
+}
+.mg-bobber.dip {
+  animation: none;
+  top: 74%;
+}
+@keyframes mgBob {
+  0%,
+  100% {
+    transform: translateY(-2px);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+.mg-catch-water::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 60% at 50% 40%, rgba(120, 190, 235, 0.14), transparent 70%);
+  pointer-events: none;
+}
+
+/* Foraging: fog clears with a soft dissolve; finds pop; the heart tile blooms. */
+.mg-fog.found {
+  animation: mgFogClear 0.4s var(--mg-ease-out) both;
+}
+@keyframes mgFogClear {
+  from {
+    filter: brightness(1.4) blur(1px);
+    transform: scale(0.9);
+  }
+  to {
+    filter: none;
+    transform: none;
+  }
+}
+.mg-fog.found .mg-fog-ico,
+.mg-fog.found img {
+  animation: mgPopIn 0.45s var(--mg-spring) both;
+}
+.mg-fog.k-heart {
+  animation: mgHeartBloom 0.7s var(--mg-spring) both;
+  box-shadow: 0 0 18px rgba(244, 166, 59, 0.6);
+}
+@keyframes mgHeartBloom {
+  0% {
+    transform: scale(0.85);
+  }
+  55% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Sorting the Stacks: a quick squash-flip as a card turns; matches glow warm. */
+.mg-card.up {
+  animation: mgFlip 0.32s var(--mg-ease-out);
+}
+@keyframes mgFlip {
+  0% {
+    transform: rotateY(0) scale(1);
+  }
+  50% {
+    transform: rotateY(90deg) scale(1.05);
+  }
+  100% {
+    transform: rotateY(0) scale(1.03);
+  }
+}
+.mg-card.done {
+  animation: mgMatched 0.5s var(--mg-spring) both;
+  box-shadow: 0 0 14px rgba(127, 191, 106, 0.5);
+}
+@keyframes mgMatched {
+  0% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mg-card,
+  .mg-result,
+  .mg-result-title,
+  .mg-reward-item,
+  .mg-slot.lit,
+  .mg-forge-cell.hot,
+  .mg-forge-cell.struck,
+  .mg-bobber,
+  .mg-fog.found,
+  .mg-fog.k-heart,
+  .mg-card.up,
+  .mg-card.done {
+    animation: none;
+  }
+  .mg-result-title {
+    color: #ffd27a;
+    -webkit-text-fill-color: #ffd27a;
+  }
+}
