@@ -48,6 +48,21 @@ describe('economy pacing', () => {
     expect(days).toBeLessThanOrEqual(30);
   });
 
+  it('each chapter refunds only part of its build cost — real actions carry the rest', () => {
+    // The pillar: if orders hand back most of the energy they cost to build, the
+    // real-world wellness loop stops mattering. Cap per-chapter refund near half.
+    for (const ch of CHAPTERS) {
+      const orders = ORDERS.slice(ch.start, ch.end);
+      const demand = orders.reduce((s, o) => s + spawnsForLevel(o.need.level), 0);
+      const refund = orders.reduce((s, o) => s + o.rewardEnergy, 0);
+      const ratio = refund / demand;
+      expect(ratio, `chapter ${ch.id} refunds ${(ratio * 100).toFixed(0)}%`).toBeLessThanOrEqual(0.55);
+    }
+    const totalDemand = ORDERS.reduce((s, o) => s + spawnsForLevel(o.need.level), 0);
+    const totalRefund = ORDERS.reduce((s, o) => s + o.rewardEnergy, 0);
+    expect(totalRefund / totalDemand).toBeLessThanOrEqual(0.5);
+  });
+
   it('order rewards never exceed what the next orders can absorb (no energy inflation)', () => {
     // Total energy handed back by orders must stay below total spawn demand —
     // otherwise the real-world actions stop mattering, which breaks the pillar.
