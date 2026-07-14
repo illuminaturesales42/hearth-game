@@ -272,6 +272,8 @@ export class MinigameUI {
         liveSpawn[cell] = undefined;
         c.classList.remove('hot');
         c.style.backgroundImage = '';
+        c.classList.add('struck'); // bright flash on a clean strike
+        this.timers.push(window.setTimeout(() => c.classList.remove('struck'), 340));
         hits += 1;
         if (hitsEl) hitsEl.textContent = String(hits);
         feedback.merge(1);
