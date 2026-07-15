@@ -4060,6 +4060,22 @@ body.reduce-motion *::after {
   font-weight: 700;
   color: #ffd27a;
 }
+.mg-combo {
+  color: #ffbf6a;
+  font-weight: 700;
+}
+.mg-bobber.nibble {
+  animation: mgNibble 0.28s ease-in-out 2;
+}
+@keyframes mgNibble {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
 .mg-pebble {
   position: absolute;
   top: 8px;

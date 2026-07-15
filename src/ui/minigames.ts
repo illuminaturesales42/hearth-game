@@ -398,9 +398,12 @@ export class MinigameUI {
     stage.innerHTML =
       `<div class="mg-forge"><div class="mg-forge-grid">${cells}</div>` +
       `<div class="mg-forge-bar"><span class="mg-forge-fill"></span></div>` +
-      `<p class="mg-forge-score">Strikes: <b id="mg-forge-hits">0</b></p></div>`;
+      `<p class="mg-forge-score">Strikes: <b id="mg-forge-hits">0</b><span id="mg-forge-combo" class="mg-combo"></span></p></div>`;
+    this.coachOnce('forge-strike', 'Strike each glowing anvil before it cools — a clean run forges a bar.');
     const hitsEl = el('mg-forge-hits');
+    const comboEl = el('mg-forge-combo');
     let hits = 0;
+    let combo = 0; // consecutive clean strikes — brighter chime, a warm streak note
     const liveSpawn: Record<number, number | undefined> = {};
     const cellEls = Array.from(stage.querySelectorAll<HTMLButtonElement>('.mg-forge-cell'));
     cellEls.forEach((c) => {
@@ -413,8 +416,10 @@ export class MinigameUI {
         c.classList.add('struck'); // bright flash on a clean strike
         this.timers.push(window.setTimeout(() => c.classList.remove('struck'), 340));
         hits += 1;
+        combo += 1;
         if (hitsEl) hitsEl.textContent = String(hits);
-        feedback.merge(1);
+        if (comboEl) comboEl.textContent = combo >= 3 ? ` · ${combo} in a row!` : '';
+        feedback.chime(420 + Math.min(combo, 8) * 45); // rises with the streak
       };
     });
     this.startButton('Heat the forge', () => {
@@ -434,6 +439,8 @@ export class MinigameUI {
                   liveSpawn[sp.cell] = undefined;
                   c.classList.remove('hot');
                   c.style.backgroundImage = '';
+                  combo = 0; // a cooled anvil breaks the streak (no other penalty)
+                  if (comboEl) comboEl.textContent = '';
                 }
               }, sp.ttlMs),
             );
@@ -448,7 +455,10 @@ export class MinigameUI {
         });
       }
       this.timers.push(
-        window.setTimeout(() => this.finish(forgeReward(hits, schedule.length)), FORGE_DURATION_MS + 400),
+        window.setTimeout(
+          () => this.finish(forgeReward(hits, schedule.length), undefined, hits),
+          FORGE_DURATION_MS + 400,
+        ),
       );
     });
   }
@@ -462,6 +472,7 @@ export class MinigameUI {
     stage.innerHTML =
       `<div class="mg-catch"><div class="mg-catch-water"><div class="mg-bobber"></div></div>` +
       `<p class="mg-catch-hint">Cast, then strike the moment the bobber dips.</p></div>`;
+    this.coachOnce('joss-catch', 'Wait for the bobber to dip, then tap the water — patience lands the best fish.');
     const water = stage.querySelector<HTMLElement>('.mg-catch-water');
     const bobber = stage.querySelector<HTMLElement>('.mg-bobber');
     const hint = stage.querySelector<HTMLElement>('.mg-catch-hint');
@@ -474,7 +485,7 @@ export class MinigameUI {
       const resolve = (quality: number) => {
         if (resolved) return;
         resolved = true;
-        this.finish(catchReward(quality));
+        this.finish(catchReward(quality), undefined, Math.round(Math.max(0, Math.min(1, quality)) * 100));
       };
       water?.addEventListener('click', () => {
         if (resolved) return;
@@ -485,10 +496,21 @@ export class MinigameUI {
         }
         resolve(Math.max(0, 1 - (performance.now() - dipAt) / windowMs));
       });
+      // a "nibble" tell just before the dip, so the strike can be anticipated
+      this.timers.push(
+        window.setTimeout(
+          () => {
+            if (!resolved && hint) hint.textContent = 'A nibble…';
+            bobber?.classList.add('nibble');
+          },
+          Math.max(0, delayMs - 500),
+        ),
+      );
       this.timers.push(
         window.setTimeout(() => {
           if (resolved) return;
           dipAt = performance.now();
+          bobber?.classList.remove('nibble');
           bobber?.classList.add('dip');
           if (hint) hint.textContent = 'Strike!';
           feedback.chime(300);
@@ -517,7 +539,13 @@ export class MinigameUI {
       `<div class="mg-forage"><div class="mg-forage-grid">${tiles}</div>` +
       `<p class="mg-forage-steps">Footsteps left: <b id="mg-forage-steps">${steps}</b></p></div>`;
     const stepsEl = el('mg-forage-steps');
-    const end = () => this.finish({ ...acc, heart: 'You came home with your basket full — and a story or two.' });
+    this.coachOnce('foraging', 'Uncover the ground tile by tile. Keep everything — head home whenever you like.');
+    const end = () =>
+      this.finish(
+        { ...acc, heart: 'You came home with your basket full — and a story or two.' },
+        undefined,
+        acc.items.length + acc.ember, // finds gathered — the forage best
+      );
     // A "head home" button so you can stop early and keep everything found.
     const actions = el('mg-actions');
     if (actions) {
@@ -585,6 +613,7 @@ export class MinigameUI {
     stage.innerHTML =
       `<div class="mg-stacks"><div class="mg-stacks-grid">${cards}</div>` +
       `<p class="mg-stacks-hint">Flips: <b id="mg-stacks-flips">0</b></p></div>`;
+    this.coachOnce('sorting-stacks', 'Flip two cards to find a matching pair — fewer flips, a finer sort.');
     const flipsEl = el('mg-stacks-flips');
     let flips = 0;
     let matched = 0;
@@ -613,7 +642,10 @@ export class MinigameUI {
           first = -1;
           feedback.merge(1);
           if (matched === STACKS_PAIRS)
-            this.timers.push(window.setTimeout(() => this.finish(stacksReward(flips)), 550));
+            this.timers.push(
+              // fewer flips → a higher best (perfect = STACKS_PAIRS flips)
+              window.setTimeout(() => this.finish(stacksReward(flips), undefined, Math.max(0, 40 - flips)), 550),
+            );
         } else {
           busy = true;
           this.timers.push(
