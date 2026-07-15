@@ -69,6 +69,7 @@ import {
   initialMinigames,
   isEligible,
   isUnlocked,
+  recordBest,
   rolloverMinigames,
   spendToken,
   storyComplete,
@@ -1196,9 +1197,14 @@ export class Game {
    * the endless orders land), embers capped so play never out-earns real life,
    * and any drawn wish kept as a small keepsake.
    */
-  finishMinigame(id: string, reward: MgReward, wish?: { who: string; text: string }): void {
+  finishMinigame(
+    id: string,
+    reward: MgReward,
+    wish?: { who: string; text: string },
+    score?: number,
+  ): { isBest: boolean; best: number | null } {
     const def = MINIGAME_BY_ID[id];
-    if (!def) return;
+    if (!def) return { isBest: false, best: null };
     const em = addEmber(this.state.minigames, reward.ember);
     let minigames = em.state;
     if (wish) {
@@ -1209,6 +1215,13 @@ export class Game {
           ...minigames.wishes,
         ].slice(0, 24),
       };
+    }
+    // Personal best (a warm memento, never a leaderboard) — highest kept.
+    let isBest = false;
+    if (typeof score === 'number') {
+      const rb = recordBest(minigames, id, score);
+      minigames = rb.state;
+      isBest = rb.isBest;
     }
     this.state = {
       ...this.state,
@@ -1227,6 +1240,12 @@ export class Game {
       itemCount: reward.items.length,
       ...(wish ? { wish: `${wish.who} ${wish.text}` } : {}),
     });
+    return { isBest, best: this.state.minigames.bests?.[id] ?? null };
+  }
+
+  /** The player's personal best for a mini-game, or null if never played. */
+  minigameBest(id: string): number | null {
+    return this.state.minigames.bests?.[id] ?? null;
   }
 
   /** Living well tops up a mini-game attempt (never bought). Capped per day. */

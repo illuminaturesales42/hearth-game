@@ -7,14 +7,16 @@
 import type { Game } from '../core/game';
 import {
   BEACON_ROWS,
+  BEACON_SLOTS,
   FORAGE_SIZE,
   FORAGE_STEPS,
   FORGE_CELLS,
   FORGE_DURATION_MS,
   STACKS_PAIRS,
-  beaconPath,
+  WELL_SLOTS,
+  beaconDrop,
   beaconReward,
-  beaconSlot,
+  beaconScore,
   catchReward,
   fishBite,
   forageField,
@@ -23,7 +25,8 @@ import {
   forgeSchedule,
   stacksDeck,
   stacksReward,
-  wishingWell,
+  wellScore,
+  wishingWellReward,
   type ForageKind,
   type MgReward,
 } from '../core/minigames';
@@ -154,14 +157,32 @@ export class MinigameUI {
     else if (id === 'sorting-stacks') this.playStacks(run.seed);
   }
 
-  private finish(reward: MgReward, wish?: { who: string; text: string }): void {
-    if (!this.id) return;
-    this.game.finishMinigame(this.id, reward, wish);
-    feedback.chime(560);
-    this.showResult(reward, wish);
+  /** A one-time, self-dismissing coaching line for a game's first play. */
+  private coachOnce(id: string, text: string): void {
+    const key = `hearth:coach:${id}`;
+    try {
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, '1');
+    } catch {
+      /* private mode: just show it */
+    }
+    const stage = el('mg-stage');
+    if (!stage) return;
+    const tip = document.createElement('div');
+    tip.className = 'mg-coach';
+    tip.textContent = text;
+    stage.appendChild(tip);
+    this.timers.push(window.setTimeout(() => tip.remove(), 4600));
   }
 
-  private showResult(reward: MgReward, wish?: { who: string; text: string }): void {
+  private finish(reward: MgReward, wish?: { who: string; text: string }, score?: number): void {
+    if (!this.id) return;
+    const res = this.game.finishMinigame(this.id, reward, wish, score);
+    feedback.chime(res.isBest ? 720 : 560);
+    this.showResult(reward, wish, res.isBest);
+  }
+
+  private showResult(reward: MgReward, wish?: { who: string; text: string }, isBest?: boolean): void {
     const result = el('mg-result');
     const title = el('mg-result-title');
     const body = el('mg-result-body');
@@ -173,6 +194,7 @@ export class MinigameUI {
     body.innerHTML =
       `<div class="mg-reward-row">${items}</div>` +
       `<p class="mg-reward-line">🪙 ${reward.coins}${reward.ember > 0 ? ` · 🔥 +${reward.ember} energy` : ''}</p>` +
+      (isBest ? `<p class="mg-best">✦ A new personal best!</p>` : '') +
       (wish ? `<p class="mg-wish">“${wish.who} ${wish.text}”</p>` : '') +
       `<p class="mg-reward-hint">Kept in your Repository, ready for the village’s needs.</p>`;
     result.hidden = false;
@@ -193,50 +215,90 @@ export class MinigameUI {
     actions.appendChild(btn);
   }
 
-  // ---------- 1) Wishing Well ----------
+  // ---------- 1) Wishing Well (aim the drop) ----------
 
   private playWell(seed: number): void {
     const stage = el('mg-stage');
     if (!stage) return;
-    const res = wishingWell(seed, this.game.wishCount());
-    const wsrc = res.wishIndex >= 0 ? WISHES[res.wishIndex] : undefined;
-    const wish = wsrc ? { who: wsrc.who, text: wsrc.text } : undefined;
     const wellUrl = artUrl('prop_well');
+    const wellArt = wellUrl
+      ? `<img class="mg-well-art" src="${wellUrl}" alt="" />`
+      : `<div class="mg-well-fallback" aria-hidden="true">🕳️</div>`;
+    const rings = Array.from({ length: WELL_SLOTS }, (_, s) => {
+      const dist = Math.abs(s - 2);
+      const cls = dist === 0 ? 'heart' : dist === 1 ? 'good' : '';
+      return `<button class="mg-ring ${cls}" data-slot="${s}" aria-label="ring ${s + 1} of ${WELL_SLOTS}"></button>`;
+    }).join('');
     stage.innerHTML =
-      `<div class="mg-well">` +
-      (wellUrl
-        ? `<img class="mg-well-art" src="${wellUrl}" alt="" />`
-        : `<div class="mg-well-fallback" aria-hidden="true">🕳️</div>`) +
+      `<div class="mg-well">${wellArt}` +
+      `<div class="mg-well-track"><div class="mg-aim"></div></div>` +
+      `<div class="mg-well-rings">${rings}</div>` +
       `<div class="mg-pebble"></div><div class="mg-ripple"></div></div>`;
-    const done = () => this.finish(res, wish);
-    this.startButton('Drop a pebble', () => {
-      const actions = el('mg-actions');
-      if (actions) actions.innerHTML = '';
+
+    // Resolve a chosen ring → reward, animate the pebble to it, then bank it.
+    const drop = (slotRaw: number): void => {
+      const slot = Math.max(0, Math.min(WELL_SLOTS - 1, slotRaw));
+      const res = wishingWellReward(slot, seed, this.game.wishCount());
+      const wsrc = res.wishIndex >= 0 ? WISHES[res.wishIndex] : undefined;
+      const wish = wsrc ? { who: wsrc.who, text: wsrc.text } : undefined;
+      stage.querySelector<HTMLElement>(`.mg-ring[data-slot="${slot}"]`)?.classList.add('lit');
+      const done = () => this.finish(res, wish, wellScore(slot));
       if (this.reduce()) return done();
       const pebble = stage.querySelector<HTMLElement>('.mg-pebble');
       const ripple = stage.querySelector<HTMLElement>('.mg-ripple');
+      if (pebble) pebble.style.left = `${((slot + 0.5) / WELL_SLOTS) * 100}%`;
       pebble?.classList.add('drop');
-      feedback.chime(300);
+      feedback.chime(320);
       this.timers.push(
         window.setTimeout(() => {
           pebble?.classList.add('gone');
           ripple?.classList.add('go');
-          feedback.chime(210);
-        }, 950),
+          feedback.chime(slot === 2 ? 540 : 220);
+        }, 880),
       );
-      this.timers.push(window.setTimeout(done, 1550));
+      this.timers.push(window.setTimeout(done, 1480));
+    };
+
+    // Reduced motion: tap the ring you want (no timed sweep). Fully accessible.
+    if (this.reduce()) {
+      this.coachOnce('wishing-well', 'Choose a ring — the centre roots the deepest wish.');
+      stage.querySelectorAll<HTMLButtonElement>('.mg-ring').forEach((b) => {
+        b.onclick = () => {
+          stage.querySelectorAll<HTMLButtonElement>('.mg-ring').forEach((r) => (r.disabled = true));
+          drop(Number(b.dataset.slot));
+        };
+      });
+      const actions = el('mg-actions');
+      if (actions) actions.innerHTML = '';
+      return;
+    }
+
+    // Full motion: a light sweeps the rings; tap to release it where it lands.
+    this.coachOnce('wishing-well', 'Tap the moment the light lines up with the centre ring.');
+    const aim = stage.querySelector<HTMLElement>('.mg-aim');
+    const track = stage.querySelector<HTMLElement>('.mg-well-track');
+    aim?.classList.add('sweep');
+    this.startButton('Drop the pebble', () => {
+      const actions = el('mg-actions');
+      if (actions) actions.innerHTML = '';
+      let slot = 2;
+      if (aim && track) {
+        const a = aim.getBoundingClientRect();
+        const t = track.getBoundingClientRect();
+        const pct = t.width ? (a.left + a.width / 2 - t.left) / t.width : 0.5;
+        slot = Math.max(0, Math.min(WELL_SLOTS - 1, Math.floor(pct * WELL_SLOTS)));
+        aim.classList.remove('sweep');
+        aim.style.left = `${((slot + 0.5) / WELL_SLOTS) * 100}%`;
+      }
+      drop(slot);
     });
   }
 
-  // ---------- 2) Beacon Drop (plinko) ----------
+  // ---------- 2) Beacon Drop (aim the release) ----------
 
   private playBeacon(seed: number): void {
     const stage = el('mg-stage');
     if (!stage) return;
-    const path = beaconPath(seed);
-    const slot = beaconSlot(path);
-    const reward = beaconReward(slot);
-    const slots = BEACON_ROWS + 1;
     const beaconUrl = artUrl('fx_flame_beacon');
     let pegs = '';
     for (let r = 0; r < BEACON_ROWS; r++) {
@@ -246,45 +308,80 @@ export class MinigameUI {
       pegs += `<div class="mg-peg-row">${row}</div>`;
     }
     let slotCells = '';
-    for (let s = 0; s < slots; s++) {
+    for (let s = 0; s < BEACON_SLOTS; s++) {
       const dist = Math.abs(s - BEACON_ROWS / 2);
-      slotCells += `<div class="mg-slot ${dist === 0 ? 'heart' : dist <= 2 ? 'good' : ''}" data-slot="${s}"></div>`;
+      slotCells += `<button class="mg-slot ${dist === 0 ? 'heart' : dist <= 2 ? 'good' : ''}" data-slot="${s}" aria-label="slot ${s + 1}"></button>`;
     }
     stage.innerHTML =
       `<div class="mg-beacon">` +
       `<div class="mg-beacon-lamp">${beaconUrl ? `<img src="${beaconUrl}" alt="" />` : '🔆'}</div>` +
+      `<div class="mg-beacon-aim-track"><div class="mg-beacon-aim"></div></div>` +
       `<div class="mg-pegs">${pegs}</div>` +
       `<div class="mg-slots">${slotCells}</div>` +
       `<div class="mg-ember"></div></div>`;
     const ember = stage.querySelector<HTMLElement>('.mg-ember');
-    const land = () => {
-      stage.querySelector<HTMLElement>(`.mg-slot[data-slot="${slot}"]`)?.classList.add('lit');
-      this.finish(reward);
+
+    // Release from a chosen column → seeded drift → final slot → reward.
+    const release = (targetSlot: number): void => {
+      const slot = beaconDrop(targetSlot, seed);
+      const reward = beaconReward(slot);
+      const land = () => {
+        stage.querySelector<HTMLElement>(`.mg-slot[data-slot="${slot}"]`)?.classList.add('lit');
+        this.finish(reward, undefined, beaconScore(slot));
+      };
+      if (this.reduce() || !ember) return land();
+      // Fall from the aimed column, wobbling toward the final slot.
+      const startX = ((targetSlot + 0.5) / BEACON_SLOTS) * 100;
+      const endX = ((slot + 0.5) / BEACON_SLOTS) * 100;
+      ember.style.left = `${startX}%`;
+      ember.style.top = `6%`;
+      feedback.chime(480);
+      const steps = BEACON_ROWS;
+      for (let i = 1; i <= steps; i++) {
+        this.timers.push(
+          window.setTimeout(() => {
+            const t = i / steps;
+            const wobble = Math.sin(i * 1.7) * (1 - t) * 4; // settles as it nears the slot
+            ember.style.left = `${startX + (endX - startX) * t + wobble}%`;
+            ember.style.top = `${10 + t * 72}%`;
+            feedback.chime(360 + i * 8);
+          }, 200 * i),
+        );
+      }
+      this.timers.push(window.setTimeout(land, 200 * (steps + 1)));
     };
+
+    // Reduced motion: tap the slot you aim for (no sweep).
+    if (this.reduce()) {
+      this.coachOnce('beacon-drop', 'Aim for the centre slot — the light draws the finest catch there.');
+      stage.querySelectorAll<HTMLButtonElement>('.mg-slot').forEach((b) => {
+        b.onclick = () => {
+          stage.querySelectorAll<HTMLButtonElement>('.mg-slot').forEach((r) => (r.disabled = true));
+          release(Number(b.dataset.slot));
+        };
+      });
+      const actions = el('mg-actions');
+      if (actions) actions.innerHTML = '';
+      return;
+    }
+
+    // Full motion: a launch marker sweeps the top; tap to release from there.
+    this.coachOnce('beacon-drop', 'A launch light sweeps above — release it aimed at the centre.');
+    const aim = stage.querySelector<HTMLElement>('.mg-beacon-aim');
+    const track = stage.querySelector<HTMLElement>('.mg-beacon-aim-track');
+    aim?.classList.add('sweep');
     this.startButton('Release the light', () => {
       const actions = el('mg-actions');
       if (actions) actions.innerHTML = '';
-      if (this.reduce() || !ember) return land();
-      // Walk the ember down the seeded path: centre → left/right each row.
-      let x = 50; // percent
-      const step = 44 / BEACON_ROWS; // total lateral spread
-      ember.style.left = `${x}%`;
-      ember.style.top = `6%`;
-      feedback.chime(480);
-      path.forEach((dir, i) => {
-        this.timers.push(
-          window.setTimeout(
-            () => {
-              x += (dir === 1 ? 1 : -1) * step;
-              ember.style.left = `${x}%`;
-              ember.style.top = `${10 + ((i + 1) / (BEACON_ROWS + 1)) * 72}%`;
-              feedback.chime(360 + i * 8);
-            },
-            220 * (i + 1),
-          ),
-        );
-      });
-      this.timers.push(window.setTimeout(land, 220 * (BEACON_ROWS + 1) + 200));
+      let targetSlot = BEACON_ROWS / 2;
+      if (aim && track) {
+        const a = aim.getBoundingClientRect();
+        const t = track.getBoundingClientRect();
+        const pct = t.width ? (a.left + a.width / 2 - t.left) / t.width : 0.5;
+        targetSlot = Math.max(0, Math.min(BEACON_ROWS, Math.round(pct * BEACON_ROWS)));
+        aim.classList.remove('sweep');
+      }
+      release(targetSlot);
     });
   }
 

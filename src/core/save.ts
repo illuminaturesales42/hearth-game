@@ -4,11 +4,11 @@
  * Rotating backups (3 slots, refreshed at most once per hour) guard against
  * corruption, and export/import gives players a manual lifeline.
  */
-import type { GameState } from './types';
+import type { GameState, MinigameState } from './types';
 import { localDayKey } from './energy';
 import { initialMinigames } from './minigames';
 
-export const CURRENT_VERSION = 14;
+export const CURRENT_VERSION = 15;
 
 const KEY = 'hearth:save';
 /** Older builds wrote the version into the key. Read them once, then adopt KEY. */
@@ -50,6 +50,11 @@ const MIGRATIONS: Record<number, (s: LooseState) => LooseState> = {
   12: (s) => ({ ...s, version: 13, buildingUpgrades: {} }),
   // v13 → v14: Village Life mini-games (post-story building games).
   13: (s) => ({ ...s, version: 14, minigames: initialMinigames(localDayKey(Date.now())) }),
+  // v14 → v15: per-game personal bests on the minigame state.
+  14: (s) => {
+    const mg = (s.minigames as MinigameState | undefined) ?? initialMinigames(localDayKey(Date.now()));
+    return { ...s, version: 15, minigames: { ...mg, bests: mg.bests ?? {} } };
+  },
 };
 
 /** Upgrade any historical state to CURRENT_VERSION, or null if unrecognizable. */

@@ -32,7 +32,14 @@ function lcg(seed: number): () => number {
 // ---------- shared state helpers (all pure) ----------
 
 export function initialMinigames(day: string): MinigameState {
-  return { unlocked: [], lastUnlockDay: null, day, tokens: MINIGAME_BASE_TOKENS, emberToday: 0, wishes: [] };
+  return { unlocked: [], lastUnlockDay: null, day, tokens: MINIGAME_BASE_TOKENS, emberToday: 0, wishes: [], bests: {} };
+}
+
+/** Record a personal best (keeps the higher value). Pure. */
+export function recordBest(s: MinigameState, id: string, score: number): { state: MinigameState; isBest: boolean } {
+  const prev = s.bests?.[id] ?? -Infinity;
+  if (score <= prev) return { state: s, isBest: false };
+  return { state: { ...s, bests: { ...(s.bests ?? {}), [id]: score } }, isBest: true };
 }
 
 /** Reset the daily token + ember pool when the day turns. Idempotent. */
@@ -117,24 +124,35 @@ export interface WellResult extends MgReward {
   wishIndex: number; // into the data WISHES table
 }
 
+export const WELL_SLOTS = 5;
 const WELL_COINS = [8, 10, 14, 10, 8];
 
-export function wishingWell(seed: number, wishCount: number): WellResult {
+/**
+ * The reward for the ring the player *aimed* the pebble into (0..4, centre = 2).
+ * Player-driven now — the UI reads the slot from where they released the aim
+ * sweep, so the drop is earned, not seeded. The seed only flavours the wish and
+ * the incidental seed level. Still no-fail: every ring roots at least a seed.
+ */
+export function wishingWellReward(slot: number, seed: number, wishCount: number): WellResult {
+  const s = Math.max(0, Math.min(WELL_SLOTS - 1, Math.round(slot)));
   const rand = lcg(seed);
-  const slot = Math.floor(rand() * 5);
-  const coins = WELL_COINS[slot]!;
-  // Centre slot roots a stronger seedling; every drop grants at least a seed.
-  const items = [{ chain: 'seeds' as ChainId, level: slot === 2 ? 2 : rand() < 0.4 ? 1 : 0 }];
-  const ember = slot === 2 ? 2 : 1;
+  const coins = WELL_COINS[s]!;
+  const items = [{ chain: 'seeds' as ChainId, level: s === 2 ? 2 : rand() < 0.4 ? 1 : 0 }];
+  const ember = s === 2 ? 2 : 1;
   const wishIndex = wishCount > 0 ? Math.floor(rand() * wishCount) : -1;
   return {
     coins,
     items,
     ember,
-    heart: slot === 2 ? 'The wish took deep root — a fine seedling.' : 'A wish taken root — a seed to plant.',
-    slot,
+    heart: s === 2 ? 'The wish took deep root — a fine seedling.' : 'A wish taken root — a seed to plant.',
+    slot: s,
     wishIndex,
   };
+}
+
+/** 0..100 "how close to the heart" — the well's personal-best metric (centre = 100). */
+export function wellScore(slot: number): number {
+  return Math.round(100 - Math.abs(slot - 2) * 25); // centre 100, adjacent 75, edge 50
 }
 
 // ---------- 2) Beacon Drop — a light-ember plinkos down to the boats -------
@@ -142,6 +160,7 @@ export function wishingWell(seed: number, wishCount: number): WellResult {
 // the day's heart. Coastal reward → the fish chain (revived).
 
 export const BEACON_ROWS = 8;
+export const BEACON_SLOTS = BEACON_ROWS + 1;
 
 /** The seeded left/right bounce sequence — the 3 seconds of suspense. */
 export function beaconPath(seed: number, rows = BEACON_ROWS): (0 | 1)[] {
@@ -152,6 +171,26 @@ export function beaconPath(seed: number, rows = BEACON_ROWS): (0 | 1)[] {
 /** Final slot 0..rows from a bounce path (number of rights). */
 export function beaconSlot(path: readonly (0 | 1)[]): number {
   return path.reduce<number>((n, d) => n + d, 0);
+}
+
+/**
+ * Player-aimed drop: the ember is released from a chosen slot (0..8) and the
+ * seed adds a small bounce drift, so aim dominates but a little luck remains.
+ * Mostly lands where aimed; occasionally drifts ±1, rarely ±2. Deterministic
+ * given (targetSlot, seed).
+ */
+export function beaconDrop(targetSlot: number, seed: number): number {
+  const rand = lcg(seed);
+  const r = rand();
+  const mag = r < 0.6 ? 0 : r < 0.88 ? 1 : 2;
+  const dir = rand() < 0.5 ? -1 : 1;
+  return Math.max(0, Math.min(BEACON_ROWS, Math.round(targetSlot + dir * mag)));
+}
+
+/** 0..100 "how close to the heart" — the beacon's personal-best metric (centre = 100). */
+export function beaconScore(slot: number): number {
+  const centre = BEACON_ROWS / 2;
+  return Math.round((1 - Math.abs(slot - centre) / centre) * 100);
 }
 
 export function beaconReward(slot: number, rows = BEACON_ROWS): MgReward {

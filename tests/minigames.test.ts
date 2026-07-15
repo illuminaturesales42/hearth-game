@@ -4,9 +4,9 @@ import {
   MINIGAME_ENERGY_COST,
   MINIGAME_MAX_TOKENS,
   addEmber,
-  beaconPath,
+  beaconDrop,
   beaconReward,
-  beaconSlot,
+  beaconScore,
   catchReward,
   fishBite,
   forageField,
@@ -16,12 +16,14 @@ import {
   grantToken,
   initialMinigames,
   isEligible,
+  recordBest,
   rolloverMinigames,
   spendToken,
   stacksDeck,
   stacksReward,
   tryUnlock,
-  wishingWell,
+  wellScore,
+  wishingWellReward,
   BEACON_ROWS,
   FORAGE_SIZE,
   STACKS_PAIRS,
@@ -30,27 +32,37 @@ import { ORDERS } from '../src/data/economy';
 import { Game } from '../src/core/game';
 
 describe('minigame engines are deterministic', () => {
-  it('wishing well: same seed → same drop', () => {
-    const a = wishingWell(7, 8);
-    const b = wishingWell(7, 8);
+  it('wishing well: reward is the AIMED ring (player-driven), centre roots deepest', () => {
+    const a = wishingWellReward(2, 7, 8);
+    const b = wishingWellReward(2, 7, 8);
     expect(a).toEqual(b);
-    expect(a.slot).toBeGreaterThanOrEqual(0);
-    expect(a.slot).toBeLessThan(5);
-    expect(a.items[0]!.chain).toBe('seeds'); // wishes take root
+    expect(a.slot).toBe(2); // aimed the centre → centre
+    expect(a.items[0]!.chain).toBe('seeds');
+    expect(a.items[0]!.level).toBe(2); // centre roots a fine seedling
+    expect(wishingWellReward(0, 7, 8).slot).toBe(0); // aim an edge → edge
+    // out-of-range aim clamps into the 5 rings
+    expect(wishingWellReward(9, 7, 8).slot).toBe(4);
+    // score is centre-100, edge-50 (personal-best metric, higher = closer)
+    expect(wellScore(2)).toBe(100);
+    expect(wellScore(0)).toBe(50);
+    expect(wellScore(2)).toBeGreaterThan(wellScore(1));
   });
 
-  it('beacon drop: path is seeded, slot within range, centre is the heart', () => {
-    const p1 = beaconPath(42);
-    const p2 = beaconPath(42);
-    expect(p1).toEqual(p2);
-    expect(p1.length).toBe(BEACON_ROWS);
-    const slot = beaconSlot(p1);
-    expect(slot).toBeGreaterThanOrEqual(0);
-    expect(slot).toBeLessThanOrEqual(BEACON_ROWS);
-    // dead-centre lands the finest fish
+  it('beacon drop: aim dominates, seed adds a little drift, centre is the heart', () => {
+    // Same aim + seed → same landing (deterministic).
+    expect(beaconDrop(4, 42)).toBe(beaconDrop(4, 42));
+    // Landing stays within a slot or two of the aim (aim, not luck, dominates).
+    for (let seed = 0; seed < 40; seed++) {
+      const slot = beaconDrop(4, seed);
+      expect(slot).toBeGreaterThanOrEqual(0);
+      expect(slot).toBeLessThanOrEqual(BEACON_ROWS);
+      expect(Math.abs(slot - 4)).toBeLessThanOrEqual(2);
+    }
     const centre = beaconReward(BEACON_ROWS / 2);
     expect(centre.items[0]).toEqual({ chain: 'fish', level: 2 });
-    expect(beaconReward(0).items[0]!.level).toBe(0); // an edge still gives a little
+    expect(beaconReward(0).items[0]!.level).toBe(0);
+    expect(beaconScore(BEACON_ROWS / 2)).toBe(100);
+    expect(beaconScore(0)).toBe(0);
   });
 
   it('forge strike: schedule is seeded and never repeats a cell back-to-back', () => {
@@ -191,6 +203,40 @@ describe('Game ↔ Village Life', () => {
     // forge-strike is an L2 game on town_blacksmith — not auto-open.
     expect(g.minigameStatus('town_blacksmith')?.reason).toBe('locked-l2');
     expect(g.minigameStatus('town_blacksmith')?.unlocked).toBe(false);
+  });
+
+  it('personal best keeps the higher score and flags a new best', () => {
+    const s0 = initialMinigames('2026-07-15');
+    const r1 = recordBest(s0, 'wishing-well', 50);
+    expect(r1.isBest).toBe(true);
+    expect(r1.state.bests?.['wishing-well']).toBe(50);
+    const r2 = recordBest(r1.state, 'wishing-well', 40); // worse → not a best
+    expect(r2.isBest).toBe(false);
+    expect(r2.state.bests?.['wishing-well']).toBe(50);
+    const r3 = recordBest(r2.state, 'wishing-well', 100); // better → new best
+    expect(r3.isBest).toBe(true);
+    expect(r3.state.bests?.['wishing-well']).toBe(100);
+  });
+
+  it('finishMinigame records a personal best and reports it', () => {
+    const g = new Game(1000);
+    g.devPreviewStory(ORDERS.length);
+    const first = g.finishMinigame(
+      'wishing-well',
+      { coins: 10, items: [{ chain: 'seeds', level: 1 }], ember: 1, heart: '' },
+      undefined,
+      wellScore(1),
+    );
+    expect(first.isBest).toBe(true);
+    expect(g.minigameBest('wishing-well')).toBe(wellScore(1));
+    const second = g.finishMinigame(
+      'wishing-well',
+      { coins: 14, items: [{ chain: 'seeds', level: 2 }], ember: 2, heart: '' },
+      undefined,
+      wellScore(2),
+    );
+    expect(second.isBest).toBe(true); // centre beats adjacent
+    expect(g.minigameBest('wishing-well')).toBe(100);
   });
 
   it('a real-world action tops up a mini-game attempt', () => {
