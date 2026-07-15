@@ -21,6 +21,11 @@ const TABS: JTab[] = ['Chronicle', 'Good Days', 'Clues', 'Letters', 'People', 'P
 function esc(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c);
 }
+/** An illustrated section-header banner, only when the art id has been sliced. */
+function sectionBanner(id: string): string {
+  const url = artUrl(id);
+  return url ? `<div class="section-banner" style="background-image:url(${url})" aria-hidden="true"></div>` : '';
+}
 function ago(now: number, then: number): string {
   const d = Math.max(0, Math.round((now - then) / 86_400_000));
   return d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`;
@@ -180,9 +185,12 @@ export class Screens {
     const requests = this.game.repositoryRequests();
     const canDeliver = this.game.canDeliverFromRepository();
     const need = this.game.currentOrder().need;
+    // Art-gated illustrated header banner (lights up when ui_repository_header lands).
+    const banner = sectionBanner('ui_repository_header');
 
     if (repo.length === 0) {
       return (
+        banner +
         `<h2 class="screen-title">Your Repository</h2>` +
         `<p class="screen-sub repo-empty">Nothing kept yet. Play a building’s game, or win a Bonfire Duel, ` +
         `and what you gather rests here — safe until the village asks for it.</p>`
@@ -225,6 +233,7 @@ export class Screens {
       : `Gather more from the building games; when the town asks for what you’ve kept, you can give it here.`;
 
     return (
+      banner +
       `<h2 class="screen-title">Your Repository</h2>` +
       `<p class="screen-sub">${hint}</p>` +
       `<div class="repo-list">${shelves}</div>`

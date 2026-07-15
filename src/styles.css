@@ -3887,6 +3887,29 @@ body.reduce-motion *::after {
   text-align: center;
   color: #ecdcb6;
 }
+/* Painted illustrated backdrop (mg_bg_<game>, set inline by applyBackdrop): cover
+   the card, then a dark scrim over it so the game pieces + text stay readable.
+   Applied only when the art exists; otherwise the flat panel above shows. */
+.mg-card.mg-has-bg {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.mg-card.mg-has-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 80% at 50% 42%, rgba(12, 16, 30, 0.35), rgba(12, 16, 30, 0.74) 88%),
+    linear-gradient(180deg, rgba(12, 16, 30, 0.55), rgba(12, 16, 30, 0.42));
+  pointer-events: none;
+  z-index: 0;
+}
+.mg-card.mg-has-bg > * {
+  position: relative;
+  z-index: 1;
+}
 .mg-title {
   font-family: var(--ff-display, Georgia, serif);
   font-size: var(--fs-xl, 22px);
@@ -4257,6 +4280,23 @@ body.reduce-motion *::after {
 }
 .mg-fog-ico {
   font-size: 20px;
+}
+.mg-fog-art {
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+/* Illustrated section-header banner (art-gated; only rendered when its art exists). */
+.section-banner {
+  width: 100%;
+  aspect-ratio: 1200 / 300;
+  max-height: 120px;
+  border-radius: var(--r-card, 14px);
+  background-size: cover;
+  background-position: center;
+  margin: 2px 0 8px;
+  box-shadow: inset 0 0 0 1px rgba(255, 210, 150, 0.14);
 }
 .mg-fog-view {
   opacity: 0.5;

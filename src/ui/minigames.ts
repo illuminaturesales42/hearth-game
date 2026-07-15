@@ -35,6 +35,16 @@ import { toast } from './toast';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 
+/** Game id → painted backdrop art id (sliced into public/art when available). */
+const MINIGAME_BACKDROP: Record<string, string> = {
+  'wishing-well': 'mg_bg_well',
+  'beacon-drop': 'mg_bg_beacon',
+  'forge-strike': 'mg_bg_forge',
+  'joss-catch': 'mg_bg_catch',
+  foraging: 'mg_bg_forage',
+  'sorting-stacks': 'mg_bg_stacks',
+};
+
 export class MinigameUI {
   private id: string | null = null;
   private timers: number[] = [];
@@ -84,13 +94,33 @@ export class MinigameUI {
     if (title) title.textContent = def.title;
     const sub = el('mg-sub');
     if (sub) sub.textContent = def.blurb;
+    this.applyBackdrop(id);
     this.play(id);
+  }
+
+  /**
+   * Paint the game's illustrated backdrop behind the card if its art has been
+   * sliced (mg_bg_<game>); otherwise leave the flat panel. Fallback-guarded so
+   * the scene lights up the moment the asset lands, with no code change.
+   */
+  private applyBackdrop(id: string): void {
+    const card = document.querySelector<HTMLElement>('#minigame-overlay .mg-card');
+    if (!card) return;
+    const key = MINIGAME_BACKDROP[id];
+    const url = key ? artUrl(key) : null;
+    card.classList.toggle('mg-has-bg', !!url);
+    card.style.backgroundImage = url ? `url(${url})` : '';
   }
 
   private close(): void {
     this.clearTimers();
     const overlay = el('minigame-overlay');
     if (overlay) overlay.hidden = true;
+    const card = document.querySelector<HTMLElement>('#minigame-overlay .mg-card');
+    if (card) {
+      card.classList.remove('mg-has-bg');
+      card.style.backgroundImage = '';
+    }
     this.id = null;
   }
 
@@ -401,12 +431,20 @@ export class MinigameUI {
       b.onclick = end;
       actions.appendChild(b);
     }
+    // Painted token if the art's been sliced (mg_forage_*), emoji otherwise —
+    // so the grid upgrades the moment the assets land, with no code change.
+    const token = (art: string, emoji: string, extra = ''): string => {
+      const url = artUrl(art);
+      return url
+        ? `<img class="mg-fog-art ${extra}" src="${url}" alt="" draggable="false" />`
+        : `<span class="mg-fog-ico ${extra}">${emoji}</span>`;
+    };
     const glyph = (kind: ForageKind, pay: typeof acc): string => {
       if (kind === 'item' && pay.items.length) return tileMarkup(pay.items[0]!.chain, pay.items[0]!.level);
-      if (kind === 'coins') return `<span class="mg-fog-ico">🪙</span>`;
-      if (kind === 'ember') return `<span class="mg-fog-ico">🔥</span>`;
-      if (kind === 'heart') return `<span class="mg-fog-ico">🍯</span>`;
-      return `<span class="mg-fog-ico mg-fog-view">🌿</span>`;
+      if (kind === 'coins') return token('mg_forage_coin', '🪙');
+      if (kind === 'ember') return token('mg_forage_ember', '🔥');
+      if (kind === 'heart') return token('mg_forage_honeycomb', '🍯');
+      return token('mg_forage_leaf', '🌿', 'mg-fog-view');
     };
     stage.querySelectorAll<HTMLButtonElement>('.mg-fog').forEach((t) => {
       t.onclick = () => {

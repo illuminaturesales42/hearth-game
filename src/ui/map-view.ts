@@ -1357,20 +1357,33 @@ export class MapView {
           alpha = Math.min(1, age * 2);
         } else this.appeared.delete(p.art);
       }
-      // a soft contact shadow grounds the building on the meadow so it doesn't
-      // look like it's floating
-      if (BUILDING_INFO[p.art] && !this.reduce) {
+      // Ground the building into the meadow: a soft warm earth "pad" blends its
+      // footprint into the painted terrain (so it doesn't look pasted on), then a
+      // darker contact shadow sits it down. The pad is static (drawn even under
+      // reduced-motion, where it does the visual grounding); the shadow layers on.
+      if (BUILDING_INFO[p.art]) {
         const bx = p.x * W;
         const by = p.y * H - h * 0.02;
-        const sh = ctx.createRadialGradient(bx, by, 2, bx, by, w * 0.55);
-        sh.addColorStop(0, 'rgba(18, 24, 14, 0.30)');
-        sh.addColorStop(1, 'rgba(18, 24, 14, 0)');
-        ctx.fillStyle = sh;
+        // warm groomed-earth pad — wide + whisper-subtle so it only softens the
+        // seam between building and painted ground, never reads as a dirt blob
+        const pad = ctx.createRadialGradient(bx, by, 2, bx, by, w * 0.66);
+        pad.addColorStop(0, 'rgba(150, 128, 78, 0.14)');
+        pad.addColorStop(0.6, 'rgba(150, 128, 78, 0.07)');
+        pad.addColorStop(1, 'rgba(150, 128, 78, 0)');
         ctx.save();
         ctx.translate(bx, by);
-        ctx.scale(1, 0.3);
+        ctx.scale(1, 0.32);
+        ctx.fillStyle = pad;
         ctx.beginPath();
-        ctx.arc(0, 0, w * 0.55, 0, Math.PI * 2);
+        ctx.arc(0, 0, w * 0.68, 0, Math.PI * 2);
+        ctx.fill();
+        // darker contact shadow, tighter under the base
+        const sh = ctx.createRadialGradient(0, 0, 2, 0, 0, w * 0.5);
+        sh.addColorStop(0, 'rgba(18, 24, 14, 0.32)');
+        sh.addColorStop(1, 'rgba(18, 24, 14, 0)');
+        ctx.fillStyle = sh;
+        ctx.beginPath();
+        ctx.arc(0, 0, w * 0.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -2279,7 +2292,12 @@ export class MapView {
         `<div class="vl-body"><b>${m.title}</b><span>${sub}</span></div>${action}</div>`
       );
     }).join('');
-    return `<p class="map-locs-label">Village Life · tap to play</p><div class="vl-list">${rows}</div>`;
+    // Art-gated illustrated header (lights up when ui_villagelife_header lands).
+    const hdr = artUrl('ui_villagelife_header');
+    const banner = hdr
+      ? `<div class="section-banner" style="background-image:url(${hdr})" aria-hidden="true"></div>`
+      : '';
+    return `${banner}<p class="map-locs-label">Village Life · tap to play</p><div class="vl-list">${rows}</div>`;
   }
 
   /** Wire the Village Life index Play/Open buttons to the same paths the map uses. */
