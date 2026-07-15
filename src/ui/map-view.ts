@@ -34,6 +34,7 @@ import { bondFor, greetingFor, hearts, HEARTS_MAX } from '../core/relationships'
 import { drawButterfly, drawFlower, drawSparkle, drawStroller } from './paint-flourishes';
 import { toast } from './toast';
 import { feedback } from './feedback';
+import { minigameCta } from './minigame-cta';
 import { tomorrowLine } from './tease';
 
 const STAGE_NAMES = [
@@ -79,7 +80,14 @@ export class MapView {
   private ctx: CanvasRenderingContext2D | null = null;
   private raf = 0;
   private visible = false;
-  private reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  private mediaReduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /** Reduced-motion is honoured from BOTH the OS media query AND the in-app
+   *  Settings toggle (body.reduce-motion) — matching board-view and the minigame
+   *  overlay, so choosing "reduce motion" in Settings actually calms the map
+   *  (onset cues become toasts, ambient loops hold still). */
+  private get reduce(): boolean {
+    return this.mediaReduce || document.body.classList.contains('reduce-motion');
+  }
   /** Painted stage backdrops (sliced from the concept sheets); null until loaded. */
   private stageArt: (HTMLImageElement | null)[] = [null, null, null, null, null];
   /** Sprite cache for the composed town scene. */
@@ -582,7 +590,7 @@ export class MapView {
     host.innerHTML =
       (bust ? `<span class="bldg-bond-bust" style="background-image:url(${bust})"></span>` : '') +
       `<div class="bldg-bond-body">` +
-      `<b>${villager.name}<span class="bldg-bond-hearts">${heartRow}</span></b>` +
+      `<b>${villager.name}<span class="bldg-bond-hearts" role="img" aria-label="${filled} of ${HEARTS_MAX} hearts">${heartRow}</span></b>` +
       `<span class="bldg-bond-trait">${villager.trait}</span>` +
       `<p class="bldg-bond-greet">“${greet}”</p></div>`;
   }
@@ -617,6 +625,19 @@ export class MapView {
         artBtn.classList.toggle('is-playable', on);
         artBtn.onclick = on && onTap ? onTap : null;
         artBtn.style.cursor = on ? 'pointer' : 'default';
+        // Keyboard + screen-reader: the building image is only a live control
+        // when it can be played/opened. Otherwise it's decorative and the
+        // #bldg-play button is the accessible affordance — skip it in the tab
+        // order so there's no focusable no-op.
+        if (on) {
+          artBtn.removeAttribute('aria-hidden');
+          artBtn.tabIndex = 0;
+          artBtn.setAttribute('aria-label', label);
+        } else {
+          artBtn.setAttribute('aria-hidden', 'true');
+          artBtn.tabIndex = -1;
+          artBtn.removeAttribute('aria-label');
+        }
       }
     };
     setArt(false, '');
@@ -626,47 +647,39 @@ export class MapView {
       note.hidden = true;
       return;
     }
-    btn.hidden = false;
+    const cta = minigameCta(st, this.game.isTesterUnlimited);
     note.hidden = false;
-    if (!st.unlocked) {
-      // Not opened yet: offer to open the doors (throttled to one/day).
-      if (st.reason === 'locked-story') {
-        btn.hidden = true;
-        note.textContent = `${st.def.title} opens here once Emberhollow's story is told.`;
-      } else if (st.reason === 'locked-l2') {
-        btn.hidden = true;
-        note.textContent = `Care for this building (upgrade it) and ${st.def.title} will open its doors.`;
-      } else {
-        const open = () => {
-          if (this.game.openMinigameDoors(art) === 'opened') {
-            feedback.chime(520);
-            this.showBuilding(art, this.cardUnlockAt); // refresh into the "play" state
-          }
-        };
-        btn.disabled = false;
-        btn.textContent = `✦ Open ${st.def.title}`;
-        note.textContent = st.def.blurb;
-        btn.onclick = open;
-        setArt(true, '✦ New — tap to open', open); // the image invites the tap
-      }
+    note.textContent = cta.sub;
+
+    // The card hides the button entirely when there's nothing to open (locked
+    // states just explain themselves in the note); otherwise it shows the
+    // shared label. Copy comes from the helper so it can't drift from the index.
+    if (cta.kind === 'locked-story' || cta.kind === 'locked-l2') {
+      btn.hidden = true;
+      return;
+    }
+    btn.hidden = false;
+    if (cta.kind === 'open') {
+      const open = () => {
+        if (this.game.openMinigameDoors(art) === 'opened') {
+          feedback.chime(520);
+          this.showBuilding(art, this.cardUnlockAt); // refresh into the "play" state
+        }
+      };
+      btn.disabled = false;
+      btn.textContent = cta.label;
+      btn.onclick = open;
+      setArt(true, cta.badge, open); // the image invites the tap
       return;
     }
     // Unlocked: play, if there's a token + the energy.
-    note.textContent = this.game.isTesterUnlimited
-      ? 'Unlimited goes — tester mode.'
-      : `${st.tokens} ${st.tokens === 1 ? 'go' : 'goes'} today · costs 4 energy. More goes come from living well.`;
-    btn.disabled = st.reason !== 'ready';
-    btn.textContent =
-      st.reason === 'no-tokens'
-        ? 'No goes left today'
-        : st.reason === 'no-energy'
-          ? 'Need more energy'
-          : `${st.def.verb}`;
+    btn.disabled = !cta.actionable;
+    btn.textContent = cta.label;
     btn.onclick = () => {
-      if (st.reason !== 'ready') return;
+      if (!cta.actionable) return;
       this.launchMinigame(st.def.id);
     };
-    if (st.reason === 'ready') setArt(true, `✦ ${st.def.verb} — tap to play`, () => this.launchMinigame(st.def.id));
+    if (cta.actionable) setArt(true, cta.badge, () => this.launchMinigame(st.def.id));
   }
 
   private resize(): void {
@@ -2490,30 +2503,25 @@ export class MapView {
     const rows = MINIGAMES.map((m) => {
       const st = this.game.minigameStatus(m.buildingArt);
       if (!st) return '';
+      const cta = minigameCta(st, this.game.isTesterUnlimited);
+      if (cta.kind === 'locked-story') return ''; // never happens post-story, but stay safe
       const thumb = artUrl(m.buildingArt);
+      // Same copy as the building card (via minigameCta); the index differs only
+      // in that a locked-L2 game shows a disabled button rather than hiding it.
       let action: string;
-      let sub: string;
-      if (!st.unlocked) {
-        if (st.reason === 'locked-l2') {
-          action = `<button class="vl-play" data-open="${m.buildingArt}" disabled>Locked</button>`;
-          sub = `Care for the building to open it`;
-        } else {
-          action = `<button class="vl-play" data-open="${m.buildingArt}">✦ Open</button>`;
-          sub = m.blurb;
-        }
-      } else if (st.reason === 'ready') {
-        action = `<button class="vl-play" data-play="${m.id}">${m.verb}</button>`;
-        sub = this.game.isTesterUnlimited
-          ? 'Unlimited goes — tester mode'
-          : `${st.tokens} ${st.tokens === 1 ? 'go' : 'goes'} today · 4 energy`;
+      if (cta.kind === 'open') {
+        action = `<button class="vl-play" data-open="${m.buildingArt}">${cta.label}</button>`;
+      } else if (cta.kind === 'ready') {
+        action = `<button class="vl-play" data-play="${m.id}">${cta.label}</button>`;
+      } else if (cta.kind === 'locked-l2') {
+        action = `<button class="vl-play" data-open="${m.buildingArt}" disabled>${cta.label}</button>`;
       } else {
-        action = `<button class="vl-play" data-play="${m.id}" disabled>${st.reason === 'no-energy' ? 'Need energy' : 'No goes left'}</button>`;
-        sub = st.reason === 'no-energy' ? 'A real-world action refills energy' : 'More goes come from living well';
+        action = `<button class="vl-play" data-play="${m.id}" disabled>${cta.label}</button>`;
       }
       return (
         `<div class="vl-row">` +
         (thumb ? `<div class="vl-thumb" style="background-image:url(${thumb})" aria-hidden="true"></div>` : '') +
-        `<div class="vl-body"><b>${m.title}</b><span>${sub}</span></div>${action}</div>`
+        `<div class="vl-body"><b>${m.title}</b><span>${cta.sub}</span></div>${action}</div>`
       );
     }).join('');
     // Art-gated illustrated header (lights up when ui_villagelife_header lands).

@@ -94,6 +94,19 @@ import type {
   SocialState,
 } from './types';
 
+/** Why a building's mini-game is (or isn't) playable right now. */
+export type MinigameReason = 'ready' | 'no-tokens' | 'no-energy' | 'locked-story' | 'locked-l2';
+
+/** A building's mini-game and its current playability. Shared source of truth
+ *  for the building card and the Village Life index (see ui/minigame-cta.ts). */
+export interface MinigameStatus {
+  def: MinigameDef;
+  unlocked: boolean;
+  canPlay: boolean;
+  tokens: number;
+  reason: MinigameReason;
+}
+
 export type GameEvent =
   | { type: 'state' }
   | { type: 'spawn'; index: number }
@@ -1124,13 +1137,7 @@ export class Game {
   }
 
   /** The mini-game a building offers and its current playability, for the building card. */
-  minigameStatus(art: string): {
-    def: MinigameDef;
-    unlocked: boolean;
-    canPlay: boolean;
-    tokens: number;
-    reason: 'ready' | 'no-tokens' | 'no-energy' | 'locked-story' | 'locked-l2';
-  } | null {
+  minigameStatus(art: string): MinigameStatus | null {
     const def = minigameForBuilding(art);
     if (!def) return null;
     const done = this.isStoryComplete();

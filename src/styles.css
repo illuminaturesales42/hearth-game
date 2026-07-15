@@ -3940,6 +3940,10 @@ body.reduce-motion *::after {
 .vl-play {
   flex: 0 0 auto;
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px; /* comfortable touch target on mobile */
   border: 1px solid rgba(255, 210, 122, 0.34);
   background: linear-gradient(180deg, rgba(244, 166, 59, 0.22), rgba(229, 118, 30, 0.15));
   color: #ffe6b8;
