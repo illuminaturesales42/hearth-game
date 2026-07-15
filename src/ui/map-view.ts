@@ -8,7 +8,7 @@
  * This is the shippable procedural stand-in; the painted stage art swaps in
  * behind the same `stage()` data during the M2 art pass.
  */
-import type { Game } from '../core/game';
+import type { Game, GameEvent } from '../core/game';
 import { MAP_LOCATIONS } from '../data/world';
 import { MINIGAMES } from '../data/minigames';
 import { ORDERS, RESTORE_ORDERS, chapterFor, stageFor } from '../data/economy';
@@ -26,6 +26,7 @@ import {
 import { computeMood, meditatedToday, moodCaption } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
+import { ReactionOnsets, type OnsetKind } from './world-reactions';
 import { currentWeather } from './weather';
 import { artUrl } from './art';
 import { drawButterfly, drawFlower, drawSparkle, drawStroller } from './paint-flourishes';
@@ -111,6 +112,9 @@ export class MapView {
   private dragMoved = false;
   private dragFrom = { x: 0, y: 0, panX: 0, panY: 0 };
 
+  /** One-shot reaction cues (the *felt* onset when a real action changes the town). */
+  private onsets = new ReactionOnsets();
+
   constructor(private game: Game) {
     // The painted stage backdrops are a fallback for when the composed-town art
     // pack is absent (see draw() — the town always wins when `town_townhall`
@@ -145,6 +149,36 @@ export class MapView {
         if (this.reduce) this.draw(0);
       }
     });
+    // The *felt* living world: when a real action lands, fire a brief onset cue
+    // (light + motion + one soft tone) right where the town answers, plus a
+    // one-line note. Positive-only, self-dismissing — reflect, never punish.
+    game.subscribe((ev) => this.onReactionEvent(ev));
+  }
+
+  /** Map a game event to a reaction onset (cue + caption) at the town spot. */
+  private onReactionEvent(ev: GameEvent): void {
+    if (!this.visible) return; // seen-while-away is handled by the return recap
+    let cue: { x: number; y: number; kind: OnsetKind; note: string; colour?: string } | null = null;
+    if (ev.type === 'action' && ev.energy > 0) cue = reactionForAction(ev.actionId);
+    else if (ev.type === 'health' && ev.fromSteps > 0)
+      cue = { x: 0.42, y: 0.72, kind: 'motes', note: 'The lanes fill after your walk.' };
+    else if (ev.type === 'gratitude' && ev.energy > 0)
+      cue = { x: 0.5, y: 0.5, kind: 'glow', note: 'A warmth spreads from the hearth.' };
+    else if (ev.type === 'kindness' && ev.energy > 0)
+      cue = { x: 0.5, y: 0.62, kind: 'heart', note: 'A kindness ripples out.', colour: '#e6739a' };
+    else if (ev.type === 'stargaze' && ev.energy > 0)
+      cue = { x: 0.5, y: 0.22, kind: 'glow', note: 'The stars lean a little closer.' };
+    if (!cue) return;
+    feedback.chime(cue.kind === 'ripple' ? 300 : 520);
+    // Reduced-motion: no rAF loop to animate a cue, so acknowledge with a
+    // self-timing toast instead of a canvas onset (still "the town noticed").
+    if (this.reduce) {
+      toast(cue.note);
+      return;
+    }
+    this.onsets.add(cue.kind, cue.x, cue.y, cue.colour ? { colour: cue.colour } : {});
+    if (cue.kind === 'ripple' || cue.kind === 'bloom') this.onsets.add('motes', cue.x, cue.y - 0.03);
+    this.onsets.add('caption', cue.x, cue.y - 0.06, { text: cue.note });
   }
 
   private progress(): number {
@@ -658,6 +692,10 @@ export class MapView {
       const mood = this.mood();
       this.drawTown(ctx, W, H, t, prog, stage, mood);
       ctx.restore();
+      // Whole-world colour grade (outside the camera so it covers the viewport):
+      // a warm wash after sleep + meditation, cooler when the mind is restless —
+      // the cheapest way to make the *entire* town feel like it answered your day.
+      this.applyColourGrade(ctx, W, H, mood);
       this.updateBar(prog, stage, mood);
       return;
     }
@@ -1785,6 +1823,8 @@ export class MapView {
     // --- your day, reflected: real-world actions bloom in the town ---
     // (see src/core/world-mood.ts — every reaction only ever brightens the scene)
     this.drawReactions(ctx, W, H, t, night, mood, delivered);
+    // One-shot onset cues (the *felt* moment a real action lands), on top.
+    this.onsets.draw(ctx, W, H, this.reduce);
   }
 
   /**
@@ -1793,6 +1833,26 @@ export class MapView {
    * a busier road after a walk, and festival banners for a long streak.
    * Kept apart from drawTown's scenery so the mapping stays legible.
    */
+  /**
+   * A whole-viewport warm colour grade that deepens with the hearth glow (sleep +
+   * meditation). Purely additive warmth — it only ever makes the town feel cosier,
+   * never cooler or darker (pillar: reflect, never punish). Static, so reduced-
+   * motion is unaffected. Drawn outside the camera transform to cover the viewport.
+   */
+  private applyColourGrade(ctx: CanvasRenderingContext2D, W: number, H: number, mood: WorldMood): void {
+    const warmth = Math.max(0, mood.glow - 0.25); // 0 until a restful day earns it
+    if (warmth <= 0.001) return;
+    const a = Math.min(0.13, warmth * 0.18);
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, `rgba(255, 214, 150, ${a.toFixed(3)})`);
+    g.addColorStop(1, `rgba(255, 190, 120, ${(a * 0.5).toFixed(3)})`);
+    ctx.save();
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
   private drawReactions(
     ctx: CanvasRenderingContext2D,
     W: number,
@@ -1850,8 +1910,8 @@ export class MapView {
     // Water + stretch → the gardens green up: a soft vitality over the meadow
     // and a few flowers by the garden plot once it's been restored.
     if (mood.gardenLush > 0) {
-      const gx = W * 0.73;
-      const gy = H * 0.66;
+      const gx = W * 0.63; // the garden's live map position (town-layout)
+      const gy = H * 0.57;
       const gr = W * 0.16;
       const g = ctx.createRadialGradient(gx, gy - gr * 0.25, gr * 0.15, gx, gy - gr * 0.25, gr);
       g.addColorStop(0, `rgba(126, 196, 106, ${(0.08 + mood.gardenLush * 0.14).toFixed(3)})`);
@@ -1878,8 +1938,8 @@ export class MapView {
         for (let i = 0; i < 3; i++) {
           drawFlower(
             ctx,
-            W * (0.68 + i * 0.03),
-            H * (0.7 + (i % 2) * 0.015),
+            W * (0.6 + i * 0.03),
+            H * (0.55 + (i % 2) * 0.015),
             2.6,
             FLOWER_COLOURS[(i + 2) % FLOWER_COLOURS.length]!,
           );
@@ -1889,8 +1949,8 @@ export class MapView {
 
     // Drink water → the well sparkles and its plaza feels fresh.
     if (mood.wellSparkle && delivered >= 6) {
-      const wx = W * 0.475;
-      const wy = H * 0.635 - H * 0.03;
+      const wx = W * 0.5; // the well's live map position (town-layout)
+      const wy = H * 0.6 - H * 0.05;
       const count = this.reduce ? 3 : 6;
       for (let i = 0; i < count; i++) {
         const seed = i * 1.7;
@@ -2322,6 +2382,30 @@ export class MapView {
       };
     });
   }
+}
+
+/**
+ * Which real-world action lights which part of the town, and the one-line note.
+ * Positions are normalized to the live building layout. Positive-only — every
+ * gesture *adds* a flourish; nothing here can ever darken the scene.
+ */
+function reactionForAction(
+  actionId: string,
+): { x: number; y: number; kind: OnsetKind; note: string; colour?: string } | null {
+  if (actionId === 'water')
+    return { x: 0.5, y: 0.6, kind: 'ripple', note: 'The wells drank with you.', colour: '#bfe6ff' };
+  if (actionId === 'steps' || actionId === 'stairs')
+    return { x: 0.42, y: 0.72, kind: 'motes', note: 'The lanes fill after your walk.' };
+  if (actionId === 'stretch' || actionId === 'squats')
+    return { x: 0.63, y: 0.55, kind: 'bloom', note: 'The gardens stir awake.' };
+  if (actionId.endsWith('-photo') || actionId === 'photo-outside')
+    return { x: 0.5, y: 0.84, kind: 'bloom', note: 'Colour returns to the shore.' };
+  if (actionId.startsWith('med-') || actionId === 'log-meditation')
+    return { x: 0.5, y: 0.9, kind: 'ripple', note: 'The seas settle as you breathe.', colour: '#bfe6ff' };
+  if (actionId === 'log-cold-plunge')
+    return { x: 0.5, y: 0.9, kind: 'mist', note: 'A cool mist drifts in off the water.', colour: '#d6eef6' };
+  if (actionId === 'log-sauna') return { x: 0.35, y: 0.52, kind: 'glow', note: 'Warmth curls from the chimneys.' };
+  return null;
 }
 
 // ---- colour helpers ----
