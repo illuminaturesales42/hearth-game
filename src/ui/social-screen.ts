@@ -92,7 +92,7 @@ export class SocialScreen {
           const can = this.game.canAskFriend(f.id);
           return (
             `<div class="friend"><div class="friend-face av-${f.avatar}" aria-hidden="true"></div>` +
-            `<div class="friend-body"><b>${f.name}</b><span class="friend-hearts">${hearts(4)}</span></div>` +
+            `<div class="friend-body"><b>${f.name}</b><span>By your hearth</span></div>` +
             (can
               ? `<button class="earn-btn" data-ask="${f.id}">Ask for help</button>`
               : `<span class="earn-auto">Asked today</span>`) +

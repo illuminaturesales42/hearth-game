@@ -825,6 +825,16 @@ export class Game {
 
   /** Coin cost to reach each tier: [→ L2, → L3]. Escalating, so a long-term sink. */
   static UPGRADE_COSTS = [120, 320] as const;
+  /** Per-building cost multiplier — grander/civic buildings cost more to cherish,
+   *  the small homes and huts a little less. Pure coin-sink variety, never power. */
+  static UPGRADE_FACTOR: Record<string, number> = {
+    town_townhall: 1.5,
+    town_library: 1.3,
+    town_market: 1.2,
+    town_bakery: 1.2,
+    town_garden: 1.1,
+    town_dock: 1.1,
+  };
 
   /** Current upgrade tier of a building (0 = base, 1 = L2, 2 = L3). */
   upgradeTier(art: string): number {
@@ -835,23 +845,23 @@ export class Game {
   canUpgrade(art: string): boolean {
     const building = TOWN_BUILDINGS.find((b) => b.art === art);
     if (!building || this.state.orderIndex < building.unlockAt) return false;
-    const tier = this.upgradeTier(art);
-    if (tier >= Game.UPGRADE_COSTS.length) return false;
-    return this.state.coins >= Game.UPGRADE_COSTS[tier]!;
+    const cost = this.upgradeCost(art);
+    return cost !== null && this.state.coins >= cost;
   }
 
   /** The coin cost of the next upgrade for a building, or null if maxed. */
   upgradeCost(art: string): number | null {
     const tier = this.upgradeTier(art);
-    return tier < Game.UPGRADE_COSTS.length ? Game.UPGRADE_COSTS[tier]! : null;
+    if (tier >= Game.UPGRADE_COSTS.length) return null;
+    const factor = Game.UPGRADE_FACTOR[art] ?? 1;
+    return Math.round((Game.UPGRADE_COSTS[tier]! * factor) / 10) * 10; // round to a tidy 10
   }
 
   /** Spend coins to raise a building a tier. Beauty and pride — never power. */
   upgradeBuilding(art: string): boolean {
-    if (!this.canUpgrade(art)) return false;
-    const tier = this.upgradeTier(art);
-    const cost = Game.UPGRADE_COSTS[tier]!;
-    const nextTier = tier + 1;
+    const cost = this.upgradeCost(art);
+    if (cost === null || !this.canUpgrade(art)) return false;
+    const nextTier = this.upgradeTier(art) + 1;
     this.state = {
       ...this.state,
       coins: this.state.coins - cost,

@@ -28,7 +28,9 @@ import type { WeatherNow, WorldMood } from '../core/world-mood';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
 import { currentWeather } from './weather';
-import { artUrl } from './art';
+import { artUrl, portraitFor } from './art';
+import { VILLAGER_DEFS } from '../data/villagers';
+import { bondFor, greetingFor, hearts, HEARTS_MAX } from '../core/relationships';
 import { drawButterfly, drawFlower, drawSparkle, drawStroller } from './paint-flourishes';
 import { toast } from './toast';
 import { feedback } from './feedback';
@@ -523,8 +525,17 @@ export class MapView {
         upBtn.hidden = true;
       } else {
         const tier = this.game.upgradeTier(art);
+        // What caring brings is purely cosmetic — deeper colours, a golden aura
+        // of pride. Coins buy beauty, never power (a hard pillar).
+        const tierNote = [
+          'Tend it and its colours deepen — a home lovingly kept.',
+          'One more kindness and it glows with a quiet golden pride.',
+          'As cherished as Emberhollow can make it.',
+        ];
         tierEl.hidden = false;
-        tierEl.textContent = `${tierNames[tier] ?? 'Beloved'} · ${'★'.repeat(tier + 1)}${'☆'.repeat(Math.max(0, 2 - tier))}`;
+        tierEl.innerHTML =
+          `<span class="bldg-tier-name">${tierNames[tier] ?? 'Beloved'} · ${'★'.repeat(tier + 1)}${'☆'.repeat(Math.max(0, 2 - tier))}</span>` +
+          `<span class="bldg-tier-note">${tierNote[tier] ?? tierNote[2]}</span>`;
         const cost = this.game.upgradeCost(art);
         if (cost === null) {
           upBtn.hidden = false;
@@ -546,9 +557,34 @@ export class MapView {
     }
     // Village Life: once the story's told, buildings open their doors.
     this.renderMinigameCta(art, locked);
+    // Whose home this is, and how your bond stands (Codex Book III).
+    this.renderBond(art, locked);
 
     const m = document.getElementById('bldg-modal');
     if (m) m.hidden = false;
+  }
+
+  /** Show the villager who lives here + your bond + a greeting, on the card. */
+  private renderBond(art: string, locked: boolean): void {
+    const host = document.getElementById('bldg-bond');
+    if (!host) return;
+    const villager = VILLAGER_DEFS.find((v) => v.home === art);
+    if (!villager || locked) {
+      host.hidden = true;
+      return;
+    }
+    const bond = bondFor(this.game.snapshot.relationships, villager.id);
+    const filled = hearts(bond.points);
+    const heartRow = '♥'.repeat(filled) + '♡'.repeat(Math.max(0, HEARTS_MAX - filled));
+    const greet = greetingFor(this.game.snapshot.relationships, villager.id);
+    const bust = portraitFor(villager.name);
+    host.hidden = false;
+    host.innerHTML =
+      (bust ? `<span class="bldg-bond-bust" style="background-image:url(${bust})"></span>` : '') +
+      `<div class="bldg-bond-body">` +
+      `<b>${villager.name}<span class="bldg-bond-hearts">${heartRow}</span></b>` +
+      `<span class="bldg-bond-trait">${villager.trait}</span>` +
+      `<p class="bldg-bond-greet">“${greet}”</p></div>`;
   }
 
   /** Hide the building card and launch its game. */
