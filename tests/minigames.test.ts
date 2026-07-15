@@ -105,9 +105,10 @@ describe('minigame engines are deterministic', () => {
 });
 
 describe('minigame unlock, tokens and embers (pure)', () => {
-  it('eligibility respects the story gate and the L2 gate', () => {
-    expect(isEligible('story', false, 0)).toBe(false); // story not done
-    expect(isEligible('story', true, 0)).toBe(true); // opens on story complete
+  it('eligibility respects the building-returned gate and the L2 gate', () => {
+    expect(isEligible('story', false, 0)).toBe(false); // building not back yet
+    expect(isEligible('story', true, 0)).toBe(true); // opens when it returns
+    expect(isEligible('l2', false, 1)).toBe(false); // cared-for but not returned
     expect(isEligible('l2', true, 0)).toBe(false); // building not cared for
     expect(isEligible('l2', true, 1)).toBe(true); // L2 reached
   });
@@ -148,15 +149,31 @@ describe('minigame unlock, tokens and embers (pure)', () => {
 });
 
 describe('Game ↔ Village Life', () => {
-  it('is locked until the story is complete', () => {
+  it('is locked until its building returns, with a warm orders-to-go count', () => {
     const g = new Game(1000);
-    expect(g.isStoryComplete()).toBe(false);
     const st = g.minigameStatus('prop_well');
     expect(st?.reason).toBe('locked-story');
+    expect(st?.ordersToGo).toBe(6); // the well returns at order 6
     expect(g.startMinigame('wishing-well')).toBeNull();
   });
 
-  it('story complete → doors open (one/day), a play spends energy + a token, rewards bank', () => {
+  it('each game unlocks progressively as its building returns (mid-story)', () => {
+    const g = new Game(1000);
+    g.devPreviewStory(6); // the well is back; the lighthouse (9) is not
+    const well = g.minigameStatus('prop_well');
+    expect(well?.unlocked).toBe(true); // story game auto-opens on return
+    expect(well?.canPlay).toBe(true);
+    const beacon = g.minigameStatus('prop_lighthouse');
+    expect(beacon?.reason).toBe('locked-story');
+    expect(beacon?.ordersToGo).toBe(3);
+    g.devPreviewStory(9);
+    expect(g.minigameStatus('prop_lighthouse')?.canPlay).toBe(true);
+    // L2 game: building back at 21, but still needs caring for.
+    g.devPreviewStory(21);
+    expect(g.minigameStatus('town_blacksmith')?.reason).toBe('locked-l2');
+  });
+
+  it('building returned → doors open, a play spends energy + a token, rewards bank', () => {
     const g = new Game(1000);
     g.devPreviewStory(ORDERS.length); // finish the tale
     expect(g.isStoryComplete()).toBe(true);
@@ -183,11 +200,11 @@ describe('Game ↔ Village Life', () => {
     expect(g.minigameState.emberToday).toBe(2);
   });
 
-  it('story-gated games auto-open the moment the story is told (no extra "open" tap)', () => {
+  it('story-gated games auto-open the moment their building returns (no extra "open" tap)', () => {
     const g = new Game(1000);
-    // Before the story is done, the well is locked.
+    // Before the well is back, it's locked.
     expect(g.minigameStatus('prop_well')?.reason).toBe('locked-story');
-    g.devPreviewStory(ORDERS.length);
+    g.devPreviewStory(6);
     // Now the well is immediately unlocked + playable — the bug was needing a
     // separate openMinigameDoors tap first, which read as "the game won't launch".
     const st = g.minigameStatus('prop_well');
@@ -195,6 +212,22 @@ describe('Game ↔ Village Life', () => {
     expect(st?.canPlay).toBe(true);
     expect(g.canPlayMinigame('wishing-well')).toBe(true);
     expect(g.startMinigame('wishing-well')).not.toBeNull();
+  });
+
+  it('tester mode reaches every game at any story progress', () => {
+    const g = new Game(1000); // order 0 — nothing returned
+    g.setTesterUnlimited(true);
+    for (const art of [
+      'prop_well',
+      'prop_lighthouse',
+      'town_blacksmith',
+      'town_fisherhut',
+      'town_garden',
+      'town_library',
+    ]) {
+      const st = g.minigameStatus(art);
+      expect(st?.reason).toBe('ready');
+    }
   });
 
   it('L2 games still require the building be cared for, then opened', () => {

@@ -15,7 +15,14 @@ describe('minigameCta — shared card/index copy', () => {
     expect(c.kind).toBe('locked-story');
     expect(c.label).toBe('');
     expect(c.actionable).toBe(false);
-    expect(c.sub).toContain('story is told');
+    expect(c.sub).toContain('opens when this building returns');
+  });
+
+  it('story-locked with a count: warm orders-to-go line (singular + plural)', () => {
+    const many = minigameCta({ ...st('locked-story', false), ordersToGo: 4 }, false);
+    expect(many.sub).toContain('4 orders to go');
+    const one = minigameCta({ ...st('locked-story', false), ordersToGo: 1 }, false);
+    expect(one.sub).toContain('just one order to go');
   });
 
   it('L2-locked: a disabled "Locked" affordance', () => {

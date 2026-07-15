@@ -52,6 +52,26 @@ export const TOWN_BUILDINGS: readonly TownPiece[] = [
   { art: 'town_dock', x: 0.67, y: 0.9, w: 0.15, unlockAt: 22, ruinVariant: 5 },
 ] as const;
 
+/**
+ * Buildings that live outside TOWN_BUILDINGS (painted directly onto the scene,
+ * not composited sprites) but still have a story return point. The lighthouse
+ * relights at order 9 — the beacon story beat (see map-view's painted lighthouse).
+ */
+const SPECIAL_RETURNS: Record<string, number> = {
+  prop_lighthouse: 9,
+};
+
+/**
+ * The order at which a building returns to Emberhollow, or null if it isn't a
+ * story building at all. Canonical source for "has this building come back?" —
+ * used by the mini-game eligibility gate so each game opens with its building.
+ */
+export function returnsAt(art: string): number | null {
+  const piece = TOWN_BUILDINGS.find((b) => b.art === art);
+  if (piece) return piece.unlockAt;
+  return SPECIAL_RETURNS[art] ?? null;
+}
+
 /** Friendly names + story links for tappable buildings. */
 export const BUILDING_INFO: Record<string, string> = {
   prop_sign: 'The Notice Board',

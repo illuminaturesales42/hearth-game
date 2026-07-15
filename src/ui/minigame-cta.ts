@@ -32,14 +32,17 @@ export interface MinigameCta {
 export function minigameCta(st: MinigameStatus, tester: boolean): MinigameCta {
   const title = st.def.title;
   if (!st.unlocked) {
-    if (st.reason === 'locked-story')
-      return {
-        kind: 'locked-story',
-        label: '',
-        actionable: false,
-        sub: `${title} opens here once Emberhollow's story is told.`,
-        badge: '',
-      };
+    if (st.reason === 'locked-story') {
+      // The building hasn't returned yet — warm and hopeful, never a countdown scold.
+      const n = st.ordersToGo;
+      const when =
+        n === undefined
+          ? `${title} opens when this building returns.`
+          : n === 1
+            ? `${title} opens when this building returns — just one order to go.`
+            : `${title} opens when this building returns — ${n} orders to go.`;
+      return { kind: 'locked-story', label: '', actionable: false, sub: when, badge: '' };
+    }
     if (st.reason === 'locked-l2')
       return {
         kind: 'locked-l2',

@@ -563,7 +563,7 @@ export class MapView {
         }
       }
     }
-    // Village Life: once the story's told, buildings open their doors.
+    // Village Life: buildings open their doors as each one returns.
     this.renderMinigameCta(art, locked);
     // Whose home this is, and how your bond stands (Codex Book III).
     this.renderBond(art, locked);
@@ -2496,34 +2496,40 @@ export class MapView {
   /**
    * Village Life index: a single list of the building games with big Play
    * buttons, so every mini-game is reachable in one tap without hunting for the
-   * building on the map. Appears once the story's told (when the games open).
+   * building on the map. Appears as soon as the first game's building returns
+   * (the well, order 6); not-yet-returned games show as gentle teasers so the
+   * list telegraphs what's coming.
    */
   private villageLifeSection(): string {
-    if (!this.game.isStoryComplete()) return '';
-    const rows = MINIGAMES.map((m) => {
-      const st = this.game.minigameStatus(m.buildingArt);
-      if (!st) return '';
-      const cta = minigameCta(st, this.game.isTesterUnlimited);
-      if (cta.kind === 'locked-story') return ''; // never happens post-story, but stay safe
-      const thumb = artUrl(m.buildingArt);
-      // Same copy as the building card (via minigameCta); the index differs only
-      // in that a locked-L2 game shows a disabled button rather than hiding it.
-      let action: string;
-      if (cta.kind === 'open') {
-        action = `<button class="vl-play" data-open="${m.buildingArt}">${cta.label}</button>`;
-      } else if (cta.kind === 'ready') {
-        action = `<button class="vl-play" data-play="${m.id}">${cta.label}</button>`;
-      } else if (cta.kind === 'locked-l2') {
-        action = `<button class="vl-play" data-open="${m.buildingArt}" disabled>${cta.label}</button>`;
-      } else {
-        action = `<button class="vl-play" data-play="${m.id}" disabled>${cta.label}</button>`;
-      }
-      return (
-        `<div class="vl-row">` +
-        (thumb ? `<div class="vl-thumb" style="background-image:url(${thumb})" aria-hidden="true"></div>` : '') +
-        `<div class="vl-body"><b>${m.title}</b><span>${cta.sub}</span></div>${action}</div>`
-      );
-    }).join('');
+    const statuses = MINIGAMES.map((m) => ({ m, st: this.game.minigameStatus(m.buildingArt) }));
+    // Nothing to show until at least one game's building has returned.
+    if (!statuses.some(({ st }) => st && st.reason !== 'locked-story')) return '';
+    const rows = statuses
+      .map(({ m, st }) => {
+        if (!st) return '';
+        const cta = minigameCta(st, this.game.isTesterUnlimited);
+        const thumb = artUrl(m.buildingArt);
+        // Same copy as the building card (via minigameCta); the index differs only
+        // in that locked games show a disabled affordance rather than hiding it.
+        let action: string;
+        if (cta.kind === 'open') {
+          action = `<button class="vl-play" data-open="${m.buildingArt}">${cta.label}</button>`;
+        } else if (cta.kind === 'ready') {
+          action = `<button class="vl-play" data-play="${m.id}">${cta.label}</button>`;
+        } else if (cta.kind === 'locked-l2') {
+          action = `<button class="vl-play" data-open="${m.buildingArt}" disabled>${cta.label}</button>`;
+        } else if (cta.kind === 'locked-story') {
+          action = `<button class="vl-play" disabled>Returning</button>`;
+        } else {
+          action = `<button class="vl-play" data-play="${m.id}" disabled>${cta.label}</button>`;
+        }
+        return (
+          `<div class="vl-row${cta.kind === 'locked-story' ? ' vl-row-teaser' : ''}">` +
+          (thumb ? `<div class="vl-thumb" style="background-image:url(${thumb})" aria-hidden="true"></div>` : '') +
+          `<div class="vl-body"><b>${m.title}</b><span>${cta.sub}</span></div>${action}</div>`
+        );
+      })
+      .join('');
     // Art-gated illustrated header (lights up when ui_villagelife_header lands).
     const hdr = artUrl('ui_villagelife_header');
     const banner = hdr
@@ -2549,7 +2555,8 @@ export class MapView {
           feedback.chime(520);
           this.renderList();
         } else {
-          toast('One new building opens per day — come back tomorrow for the next.');
+          // 'ineligible' — the building needs caring for first (no daily throttle exists).
+          toast('Care for the building first — its doors open once it’s loved.');
         }
       };
     });

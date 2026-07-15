@@ -79,7 +79,7 @@ import {
 } from './minigames';
 import { MINIGAME_BY_ID, WISHES, minigameForBuilding, type MinigameDef } from '../data/minigames';
 import { orderAt } from '../data/endless';
-import { DECOR_CATALOG, TOWN_BUILDINGS, BUILDING_INFO } from '../data/town-layout';
+import { DECOR_CATALOG, TOWN_BUILDINGS, BUILDING_INFO, returnsAt } from '../data/town-layout';
 import { bondFor, deliveryMemory, hearts, recordMemory, restoreMemory } from './relationships';
 import { villagerIdFor, villagerDef } from '../data/villagers';
 import type {
@@ -105,6 +105,8 @@ export interface MinigameStatus {
   canPlay: boolean;
   tokens: number;
   reason: MinigameReason;
+  /** When 'locked-story': orders left until the game's building returns. */
+  ordersToGo?: number;
 }
 
 export type GameEvent =
@@ -1140,24 +1142,37 @@ export class Game {
   minigameStatus(art: string): MinigameStatus | null {
     const def = minigameForBuilding(art);
     if (!def) return null;
-    const done = this.isStoryComplete();
-    // Tester mode also bypasses the L2-upgrade gate so all six games are reachable.
-    const eligible = isEligible(def.unlock, done, this.testerUnlimited ? 2 : this.upgradeTier(art));
-    // Story-gated games (the well, the beacon) open automatically the moment the
-    // story is told — there is no upgrade ceremony for them, so requiring a
-    // separate "open the doors" tap made them feel like they didn't launch.
-    // L2 games still open explicitly after their building is cared for.
-    const unlocked = isUnlocked(this.state.minigames, def.id) || (def.unlock === 'story' && done);
+    // Games unlock progressively as each building returns (the well at order 6,
+    // the beacon at 9…) — NOT at full story completion, which read as broken
+    // mid-game. Tester mode bypasses both the return gate and the L2-upgrade
+    // gate so all six games are reachable at any progress.
+    const at = returnsAt(art);
+    const returned = this.testerUnlimited || (at !== null && this.state.orderIndex >= at);
+    const eligible = isEligible(def.unlock, returned, this.testerUnlimited ? 2 : this.upgradeTier(art));
+    // Story-gated games (the well, the beacon) open automatically the moment
+    // their building returns — there is no upgrade ceremony for them, so
+    // requiring a separate "open the doors" tap made them feel like they
+    // didn't launch. L2 games still open explicitly after being cared for.
+    const unlocked = isUnlocked(this.state.minigames, def.id) || (def.unlock === 'story' && returned);
     const tokens = this.state.minigames.tokens;
     let reason: 'ready' | 'no-tokens' | 'no-energy' | 'locked-story' | 'locked-l2' = 'ready';
-    if (!done) reason = 'locked-story';
+    if (!returned) reason = 'locked-story';
     else if (!eligible) reason = 'locked-l2';
     // Tester mode gives unlimited goes so the mechanics can be tried freely —
     // the token + energy gates are skipped (see startMinigame too).
     else if (this.testerUnlimited) reason = 'ready';
     else if (tokens <= 0) reason = 'no-tokens';
     else if (this.state.energy.current < MINIGAME_ENERGY_COST) reason = 'no-energy';
-    return { def, unlocked, canPlay: unlocked && reason === 'ready', tokens, reason };
+    // How many more orders until the building is back — for warm lock copy.
+    const ordersToGo = !returned && at !== null ? Math.max(0, at - this.state.orderIndex) : undefined;
+    return {
+      def,
+      unlocked,
+      canPlay: unlocked && reason === 'ready',
+      tokens,
+      reason,
+      ...(ordersToGo !== undefined ? { ordersToGo } : {}),
+    };
   }
 
   /** Open a building's doors — at most one new game opens per day. */
@@ -1165,7 +1180,9 @@ export class Game {
     this.beginDay(now);
     const def = minigameForBuilding(art);
     if (!def) return 'ineligible';
-    const eligible = isEligible(def.unlock, this.isStoryComplete(), this.testerUnlimited ? 2 : this.upgradeTier(art));
+    const at = returnsAt(art);
+    const returned = this.testerUnlimited || (at !== null && this.state.orderIndex >= at);
+    const eligible = isEligible(def.unlock, returned, this.testerUnlimited ? 2 : this.upgradeTier(art));
     const res = tryUnlock(this.state.minigames, def.id, eligible, localDayKey(now));
     if (res.outcome === 'opened') {
       this.state = { ...this.state, minigames: res.state };

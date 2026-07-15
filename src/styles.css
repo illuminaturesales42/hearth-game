@@ -3968,6 +3968,13 @@ body.reduce-motion *::after {
   opacity: 0.5;
   cursor: default;
 }
+/* A game whose building hasn't returned yet — a gentle teaser, not a lock. */
+.vl-row-teaser {
+  opacity: 0.62;
+}
+.vl-row-teaser .vl-thumb {
+  filter: grayscale(0.5) brightness(0.85);
+}
 
 /* Zoomed-in map invites a drag to pan. */
 .map-canvas {

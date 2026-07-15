@@ -54,12 +54,13 @@ export function storyComplete(orderIndex: number, storyLength: number): boolean 
 }
 
 /**
- * Whether a game's building is eligible to open, before the one-per-day gate.
- * 'story' games open as soon as the tale is told; 'l2' games ask that their
- * building first be cared for (upgraded), which keeps coins meaningful.
+ * Whether a game's building is eligible to open. Games unlock progressively as
+ * Emberhollow rebuilds: 'story' games open the moment their building returns
+ * (the well at order 6, the beacon at 9); 'l2' games ask that their returned
+ * building also be cared for (upgraded), which keeps coins meaningful.
  */
-export function isEligible(unlock: 'story' | 'l2', storyDone: boolean, upgradeTier: number): boolean {
-  if (!storyDone) return false;
+export function isEligible(unlock: 'story' | 'l2', buildingReturned: boolean, upgradeTier: number): boolean {
+  if (!buildingReturned) return false;
   return unlock === 'story' || upgradeTier >= 1;
 }
 
@@ -67,9 +68,11 @@ export type UnlockOutcome = 'opened' | 'already' | 'ineligible';
 
 /**
  * Open a game's doors once its building is eligible. Pacing comes from the
- * eligibility gate itself — 'story' games open when the tale is told, 'l2' games
- * when their building is cared for (a coin-paced upgrade) — so there's no extra
- * daily throttle to frustrate a player who's earned the unlock.
+ * eligibility gate itself — 'story' games open when their building returns,
+ * 'l2' games when their building is cared for (a coin-paced upgrade) — so
+ * there's no extra daily throttle to frustrate a player who's earned the
+ * unlock. (`lastUnlockDay` is still stamped for save compatibility, but
+ * nothing reads it any more — vestigial from the removed one-per-day gate.)
  */
 export function tryUnlock(
   s: MinigameState,
