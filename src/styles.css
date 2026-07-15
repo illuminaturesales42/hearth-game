@@ -3676,6 +3676,59 @@ body.reduce-motion *::after {
   display: none;
 }
 
+/* ============== "Emberhollow today" return recap (Wave R3) ============== */
+.map-recap {
+  position: relative;
+  margin: 6px 0 12px;
+  padding: 14px 16px 12px;
+  border-radius: var(--r-card, 14px);
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgba(244, 166, 59, 0.16), transparent 60%),
+    linear-gradient(180deg, #1d2340, #12182b);
+  border: 1px solid rgba(255, 210, 122, 0.3);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.4);
+  color: #ecdcb6;
+  animation: mgResultIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.map-recap h3 {
+  margin: 0 0 2px;
+  font-family: var(--serif, Georgia, serif);
+  font-size: 17px;
+  color: #ffd27a;
+}
+.map-recap-sub {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--ink-dim, #b9c2dc);
+}
+.map-recap-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.map-recap-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ecdcb6;
+  cursor: pointer;
+  font-size: 13px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-recap {
+    animation: none;
+  }
+}
+
 /* ===================== REPOSITORY (Collect tab) ===================== */
 /* What you've gathered from Village Life games + duels, kept as a warm shelf. */
 .repo-empty {

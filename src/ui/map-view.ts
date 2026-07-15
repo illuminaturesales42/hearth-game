@@ -23,7 +23,7 @@ import {
   TOWN_TERRAIN,
   TOWN_WALKERS,
 } from '../data/town-layout';
-import { computeMood, meditatedToday, moodCaption } from '../core/world-mood';
+import { computeMood, earnedFlourishes, meditatedToday, moodCaption } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
@@ -257,10 +257,55 @@ export class MapView {
       this.resize();
       if (this.reduce) this.draw(0);
       else this.loop();
+      this.maybeShowRecap();
     } else {
       cancelAnimationFrame(this.raf);
       this.raf = 0;
     }
+  }
+
+  /**
+   * "Emberhollow today" — a gentle once-a-day recap on returning to the map,
+   * celebrating the flourishes the player's real-world day has brought the town
+   * (research: the return-and-notice payoff). Shown at most once per day, and only
+   * when there's something to celebrate. Never lists anything skipped.
+   */
+  private maybeShowRecap(): void {
+    const body = document.getElementById('map-body');
+    const home = document.getElementById('screen-home');
+    if (!body || !home) return;
+    const day = this.game.snapshot.actions.day;
+    const key = `hearth:recap:${day}`;
+    try {
+      if (localStorage.getItem(key)) return;
+    } catch {
+      /* private mode: show it, just won't remember */
+    }
+    const flourishes = earnedFlourishes(this.mood());
+    if (flourishes.length === 0) return; // nothing earned yet — don't nag, try again later
+    try {
+      localStorage.setItem(key, '1');
+    } catch {
+      /* ignore */
+    }
+    const lines = flourishes
+      .slice(0, 4)
+      .map((f) => `<li>${f}</li>`)
+      .join('');
+    const card = document.createElement('div');
+    card.className = 'map-recap';
+    card.innerHTML =
+      `<button class="map-recap-close" aria-label="Close">✕</button>` +
+      `<h3>Emberhollow today</h3>` +
+      `<p class="map-recap-sub">Your day has left its mark on the town:</p>` +
+      `<ul class="map-recap-list">${lines}</ul>`;
+    // Insert as a sibling before the list (renderList rebuilds map-body, so a
+    // child there would be wiped on the next refresh — a sibling survives).
+    home.insertBefore(card, body);
+    const close = () => card.remove();
+    card.querySelector<HTMLButtonElement>('.map-recap-close')?.addEventListener('click', close);
+    // auto-dismiss so it never lingers (calm-tech: recede)
+    window.setTimeout(close, 9000);
   }
 
   private mount(): void {
@@ -1987,6 +2032,49 @@ export class MapView {
         const flap = Math.sin(t / 120 + seed);
         drawButterfly(ctx, x, y, 3.2, flap, cols[i % cols.length]!);
       }
+    }
+
+    // Cold plunge → a cool mist drifts low over the water (drifts on the wind).
+    if (mood.seaMist > 0) {
+      const drift = this.reduce ? 0 : Math.sin(t / 3600) * W * 0.05;
+      const my = H * 0.9;
+      const g = ctx.createLinearGradient(0, my - H * 0.06, 0, my + H * 0.04);
+      g.addColorStop(0, 'rgba(214, 238, 246, 0)');
+      g.addColorStop(0.5, `rgba(214, 238, 246, ${(0.1 + mood.seaMist * 0.16).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(214, 238, 246, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(-W * 0.1 + drift, my - H * 0.06, W * 1.2, H * 0.1);
+    }
+
+    // Stargaze after dark → a small constellation lights over the bay.
+    if (mood.stargazed && night) {
+      const cx = W * 0.8;
+      const cy = H * 0.16;
+      const stars = [
+        [0, 0],
+        [0.05, -0.03],
+        [0.1, 0.01],
+        [0.14, -0.04],
+        [0.08, 0.05],
+      ] as const;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(210, 226, 255, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      stars.forEach(([sx, sy], i) => {
+        const px = cx + sx * W;
+        const py = cy + sy * H;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+      for (const [sx, sy] of stars) {
+        const px = cx + sx * W;
+        const py = cy + sy * H;
+        const tw = this.reduce ? 0.8 : 0.6 + 0.4 * Math.abs(Math.sin(t / 700 + sx * 40));
+        drawSparkle(ctx, px, py, 2.2, tw);
+      }
+      ctx.restore();
     }
   }
 

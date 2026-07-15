@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { computeMood, daysBetween, meditatedToday, moodCaption, weatherFromWmo } from '../src/core/world-mood';
+import {
+  computeMood,
+  daysBetween,
+  earnedFlourishes,
+  meditatedToday,
+  moodCaption,
+  weatherFromWmo,
+} from '../src/core/world-mood';
 import type { WeatherNow } from '../src/core/world-mood';
 
 const w = (over: Partial<WeatherNow>): WeatherNow => ({
@@ -160,6 +167,35 @@ describe('computeMood — real-world actions bloom the town', () => {
     expect(stepped.villagersOut).toBeGreaterThan(0);
     const healthWalk = computeMood({ ...base, walkedToday: true });
     expect(healthWalk.villagersOut).toBeGreaterThan(0);
+  });
+
+  it('cold plunge draws a cool sea mist; sauna warms the chimneys', () => {
+    const rest = computeMood(base);
+    expect(rest.seaMist).toBe(0);
+    expect(rest.saunaWarm).toBe(false);
+    const plunged = computeMood({ ...base, counts: { 'log-cold-plunge': 1 } });
+    expect(plunged.seaMist).toBeGreaterThan(0);
+    const sauna = computeMood({ ...base, counts: { 'log-sauna': 1 } });
+    expect(sauna.saunaWarm).toBe(true);
+  });
+
+  it('stargazing lights a constellation flag (the map shows it after dark)', () => {
+    expect(computeMood(base).stargazed).toBe(false);
+    expect(computeMood({ ...base, counts: { stargaze: 1 } }).stargazed).toBe(true);
+  });
+
+  it('the new flourishes surface in the caption', () => {
+    expect(moodCaption(computeMood({ ...base, counts: { stargaze: 1 } }))).toContain('constellation');
+    expect(moodCaption(computeMood({ ...base, counts: { 'log-cold-plunge': 1 } }))).toContain('mist');
+  });
+
+  it('earnedFlourishes lists only what the day brought (empty when nothing, never a scold)', () => {
+    expect(earnedFlourishes(computeMood(base))).toEqual([]);
+    const busy = earnedFlourishes(
+      computeMood({ ...base, meditatedToday: true, counts: { water: 1, steps: 2, 'nature-photo': 1 } }),
+    );
+    expect(busy.length).toBeGreaterThan(2);
+    expect(busy.join(' ')).not.toMatch(/skip|didn|rough|miss/i); // never a guilt line
   });
 
   it('festival banners gather only over a long streak', () => {
