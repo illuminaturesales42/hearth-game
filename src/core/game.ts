@@ -1153,7 +1153,10 @@ export class Game {
     // their building returns — there is no upgrade ceremony for them, so
     // requiring a separate "open the doors" tap made them feel like they
     // didn't launch. L2 games still open explicitly after being cared for.
-    const unlocked = isUnlocked(this.state.minigames, def.id) || (def.unlock === 'story' && returned);
+    // Tester mode treats every game as already opened so all six mechanics can
+    // be tried instantly (no "care for it → open the doors" ceremony first).
+    const unlocked =
+      this.testerUnlimited || isUnlocked(this.state.minigames, def.id) || (def.unlock === 'story' && returned);
     const tokens = this.state.minigames.tokens;
     let reason: 'ready' | 'no-tokens' | 'no-energy' | 'locked-story' | 'locked-l2' = 'ready';
     if (!returned) reason = 'locked-story';

@@ -198,6 +198,13 @@ export class MinigameUI {
       (wish ? `<p class="mg-wish">“${wish.who} ${wish.text}”</p>` : '') +
       `<p class="mg-reward-hint">Kept in your Repository, ready for the village’s needs.</p>`;
     result.hidden = false;
+    // Reflect whether another go is possible, rather than toasting on tap.
+    const again = el<HTMLButtonElement>('mg-again');
+    if (again && this.id) {
+      const can = this.game.canPlayMinigame(this.id);
+      again.disabled = !can;
+      again.textContent = can ? 'Play again' : 'No goes left today';
+    }
   }
 
   /** Put a single "start" button in the actions bar — the player's move to begin. */

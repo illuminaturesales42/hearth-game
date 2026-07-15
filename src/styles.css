@@ -4267,6 +4267,8 @@ body.reduce-motion *::after {
 }
 .mg-beacon-lamp img {
   height: 42px;
+  width: 48px; /* a wide flame sprite would otherwise balloon past the card */
+  object-fit: contain;
   margin-top: -6px;
 }
 .mg-pegs {
