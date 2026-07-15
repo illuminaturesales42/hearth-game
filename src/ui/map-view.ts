@@ -2076,6 +2076,46 @@ export class MapView {
       }
       ctx.restore();
     }
+
+    // Real rain outside → the town stays cosy, never gloomy: a villager or two
+    // takes a turn under an umbrella, and puddles catch the light on the paths.
+    if (mood.precip > 0) {
+      const brollies = mood.precip >= 0.4 ? 2 : 1;
+      const cloaks = ['#5a6e88', '#7a4a5e'];
+      for (let i = 0; i < brollies; i++) {
+        const sweep = this.reduce ? 0.4 : (Math.sin(t / (5200 + i * 1100)) + 1) / 2;
+        const x = W * (0.3 + i * 0.3 + 0.12 * sweep);
+        const y = H * (0.74 + i * 0.05);
+        drawStroller(ctx, x, y, H * 0.05, cloaks[i % cloaks.length]!);
+        // a simple umbrella dome over them
+        ctx.save();
+        ctx.fillStyle = i === 0 ? '#c0563f' : '#3f6f6a';
+        ctx.beginPath();
+        ctx.ellipse(x, y - H * 0.058, H * 0.03, H * 0.017, 0, Math.PI, 0);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(40,30,24,0.6)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, y - H * 0.058);
+        ctx.lineTo(x, y - H * 0.02);
+        ctx.stroke();
+        ctx.restore();
+      }
+      // puddles glinting on the plaza
+      const puddles = this.reduce ? 2 : 3;
+      for (let i = 0; i < puddles; i++) {
+        const px = W * (0.4 + i * 0.11);
+        const py = H * (0.7 + (i % 2) * 0.03);
+        const k = this.reduce ? 0.5 : 0.35 + 0.35 * Math.abs(Math.sin(t / 600 + i));
+        ctx.save();
+        ctx.globalAlpha = 0.4 * k;
+        ctx.fillStyle = 'rgba(180, 210, 230, 0.6)';
+        ctx.beginPath();
+        ctx.ellipse(px, py, W * 0.02, H * 0.008, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
   }
 
   /**
