@@ -25,6 +25,7 @@ import {
 } from '../data/town-layout';
 import { computeMood, earnedFlourishes, meditatedToday, moodCaption } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
+import { stemLevels } from '../core/stem-levels';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
 import { currentWeather } from './weather';
@@ -168,6 +169,7 @@ export class MapView {
   /** Map a game event to a reaction onset (cue + caption) at the town spot. */
   private onReactionEvent(ev: GameEvent): void {
     if (!this.visible) return; // seen-while-away is handled by the return recap
+    this.updateStems(); // a real-world action can shift the ambience (calm/chatter)
     let cue: { x: number; y: number; kind: OnsetKind; note: string; colour?: string } | null = null;
     if (ev.type === 'action' && ev.energy > 0) cue = reactionForAction(ev.actionId);
     else if (ev.type === 'health' && ev.fromSteps > 0)
@@ -268,10 +270,33 @@ export class MapView {
       if (this.reduce) this.draw(0);
       else this.loop();
       this.maybeShowRecap();
+      this.updateStems();
     } else {
       cancelAnimationFrame(this.raf);
       this.raf = 0;
+      feedback.stopStems(); // the map's ambience belongs to the map
     }
+  }
+
+  /** last stem levels sent, so ramps only fire when something actually changed */
+  private lastStems: { calmPad: number; rain: number; chatter: number } | null = null;
+  private stemsCheckedAt = 0;
+
+  /**
+   * Key the quiet ambient stems to the world's mood (the ear catches what the
+   * eye misses): meditation stills the day into a soft pad, rain brings a cosy
+   * bed of it, a good walk raises a faint distant bustle. Additive only.
+   */
+  private updateStems(): void {
+    if (!this.visible) return;
+    this.stemsCheckedAt = Date.now();
+    const levels = stemLevels(this.mood());
+    const last = this.lastStems;
+    if (last && last.calmPad === levels.calmPad && last.rain === levels.rain && last.chatter === levels.chatter) return;
+    this.lastStems = levels;
+    feedback.setStem('calmPad', levels.calmPad);
+    feedback.setStem('rain', levels.rain);
+    feedback.setStem('chatter', levels.chatter);
   }
 
   /**
@@ -738,6 +763,8 @@ export class MapView {
   private loop(): void {
     const step = (t: number) => {
       this.draw(t);
+      // weather drifts on its own clock — re-key the ambience every few seconds
+      if (Date.now() - this.stemsCheckedAt > 5000) this.updateStems();
       this.raf = requestAnimationFrame(step);
     };
     this.raf = requestAnimationFrame(step);
