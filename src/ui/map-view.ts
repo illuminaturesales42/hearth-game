@@ -1012,8 +1012,10 @@ export class MapView {
     // sun or moon
     const night = hour >= 21 || hour < 5;
     // stars emerge at night — a scattered field that gently twinkles, fading
-    // out as cloud rolls in (Daily Rhythm: "stars emerge").
-    if (night) {
+    // out as cloud rolls in (Daily Rhythm: "stars emerge"). The painted plate is
+    // a top-down island with NO sky, so the star field + sun/moon disc only run
+    // for the procedural fallback — otherwise a disc floats over the sea (P22).
+    if (night && !plate) {
       const twinkle = 1 - mood.cloudCover * 0.7;
       for (let i = 0; i < 42; i++) {
         const sx = (((i * 73) % 100) / 100) * W;
@@ -1026,30 +1028,32 @@ export class MapView {
       }
       ctx.globalAlpha = 1;
     }
-    const sunX = W * 0.78;
-    const sunY = H * 0.14;
-    if (night) {
-      // a pale moon
-      ctx.fillStyle = 'rgba(230,235,250,0.9)';
-      ctx.beginPath();
-      ctx.arc(sunX, sunY, 11, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      // warm bloom
-      const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 66);
-      glow.addColorStop(0, `rgba(255,224,160,${(0.6 * (1 - mood.cloudCover * 0.7)).toFixed(3)})`);
-      glow.addColorStop(1, 'rgba(255,220,150,0)');
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, W, H * 0.42);
-      // a dimensional sun: bright core → golden rim (not a flat moon-disc)
-      const disc = ctx.createRadialGradient(sunX - 5, sunY - 5, 1, sunX, sunY, 16);
-      disc.addColorStop(0, 'rgba(255,252,238,1)');
-      disc.addColorStop(0.6, 'rgba(255,232,168,1)');
-      disc.addColorStop(1, 'rgba(255,204,118,0.95)');
-      ctx.fillStyle = disc;
-      ctx.beginPath();
-      ctx.arc(sunX, sunY, 16, 0, Math.PI * 2);
-      ctx.fill();
+    if (!plate) {
+      const sunX = W * 0.78;
+      const sunY = H * 0.14;
+      if (night) {
+        // a pale moon
+        ctx.fillStyle = 'rgba(230,235,250,0.9)';
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 11, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // warm bloom
+        const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 66);
+        glow.addColorStop(0, `rgba(255,224,160,${(0.6 * (1 - mood.cloudCover * 0.7)).toFixed(3)})`);
+        glow.addColorStop(1, 'rgba(255,220,150,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, W, H * 0.42);
+        // a dimensional sun: bright core → golden rim (not a flat moon-disc)
+        const disc = ctx.createRadialGradient(sunX - 5, sunY - 5, 1, sunX, sunY, 16);
+        disc.addColorStop(0, 'rgba(255,252,238,1)');
+        disc.addColorStop(0.6, 'rgba(255,232,168,1)');
+        disc.addColorStop(1, 'rgba(255,204,118,0.95)');
+        ctx.fillStyle = disc;
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 16, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     // Clouds always drift the sky — soft, warm wisps, not hard blobs. Each is
     // a cluster of radial puffs so the edges feather into the sky.
@@ -1820,14 +1824,14 @@ export class MapView {
       ctx.fill();
     }
 
-    // --- the painted lighthouse keeps its watch on the northern point ---
+    // --- the painted lighthouse keeps its watch from its rock islet (SW) ---
     {
       const img = this.sprite('prop_lighthouse');
-      const lx = W * 0.93;
-      const baseY = H * 0.5; // sits on the north headland
+      const lx = W * 0.15;
+      const baseY = H * 0.99; // on its own rock islet in the SW water (P22 re-lay)
       const lit = delivered >= 9; // the beacon story beat
       if (img) {
-        const lw = W * 0.15;
+        const lw = W * 0.23;
         const lh = lw * (img.naturalHeight / img.naturalWidth);
         ctx.drawImage(img, lx - lw / 2, baseY - lh, lw, lh);
         // Tappable once the beacon is lit — opens The Lighthouse card (Beacon Drop).
