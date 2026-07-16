@@ -460,6 +460,13 @@
 
     <div id="toast" role="status"></div>
 
+    <!-- New-version banner: shown by the PWA update flow (main.ts) when a
+         fresh build is waiting. Never auto-reloads — the player chooses. -->
+    <div id="update-banner" role="status" hidden>
+      <span>A newer Emberhollow is ready, whenever you are.</span>
+      <button id="update-banner-btn" type="button">Refresh</button>
+    </div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

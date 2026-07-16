@@ -5034,3 +5034,39 @@ body.reduce-motion *::after {
   line-height: 1.55;
   font-size: var(--fs-sm, 13px);
 }
+
+/* ===== PWA new-version banner (main.ts update flow) ===== */
+#update-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 148px; /* sits above the toast so the two never collide */
+  transform: translateX(-50%);
+  z-index: 81;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 340px;
+  padding: 11px 12px 11px 16px;
+  border-radius: var(--r-card);
+  background: rgba(12, 8, 4, 0.94);
+  border: 1px solid rgba(255, 210, 150, 0.5);
+  color: var(--cream);
+  font-size: 12.5px;
+  line-height: 1.45;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+#update-banner[hidden] {
+  display: none;
+}
+#update-banner button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 210, 122, 0.4);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(244, 166, 59, 0.28), rgba(229, 118, 30, 0.2));
+  color: #ffe6b8;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}

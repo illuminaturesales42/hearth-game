@@ -8,7 +8,7 @@
     "noImplicitOverride": true,
     "exactOptionalPropertyTypes": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"],
+    "types": ["vite/client", "vite-plugin-pwa/client"],
     "skipLibCheck": true,
     "noEmit": true
   },
