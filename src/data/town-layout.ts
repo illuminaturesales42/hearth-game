@@ -36,7 +36,7 @@ export const TOWN_BUILDINGS: readonly TownPiece[] = [
   { art: 'prop_sign', x: 0.51, y: 0.47, w: 0.042, unlockAt: 1 },
   { art: 'town_cottage', x: 0.305, y: 0.445, w: 0.148, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
   { art: 'town_bakery', x: 0.655, y: 0.37, w: 0.138, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
-  { art: 'prop_well', x: 0.465, y: 0.56, w: 0.052, unlockAt: 6 },
+  { art: 'prop_well', x: 0.465, y: 0.56, w: 0.092, unlockAt: 6 },
   { art: 'town_market', x: 0.44, y: 0.375, w: 0.138, unlockAt: 8, ruinVariant: 7 },
   { art: 'town_garden', x: 0.715, y: 0.515, w: 0.148, unlockAt: 10, ruinVariant: 4 },
   { art: 'town_townhall', x: 0.235, y: 0.735, w: 0.148, unlockAt: 12, ruinVariant: 3 },

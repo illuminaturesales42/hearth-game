@@ -1838,7 +1838,9 @@ export class MapView {
       const lx = W * 0.15;
       const baseY = H * 0.99; // on its own rock islet in the SW water (P22 re-lay)
       if (img) {
-        const lw = W * 0.23;
+        // the new painted lighthouse is a tall portrait sprite with its own rock
+        // base, so it's narrower than the old near-square art (0.23 dwarfed the map).
+        const lw = W * 0.16;
         const lh = lw * (img.naturalHeight / img.naturalWidth);
         ctx.drawImage(img, lx - lw / 2, baseY - lh, lw, lh);
         // Tappable once the beacon is lit — opens The Lighthouse card (Beacon Drop).
