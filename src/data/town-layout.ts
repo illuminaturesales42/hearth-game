@@ -30,7 +30,7 @@ export const TOWN_BUILDINGS: readonly TownPiece[] = [
   { art: 'town_bakery', x: 0.64, y: 0.485, w: 0.165, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
   { art: 'prop_well', x: 0.475, y: 0.635, w: 0.055, unlockAt: 6 },
   { art: 'town_market', x: 0.43, y: 0.44, w: 0.155, unlockAt: 8, ruinVariant: 7 },
-  { art: 'town_garden', x: 0.73, y: 0.66, w: 0.17, unlockAt: 10, ruinVariant: 4 },
+  { art: 'town_garden', x: 0.725, y: 0.615, w: 0.17, unlockAt: 10, ruinVariant: 4 },
   { art: 'town_townhall', x: 0.505, y: 0.375, w: 0.185, unlockAt: 12, ruinVariant: 3 },
   { art: 'town_workshop', x: 0.155, y: 0.43, w: 0.16, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
   { art: 'town_farm', x: 0.095, y: 0.635, w: 0.17, unlockAt: 16, ruinVariant: 5 },
@@ -162,8 +162,8 @@ export const TOWN_BOATS: readonly { art: string; x: number; y: number; w: number
 
 /** Nature and street furniture fill in as the town heals (by homestead stage). */
 export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
-  { art: 'prop_rock', x: 0.05, y: 0.47, w: 0.05, unlockAt: 0, stage: 0 },
-  { art: 'prop_rock', x: 0.94, y: 0.68, w: 0.045, unlockAt: 0, stage: 0 },
+  { art: 'prop_rock', x: 0.055, y: 0.445, w: 0.05, unlockAt: 0, stage: 0 },
+  { art: 'prop_rock', x: 0.915, y: 0.64, w: 0.045, unlockAt: 0, stage: 0 },
   // the storm bent the trees but didn't take them — a fresh island still lives
   { art: 'tree_pine', x: 0.105, y: 0.485, w: 0.045, unlockAt: 0, stage: 0 },
   { art: 'tree_pine', x: 0.705, y: 0.44, w: 0.04, unlockAt: 0, stage: 0 },
@@ -171,7 +171,7 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   { art: 'tree_bush', x: 0.24, y: 0.62, w: 0.045, unlockAt: 0, stage: 0 },
   { art: 'prop_rock', x: 0.31, y: 0.815, w: 0.04, unlockAt: 0, stage: 0 },
   { art: 'prop_barrel', x: 0.585, y: 0.55, w: 0.03, unlockAt: 0, stage: 0 },
-  { art: 'tree_pine', x: 0.05, y: 0.47, w: 0.05, unlockAt: 0, stage: 1 },
+  { art: 'tree_pine', x: 0.08, y: 0.43, w: 0.05, unlockAt: 0, stage: 1 },
   { art: 'tree_oak', x: 0.665, y: 0.425, w: 0.07, unlockAt: 0, stage: 1 },
   { art: 'tree_pine', x: 0.315, y: 0.425, w: 0.05, unlockAt: 0, stage: 2 },
   { art: 'prop_lamp', x: 0.565, y: 0.47, w: 0.028, unlockAt: 0, stage: 2 },
@@ -185,7 +185,7 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   { art: 'prop_crate', x: 0.685, y: 0.77, w: 0.035, unlockAt: 0, stage: 4 },
   // fences frame the farm and the garden once they're tended
   { art: 'fence_wood', x: 0.095, y: 0.685, w: 0.11, unlockAt: 16, stage: 0 },
-  { art: 'fence_wood', x: 0.73, y: 0.705, w: 0.11, unlockAt: 10, stage: 0 },
+  { art: 'fence_wood', x: 0.665, y: 0.645, w: 0.11, unlockAt: 10, stage: 0 },
   // ── Storm wreckage: the island washed up broken but alive. Scattered at the
   //    edges early, cleared away as Emberhollow is rebuilt (untilStage).
   { art: 'debris_a', x: 0.62, y: 0.7, w: 0.06, unlockAt: 0, stage: 0, untilStage: 1 },
@@ -199,8 +199,8 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   { art: 'tree_dead_b', x: 0.145, y: 0.55, w: 0.045, unlockAt: 0, stage: 0, untilStage: 2 },
   { art: 'tree_dead_c', x: 0.6, y: 0.31, w: 0.05, unlockAt: 0, stage: 0, untilStage: 1 },
   // permanent coastal detail
-  { art: 'prop_tidepool', x: 0.9, y: 0.9, w: 0.08, unlockAt: 0, stage: 0 },
-  { art: 'prop_shorerock', x: 0.06, y: 0.84, w: 0.05, unlockAt: 0, stage: 0 },
+  { art: 'prop_tidepool', x: 0.6, y: 0.895, w: 0.08, unlockAt: 0, stage: 0 },
+  { art: 'prop_shorerock', x: 0.1, y: 0.8, w: 0.05, unlockAt: 0, stage: 0 },
 
   // ── Phase 2c dressing: fill the open meadow so the healed town reads lush,
   //    not empty. Flower beds, grass copses, path lamps and benches, placed in
@@ -208,7 +208,7 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   // wildflower beds bloom as the land recovers
   { art: 'terrain_flowers1', x: 0.6, y: 0.865, w: 0.07, unlockAt: 0, stage: 2 },
   { art: 'terrain_flowers2', x: 0.3, y: 0.885, w: 0.07, unlockAt: 0, stage: 2 },
-  { art: 'terrain_flowers1', x: 0.83, y: 0.75, w: 0.06, unlockAt: 0, stage: 3 },
+  { art: 'terrain_flowers1', x: 0.775, y: 0.645, w: 0.06, unlockAt: 0, stage: 3 },
   { art: 'terrain_flowers2', x: 0.47, y: 0.83, w: 0.06, unlockAt: 0, stage: 3 },
   { art: 'tree_flowerbush', x: 0.4, y: 0.63, w: 0.05, unlockAt: 0, stage: 3 },
   { art: 'tree_flowerbush', x: 0.9, y: 0.64, w: 0.05, unlockAt: 0, stage: 4 },
@@ -217,7 +217,7 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   { art: 'tree_bush', x: 0.12, y: 0.72, w: 0.05, unlockAt: 0, stage: 2 },
   { art: 'tree_pine', x: 0.47, y: 0.31, w: 0.045, unlockAt: 0, stage: 2 },
   { art: 'tree_oak', x: 0.3, y: 0.4, w: 0.06, unlockAt: 0, stage: 3 },
-  { art: 'prop_rock', x: 0.7, y: 0.885, w: 0.035, unlockAt: 0, stage: 1 },
+  { art: 'prop_rock', x: 0.685, y: 0.888, w: 0.035, unlockAt: 0, stage: 1 },
   { art: 'prop_rock', x: 0.55, y: 0.9, w: 0.03, unlockAt: 0, stage: 2 },
   // lamplight lines the square and the paths once the town stirs at dusk
   { art: 'prop_lamp', x: 0.66, y: 0.62, w: 0.028, unlockAt: 0, stage: 3 },
@@ -234,9 +234,9 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
 export const TOWN_TERRAIN: readonly TownPiece[] = [
   // rocky coast ring
   { art: 'terrain_rocks', x: 0.05, y: 0.52, w: 0.09, unlockAt: 0 },
-  { art: 'terrain_rocks', x: 0.955, y: 0.66, w: 0.085, unlockAt: 0 },
+  { art: 'terrain_rocks', x: 0.92, y: 0.638, w: 0.085, unlockAt: 0 },
   { art: 'terrain_rocks', x: 0.24, y: 0.9, w: 0.08, unlockAt: 0 },
-  { art: 'terrain_rocks', x: 0.045, y: 0.755, w: 0.07, unlockAt: 0 },
+  { art: 'terrain_rocks', x: 0.098, y: 0.77, w: 0.07, unlockAt: 0 },
   { art: 'terrain_rocks', x: 0.895, y: 0.455, w: 0.065, unlockAt: 0 },
   // wooded edges — y positions follow the COASTLINE headlands (map-view.ts)
   // so every copse stands on land, never in the sky or the sea

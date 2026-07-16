@@ -1085,8 +1085,13 @@ export class MapView {
       .map((b) => b.unlockAt)
       .sort((a, b) => a - b);
     const nextUnlock = upcoming.length ? upcoming[0]! : -1; // the one being rebuilt now → scaffold
+    // The generic dock planks built the harbour for the procedural coastline;
+    // the painted plate + town_dock pier already provide it, so drawn over the
+    // plate they read as stray debris floating in the bay.
     const pieces: ScenePiece[] = [
-      ...TOWN_TERRAIN.filter((t) => !FLAT.has(t.art) && delivered >= t.unlockAt),
+      ...TOWN_TERRAIN.filter(
+        (t) => !FLAT.has(t.art) && delivered >= t.unlockAt && !(plate && t.art.startsWith('dock_')),
+      ),
       ...TOWN_NATURE.filter(
         (n) => stage >= n.stage && delivered >= n.unlockAt && (n.untilStage === undefined || stage <= n.untilStage),
       ),
@@ -1656,8 +1661,8 @@ export class MapView {
     // Water + stretch → the gardens green up: a soft vitality over the meadow
     // and a few flowers by the garden plot once it's been restored.
     if (mood.gardenLush > 0) {
-      const gx = W * 0.73;
-      const gy = H * 0.66;
+      const gx = W * 0.725;
+      const gy = H * 0.615;
       const gr = W * 0.16;
       const g = ctx.createRadialGradient(gx, gy - gr * 0.25, gr * 0.15, gx, gy - gr * 0.25, gr);
       g.addColorStop(0, `rgba(126, 196, 106, ${(0.08 + mood.gardenLush * 0.14).toFixed(3)})`);
@@ -1684,8 +1689,8 @@ export class MapView {
         for (let i = 0; i < 3; i++) {
           drawFlower(
             ctx,
-            W * (0.68 + i * 0.03),
-            H * (0.7 + (i % 2) * 0.015),
+            W * (0.68 + i * 0.025),
+            H * (0.62 + (i % 2) * 0.015),
             2.6,
             FLOWER_COLOURS[(i + 2) % FLOWER_COLOURS.length]!,
           );
