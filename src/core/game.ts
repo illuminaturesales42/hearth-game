@@ -839,14 +839,20 @@ export class Game {
     return true;
   }
 
-  /** Pick a decoration back up. Full refund — nothing is ever lost in Emberhollow. */
+  /**
+   * Pick a decoration back up. Half the materials are reclaimed — the other
+   * half was worked into the piece and given to the village. You keep the
+   * freedom to rearrange (keep-everything holds), but decorating is now a real
+   * coin sink rather than a cost-neutral loop you could buy and refund forever.
+   * Coins buy beauty, and beauty, once made, has been spent on.
+   */
   removeDecor(id: number): void {
     const piece = this.state.decor.find((d) => d.id === id);
     if (!piece) return;
     const cost = DECOR_CATALOG.find((d) => d.art === piece.art)?.cost ?? 0;
     this.state = {
       ...this.state,
-      coins: this.state.coins + cost,
+      coins: this.state.coins + Math.floor(cost / 2),
       decor: this.state.decor.filter((d) => d.id !== id),
     };
     this.emit({ type: 'decor' });
