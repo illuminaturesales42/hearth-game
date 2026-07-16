@@ -150,6 +150,10 @@ export class Home {
             `${ev.title}: 🪙 +${ev.coins}${ev.ember > 0 ? ` · 🔥 +${ev.ember}` : ''}${ev.itemCount > 0 ? ` · ${ev.itemCount} to your Repository` : ''}.`,
           );
           break;
+        case 'repoGiven':
+          feedback.chime(560);
+          toast(`${ev.who} is delighted — +${ev.coins} coins for what you gathered.`);
+          break;
         case 'health': {
           const parts = [
             ev.fromSteps > 0 ? `+${ev.fromSteps} from steps` : '',

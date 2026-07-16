@@ -29,11 +29,12 @@ SRC = Path(
     "/Core/Final Assets/Claude prompts/Animate/Merge FX 2.png"
 )
 
-# row order top→bottom; the 10th row (ember particles) is intentionally omitted
+# row order top→bottom; the 10th row (loose ember particles) becomes fx_spark —
+# a one-shot burst played on a hammer strike in the forge mini-game.
 NAMES = [
     "fx_flame_tiny", "fx_flame_small", "fx_flame_medium", "fx_flame_large",
     "fx_flame_beacon", "fx_flame_lantern", "fx_flame_fireplace", "fx_flame_forge",
-    "fx_heartfire",
+    "fx_heartfire", "fx_spark",
 ]
 FRAMES_PER_ROW = 7
 LABEL_CUT = 232   # left margin holds the row labels — start frames after it

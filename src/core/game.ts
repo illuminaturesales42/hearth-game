@@ -61,6 +61,7 @@ import { STARGAZE, fullMoonBonus, phaseName } from '../data/moon';
 import { isNight } from './sun';
 import type { Coords } from './sun';
 import { addToRepository, duelMultiplier } from './duel';
+import { repoRequestsFor, takeFromRepository, type RepoRequest } from './repository';
 import {
   MINIGAME_ENERGY_COST,
   addEmber,
@@ -68,6 +69,7 @@ import {
   initialMinigames,
   isEligible,
   isUnlocked,
+  recordBest,
   rolloverMinigames,
   spendToken,
   storyComplete,
@@ -77,7 +79,7 @@ import {
 } from './minigames';
 import { MINIGAMES, MINIGAME_BY_ID, WISHES, minigameForBuilding, type MinigameDef } from '../data/minigames';
 import { orderAt } from '../data/endless';
-import { DECOR_CATALOG, TOWN_BUILDINGS, BUILDING_INFO } from '../data/town-layout';
+import { DECOR_CATALOG, TOWN_BUILDINGS, BUILDING_INFO, returnsAt } from '../data/town-layout';
 import { bondFor, deliveryMemory, hearts, recordMemory, restoreMemory } from './relationships';
 import { villagerIdFor, villagerDef } from '../data/villagers';
 import type {
@@ -91,6 +93,21 @@ import type {
   Settings,
   SocialState,
 } from './types';
+
+/** Why a building's mini-game is (or isn't) playable right now. */
+export type MinigameReason = 'ready' | 'no-tokens' | 'no-energy' | 'locked-story' | 'locked-l2';
+
+/** A building's mini-game and its current playability. Shared source of truth
+ *  for the building card and the Village Life index (see ui/minigame-cta.ts). */
+export interface MinigameStatus {
+  def: MinigameDef;
+  unlocked: boolean;
+  canPlay: boolean;
+  tokens: number;
+  reason: MinigameReason;
+  /** When 'locked-story': orders left until the game's building returns. */
+  ordersToGo?: number;
+}
 
 export type GameEvent =
   | { type: 'state' }
@@ -134,6 +151,7 @@ export type GameEvent =
   | { type: 'duelEnd'; won: boolean; streak: number; multiplier: number; coins: number; itemCount: number }
   | { type: 'minigameUnlocked'; id: string; title: string }
   | { type: 'minigameEnd'; id: string; title: string; coins: number; ember: number; itemCount: number; wish?: string }
+  | { type: 'repoGiven'; who: string; chain: ChainId; level: number; coins: number }
   | { type: 'chapterComplete'; chapter: number; title: string; cliffhanger: string; hasNext: boolean };
 
 type Listener = (ev: GameEvent) => void;
@@ -141,6 +159,9 @@ type Listener = (ev: GameEvent) => void;
 export class Game {
   private state: GameState;
   private listeners: Listener[] = [];
+  /** Tester convenience: unlimited mini-game goes (no token/energy cost). Off in
+   *  normal play; turned on by the ?tester opt-in (see main.ts). Never persisted. */
+  private testerUnlimited = false;
 
   constructor(now = Date.now()) {
     this.state = loadState() ?? Game.freshState(now);
@@ -827,6 +848,16 @@ export class Game {
 
   /** Coin cost to reach each tier: [→ L2, → L3]. Escalating, so a long-term sink. */
   static UPGRADE_COSTS = [120, 320] as const;
+  /** Per-building cost multiplier — grander/civic buildings cost more to cherish,
+   *  the small homes and huts a little less. Pure coin-sink variety, never power. */
+  static UPGRADE_FACTOR: Record<string, number> = {
+    town_townhall: 1.5,
+    town_library: 1.3,
+    town_market: 1.2,
+    town_bakery: 1.2,
+    town_garden: 1.1,
+    town_dock: 1.1,
+  };
 
   /** Current upgrade tier of a building (0 = base, 1 = L2, 2 = L3). */
   upgradeTier(art: string): number {
@@ -837,23 +868,23 @@ export class Game {
   canUpgrade(art: string): boolean {
     const building = TOWN_BUILDINGS.find((b) => b.art === art);
     if (!building || this.state.orderIndex < building.unlockAt) return false;
-    const tier = this.upgradeTier(art);
-    if (tier >= Game.UPGRADE_COSTS.length) return false;
-    return this.state.coins >= Game.UPGRADE_COSTS[tier]!;
+    const cost = this.upgradeCost(art);
+    return cost !== null && this.state.coins >= cost;
   }
 
   /** The coin cost of the next upgrade for a building, or null if maxed. */
   upgradeCost(art: string): number | null {
     const tier = this.upgradeTier(art);
-    return tier < Game.UPGRADE_COSTS.length ? Game.UPGRADE_COSTS[tier]! : null;
+    if (tier >= Game.UPGRADE_COSTS.length) return null;
+    const factor = Game.UPGRADE_FACTOR[art] ?? 1;
+    return Math.round((Game.UPGRADE_COSTS[tier]! * factor) / 10) * 10; // round to a tidy 10
   }
 
   /** Spend coins to raise a building a tier. Beauty and pride — never power. */
   upgradeBuilding(art: string): boolean {
-    if (!this.canUpgrade(art)) return false;
-    const tier = this.upgradeTier(art);
-    const cost = Game.UPGRADE_COSTS[tier]!;
-    const nextTier = tier + 1;
+    const cost = this.upgradeCost(art);
+    if (cost === null || !this.canUpgrade(art)) return false;
+    const nextTier = this.upgradeTier(art) + 1;
     this.state = {
       ...this.state,
       coins: this.state.coins - cost,
@@ -1093,6 +1124,32 @@ export class Game {
     this.emitChapterBoundary();
   }
 
+  // ---------- Repository: gathered loot & standing village requests ----------
+
+  /**
+   * Standing village requests for the mini-game loot you're holding — the town
+   * "asking for your caught fish/honey/copper…". Only ever lists things you
+   * actually hold, so they can never block the main merge→deliver loop.
+   */
+  repositoryRequests(): RepoRequest[] {
+    return repoRequestsFor(this.state.repository, this.state.actions.day);
+  }
+
+  /** Gift one held item to the villager who wants it, for coins. Keeps-everything: your choice. */
+  giveFromRepository(chain: ChainId, level: number): boolean {
+    const req = this.repositoryRequests().find((r) => r.chain === chain && r.level === level);
+    if (!req) return false;
+    this.beginDay(Date.now());
+    this.state = {
+      ...this.state,
+      repository: takeFromRepository(this.state.repository, chain, level),
+      coins: this.state.coins + req.coins,
+    };
+    this.emit({ type: 'repoGiven', who: req.who, chain, level, coins: req.coins });
+    this.emit({ type: 'state' });
+    return true;
+  }
+
   // ---------- Village Life mini-games (post-story building games) ----------
 
   get minigameState(): MinigameState {
@@ -1104,31 +1161,50 @@ export class Game {
     return storyComplete(this.state.orderIndex, ORDERS.length);
   }
 
-  /** Whether a building supports upgrades at all (props/specials like the lighthouse don't). */
+  /** Whether a building supports upgrades at all (props like the well/sign and
+   *  specials like the lighthouse don't — they have no L2/L3 art). */
   isUpgradeable(art: string): boolean {
-    return TOWN_BUILDINGS.some((b) => b.art === art);
+    return TOWN_BUILDINGS.some((b) => b.art === art) && !art.startsWith('prop_');
   }
 
   /** The mini-game a building offers and its current playability, for the building card. */
-  minigameStatus(art: string): {
-    def: MinigameDef;
-    unlocked: boolean;
-    canPlay: boolean;
-    tokens: number;
-    reason: 'ready' | 'no-tokens' | 'no-energy' | 'locked-story' | 'locked-l2';
-  } | null {
+  minigameStatus(art: string): MinigameStatus | null {
     const def = minigameForBuilding(art);
     if (!def) return null;
-    const done = this.isStoryComplete();
-    const eligible = isEligible(def.unlock, done, this.upgradeTier(art));
-    const unlocked = isUnlocked(this.state.minigames, def.id);
+    // Games unlock progressively as each building returns (the well at order 6,
+    // the beacon at 9…) — NOT at full story completion, which read as broken
+    // mid-game. Tester mode bypasses both the return gate and the L2-upgrade
+    // gate so all six games are reachable at any progress.
+    const at = returnsAt(art);
+    const returned = this.testerUnlimited || (at !== null && this.state.orderIndex >= at);
+    const eligible = isEligible(def.unlock, returned, this.testerUnlimited ? 2 : this.upgradeTier(art));
+    // Story-gated games (the well, the beacon) open automatically the moment
+    // their building returns — there is no upgrade ceremony for them, so
+    // requiring a separate "open the doors" tap made them feel like they
+    // didn't launch. L2 games still open explicitly after being cared for.
+    // Tester mode treats every game as already opened so all six mechanics can
+    // be tried instantly (no "care for it → open the doors" ceremony first).
+    const unlocked =
+      this.testerUnlimited || isUnlocked(this.state.minigames, def.id) || (def.unlock === 'story' && returned);
     const tokens = this.state.minigames.tokens;
     let reason: 'ready' | 'no-tokens' | 'no-energy' | 'locked-story' | 'locked-l2' = 'ready';
-    if (!done) reason = 'locked-story';
+    if (!returned) reason = 'locked-story';
     else if (!eligible) reason = 'locked-l2';
+    // Tester mode gives unlimited goes so the mechanics can be tried freely —
+    // the token + energy gates are skipped (see startMinigame too).
+    else if (this.testerUnlimited) reason = 'ready';
     else if (tokens <= 0) reason = 'no-tokens';
     else if (this.state.energy.current < MINIGAME_ENERGY_COST) reason = 'no-energy';
-    return { def, unlocked, canPlay: unlocked && reason === 'ready', tokens, reason };
+    // How many more orders until the building is back — for warm lock copy.
+    const ordersToGo = !returned && at !== null ? Math.max(0, at - this.state.orderIndex) : undefined;
+    return {
+      def,
+      unlocked,
+      canPlay: unlocked && reason === 'ready',
+      tokens,
+      reason,
+      ...(ordersToGo !== undefined ? { ordersToGo } : {}),
+    };
   }
 
   /** Open a building's doors — at most one new game opens per day. */
@@ -1136,7 +1212,9 @@ export class Game {
     this.beginDay(now);
     const def = minigameForBuilding(art);
     if (!def) return 'ineligible';
-    const eligible = isEligible(def.unlock, this.isStoryComplete(), this.upgradeTier(art));
+    const at = returnsAt(art);
+    const returned = this.testerUnlimited || (at !== null && this.state.orderIndex >= at);
+    const eligible = isEligible(def.unlock, returned, this.testerUnlimited ? 2 : this.upgradeTier(art));
     const res = tryUnlock(this.state.minigames, def.id, eligible, localDayKey(now));
     if (res.outcome === 'opened') {
       this.state = { ...this.state, minigames: res.state };
@@ -1151,15 +1229,26 @@ export class Game {
     return !!st && st.canPlay;
   }
 
+  /** Tester opt-in: unlimited mini-game goes so mechanics can be tried freely. */
+  setTesterUnlimited(on: boolean): void {
+    this.testerUnlimited = on;
+  }
+  get isTesterUnlimited(): boolean {
+    return this.testerUnlimited;
+  }
+
   /** Enter a mini-game: spend a token + the energy cost, return a run seed. Null if blocked. */
   startMinigame(id: string, now = Date.now()): { seed: number } | null {
     this.beginDay(now);
     if (!this.canPlayMinigame(id)) return null;
-    this.state = {
-      ...this.state,
-      energy: spend(this.state.energy, MINIGAME_ENERGY_COST),
-      minigames: spendToken(this.state.minigames),
-    };
+    // Tester mode: unlimited goes — don't spend the token or energy.
+    if (!this.testerUnlimited) {
+      this.state = {
+        ...this.state,
+        energy: spend(this.state.energy, MINIGAME_ENERGY_COST),
+        minigames: spendToken(this.state.minigames),
+      };
+    }
     this.emit({ type: 'state' });
     return { seed: ((now >>> 0) ^ 0x9e3779b9 ^ (this.state.nextUid * 2654435761)) >>> 0 };
   }
@@ -1174,9 +1263,14 @@ export class Game {
    * the endless orders land), embers capped so play never out-earns real life,
    * and any drawn wish kept as a small keepsake.
    */
-  finishMinigame(id: string, reward: MgReward, wish?: { who: string; text: string }): void {
+  finishMinigame(
+    id: string,
+    reward: MgReward,
+    wish?: { who: string; text: string },
+    score?: number,
+  ): { isBest: boolean; best: number | null } {
     const def = MINIGAME_BY_ID[id];
-    if (!def) return;
+    if (!def) return { isBest: false, best: null };
     const em = addEmber(this.state.minigames, reward.ember);
     let minigames = em.state;
     if (wish) {
@@ -1187,6 +1281,13 @@ export class Game {
           ...minigames.wishes,
         ].slice(0, 24),
       };
+    }
+    // Personal best (a warm memento, never a leaderboard) — highest kept.
+    let isBest = false;
+    if (typeof score === 'number') {
+      const rb = recordBest(minigames, id, score);
+      minigames = rb.state;
+      isBest = rb.isBest;
     }
     this.state = {
       ...this.state,
@@ -1205,6 +1306,12 @@ export class Game {
       itemCount: reward.items.length,
       ...(wish ? { wish: `${wish.who} ${wish.text}` } : {}),
     });
+    return { isBest, best: this.state.minigames.bests?.[id] ?? null };
+  }
+
+  /** The player's personal best for a mini-game, or null if never played. */
+  minigameBest(id: string): number | null {
+    return this.state.minigames.bests?.[id] ?? null;
   }
 
   /** Living well tops up a mini-game attempt (never bought). Capped per day. */
