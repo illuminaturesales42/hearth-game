@@ -488,7 +488,7 @@ export class MapView {
     const renderTray = () => {
       const coins = this.game.snapshot.coins;
       tray.innerHTML =
-        `<p class="decor-hint">${this.decorPick ? 'Tap the town to place it — tap a placed piece to pick it up.' : 'Choose a piece. Picking one back up refunds it in full.'}</p>` +
+        `<p class="decor-hint">${this.decorPick ? 'Tap the town to place it — tap a placed piece to pick it up.' : 'Choose a piece. Picking one back up reclaims half its materials.'}</p>` +
         DECOR_CATALOG.map((d) => {
           const url = artUrl(d.art);
           const afford = coins >= d.cost;

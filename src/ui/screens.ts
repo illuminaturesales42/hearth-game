@@ -10,12 +10,22 @@ import { ACHIEVEMENTS } from '../core/achievements';
 import { BOARD_SKINS } from '../data/shop';
 import { BUILDING_INFO, DECOR_CATALOG, TOWN_BUILDINGS } from '../data/town-layout';
 import { composeWeek } from '../core/chronicle';
+import { seasonForMonth, type Season } from '../core/world-mood';
 import { chainDef } from '../core/board';
 import { artUrl, portraitFor, tileMarkup } from './art';
 import { feedback } from './feedback';
 import { toast } from './toast';
 
 const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
+
+/** An honest, warm line about the real season — mirrors the map's seasonal
+ *  ambience (blossom / motes / leaves / snow). No fabricated countdowns. */
+const SEASON_NOTE: Record<Season, string> = {
+  spring: 'Blossom drifts through the lanes.',
+  summer: 'Long, warm evenings down by the water.',
+  autumn: 'Leaves turn gold along the harbour.',
+  winter: 'Snow settles soft on the rooftops.',
+};
 type JTab = 'Chronicle' | 'Good Days' | 'Clues' | 'Letters' | 'People' | 'Places';
 const TABS: JTab[] = ['Chronicle', 'Good Days', 'Clues', 'Letters', 'People', 'Places'];
 
@@ -338,8 +348,9 @@ export class Screens {
         );
       }).join('') +
       `</div>` +
-      `<h3 class="screen-h3">Events</h3>` +
+      `<h3 class="screen-h3">In Emberhollow</h3>` +
       `<div class="event-list">` +
+      `<div class="event"><b>This season</b><span>${SEASON_NOTE[seasonForMonth(new Date().getMonth())]}</span></div>` +
       EVENTS.map((e) => `<div class="event"><b>${e.name}</b><span>${e.timing}</span></div>`).join('') +
       `</div>` +
       `<p class="set-note">Energy is never for sale — that never changes.</p>`;
