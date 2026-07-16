@@ -668,7 +668,13 @@ export class MinigameUI {
       const resolve = (quality: number) => {
         if (resolved) return;
         resolved = true;
-        this.finish(catchReward(quality), undefined, Math.round(Math.max(0, Math.min(1, quality)) * 100));
+        const q = Math.max(0, Math.min(1, quality));
+        if (q > 0.3 && water) {
+          this.waterSplash(water, water.clientWidth / 2, water.clientHeight * 0.42); // the fish breaks the surface
+          feedback.chime(q > 0.6 ? 640 : 480);
+        }
+        (navigator as Navigator & { vibrate?: (n: number) => void }).vibrate?.(q > 0.6 ? 18 : 8);
+        this.finish(catchReward(quality), undefined, Math.round(q * 100));
       };
       water?.addEventListener('click', () => {
         if (resolved) return;
@@ -767,6 +773,9 @@ export class MinigameUI {
         if (stepsEl) stepsEl.textContent = String(steps);
         t.classList.add('found', `k-${kind}`);
         t.innerHTML = glyph(kind, pay);
+        // A little sparkle greets a real find (the honeycomb heart brightest).
+        if (kind === 'heart' || kind === 'ember' || kind === 'coins') this.spark(t, 50, 46);
+        if (kind === 'heart') (navigator as Navigator & { vibrate?: (n: number) => void }).vibrate?.(20);
         feedback.chime(kind === 'heart' ? 520 : 360);
         if (steps <= 0) this.timers.push(window.setTimeout(end, 600));
       };
@@ -823,6 +832,9 @@ export class MinigameUI {
           fc.classList.add('done');
           matched += 1;
           first = -1;
+          this.spark(c, 50, 42); // a matched pair sparkles together
+          this.spark(fc, 50, 42);
+          (navigator as Navigator & { vibrate?: (n: number) => void }).vibrate?.(12);
           feedback.merge(1);
           if (matched === STACKS_PAIRS)
             this.timers.push(

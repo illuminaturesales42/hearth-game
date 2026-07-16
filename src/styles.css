@@ -4893,6 +4893,13 @@ body.reduce-motion *::after {
   filter: drop-shadow(0 0 12px rgba(255, 170, 70, 0.6));
   transition: filter 0.3s ease;
 }
+/* Forage tiles + stack cards host their own spark bursts (a matched pair / a
+   good find), so they must be positioned and not clip the overflow. */
+.mg-fog,
+.mg-stack-card {
+  position: relative;
+  overflow: visible;
+}
 
 /* Joss's Catch: the bobber idles on the swell, then dips with a spring. */
 .mg-bobber {
