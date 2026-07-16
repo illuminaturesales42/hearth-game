@@ -55,9 +55,12 @@ export function minigameCta(st: MinigameStatus, tester: boolean): MinigameCta {
     return { kind: 'open', label: '✦ Open', actionable: true, sub: st.def.blurb, badge: '✦ New — tap to open' };
   }
   if (st.reason === 'ready') {
+    // Surface the personal best right where the play decision is made — the
+    // one gentle self-competition hook (never a leaderboard).
+    const bestLine = st.best !== undefined ? ` · Best ${st.best}` : '';
     const sub = tester
-      ? 'Unlimited goes — tester mode.'
-      : `${st.tokens} ${st.tokens === 1 ? 'go' : 'goes'} today · 4 energy each.`;
+      ? `Unlimited goes — tester mode.${bestLine}`
+      : `${st.tokens} ${st.tokens === 1 ? 'go' : 'goes'} today · 4 energy each.${bestLine}`;
     return { kind: 'ready', label: st.def.verb, actionable: true, sub, badge: `✦ ${st.def.verb} — tap to play` };
   }
   if (st.reason === 'no-energy')

@@ -107,6 +107,8 @@ export interface MinigameStatus {
   reason: MinigameReason;
   /** When 'locked-story': orders left until the game's building returns. */
   ordersToGo?: number;
+  /** The player's personal best for this game (0-100 score), if any. */
+  best?: number;
 }
 
 export type GameEvent =
@@ -1203,6 +1205,7 @@ export class Game {
     else if (this.state.energy.current < MINIGAME_ENERGY_COST) reason = 'no-energy';
     // How many more orders until the building is back — for warm lock copy.
     const ordersToGo = !returned && at !== null ? Math.max(0, at - this.state.orderIndex) : undefined;
+    const best = this.state.minigames.bests?.[def.id];
     return {
       def,
       unlocked,
@@ -1210,6 +1213,7 @@ export class Game {
       tokens,
       reason,
       ...(ordersToGo !== undefined ? { ordersToGo } : {}),
+      ...(best !== undefined ? { best } : {}),
     };
   }
 
