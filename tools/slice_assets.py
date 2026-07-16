@@ -875,6 +875,7 @@ def define() -> None:
     register_whole("mg_bg_stacks", "mg_bg_stacks.png", opaque=True)
     # Section banner + foraging tokens (tokens already alpha-cut to 128px).
     register_whole("ui_repository_header", "ui_repository_header.png", opaque=True)
+    register_whole("ui_villagelife_header", "ui_villagelife_header.png", opaque=True)
     register_whole("mg_forage_coin", "mg_forage_coin.png", opaque=True)
     register_whole("mg_forage_ember", "mg_forage_ember.png", opaque=True)
     register_whole("mg_forage_honeycomb", "mg_forage_honeycomb.png", opaque=True)

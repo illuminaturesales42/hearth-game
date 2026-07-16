@@ -419,6 +419,7 @@ export const ART_IDS: ReadonlySet<string> = new Set([
   'turf_dark',
   'turf_light',
   'ui_repository_header',
+  'ui_villagelife_header',
   'wordmark_hearth',
 ]);
 export function artUrl(id: string): string | null {
