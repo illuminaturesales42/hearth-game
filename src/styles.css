@@ -4832,17 +4832,75 @@ body.reduce-motion *::after {
   }
 }
 .mg-forge-cell.struck {
-  animation: mgStruck 0.32s ease-out;
+  animation: mgStruck 0.3s ease-out;
 }
 @keyframes mgStruck {
   0% {
     background-color: #ffe6b0;
     transform: scale(1.12);
   }
+  35% {
+    transform: scale(0.92) translateX(-2px);
+  }
+  60% {
+    transform: scale(1.02) translateX(2px);
+  }
   100% {
     background-color: #20283f;
     transform: scale(1);
   }
+}
+
+/* --- mini-game FX: spark strip, water splash, streak glow, animated flames --- */
+.mg-spark {
+  position: absolute;
+  width: 56px;
+  height: 20px;
+  margin: -10px 0 0 -28px; /* centre on its left/top point */
+  pointer-events: none;
+  background-repeat: no-repeat;
+  z-index: 6;
+}
+.mg-spark-dot,
+.mg-splash-dot {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 6;
+  animation: mgFling 0.5s ease-out forwards;
+}
+.mg-spark-dot {
+  background: radial-gradient(circle, #ffe1a0, #f4a63b 60%, #e5761e);
+  box-shadow: 0 0 6px rgba(255, 180, 80, 0.9);
+}
+.mg-splash-dot {
+  background: radial-gradient(circle, #dff0ff, #7fb8d8 65%, #4f8698);
+  box-shadow: 0 0 5px rgba(150, 200, 235, 0.8);
+}
+@keyframes mgFling {
+  from {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--dx, 0), var(--dy, 0)) scale(0.5);
+  }
+}
+.mg-beacon-flame {
+  width: 48px;
+  height: 44px;
+  margin-top: -8px;
+  background-repeat: no-repeat;
+  background-size: 700% 100%; /* playStrip steps the position; reduced-motion shows frame 0 */
+  filter: drop-shadow(0 0 14px rgba(255, 190, 90, 0.6));
+}
+.mg-forge.hot-streak .mg-forge-grid {
+  filter: drop-shadow(0 0 12px rgba(255, 170, 70, 0.6));
+  transition: filter 0.3s ease;
 }
 
 /* Joss's Catch: the bobber idles on the swell, then dips with a spring. */

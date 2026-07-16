@@ -51,6 +51,7 @@ const MINIGAME_BACKDROP: Record<string, string> = {
 export class MinigameUI {
   private id: string | null = null;
   private timers: number[] = [];
+  private rafs: number[] = [];
 
   constructor(private game: Game) {
     const close = el('mg-close');
@@ -74,6 +75,113 @@ export class MinigameUI {
   private clearTimers(): void {
     this.timers.forEach((t) => clearTimeout(t));
     this.timers = [];
+    this.rafs.forEach((r) => cancelAnimationFrame(r));
+    this.rafs = [];
+  }
+
+  /**
+   * Play a sliced sprite-strip (fx_* atlas, 7 equal frames) on an element by
+   * stepping the background-position. Looping for ambient flames, one-shot for a
+   * spark burst. Returns a stop() so callers can cancel. Pure DOM — no canvas.
+   */
+  private playStrip(
+    host: HTMLElement,
+    artId: string,
+    opts: { frames?: number; fps?: number; loop?: boolean; onEnd?: () => void } = {},
+  ): () => void {
+    const url = artUrl(artId);
+    if (!url) {
+      opts.onEnd?.();
+      return () => {};
+    }
+    const frames = opts.frames ?? 7;
+    const fps = opts.fps ?? 16;
+    host.style.backgroundImage = `url(${url})`;
+    host.style.backgroundRepeat = 'no-repeat';
+    host.style.backgroundSize = `${frames * 100}% 100%`;
+    let f = 0;
+    let last = 0;
+    let stopped = false;
+    const stepMs = 1000 / fps;
+    const tick = (t: number): void => {
+      if (stopped) return;
+      if (!last) last = t;
+      if (t - last >= stepMs) {
+        last = t;
+        f += 1;
+        if (f >= frames) {
+          if (opts.loop) f = 0;
+          else {
+            stopped = true;
+            opts.onEnd?.();
+            return;
+          }
+        }
+      }
+      // bg-size is frames×wide, so the scrollable range is (frames-1)×box; a
+      // position of f/(frames-1) shows exactly frame f.
+      host.style.backgroundPositionX = `${(f / (frames - 1)) * 100}%`;
+      const id = requestAnimationFrame(tick);
+      this.rafs.push(id);
+    };
+    const id = requestAnimationFrame(tick);
+    this.rafs.push(id);
+    return () => {
+      stopped = true;
+    };
+  }
+
+  /**
+   * A one-shot spark burst at (leftPct, topPct) of `host` — the painted ember
+   * atlas (fx_spark) when present, a small CSS ember scatter as fallback so a
+   * hammer strike always feels like it landed. Cleans itself up.
+   */
+  private spark(host: HTMLElement, leftPct: number, topPct: number): void {
+    if (this.reduce()) return;
+    const url = artUrl('fx_spark');
+    if (url) {
+      const s = document.createElement('div');
+      s.className = 'mg-spark';
+      s.style.left = `${leftPct}%`;
+      s.style.top = `${topPct}%`;
+      host.appendChild(s);
+      this.playStrip(s, 'fx_spark', {
+        fps: 22,
+        onEnd: () => s.remove(),
+      });
+      this.timers.push(window.setTimeout(() => s.remove(), 700)); // safety net
+      return;
+    }
+    // Fallback: fling a few warm ember dots outward, then fade.
+    for (let i = 0; i < 6; i++) {
+      const p = document.createElement('div');
+      p.className = 'mg-spark-dot';
+      const ang = (Math.PI * 2 * i) / 6 + Math.random();
+      const dist = 14 + Math.random() * 16;
+      p.style.left = `${leftPct}%`;
+      p.style.top = `${topPct}%`;
+      p.style.setProperty('--dx', `${Math.cos(ang) * dist}px`);
+      p.style.setProperty('--dy', `${Math.sin(ang) * dist - 8}px`);
+      host.appendChild(p);
+      this.timers.push(window.setTimeout(() => p.remove(), 520));
+    }
+  }
+
+  /** A little cool-blue splash where the pebble meets the water. */
+  private waterSplash(host: HTMLElement, xPx: number, yPx: number): void {
+    if (this.reduce()) return;
+    for (let i = 0; i < 5; i++) {
+      const d = document.createElement('div');
+      d.className = 'mg-splash-dot';
+      const ang = -Math.PI / 2 + (i - 2) * 0.5; // fan upward
+      const dist = 10 + Math.random() * 12;
+      d.style.left = `${xPx}px`;
+      d.style.top = `${yPx}px`;
+      d.style.setProperty('--dx', `${Math.cos(ang) * dist}px`);
+      d.style.setProperty('--dy', `${Math.sin(ang) * dist}px`);
+      host.appendChild(d);
+      this.timers.push(window.setTimeout(() => d.remove(), 520));
+    }
   }
 
   /** Open the overlay for a building's game and begin the first run. */
@@ -251,19 +359,43 @@ export class MinigameUI {
       stage.querySelector<HTMLElement>(`.mg-ring[data-slot="${slot}"]`)?.classList.add('lit');
       const done = () => this.finish(res, wish, wellScore(slot));
       if (this.reduce()) return done();
+      const well = stage.querySelector<HTMLElement>('.mg-well');
       const pebble = stage.querySelector<HTMLElement>('.mg-pebble');
       const ripple = stage.querySelector<HTMLElement>('.mg-ripple');
-      if (pebble) pebble.style.left = `${((slot + 0.5) / WELL_SLOTS) * 100}%`;
-      pebble?.classList.add('drop');
+      if (!well || !pebble) return void this.timers.push(window.setTimeout(done, 300));
+      // A real gravity drop: the pebble is tossed from the hand (top-centre),
+      // accelerates down, and arcs into the aimed ring — then a splash + ripple.
+      const W = well.clientWidth || 220;
+      const targetX = ((slot + 0.5) / WELL_SLOTS) * W;
+      const startX = W / 2;
+      const startY = 6;
+      const surfaceY = 150; // the water line inside the well art
+      pebble.style.opacity = '1';
       feedback.chime(320);
-      this.timers.push(
-        window.setTimeout(() => {
-          pebble?.classList.add('gone');
-          ripple?.classList.add('go');
+      let t = 0;
+      const sim = (): void => {
+        t += 1;
+        const y = startY + 0.5 * 0.6 * t * t; // constant gravity
+        const prog = Math.min(1, (y - startY) / (surfaceY - startY));
+        const x = startX + (targetX - startX) * (prog * prog) + Math.sin(t * 0.5) * (1 - prog) * 2;
+        pebble.style.left = `${x}px`;
+        pebble.style.top = `${Math.min(y, surfaceY)}px`;
+        if (y >= surfaceY) {
+          pebble.style.opacity = '0';
+          if (ripple) {
+            ripple.style.left = `${targetX - 6}px`;
+            ripple.classList.add('go');
+          }
+          this.waterSplash(well, targetX, surfaceY);
           feedback.chime(slot === 2 ? 540 : 220);
-        }, 880),
-      );
-      this.timers.push(window.setTimeout(done, 1480));
+          this.timers.push(window.setTimeout(done, 560));
+          return;
+        }
+        const id = requestAnimationFrame(sim);
+        this.rafs.push(id);
+      };
+      const id = requestAnimationFrame(sim);
+      this.rafs.push(id);
     };
 
     // Reduced motion: tap the ring you want (no timed sweep). Fully accessible.
@@ -321,41 +453,101 @@ export class MinigameUI {
     }
     stage.innerHTML =
       `<div class="mg-beacon">` +
-      `<div class="mg-beacon-lamp">${beaconUrl ? `<img src="${beaconUrl}" alt="" />` : '🔆'}</div>` +
+      `<div class="mg-beacon-lamp">${beaconUrl ? `<div class="mg-beacon-flame" aria-hidden="true"></div>` : '🔆'}</div>` +
       `<div class="mg-beacon-aim-track"><div class="mg-beacon-aim"></div></div>` +
       `<div class="mg-pegs">${pegs}</div>` +
       `<div class="mg-slots">${slotCells}</div>` +
       `<div class="mg-ember"></div></div>`;
     const ember = stage.querySelector<HTMLElement>('.mg-ember');
+    // The beacon's lamp is a living flame (fx_flame_beacon, 7-frame strip) —
+    // static single frame under reduced motion.
+    const lampFlame = stage.querySelector<HTMLElement>('.mg-beacon-flame');
+    if (lampFlame && beaconUrl) {
+      if (this.reduce()) lampFlame.style.backgroundImage = `url(${beaconUrl})`;
+      else this.playStrip(lampFlame, 'fx_flame_beacon', { fps: 14, loop: true });
+    }
 
-    // Release from a chosen column → seeded drift → final slot → reward.
+    const beacon = stage.querySelector<HTMLElement>('.mg-beacon');
+
+    // Release from a chosen column: a real ember with gravity that bounces off
+    // the pegs and settles into a slot — the slot it *lands* in is the reward,
+    // so aim (and a little plinko luck) earns it. Deterministic per (aim, seed).
     const release = (targetSlot: number): void => {
-      const slot = beaconDrop(targetSlot, seed);
-      const reward = beaconReward(slot);
-      const land = () => {
+      const land = (slot: number): void => {
         stage.querySelector<HTMLElement>(`.mg-slot[data-slot="${slot}"]`)?.classList.add('lit');
-        this.finish(reward, undefined, beaconScore(slot));
+        feedback.chime(slot === BEACON_ROWS / 2 ? 620 : 300);
+        this.timers.push(window.setTimeout(() => this.finish(beaconReward(slot), undefined, beaconScore(slot)), 460));
       };
-      if (this.reduce() || !ember) return land();
-      // Fall from the aimed column, wobbling toward the final slot.
-      const startX = ((targetSlot + 0.5) / BEACON_SLOTS) * 100;
-      const endX = ((slot + 0.5) / BEACON_SLOTS) * 100;
-      ember.style.left = `${startX}%`;
-      ember.style.top = `6%`;
+      // Reduced motion (or no stage): fall back to the seeded outcome, no sim.
+      if (this.reduce() || !ember || !beacon) return land(beaconDrop(targetSlot, seed));
+
+      ember.style.transition = 'none'; // physics drives left/top per frame — no CSS smoothing
+      const br = beacon.getBoundingClientRect();
+      const bW = br.width || 260;
+      const bH = br.height || 300;
+      const pegs = Array.from(stage.querySelectorAll<HTMLElement>('.mg-peg')).map((p) => {
+        const r = p.getBoundingClientRect();
+        return { x: r.left + r.width / 2 - br.left, y: r.top + r.height / 2 - br.top };
+      });
+      const slotsTop = bH - 44;
+      const R = 7;
+      const PEG = 5;
+      let s = seed >>> 0 || 1;
+      const rand = (): number => {
+        s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+        return s / 4294967296;
+      };
+      let x = ((targetSlot + 0.5) / BEACON_SLOTS) * bW;
+      let y = 34;
+      let vx = (rand() - 0.5) * 0.6;
+      let vy = 0;
+      let frames = 0;
+      let sinceChime = 9;
       feedback.chime(480);
-      const steps = BEACON_ROWS;
-      for (let i = 1; i <= steps; i++) {
-        this.timers.push(
-          window.setTimeout(() => {
-            const t = i / steps;
-            const wobble = Math.sin(i * 1.7) * (1 - t) * 4; // settles as it nears the slot
-            ember.style.left = `${startX + (endX - startX) * t + wobble}%`;
-            ember.style.top = `${10 + t * 72}%`;
-            feedback.chime(360 + i * 8);
-          }, 200 * i),
-        );
-      }
-      this.timers.push(window.setTimeout(land, 200 * (steps + 1)));
+      const step = (): void => {
+        frames += 1;
+        sinceChime += 1;
+        vy += 0.42; // gravity
+        vx *= 0.995; // slight air drag
+        x += vx;
+        y += vy;
+        if (x < R) {
+          x = R;
+          vx = Math.abs(vx) * 0.6;
+        } else if (x > bW - R) {
+          x = bW - R;
+          vx = -Math.abs(vx) * 0.6;
+        }
+        for (const pg of pegs) {
+          const dx = x - pg.x;
+          const dy = y - pg.y;
+          const d = Math.hypot(dx, dy);
+          const min = R + PEG;
+          if (d < min && d > 0.001) {
+            const nx = dx / d;
+            const ny = dy / d;
+            x = pg.x + nx * min;
+            y = pg.y + ny * min;
+            const dot = vx * nx + vy * ny;
+            vx = (vx - 2 * dot * nx) * 0.55 + (rand() - 0.5) * 0.9; // reflect + lively jitter
+            vy = Math.max(0.6, (vy - 2 * dot * ny) * 0.55); // keep it falling
+            if (sinceChime > 3) {
+              feedback.chime(430 + rand() * 150);
+              sinceChime = 0;
+            }
+          }
+        }
+        ember.style.left = `${(x / bW) * 100}%`;
+        ember.style.top = `${(y / bH) * 100}%`;
+        if (y >= slotsTop || frames > 360) {
+          const slot = Math.max(0, Math.min(BEACON_SLOTS - 1, Math.floor((x / bW) * BEACON_SLOTS)));
+          return land(slot);
+        }
+        const id = requestAnimationFrame(step);
+        this.rafs.push(id);
+      };
+      const id = requestAnimationFrame(step);
+      this.rafs.push(id);
     };
 
     // Reduced motion: tap the slot you aim for (no sweep).
@@ -412,20 +604,32 @@ export class MinigameUI {
     let hits = 0;
     let combo = 0; // consecutive clean strikes — brighter chime, a warm streak note
     const liveSpawn: Record<number, number | undefined> = {};
+    const flameStop: Record<number, (() => void) | undefined> = {};
+    const forgeEl = stage.querySelector<HTMLElement>('.mg-forge');
     const cellEls = Array.from(stage.querySelectorAll<HTMLButtonElement>('.mg-forge-cell'));
+    const coolCell = (c: HTMLButtonElement, cell: number): void => {
+      liveSpawn[cell] = undefined;
+      flameStop[cell]?.();
+      flameStop[cell] = undefined;
+      c.classList.remove('hot');
+      c.style.backgroundImage = '';
+      c.style.backgroundSize = '';
+      c.style.backgroundPositionX = '';
+    };
     cellEls.forEach((c) => {
       c.onclick = () => {
         const cell = Number(c.dataset.cell);
         if (liveSpawn[cell] === undefined) return; // not hot: no penalty, just nothing
-        liveSpawn[cell] = undefined;
-        c.classList.remove('hot');
-        c.style.backgroundImage = '';
-        c.classList.add('struck'); // bright flash on a clean strike
-        this.timers.push(window.setTimeout(() => c.classList.remove('struck'), 340));
+        coolCell(c, cell);
+        c.classList.add('struck'); // bright flash + shake on a clean strike
+        this.timers.push(window.setTimeout(() => c.classList.remove('struck'), 300));
+        this.spark(c, 50, 44); // ember burst where the hammer lands
+        (navigator as Navigator & { vibrate?: (n: number) => void }).vibrate?.(12);
         hits += 1;
         combo += 1;
         if (hitsEl) hitsEl.textContent = String(hits);
         if (comboEl) comboEl.textContent = combo >= 3 ? ` · ${combo} in a row!` : '';
+        forgeEl?.classList.toggle('hot-streak', combo >= 3); // the whole forge glows on a streak
         feedback.chime(420 + Math.min(combo, 8) * 45); // rises with the streak
       };
     });
@@ -439,14 +643,19 @@ export class MinigameUI {
             if (!c) return;
             liveSpawn[sp.cell] = si;
             c.classList.add('hot');
-            if (flameUrl) c.style.backgroundImage = `url(${flameUrl})`;
+            // A living, looping flame on the hot anvil (fx_flame_forge, 7-frame
+            // strip). Reduced-motion holds a single static frame instead.
+            if (this.reduce()) {
+              if (flameUrl) c.style.backgroundImage = `url(${flameUrl})`;
+            } else {
+              flameStop[sp.cell] = this.playStrip(c, 'fx_flame_forge', { fps: 14, loop: true });
+            }
             this.timers.push(
               window.setTimeout(() => {
                 if (liveSpawn[sp.cell] === si) {
-                  liveSpawn[sp.cell] = undefined;
-                  c.classList.remove('hot');
-                  c.style.backgroundImage = '';
+                  coolCell(c, sp.cell);
                   combo = 0; // a cooled anvil breaks the streak (no other penalty)
+                  forgeEl?.classList.remove('hot-streak');
                   if (comboEl) comboEl.textContent = '';
                 }
               }, sp.ttlMs),
