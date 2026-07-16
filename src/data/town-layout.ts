@@ -23,22 +23,35 @@ export interface TownPiece {
   untilStage?: number;
 }
 
-/** Buildings, in story order. One returns roughly every two deliveries. */
+/**
+ * Buildings, in story order. One returns roughly every two deliveries.
+ *
+ * Positions are laid to the painted island plate's real plots (Batch-15
+ * PLOT_MASK_map_island_plate.png), NOT the idealized mask island — the final
+ * plate carved a bay into the south-east, so anchors are validated on the actual
+ * painted land and spaced so no two building sprites collide at the plate's
+ * 1.16× draw scale (the lighthouse and Joss's hut used to overlap).
+ */
 export const TOWN_BUILDINGS: readonly TownPiece[] = [
-  { art: 'prop_sign', x: 0.535, y: 0.56, w: 0.045, unlockAt: 1 },
-  { art: 'town_cottage', x: 0.27, y: 0.52, w: 0.17, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
-  { art: 'town_bakery', x: 0.64, y: 0.485, w: 0.165, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
-  { art: 'prop_well', x: 0.475, y: 0.635, w: 0.055, unlockAt: 6 },
-  { art: 'town_market', x: 0.43, y: 0.44, w: 0.155, unlockAt: 8, ruinVariant: 7 },
-  { art: 'town_garden', x: 0.725, y: 0.615, w: 0.17, unlockAt: 10, ruinVariant: 4 },
-  { art: 'town_townhall', x: 0.505, y: 0.375, w: 0.185, unlockAt: 12, ruinVariant: 3 },
-  { art: 'town_workshop', x: 0.155, y: 0.43, w: 0.16, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
-  { art: 'town_farm', x: 0.095, y: 0.635, w: 0.17, unlockAt: 16, ruinVariant: 5 },
-  { art: 'town_fisherhut', x: 0.82, y: 0.56, w: 0.165, unlockAt: 18, ruinVariant: 6 },
-  { art: 'town_sawmill', x: 0.21, y: 0.76, w: 0.165, unlockAt: 20, ruinVariant: 1 },
-  { art: 'town_blacksmith', x: 0.36, y: 0.72, w: 0.16, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
-  { art: 'town_dock', x: 0.79, y: 0.84, w: 0.21, unlockAt: 22, ruinVariant: 5 },
-  { art: 'town_library', x: 0.585, y: 0.74, w: 0.165, unlockAt: 23, ruinVariant: 3 },
+  { art: 'prop_sign', x: 0.51, y: 0.47, w: 0.042, unlockAt: 1 },
+  { art: 'town_cottage', x: 0.305, y: 0.445, w: 0.148, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
+  { art: 'town_bakery', x: 0.655, y: 0.37, w: 0.138, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
+  { art: 'prop_well', x: 0.465, y: 0.56, w: 0.052, unlockAt: 6 },
+  { art: 'town_market', x: 0.44, y: 0.375, w: 0.138, unlockAt: 8, ruinVariant: 7 },
+  { art: 'town_garden', x: 0.715, y: 0.515, w: 0.148, unlockAt: 10, ruinVariant: 4 },
+  { art: 'town_townhall', x: 0.235, y: 0.735, w: 0.148, unlockAt: 12, ruinVariant: 3 },
+  { art: 'town_workshop', x: 0.15, y: 0.39, w: 0.138, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
+  { art: 'town_farm', x: 0.19, y: 0.59, w: 0.148, unlockAt: 16, ruinVariant: 5 },
+  // Joss's hut is a stilted pier: it sits on the SE point with its deck over the
+  // bay water, connected to land only at the house body (back). Anchor is
+  // intentionally over water so the sprite's own water blends with the plate.
+  { art: 'town_fisherhut', x: 0.805, y: 0.705, w: 0.148, unlockAt: 18, ruinVariant: 6 },
+  { art: 'town_sawmill', x: 0.47, y: 0.245, w: 0.148, unlockAt: 20, ruinVariant: 1 },
+  { art: 'town_blacksmith', x: 0.36, y: 0.71, w: 0.143, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
+  // the dock pier sits up at the bay's north-west shore so its own water meets
+  // the plate's bay, not the grass
+  { art: 'town_dock', x: 0.645, y: 0.71, w: 0.126, unlockAt: 22, ruinVariant: 5 },
+  { art: 'town_library', x: 0.54, y: 0.64, w: 0.148, unlockAt: 23, ruinVariant: 3 },
 ] as const;
 
 /** Friendly names + story links for tappable buildings. */
@@ -79,9 +92,9 @@ export const TOWN_WALKERS: readonly TownWalker[] = [
     unlockAt: 4,
     period: 24,
     path: [
-      { x: 0.6, y: 0.535 },
-      { x: 0.67, y: 0.55 },
-      { x: 0.62, y: 0.53 },
+      { x: 0.62, y: 0.42 },
+      { x: 0.7, y: 0.44 },
+      { x: 0.65, y: 0.41 },
     ],
   }, // Bran tends the bakery step
   {
@@ -89,9 +102,9 @@ export const TOWN_WALKERS: readonly TownWalker[] = [
     unlockAt: 8,
     period: 28,
     path: [
-      { x: 0.49, y: 0.61 },
-      { x: 0.56, y: 0.585 },
-      { x: 0.52, y: 0.62 },
+      { x: 0.46, y: 0.52 },
+      { x: 0.54, y: 0.5 },
+      { x: 0.5, y: 0.53 },
     ],
   }, // Wren by the notice board
   {
@@ -99,8 +112,8 @@ export const TOWN_WALKERS: readonly TownWalker[] = [
     unlockAt: 9,
     period: 32,
     path: [
-      { x: 0.79, y: 0.61 },
-      { x: 0.87, y: 0.6 },
+      { x: 0.78, y: 0.64 },
+      { x: 0.83, y: 0.63 },
     ],
   }, // Sorin near his hut
   {
@@ -108,9 +121,9 @@ export const TOWN_WALKERS: readonly TownWalker[] = [
     unlockAt: 12,
     period: 30,
     path: [
-      { x: 0.3, y: 0.585 },
-      { x: 0.24, y: 0.61 },
-      { x: 0.29, y: 0.58 },
+      { x: 0.3, y: 0.49 },
+      { x: 0.37, y: 0.47 },
+      { x: 0.32, y: 0.5 },
     ],
   }, // Marta at the old cottage
   {
@@ -118,10 +131,10 @@ export const TOWN_WALKERS: readonly TownWalker[] = [
     unlockAt: 16,
     period: 14,
     path: [
-      { x: 0.5, y: 0.68 },
-      { x: 0.6, y: 0.7 },
-      { x: 0.52, y: 0.73 },
-      { x: 0.45, y: 0.7 },
+      { x: 0.43, y: 0.62 },
+      { x: 0.53, y: 0.6 },
+      { x: 0.49, y: 0.64 },
+      { x: 0.42, y: 0.61 },
     ],
   }, // the child romps by the well
   {
@@ -129,8 +142,8 @@ export const TOWN_WALKERS: readonly TownWalker[] = [
     unlockAt: 18,
     period: 26,
     path: [
-      { x: 0.72, y: 0.81 },
-      { x: 0.82, y: 0.83 },
+      { x: 0.59, y: 0.68 },
+      { x: 0.65, y: 0.67 },
     ],
   }, // Joss works the docks
   {
@@ -138,8 +151,8 @@ export const TOWN_WALKERS: readonly TownWalker[] = [
     unlockAt: 20,
     period: 28,
     path: [
-      { x: 0.15, y: 0.68 },
-      { x: 0.22, y: 0.66 },
+      { x: 0.18, y: 0.65 },
+      { x: 0.24, y: 0.63 },
     ],
   }, // by the farm
   {
@@ -147,8 +160,8 @@ export const TOWN_WALKERS: readonly TownWalker[] = [
     unlockAt: 22,
     period: 26,
     path: [
-      { x: 0.32, y: 0.76 },
-      { x: 0.42, y: 0.78 },
+      { x: 0.31, y: 0.76 },
+      { x: 0.4, y: 0.75 },
     ],
   }, // by the forge
 ] as const;
@@ -160,70 +173,57 @@ export const TOWN_BOATS: readonly { art: string; x: number; y: number; w: number
   { art: 'boat_sail_s', x: 0.08, y: 0.96, w: 0.1, stage: 4 },
 ] as const;
 
-/** Nature and street furniture fill in as the town heals (by homestead stage). */
+/**
+ * Nature and street furniture fill in as the town heals (by homestead stage).
+ * Every anchor is validated against the painted plate: on land (except coastal
+ * pieces), and clear of building sprite columns so nothing hides behind a roof.
+ */
 export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
-  { art: 'prop_rock', x: 0.055, y: 0.445, w: 0.05, unlockAt: 0, stage: 0 },
-  { art: 'prop_rock', x: 0.915, y: 0.64, w: 0.045, unlockAt: 0, stage: 0 },
-  // the storm bent the trees but didn't take them — a fresh island still lives
-  { art: 'tree_pine', x: 0.105, y: 0.485, w: 0.045, unlockAt: 0, stage: 0 },
-  { art: 'tree_pine', x: 0.705, y: 0.44, w: 0.04, unlockAt: 0, stage: 0 },
-  { art: 'tree_bush', x: 0.875, y: 0.5, w: 0.05, unlockAt: 0, stage: 0 },
-  { art: 'tree_bush', x: 0.24, y: 0.62, w: 0.045, unlockAt: 0, stage: 0 },
-  { art: 'prop_rock', x: 0.31, y: 0.815, w: 0.04, unlockAt: 0, stage: 0 },
-  { art: 'prop_barrel', x: 0.585, y: 0.55, w: 0.03, unlockAt: 0, stage: 0 },
-  { art: 'tree_pine', x: 0.08, y: 0.43, w: 0.05, unlockAt: 0, stage: 1 },
-  { art: 'tree_oak', x: 0.665, y: 0.425, w: 0.07, unlockAt: 0, stage: 1 },
-  { art: 'tree_pine', x: 0.315, y: 0.425, w: 0.05, unlockAt: 0, stage: 2 },
-  { art: 'prop_lamp', x: 0.565, y: 0.47, w: 0.028, unlockAt: 0, stage: 2 },
-  { art: 'prop_lamp', x: 0.44, y: 0.56, w: 0.028, unlockAt: 0, stage: 2 },
-  { art: 'tree_oak', x: 0.935, y: 0.48, w: 0.065, unlockAt: 0, stage: 2 },
-  { art: 'tree_bush', x: 0.35, y: 0.585, w: 0.055, unlockAt: 0, stage: 3 },
-  { art: 'tree_flowerbush', x: 0.6, y: 0.6, w: 0.06, unlockAt: 0, stage: 3 },
-  { art: 'prop_bench', x: 0.52, y: 0.665, w: 0.06, unlockAt: 0, stage: 3 },
-  { art: 'tree_flowerbush', x: 0.15, y: 0.52, w: 0.06, unlockAt: 0, stage: 4 },
-  { art: 'prop_barrel', x: 0.71, y: 0.755, w: 0.035, unlockAt: 0, stage: 4 },
-  { art: 'prop_crate', x: 0.685, y: 0.77, w: 0.035, unlockAt: 0, stage: 4 },
-  // fences frame the farm and the garden once they're tended
-  { art: 'fence_wood', x: 0.095, y: 0.685, w: 0.11, unlockAt: 16, stage: 0 },
-  { art: 'fence_wood', x: 0.665, y: 0.645, w: 0.11, unlockAt: 10, stage: 0 },
-  // ── Storm wreckage: the island washed up broken but alive. Scattered at the
-  //    edges early, cleared away as Emberhollow is rebuilt (untilStage).
-  { art: 'debris_a', x: 0.62, y: 0.7, w: 0.06, unlockAt: 0, stage: 0, untilStage: 1 },
-  { art: 'debris_b', x: 0.35, y: 0.665, w: 0.055, unlockAt: 0, stage: 0, untilStage: 1 },
-  { art: 'debris_c', x: 0.5, y: 0.72, w: 0.045, unlockAt: 0, stage: 0, untilStage: 0 },
-  { art: 'debris_d', x: 0.815, y: 0.7, w: 0.035, unlockAt: 0, stage: 0, untilStage: 1 },
-  { art: 'debris_e', x: 0.19, y: 0.71, w: 0.05, unlockAt: 0, stage: 0, untilStage: 0 },
-  { art: 'debris_a', x: 0.44, y: 0.5, w: 0.045, unlockAt: 0, stage: 0, untilStage: 0 },
+  // ── permanent coastline + the open east headland the lighthouse path crosses
+  { art: 'prop_rock', x: 0.055, y: 0.47, w: 0.045, unlockAt: 0, stage: 0 },
+  { art: 'prop_rock', x: 0.885, y: 0.47, w: 0.04, unlockAt: 0, stage: 0 },
+  { art: 'prop_shorerock', x: 0.115, y: 0.805, w: 0.05, unlockAt: 0, stage: 0 },
+  { art: 'prop_tidepool', x: 0.56, y: 0.905, w: 0.07, unlockAt: 0, stage: 0 },
+  { art: 'tree_pine', x: 0.76, y: 0.33, w: 0.04, unlockAt: 0, stage: 0 },
+  { art: 'tree_bush', x: 0.8, y: 0.33, w: 0.045, unlockAt: 0, stage: 0 },
+  { art: 'tree_oak', x: 0.795, y: 0.415, w: 0.06, unlockAt: 0, stage: 1 },
+  { art: 'tree_pine', x: 0.85, y: 0.315, w: 0.044, unlockAt: 0, stage: 1 },
+  // ── copses softening the seams between plots
+  { art: 'tree_bush', x: 0.47, y: 0.47, w: 0.045, unlockAt: 0, stage: 2 },
+  { art: 'tree_bush', x: 0.3, y: 0.56, w: 0.048, unlockAt: 0, stage: 2 },
+  // ── lamplight + benches around the town square (well & notice board)
+  { art: 'prop_lamp', x: 0.415, y: 0.52, w: 0.026, unlockAt: 0, stage: 2 },
+  { art: 'prop_lamp', x: 0.47, y: 0.64, w: 0.026, unlockAt: 0, stage: 2 },
+  { art: 'prop_lamp', x: 0.55, y: 0.665, w: 0.026, unlockAt: 0, stage: 3 },
+  { art: 'prop_lamp', x: 0.47, y: 0.68, w: 0.026, unlockAt: 0, stage: 3 },
+  { art: 'prop_bench', x: 0.43, y: 0.61, w: 0.052, unlockAt: 0, stage: 3 },
+  { art: 'prop_bench', x: 0.52, y: 0.7, w: 0.052, unlockAt: 0, stage: 4 },
+  // ── wildflower beds + flowering bushes brighten the open middle
+  { art: 'terrain_flowers1', x: 0.6, y: 0.61, w: 0.055, unlockAt: 0, stage: 2 },
+  { art: 'terrain_flowers2', x: 0.395, y: 0.56, w: 0.055, unlockAt: 0, stage: 2 },
+  { art: 'terrain_flowers1', x: 0.72, y: 0.56, w: 0.05, unlockAt: 0, stage: 3 },
+  { art: 'tree_flowerbush', x: 0.45, y: 0.55, w: 0.05, unlockAt: 0, stage: 3 },
+  { art: 'tree_flowerbush', x: 0.42, y: 0.5, w: 0.048, unlockAt: 0, stage: 3 },
+  { art: 'tree_flowerbush', x: 0.72, y: 0.64, w: 0.048, unlockAt: 0, stage: 4 },
+  // ── fences frame the farm and the garden once they're tended
+  { art: 'fence_wood', x: 0.135, y: 0.655, w: 0.1, unlockAt: 16, stage: 0 },
+  { art: 'fence_wood', x: 0.7, y: 0.555, w: 0.095, unlockAt: 10, stage: 0 },
+  // ── working clutter by the dock + the square
+  { art: 'prop_barrel', x: 0.53, y: 0.78, w: 0.034, unlockAt: 0, stage: 4 },
+  { art: 'prop_crate', x: 0.55, y: 0.792, w: 0.034, unlockAt: 0, stage: 4 },
+  { art: 'prop_barrel', x: 0.44, y: 0.64, w: 0.032, unlockAt: 0, stage: 4 },
+  // ── Storm wreckage: the island washed up broken but alive. Scattered on the
+  //    open ground early, cleared away as Emberhollow is rebuilt (untilStage).
+  { art: 'debris_a', x: 0.47, y: 0.56, w: 0.055, unlockAt: 0, stage: 0, untilStage: 1 },
+  { art: 'debris_b', x: 0.6, y: 0.48, w: 0.052, unlockAt: 0, stage: 0, untilStage: 1 },
+  { art: 'debris_c', x: 0.44, y: 0.66, w: 0.045, unlockAt: 0, stage: 0, untilStage: 0 },
+  { art: 'debris_d', x: 0.5, y: 0.66, w: 0.035, unlockAt: 0, stage: 0, untilStage: 1 },
+  { art: 'debris_e', x: 0.31, y: 0.545, w: 0.05, unlockAt: 0, stage: 0, untilStage: 0 },
+  { art: 'debris_a', x: 0.56, y: 0.44, w: 0.045, unlockAt: 0, stage: 0, untilStage: 0 },
   // storm-bent dead trees give way to healthy ones as the land heals
-  { art: 'tree_dead_a', x: 0.885, y: 0.43, w: 0.05, unlockAt: 0, stage: 0, untilStage: 2 },
-  { art: 'tree_dead_b', x: 0.145, y: 0.55, w: 0.045, unlockAt: 0, stage: 0, untilStage: 2 },
-  { art: 'tree_dead_c', x: 0.6, y: 0.31, w: 0.05, unlockAt: 0, stage: 0, untilStage: 1 },
-  // permanent coastal detail
-  { art: 'prop_tidepool', x: 0.6, y: 0.895, w: 0.08, unlockAt: 0, stage: 0 },
-  { art: 'prop_shorerock', x: 0.1, y: 0.8, w: 0.05, unlockAt: 0, stage: 0 },
-
-  // ── Phase 2c dressing: fill the open meadow so the healed town reads lush,
-  //    not empty. Flower beds, grass copses, path lamps and benches, placed in
-  //    the gaps between plots and keyed to stage so growth feels earned.
-  // wildflower beds bloom as the land recovers
-  { art: 'terrain_flowers1', x: 0.6, y: 0.865, w: 0.07, unlockAt: 0, stage: 2 },
-  { art: 'terrain_flowers2', x: 0.3, y: 0.885, w: 0.07, unlockAt: 0, stage: 2 },
-  { art: 'terrain_flowers1', x: 0.775, y: 0.645, w: 0.06, unlockAt: 0, stage: 3 },
-  { art: 'terrain_flowers2', x: 0.47, y: 0.83, w: 0.06, unlockAt: 0, stage: 3 },
-  { art: 'tree_flowerbush', x: 0.4, y: 0.63, w: 0.05, unlockAt: 0, stage: 3 },
-  { art: 'tree_flowerbush', x: 0.9, y: 0.64, w: 0.05, unlockAt: 0, stage: 4 },
-  // small copses of green break up the meadow
-  { art: 'tree_bush', x: 0.66, y: 0.8, w: 0.05, unlockAt: 0, stage: 1 },
-  { art: 'tree_bush', x: 0.12, y: 0.72, w: 0.05, unlockAt: 0, stage: 2 },
-  { art: 'tree_pine', x: 0.47, y: 0.31, w: 0.045, unlockAt: 0, stage: 2 },
-  { art: 'tree_oak', x: 0.3, y: 0.4, w: 0.06, unlockAt: 0, stage: 3 },
-  { art: 'prop_rock', x: 0.685, y: 0.888, w: 0.035, unlockAt: 0, stage: 1 },
-  { art: 'prop_rock', x: 0.55, y: 0.9, w: 0.03, unlockAt: 0, stage: 2 },
-  // lamplight lines the square and the paths once the town stirs at dusk
-  { art: 'prop_lamp', x: 0.66, y: 0.62, w: 0.028, unlockAt: 0, stage: 3 },
-  { art: 'prop_lamp', x: 0.3, y: 0.68, w: 0.028, unlockAt: 0, stage: 3 },
-  { art: 'prop_lamp', x: 0.5, y: 0.8, w: 0.028, unlockAt: 0, stage: 4 },
-  { art: 'prop_bench', x: 0.44, y: 0.68, w: 0.055, unlockAt: 0, stage: 4 },
+  { art: 'tree_dead_a', x: 0.6, y: 0.42, w: 0.048, unlockAt: 0, stage: 0, untilStage: 2 },
+  { art: 'tree_dead_b', x: 0.44, y: 0.6, w: 0.045, unlockAt: 0, stage: 0, untilStage: 2 },
+  { art: 'tree_dead_c', x: 0.36, y: 0.5, w: 0.048, unlockAt: 0, stage: 0, untilStage: 1 },
 ] as const;
 
 /**

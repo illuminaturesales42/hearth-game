@@ -1111,16 +1111,21 @@ export class MapView {
       unlockAt: 0,
       decorId: d.id,
     }));
-    // flat ground pieces (paths, meadow patches) lie under everything
+    // flat ground pieces (paths, meadow patches) lie under everything. The
+    // painted plate already carries its own paths/grass/flowers, so TOWN_TERRAIN
+    // (procedural-island scenery, positioned for the old coastline) is skipped
+    // entirely on the plate — drawn over it, its trees/rocks double up and its
+    // dock planks float in the bay.
     const FLAT = new Set(['terrain_path', 'terrain_grass', 'terrain_flowers1', 'terrain_flowers2']);
-    for (const f of TOWN_TERRAIN) {
-      if (!FLAT.has(f.art) || delivered < f.unlockAt) continue;
-      const img = this.sprite(f.art);
-      if (!img) continue;
-      const w = f.w * W;
-      const h = w * (img.naturalHeight / img.naturalWidth);
-      ctx.drawImage(img, f.x * W - w / 2, f.y * H - h, w, h);
-    }
+    if (!plate)
+      for (const f of TOWN_TERRAIN) {
+        if (!FLAT.has(f.art) || delivered < f.unlockAt) continue;
+        const img = this.sprite(f.art);
+        if (!img) continue;
+        const w = f.w * W;
+        const h = w * (img.naturalHeight / img.naturalWidth);
+        ctx.drawImage(img, f.x * W - w / 2, f.y * H - h, w, h);
+      }
     // Every building stands on the island from the very first day as a storm-worn
     // ruin, so the player can see the whole town they're rebuilding. Each turns to
     // scaffold when it's next in line, then to its finished (and later upgraded)
@@ -1130,13 +1135,8 @@ export class MapView {
       .map((b) => b.unlockAt)
       .sort((a, b) => a - b);
     const nextUnlock = upcoming.length ? upcoming[0]! : -1; // the one being rebuilt now → scaffold
-    // The generic dock planks built the harbour for the procedural coastline;
-    // the painted plate + town_dock pier already provide it, so drawn over the
-    // plate they read as stray debris floating in the bay.
     const pieces: ScenePiece[] = [
-      ...TOWN_TERRAIN.filter(
-        (t) => !FLAT.has(t.art) && delivered >= t.unlockAt && !(plate && t.art.startsWith('dock_')),
-      ),
+      ...(plate ? [] : TOWN_TERRAIN.filter((t) => !FLAT.has(t.art) && delivered >= t.unlockAt)),
       ...TOWN_NATURE.filter(
         (n) => stage >= n.stage && delivered >= n.unlockAt && (n.untilStage === undefined || stage <= n.untilStage),
       ),
@@ -1369,10 +1369,10 @@ export class MapView {
       const dog = this.sprite('animal_dog');
       if (dog && delivered >= 6) {
         const path = [
-          [0.34, 0.63],
-          [0.46, 0.665],
-          [0.4, 0.705],
-          [0.3, 0.67],
+          [0.34, 0.62],
+          [0.45, 0.64],
+          [0.41, 0.68],
+          [0.31, 0.65],
         ] as const;
         const total = path.length - 1;
         const phase = this.reduce ? 0.3 : (t / 1000 / 12) % 2;
@@ -1409,7 +1409,7 @@ export class MapView {
     if (stage >= 2 && !this.reduce) {
       const lines: [number, number, number, number][] = [
         [0.2, 0.5, 0.3, 0.5], // by the cottage
-        [0.06, 0.61, 0.15, 0.6], // by the farm
+        [0.08, 0.61, 0.16, 0.6], // by the farm
       ];
       const cloths = ['#f0e6d2', '#a8c8e0', '#e6a8b8', '#bcd0a0'];
       for (const [x1n, y1n, x2n, y2n] of lines) {
@@ -1477,7 +1477,7 @@ export class MapView {
     // --- a gathering hearth-fire warms the town square once the plaza returns ---
     if (delivered >= 6) {
       const fx = W * 0.46;
-      const fy = H * 0.715;
+      const fy = H * 0.66;
       // the gathering fire grows as Emberhollow heals: a spark, then a hearth, then a bonfire
       const fireArt = delivered >= 16 ? 'fx_flame_large' : delivered >= 10 ? 'fx_flame_medium' : 'fx_flame_small';
       const fw = W * (delivered >= 16 ? 0.084 : delivered >= 10 ? 0.07 : 0.056);
@@ -1500,7 +1500,7 @@ export class MapView {
     // --- the forge burns once the blacksmith is raised (a working fire, day + night) ---
     if (delivered >= 21) {
       const gx = W * 0.36;
-      const gy = H * 0.7;
+      const gy = H * 0.705;
       const fl = this.reduce ? 1 : 0.78 + 0.22 * Math.abs(Math.sin(t / 95));
       const r = W * 0.052;
       const fg = ctx.createRadialGradient(gx, gy, 1, gx, gy, r);
@@ -1515,11 +1515,11 @@ export class MapView {
     // --- the painted lighthouse keeps its watch on the northern point ---
     {
       const img = this.sprite('prop_lighthouse');
-      const lx = W * 0.95;
-      const baseY = H * 0.48; // out on the eastern rock point, clear of the fisher hut
+      const lx = W * 0.15;
+      const baseY = H * 0.99; // on its own rock islet in the SW water, rocks in the water
       const lit = delivered >= 9; // the beacon story beat
       if (img) {
-        const lw = W * 0.13;
+        const lw = W * 0.23;
         const lh = lw * (img.naturalHeight / img.naturalWidth);
         ctx.drawImage(img, lx - lw / 2, baseY - lh, lw, lh);
         // Tappable once the beacon is lit — opens The Lighthouse card (Beacon Drop).
@@ -1706,8 +1706,8 @@ export class MapView {
     // Water + stretch → the gardens green up: a soft vitality over the meadow
     // and a few flowers by the garden plot once it's been restored.
     if (mood.gardenLush > 0) {
-      const gx = W * 0.725;
-      const gy = H * 0.615;
+      const gx = W * 0.715;
+      const gy = H * 0.515;
       const gr = W * 0.16;
       const g = ctx.createRadialGradient(gx, gy - gr * 0.25, gr * 0.15, gx, gy - gr * 0.25, gr);
       g.addColorStop(0, `rgba(126, 196, 106, ${(0.08 + mood.gardenLush * 0.14).toFixed(3)})`);
@@ -1734,8 +1734,8 @@ export class MapView {
         for (let i = 0; i < 3; i++) {
           drawFlower(
             ctx,
-            W * (0.68 + i * 0.025),
-            H * (0.62 + (i % 2) * 0.015),
+            W * (0.67 + i * 0.025),
+            H * (0.515 + (i % 2) * 0.015),
             2.6,
             FLOWER_COLOURS[(i + 2) % FLOWER_COLOURS.length]!,
           );
@@ -1745,8 +1745,8 @@ export class MapView {
 
     // Drink water → the well sparkles and its plaza feels fresh.
     if (mood.wellSparkle && delivered >= 6) {
-      const wx = W * 0.475;
-      const wy = H * 0.635 - H * 0.03;
+      const wx = W * 0.465;
+      const wy = H * 0.56 - H * 0.03;
       const count = this.reduce ? 3 : 6;
       for (let i = 0; i < count; i++) {
         const seed = i * 1.7;
