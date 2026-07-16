@@ -4399,10 +4399,43 @@ body.reduce-motion *::after {
 }
 
 /* --- result card --- */
-.mg-result {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(236, 220, 182, 0.16);
+/* The reward popup is a centred mini-modal, not an inline strip — otherwise its
+   text and Play-again/Back buttons landed on top of the game's own controls at
+   the bottom of the card. Fixed positioning lifts it out of the scrolling card
+   into the middle of the screen, above everything. */
+/* ID selector so it wins over `.mg-card.mg-has-bg > *` (which pins children to
+   position:relative for the scrim stacking context). */
+#mg-result {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 66;
+  width: min(340px, 86vw);
+  max-height: 84vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 22px 20px 18px;
+  text-align: center;
+  background: linear-gradient(180deg, #1b2138, #141a2e);
+  border: 1px solid rgba(244, 166, 59, 0.34);
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+@media (prefers-reduced-motion: no-preference) {
+  #mg-result:not([hidden]) {
+    animation: mg-result-pop 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+}
+@keyframes mg-result-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 .mg-result-title {
   font-family: var(--ff-display, Georgia, serif);

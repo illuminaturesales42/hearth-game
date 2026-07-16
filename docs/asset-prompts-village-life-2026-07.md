@@ -8,6 +8,16 @@ HEARTH already ships **300+ finished art assets**. The Village Life production p
 
 **The 12:** 6 mini-game backdrops · 4 foraging tokens · 2 section-header banners. That's the whole remaining set.
 
+## §0 — OUTPUT FORMAT (read first — this bit matters most)
+
+The first backdrop batch came back as one tall montage with the filenames painted across the top, which had to be sliced and upscaled by hand. To avoid that, each image must be delivered like this:
+
+- **One separate image file per asset** — never a montage/contact-sheet of several assets in one picture.
+- **Exact pixel size** as stated per asset (e.g. backdrops **880×1120**, tokens 128×128, banners 1200×300). Don't hand back tall narrow strips — match the ratio exactly.
+- **No text anywhere on the image** — not the filename, not a title, not a caption. (The app draws all text.)
+- **Hero centred in the frame.** Backdrops get cover-cropped to a near-square card, so put the main subject in the vertical middle, not up at the top — anything near the top or bottom edge gets cut off.
+- Deliver at the stated size or larger (never smaller — upscaling a small image looks soft).
+
 ---
 
 ## §1 — THE STYLE BLOCK  *(paste this at the top of EVERY prompt)*

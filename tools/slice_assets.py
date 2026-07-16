@@ -865,6 +865,21 @@ def define() -> None:
     for k in deadtrees:
         AUTOCROP.add(k)
 
+    # Village Life mini-game backdrops (2026-07 drop) — full opaque scenes that
+    # sit under the in-game dark scrim. Authored 880x1120 in Core/Final Assets/Generated/.
+    register_whole("mg_bg_well", "mg_bg_well.png", opaque=True)
+    register_whole("mg_bg_beacon", "mg_bg_beacon.png", opaque=True)
+    register_whole("mg_bg_forge", "mg_bg_forge.png", opaque=True)
+    register_whole("mg_bg_catch", "mg_bg_catch.png", opaque=True)
+    register_whole("mg_bg_forage", "mg_bg_forage.png", opaque=True)
+    register_whole("mg_bg_stacks", "mg_bg_stacks.png", opaque=True)
+    # Section banner + foraging tokens (tokens already alpha-cut to 128px).
+    register_whole("ui_repository_header", "ui_repository_header.png", opaque=True)
+    register_whole("mg_forage_coin", "mg_forage_coin.png", opaque=True)
+    register_whole("mg_forage_ember", "mg_forage_ember.png", opaque=True)
+    register_whole("mg_forage_honeycomb", "mg_forage_honeycomb.png", opaque=True)
+    register_whole("mg_forage_leaf", "mg_forage_leaf.png", opaque=True)
+
 
 define()
 
