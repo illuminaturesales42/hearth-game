@@ -245,6 +245,19 @@ export function earnedFlourishes(m: WorldMood): string[] {
   return out;
 }
 
+export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
+
+/** The player's real-world (northern-hemisphere) season for a 0-indexed month.
+ *  Pure — the map reads it from the live date to tint the town's ambience so the
+ *  world echoes the season the player is actually living in. */
+export function seasonForMonth(month: number): Season {
+  const m = ((Math.trunc(month) % 12) + 12) % 12;
+  if (m === 11 || m <= 1) return 'winter'; // Dec, Jan, Feb
+  if (m <= 4) return 'spring'; // Mar, Apr, May
+  if (m <= 7) return 'summer'; // Jun, Jul, Aug
+  return 'autumn'; // Sep, Oct, Nov
+}
+
 function clamp01(v: number): number {
   return Math.max(0, Math.min(1, v));
 }

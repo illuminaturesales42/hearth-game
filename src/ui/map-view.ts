@@ -23,7 +23,7 @@ import {
   TOWN_TERRAIN,
   TOWN_WALKERS,
 } from '../data/town-layout';
-import { computeMood, earnedFlourishes, meditatedToday, moodCaption } from '../core/world-mood';
+import { computeMood, earnedFlourishes, meditatedToday, moodCaption, seasonForMonth } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
 import { stemLevels } from '../core/stem-levels';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
@@ -2209,6 +2209,7 @@ export class MapView {
     mood: WorldMood,
     stage: number,
   ): void {
+    this.drawSeason(ctx, W, H, t, night);
     // God-rays fanning from the low sun on clear-ish days.
     if (!night && mood.cloudCover < 0.55) {
       const sx = W * 0.78;
@@ -2297,6 +2298,65 @@ export class MapView {
         ctx.globalAlpha = 1;
       }
     }
+  }
+
+  /**
+   * A gentle flourish keyed to the player's real-world season — blossom petals
+   * in spring, drifting motes in summer, tumbling leaves in autumn, slow snow in
+   * winter. Emberhollow breathes with the season the player is actually living
+   * in. Caller already guards reduced motion.
+   */
+  private drawSeason(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, night: boolean): void {
+    const season = seasonForMonth(new Date().getMonth());
+    // Summer's twinkle is the night fireflies already drawn — keep day light.
+    const n = season === 'winter' ? 30 : season === 'summer' ? 12 : 18;
+    const fallMs = season === 'winter' ? 11000 : season === 'autumn' ? 7500 : 13000;
+    ctx.save();
+    if (season === 'summer') ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < n; i++) {
+      const seed = Math.sin(i * 12.9898) * 43758.5453;
+      const col = (seed - Math.floor(seed) + i / n) % 1; // stable per-particle column
+      const fall = (t / fallMs + i / n) % 1; // 0 (top) → 1 (bottom)
+      const swayAmp = season === 'summer' ? 0.015 : season === 'winter' ? 0.03 : 0.06;
+      const sway = Math.sin(t / 1500 + i * 1.7) * W * swayAmp;
+      const x = col * W + sway;
+      const y = fall * H;
+      const fade = Math.sin(fall * Math.PI); // fade in/out at the edges
+      if (fade <= 0.02) continue;
+      ctx.globalAlpha = fade * (season === 'summer' ? 0.5 : 0.62);
+      if (season === 'spring') {
+        ctx.fillStyle = i % 3 === 0 ? '#ffd7e6' : '#ffc0d4';
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(t / 900 + i);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 3.4, 1.7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else if (season === 'autumn') {
+        ctx.fillStyle = ['#d98a3a', '#c46a2a', '#b5623a', '#caa24a'][i % 4]!;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(Math.sin(t / 700 + i) * 0.9 + i);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 4, 2.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else if (season === 'winter') {
+        ctx.fillStyle = 'rgba(240, 246, 255, 0.9)';
+        ctx.beginPath();
+        ctx.arc(x, y, 1.8 + (i % 3) * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (!night) {
+        // summer: soft warm pollen motes drifting by day
+        ctx.fillStyle = 'rgba(255, 236, 180, 0.7)';
+        ctx.beginPath();
+        ctx.arc(x, y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
   }
 
   private drawHomestead(ctx: CanvasRenderingContext2D, cx: number, groundY: number, stage: number, t: number): void {

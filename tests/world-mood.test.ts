@@ -5,6 +5,7 @@ import {
   earnedFlourishes,
   meditatedToday,
   moodCaption,
+  seasonForMonth,
   weatherFromWmo,
 } from '../src/core/world-mood';
 import type { WeatherNow } from '../src/core/world-mood';
@@ -224,5 +225,23 @@ describe('computeMood — real-world actions bloom the town', () => {
     expect(moodCaption(bloomy)).toContain('flowers');
     const festivy = computeMood({ ...base, streak: 20 });
     expect(moodCaption(festivy)).toContain('festival');
+  });
+});
+
+describe('seasonForMonth (northern hemisphere)', () => {
+  it('maps months to seasons', () => {
+    expect(seasonForMonth(11)).toBe('winter'); // Dec
+    expect(seasonForMonth(0)).toBe('winter'); // Jan
+    expect(seasonForMonth(1)).toBe('winter'); // Feb
+    expect(seasonForMonth(2)).toBe('spring'); // Mar
+    expect(seasonForMonth(4)).toBe('spring'); // May
+    expect(seasonForMonth(5)).toBe('summer'); // Jun
+    expect(seasonForMonth(7)).toBe('summer'); // Aug
+    expect(seasonForMonth(8)).toBe('autumn'); // Sep
+    expect(seasonForMonth(10)).toBe('autumn'); // Nov
+  });
+  it('wraps out-of-range months', () => {
+    expect(seasonForMonth(12)).toBe('winter'); // == Jan
+    expect(seasonForMonth(-1)).toBe('winter'); // == Dec
   });
 });
