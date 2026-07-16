@@ -10,7 +10,7 @@ const T0 = new Date('2026-07-07T13:00:00').getTime();
 describe('town decor — coins buy beauty, never power', () => {
   const bench = DECOR_CATALOG.find((d) => d.art === 'prop_bench')!;
 
-  it('placing spends coins and joins the town; removing refunds in full', () => {
+  it('placing spends coins; removing reclaims half (decor is a real coin sink)', () => {
     const g = new Game(T0);
     g.finishDuel(true, [], 50); // seed some coins via a duel win
     const coins = g.snapshot.coins;
@@ -20,7 +20,8 @@ describe('town decor — coins buy beauty, never power', () => {
     expect(g.snapshot.decor).toHaveLength(1);
     const id = g.snapshot.decor[0]!.id;
     g.removeDecor(id);
-    expect(g.snapshot.coins).toBe(coins);
+    // half the materials reclaimed — the other half was spent on the beauty
+    expect(g.snapshot.coins).toBe(coins - bench.cost + Math.floor(bench.cost / 2));
     expect(g.snapshot.decor).toHaveLength(0);
   });
 

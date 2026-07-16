@@ -109,6 +109,59 @@ export function composeEntry(
   return { day, text, stage, streak };
 }
 
+const WEEK_OPENERS = [
+  'Seven mornings came and went over Emberhollow,',
+  'A week folded itself into the Chronicle,',
+  'The tide turned seven times this week,',
+  'Another handful of days by the hearth,',
+] as const;
+
+const WEEK_STAGES = [
+  'and the square still carries its storm scars — but you are here, and that is where it begins.',
+  'and scaffolds are rising where the storm left gaps.',
+  'and a lit window or two now makes the evenings feel possible.',
+  'and the gardens have started leaning into the fences, unafraid.',
+  'and the beacon keeps its slow, sure watch over a village nearly whole.',
+] as const;
+
+const WEEK_CLOSERS = [
+  'Rest is progress too. The fire will keep.',
+  'Whatever the week held, the village noticed. It always does.',
+  'Small and steady wins here. Come back when you can.',
+  'The kettle is on. Emberhollow is glad you came by.',
+] as const;
+
+export interface WeekDigest {
+  title: string;
+  text: string;
+  days: number;
+}
+
+/**
+ * "Your week in Emberhollow" — a gentle reflection over the last few days, drawn
+ * from the Chronicle (prose, never a stat sheet — Chronicle Bible). Returns null
+ * until there's a little to reflect on. Deterministic per the newest day.
+ */
+export function composeWeek(entries: readonly ChronicleEntry[]): WeekDigest | null {
+  const week = entries.slice(0, 7); // entries are newest-first ≈ the last week
+  if (week.length < 2) return null;
+  const days = week.length;
+  const topStreak = Math.max(...week.map((e) => e.streak));
+  const stage = Math.min(4, Math.max(...week.map((e) => e.stage)));
+  const seed = hash(week[0]!.day);
+  const streakLine =
+    topStreak >= 3
+      ? ` You kept the fire tended ${topStreak} days without letting it gutter.`
+      : days >= 5
+        ? ' You were here for most of it, and the village felt the difference.'
+        : '';
+  const text = `${pick(WEEK_OPENERS, seed)} and you were here for ${days} of them.${streakLine} ${pick(
+    WEEK_STAGES,
+    stage,
+  )} ${pick(WEEK_CLOSERS, seed >> 2)}`;
+  return { title: 'Your week in Emberhollow', text, days };
+}
+
 /** True when `actions.day` belongs to a day before `today` and deserves an entry. */
 export function dayHasRolled(actions: ActionState, todayKey: string): boolean {
   return actions.day !== todayKey;

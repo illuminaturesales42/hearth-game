@@ -71,6 +71,9 @@ export interface WorldMood {
   villagersOut: number; // walk → more villagers ambling outdoors
   festive: number; // long streak → festival decorations appear
   butterflies: boolean; // a flourishing garden draws butterflies
+  seaMist: number; // cold plunge → a cool mist drifts over the water (0..1)
+  saunaWarm: boolean; // sauna → warmer chimney smoke curls up
+  stargazed: boolean; // stargaze after dark → a constellation lights the bay (night only)
 }
 
 /** Whole days between two YYYY-MM-DD local day keys (b - a, ≥0 when b later). */
@@ -97,6 +100,9 @@ const WATER_IDS = ['water'] as const; // Fill the Well
 const WALK_IDS = ['steps', 'stairs'] as const; // Walk the Coast Road, Climb the Cliff Steps
 const STRETCH_IDS = ['stretch', 'squats'] as const; // Wake the Garden, Turn the Millstone
 const NATURE_IDS = ['nature-photo', 'photo-outside', 'sunrise-photo', 'sunset-photo'] as const;
+const COLD_IDS = ['log-cold-plunge'] as const; // Brave the Cold Water → sea mist
+const SAUNA_IDS = ['log-sauna'] as const; // Sit in the Heat → warm chimney smoke
+const STAR_IDS = ['stargaze'] as const; // Stargaze after dark → a constellation
 
 export interface MoodInputs {
   weather: WeatherNow | null;
@@ -155,6 +161,12 @@ export function computeMood(inp: MoodInputs): WorldMood {
   const festive = clamp01((streak - 5) / 9);
   // A flourishing, watered garden draws butterflies by day.
   const butterflies = bloom >= 0.6 && gardenLush >= 0.4;
+  // Cold plunge → a cool mist gathers over the water; more plunges, more mist.
+  const seaMist = clamp01(tally(counts, COLD_IDS) * 0.6);
+  // Sauna → the chimneys curl warmer smoke.
+  const saunaWarm = tally(counts, SAUNA_IDS) > 0;
+  // Stargaze → a constellation lights the bay (the map shows it only after dark).
+  const stargazed = tally(counts, STAR_IDS) > 0;
 
   return {
     weather: kind,
@@ -171,6 +183,9 @@ export function computeMood(inp: MoodInputs): WorldMood {
     villagersOut,
     festive,
     butterflies,
+    seaMist,
+    saunaWarm,
+    stargazed,
   };
 }
 
@@ -188,21 +203,59 @@ export function moodCaption(m: WorldMood): string {
             : m.weather === 'overcast'
               ? 'grey skies'
               : '';
-  const sea = m.calm ? 'still water' : m.sea >= 0.6 ? 'restless seas' : '';
+  const sea = m.calm ? 'still water' : m.seaMist > 0 ? 'a cool mist' : m.sea >= 0.6 ? 'restless seas' : '';
   // One earned flourish, if any — the most "special" the day unlocked.
   const care =
     m.festive >= 0.5
       ? 'festival banners'
-      : m.butterflies
-        ? 'butterflies about'
-        : m.bloom >= 0.6
-          ? 'flowers blooming'
-          : m.wellSparkle
-            ? 'wells sparkling'
-            : m.gardenLush >= 0.6
-              ? 'gardens greening'
-              : '';
+      : m.stargazed
+        ? 'a constellation aglow'
+        : m.butterflies
+          ? 'butterflies about'
+          : m.bloom >= 0.6
+            ? 'flowers blooming'
+            : m.wellSparkle
+              ? 'wells sparkling'
+              : m.saunaWarm
+                ? 'warm chimney smoke'
+                : m.gardenLush >= 0.6
+                  ? 'gardens greening'
+                  : '';
   return [weather, sea, care].filter(Boolean).join(', ');
+}
+
+/**
+ * The list of flourishes the player's day has actually brought the town — for the
+ * gentle "Emberhollow today" return-and-notice recap. Only ever what *happened*
+ * (never "you skipped X"). Ordered most-special first. Empty on a resting day.
+ */
+export function earnedFlourishes(m: WorldMood): string[] {
+  const out: string[] = [];
+  if (m.calm) out.push('The seas settled as you breathed.');
+  if (m.villagersOut >= 0.9) out.push('The lanes filled with folk after your walks.');
+  else if (m.villagersOut > 0) out.push('A neighbour took the air after your walk.');
+  if (m.wellSparkle) out.push('The wells sparkled — you drank with them.');
+  if (m.bloom >= 0.6) out.push('Flowers bloomed along the shore.');
+  else if (m.gardenLush >= 0.4) out.push('The gardens greened where you stretched.');
+  if (m.butterflies) out.push('Butterflies found the flowering gardens.');
+  if (m.seaMist > 0) out.push('A cool mist gathered off the water.');
+  if (m.saunaWarm) out.push('Warm smoke curled from the chimneys.');
+  if (m.stargazed) out.push('A constellation lit the bay while you watched the sky.');
+  if (m.festive >= 0.5) out.push('Festival banners gathered over the rooftops.');
+  return out;
+}
+
+export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
+
+/** The player's real-world (northern-hemisphere) season for a 0-indexed month.
+ *  Pure — the map reads it from the live date to tint the town's ambience so the
+ *  world echoes the season the player is actually living in. */
+export function seasonForMonth(month: number): Season {
+  const m = ((Math.trunc(month) % 12) + 12) % 12;
+  if (m === 11 || m <= 1) return 'winter'; // Dec, Jan, Feb
+  if (m <= 4) return 'spring'; // Mar, Apr, May
+  if (m <= 7) return 'summer'; // Jun, Jul, Aug
+  return 'autumn'; // Sep, Oct, Nov
 }
 
 function clamp01(v: number): number {

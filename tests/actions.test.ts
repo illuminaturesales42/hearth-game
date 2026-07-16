@@ -41,7 +41,7 @@ describe('action ledger', () => {
     expect(nextDay.counts.water ?? 0).toBe(0);
   });
 
-  it('grows the streak on consecutive days, resets gently after a gap', () => {
+  it('grows the streak on consecutive days', () => {
     const day = (n: number) => T0 + n * 24 * 3600_000;
     let s = recordAction(initialActionState(day(0)), 'water', day(0)).state;
     expect(s.streak).toBe(1);
@@ -49,9 +49,35 @@ describe('action ledger', () => {
     expect(s.streak).toBe(2);
     s = recordAction(s, 'water', day(2)).state;
     expect(s.streak).toBe(3);
-    // skip day 3, act on day 4 -> streak resets to 1, no penalty
-    s = recordAction(s, 'water', day(4)).state;
-    expect(s.streak).toBe(1);
+  });
+
+  it('a hearthstone (earned at each chest) auto-saves the streak across one missed day', () => {
+    const day = (n: number) => T0 + n * 24 * 3600_000;
+    let s = recordAction(initialActionState(day(0)), 'water', day(0)).state;
+    s = recordAction(s, 'water', day(1)).state;
+    s = recordAction(s, 'water', day(2)).state; // 3rd active day → chest → a hearthstone
+    expect(s.freezes).toBe(1);
+    // skip day 3, act on day 4: the hearthstone keeps the fire lit
+    const saved = recordAction(s, 'water', day(4));
+    expect(saved.usedFreeze).toBe(true);
+    expect(saved.state.streak).toBe(4);
+    expect(saved.state.freezes).toBe(0);
+    // with none left, the next missed day resets — gently, no penalty
+    const reset = recordAction(saved.state, 'water', day(6));
+    expect(reset.usedFreeze).toBe(false);
+    expect(reset.state.streak).toBe(1);
+  });
+
+  it('a hearthstone covers only a single missed day, not a longer absence', () => {
+    const day = (n: number) => T0 + n * 24 * 3600_000;
+    let s = recordAction(initialActionState(day(0)), 'water', day(0)).state;
+    s = recordAction(s, 'water', day(1)).state;
+    s = recordAction(s, 'water', day(2)).state; // hearthstone earned
+    // skip days 3 AND 4, act day 5 (gap of 3): resets, and the stone is kept
+    const r = recordAction(s, 'water', day(5));
+    expect(r.usedFreeze).toBe(false);
+    expect(r.state.streak).toBe(1);
+    expect(r.state.freezes).toBe(1);
   });
 
   it('opens a chest every third active day', () => {
@@ -151,8 +177,9 @@ describe('sunrise new day', () => {
     expect(g.dailyRewardPreview(day(1)).streak).toBe(2);
     g.claimDaily(day(1));
     expect(g.dailyRewardPreview(day(2)).streak).toBe(3);
-    // skip day 3, claim day 4 → resets to 1
-    expect(g.dailyRewardPreview(day(4)).streak).toBe(1);
+    g.claimDaily(day(2)); // 3rd active day → chest earns a hearthstone
+    // skip day 3; the hearthstone keeps the streak alive on day 4
+    expect(g.dailyRewardPreview(day(4)).streak).toBe(4);
   });
 });
 

@@ -306,9 +306,11 @@ export interface WorldEvent {
   kind: 'season' | 'daily' | 'weekly';
 }
 
+// Honest rhythms only — no fabricated countdowns. Everything here is a true
+// statement about how the game actually unfolds (the reactive world adds the
+// live seasonal note in the UI). A fake "Starts in 2d 14h" erodes trust for
+// nothing; these tell the player exactly what to expect.
 export const EVENTS: readonly WorldEvent[] = [
-  { id: 'festival', name: 'Festival of Lights', timing: 'Starts in 2d 14h', kind: 'season' },
-  { id: 'daily', name: 'Daily Tasks', timing: 'New in 14h', kind: 'daily' },
-  { id: 'weekly', name: 'Weekly Tasks', timing: '6d 4h left', kind: 'weekly' },
-  { id: 'season', name: 'Season Rewards', timing: 'Chapter 2', kind: 'season' },
+  { id: 'daily', name: 'Daily quests', timing: 'Refresh each morning', kind: 'daily' },
+  { id: 'weekly', name: 'Your week in Emberhollow', timing: 'A reflection each Sunday', kind: 'weekly' },
 ];

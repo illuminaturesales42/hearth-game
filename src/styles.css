@@ -806,14 +806,6 @@ body {
   transform: translate(-50%, -50%) scale(0.55);
   transform-origin: center;
 }
-@keyframes fxHeart {
-  from {
-    background-position-x: 0;
-  }
-  to {
-    background-position-x: -1232px;
-  }
-}
 .fx-sparkle {
   position: absolute;
   width: 72px;
@@ -843,9 +835,8 @@ body {
   .fx-sparkle {
     animation: fxSparkle 0.46s ease-out forwards;
   }
-  .fx-heart {
-    animation: fxHeart 0.56s steps(7) forwards;
-  }
+  /* .fx-heart is driven by the shared JS sprite-strip stepper (board-view.ts) —
+     no CSS steps() here, so it can't flash the blank 8th frame at the end. */
   .fx-ring {
     animation: fxRing 0.46s ease-out forwards;
   }
@@ -1195,6 +1186,24 @@ body {
 }
 .loc.locked {
   opacity: 0.55;
+}
+.loc-playable {
+  cursor: pointer;
+  transition:
+    transform 0.14s var(--mg-spring, ease),
+    border-color 0.14s ease;
+}
+.loc-playable:hover,
+.loc-playable:focus-visible {
+  border-color: rgba(255, 210, 122, 0.4);
+  transform: translateY(-1px);
+}
+.loc-playable:active {
+  transform: scale(0.99);
+}
+.loc-playable .loc-lvl::after {
+  content: ' · tap to play';
+  color: var(--ink-dim, #b9c2dc);
 }
 .loc-thumb {
   width: 72px;
@@ -2926,6 +2935,58 @@ body {
   margin: 0 auto 8px;
   display: block;
 }
+/* The building image doubles as the primary "play the game" control. */
+.bldg-art-wrap {
+  position: relative;
+  display: block;
+  margin: 0 auto 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  width: max-content;
+  border-radius: 16px;
+}
+.bldg-art-wrap .bldg-art {
+  margin: 0;
+}
+.bldg-art-wrap.is-playable {
+  animation: bldgPlayable 2s ease-in-out infinite;
+}
+.bldg-art-wrap.is-playable .bldg-art {
+  filter: drop-shadow(0 0 14px rgba(255, 200, 90, 0.55));
+}
+@keyframes bldgPlayable {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+.bldg-art-badge {
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #1b1206;
+  background: linear-gradient(180deg, #ffd27a, #f4a63b);
+  padding: 4px 12px;
+  border-radius: 999px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+.bldg-art-badge[hidden] {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bldg-art-wrap.is-playable {
+    animation: none;
+  }
+}
 .bldg-name {
   margin: 0 0 6px;
   font-family: var(--serif);
@@ -3543,11 +3604,22 @@ body.reduce-motion *::after {
 
 /* ===== building upgrade card ===== */
 .bldg-tier {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   margin: 4px 0 2px;
+}
+.bldg-tier-name {
   font-size: 13px;
   color: #d8a24a;
   letter-spacing: 1px;
   font-weight: 700;
+}
+.bldg-tier-note {
+  font-size: 11.5px;
+  color: rgba(235, 226, 208, 0.62);
+  letter-spacing: 0.2px;
+  line-height: 1.35;
 }
 .bldg-upgrade {
   margin-top: 6px;
@@ -3606,6 +3678,303 @@ body.reduce-motion *::after {
   display: none;
 }
 
+/* ============== Villager bond on the building card (Wave 3) ============== */
+.bldg-bond {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  text-align: left;
+  margin: 4px 0 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-card, 14px);
+  background: rgba(0, 0, 0, 0.16);
+  border: 1px solid rgba(255, 210, 150, 0.14);
+}
+.bldg-bond-bust {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center top;
+  box-shadow: inset 0 0 0 1px rgba(255, 210, 150, 0.3);
+}
+.bldg-bond-body {
+  flex: 1;
+  min-width: 0;
+}
+.bldg-bond-body b {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--serif, Georgia, serif);
+  font-size: 14px;
+}
+.bldg-bond-hearts {
+  color: #e6739a;
+  letter-spacing: 1px;
+  font-size: 12px;
+}
+.bldg-bond-trait {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-dim, #b9c2dc);
+  font-style: italic;
+}
+.bldg-bond-greet {
+  margin: 5px 0 0;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: #ecdcb6;
+}
+
+/* ============== "Emberhollow today" return recap (Wave R3) ============== */
+.map-recap {
+  position: relative;
+  margin: 6px 0 12px;
+  padding: 14px 16px 12px;
+  border-radius: var(--r-card, 14px);
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgba(244, 166, 59, 0.16), transparent 60%),
+    linear-gradient(180deg, #1d2340, #12182b);
+  border: 1px solid rgba(255, 210, 122, 0.3);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.4);
+  color: #ecdcb6;
+  animation: mgResultIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.map-recap h3 {
+  margin: 0 0 2px;
+  font-family: var(--serif, Georgia, serif);
+  font-size: 17px;
+  color: #ffd27a;
+}
+.map-recap-sub {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--ink-dim, #b9c2dc);
+}
+.map-recap-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.map-recap-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ecdcb6;
+  cursor: pointer;
+  font-size: 13px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-recap {
+    animation: none;
+  }
+}
+
+/* ===================== REPOSITORY (Collect tab) ===================== */
+/* What you've gathered from Village Life games + duels, kept as a warm shelf. */
+.repo-empty {
+  font-style: italic;
+}
+.repo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 6px 0 22px;
+}
+.repo-shelf {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: var(--r-card, 14px);
+  background: var(--panel, #1b2138);
+  border: 1px solid rgba(255, 210, 122, 0.14);
+}
+.repo-tile {
+  position: relative;
+  flex: 0 0 auto;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 210, 150, 0.16);
+}
+.repo-tile img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
+.repo-count {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  min-width: 20px;
+  padding: 1px 5px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: #1b1206;
+  background: linear-gradient(180deg, #ffd27a, #f4a63b);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.repo-body {
+  flex: 1;
+  min-width: 0;
+}
+.repo-body b {
+  font-family: var(--serif, Georgia, serif);
+  font-size: 15px;
+  display: block;
+}
+.repo-ask {
+  font-size: 12px;
+  color: var(--ink-dim, #b9c2dc);
+  margin: 3px 0 8px;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.repo-ask-order {
+  color: var(--ember-hi, #ffd27a);
+}
+.repo-bust {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center top;
+  box-shadow: inset 0 0 0 1px rgba(255, 210, 150, 0.3);
+}
+.repo-give {
+  appearance: none;
+  border: 1px solid rgba(255, 210, 122, 0.34);
+  background: linear-gradient(180deg, rgba(244, 166, 59, 0.2), rgba(229, 118, 30, 0.14));
+  color: #ffe6b8;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 11px;
+  cursor: pointer;
+  transition:
+    transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1),
+    filter 0.14s ease;
+}
+.repo-give:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+.repo-give:active {
+  transform: scale(0.96);
+}
+.repo-deliver {
+  border-color: rgba(127, 191, 106, 0.5);
+  background: linear-gradient(180deg, rgba(127, 191, 106, 0.26), rgba(90, 150, 74, 0.18));
+  color: #e7f6dd;
+}
+
+/* ===================== VILLAGE LIFE INDEX (Home) ===================== */
+/* One tap to any building game, without hunting the map. */
+.vl-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 6px 0 18px;
+}
+.vl-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: var(--r-card, 14px);
+  background: var(--panel, #1b2138);
+  border: 1px solid rgba(255, 210, 122, 0.14);
+}
+.vl-thumb {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgba(255, 210, 150, 0.18);
+}
+.vl-body {
+  flex: 1;
+  min-width: 0;
+}
+.vl-body b {
+  font-family: var(--serif, Georgia, serif);
+  font-size: 14px;
+  display: block;
+}
+.vl-body span {
+  font-size: 11px;
+  color: var(--ink-dim, #b9c2dc);
+}
+.vl-play {
+  flex: 0 0 auto;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px; /* comfortable touch target on mobile */
+  border: 1px solid rgba(255, 210, 122, 0.34);
+  background: linear-gradient(180deg, rgba(244, 166, 59, 0.22), rgba(229, 118, 30, 0.15));
+  color: #ffe6b8;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1),
+    filter 0.14s ease;
+}
+.vl-play:not(:disabled):hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+.vl-play:not(:disabled):active {
+  transform: scale(0.96);
+}
+.vl-play:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* A game whose building hasn't returned yet — a gentle teaser, not a lock. */
+.vl-row-teaser {
+  opacity: 0.62;
+}
+.vl-row-teaser .vl-thumb {
+  filter: grayscale(0.5) brightness(0.85);
+}
+
+/* Zoomed-in map invites a drag to pan. */
+.map-canvas {
+  cursor: grab;
+}
+.map-canvas:active {
+  cursor: grabbing;
+}
+
 /* ============================ VILLAGE LIFE ============================ */
 /* Post-story building mini-games. Cosy, no-fail, sprite-reusing overlays. */
 .mg-overlay {
@@ -3621,16 +3990,41 @@ body.reduce-motion *::after {
 }
 .mg-card {
   position: relative;
-  width: min(440px, 96vw);
+  width: min(440px, 94vw);
   max-height: 92vh;
+  overflow-x: hidden;
   overflow-y: auto;
-  padding: 22px 18px 18px;
+  padding: 22px 14px 18px;
+  box-sizing: border-box;
   border-radius: 20px;
   background: linear-gradient(180deg, #1b2138, #141a2e);
   border: 1px solid rgba(244, 166, 59, 0.28);
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
   text-align: center;
   color: #ecdcb6;
+}
+/* Painted illustrated backdrop (mg_bg_<game>, set inline by applyBackdrop): cover
+   the card, then a dark scrim over it so the game pieces + text stay readable.
+   Applied only when the art exists; otherwise the flat panel above shows. */
+.mg-card.mg-has-bg {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.mg-card.mg-has-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 80% at 50% 42%, rgba(12, 16, 30, 0.35), rgba(12, 16, 30, 0.74) 88%),
+    linear-gradient(180deg, rgba(12, 16, 30, 0.55), rgba(12, 16, 30, 0.42));
+  pointer-events: none;
+  z-index: 0;
+}
+.mg-card.mg-has-bg > * {
+  position: relative;
+  z-index: 1;
 }
 .mg-title {
   font-family: var(--ff-display, Georgia, serif);
@@ -3647,6 +4041,9 @@ body.reduce-motion *::after {
 .mg-stage {
   position: relative;
   min-height: 260px;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3658,7 +4055,7 @@ body.reduce-motion *::after {
 /* --- Wishing Well --- */
 .mg-well {
   position: relative;
-  width: 220px;
+  width: min(220px, 100%);
   height: 240px;
   display: flex;
   align-items: flex-end;
@@ -3672,10 +4069,134 @@ body.reduce-motion *::after {
 .mg-well-fallback {
   font-size: 90px;
 }
+/* ---- Wave 2: aim sweep + rings (Wishing Well) + shared coach/best ---- */
+.mg-well-track {
+  position: absolute;
+  top: 14px;
+  left: 8%;
+  right: 8%;
+  height: 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.mg-aim,
+.mg-beacon-aim {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 15px;
+  height: 15px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #fff2c8, #f4a63b 60%, #e5761e);
+  box-shadow: 0 0 12px rgba(255, 190, 90, 0.9);
+}
+.mg-aim.sweep,
+.mg-beacon-aim.sweep {
+  animation: mgAimSweep 1.2s ease-in-out infinite alternate;
+}
+@keyframes mgAimSweep {
+  from {
+    left: 6%;
+  }
+  to {
+    left: 94%;
+  }
+}
+.mg-well-rings {
+  position: absolute;
+  top: 116px;
+  left: 6%;
+  right: 6%;
+  display: flex;
+  gap: 6px;
+}
+.mg-ring {
+  flex: 1;
+  height: 18px;
+  padding: 0;
+  border-radius: 9px;
+  cursor: pointer;
+  border: 1px solid rgba(236, 220, 182, 0.2);
+  background: rgba(79, 134, 152, 0.28);
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+.mg-ring.good {
+  background: rgba(244, 166, 59, 0.24);
+}
+.mg-ring.heart {
+  background: rgba(229, 118, 30, 0.42);
+}
+.mg-ring:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+.mg-ring.lit {
+  background: #ffd27a;
+  box-shadow: 0 0 14px rgba(255, 210, 122, 0.8);
+}
+.mg-beacon-aim-track {
+  position: absolute;
+  top: 4px;
+  left: 4%;
+  right: 4%;
+  height: 8px;
+  z-index: 2;
+}
+.mg-coach {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 92%;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1b1206;
+  background: linear-gradient(180deg, #ffe6b8, #f4c777);
+  padding: 5px 12px;
+  border-radius: 999px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  z-index: 4;
+  animation: mgCoachIn 0.3s ease-out;
+}
+@keyframes mgCoachIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+}
+.mg-best {
+  margin: 4px 0;
+  font-weight: 700;
+  color: #ffd27a;
+}
+.mg-combo {
+  color: #ffbf6a;
+  font-weight: 700;
+}
+.mg-bobber.nibble {
+  animation: mgNibble 0.28s ease-in-out 2;
+}
+@keyframes mgNibble {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
 .mg-pebble {
   position: absolute;
   top: 8px;
-  left: calc(50% - 7px);
+  left: 50%;
+  transform: translateX(-50%);
   width: 14px;
   height: 14px;
   border-radius: 50%;
@@ -3725,7 +4246,7 @@ body.reduce-motion *::after {
 /* --- Beacon Drop (plinko) --- */
 .mg-beacon {
   position: relative;
-  width: 260px;
+  width: min(260px, 100%);
   height: 300px;
 }
 .mg-beacon-lamp {
@@ -3737,6 +4258,8 @@ body.reduce-motion *::after {
 }
 .mg-beacon-lamp img {
   height: 42px;
+  width: 48px; /* a wide flame sprite would otherwise balloon past the card */
+  object-fit: contain;
   margin-top: -6px;
 }
 .mg-pegs {
@@ -3771,6 +4294,9 @@ body.reduce-motion *::after {
 }
 .mg-slot {
   flex: 1;
+  padding: 0;
+  appearance: none;
+  cursor: pointer;
   border-radius: 0 0 6px 6px;
   background: rgba(79, 134, 152, 0.3);
   border: 1px solid rgba(236, 220, 182, 0.16);
@@ -3801,7 +4327,7 @@ body.reduce-motion *::after {
 
 /* --- Strike While Hot (forge) --- */
 .mg-forge {
-  width: 260px;
+  width: min(260px, 100%);
 }
 .mg-forge-grid {
   display: grid;
@@ -3864,10 +4390,43 @@ body.reduce-motion *::after {
 }
 
 /* --- result card --- */
-.mg-result {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(236, 220, 182, 0.16);
+/* The reward popup is a centred mini-modal, not an inline strip — otherwise its
+   text and Play-again/Back buttons landed on top of the game's own controls at
+   the bottom of the card. Fixed positioning lifts it out of the scrolling card
+   into the middle of the screen, above everything. */
+/* ID selector so it wins over `.mg-card.mg-has-bg > *` (which pins children to
+   position:relative for the scrim stacking context). */
+#mg-result {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 66;
+  width: min(340px, 86vw);
+  max-height: 84vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 22px 20px 18px;
+  text-align: center;
+  background: linear-gradient(180deg, #1b2138, #141a2e);
+  border: 1px solid rgba(244, 166, 59, 0.34);
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+@media (prefers-reduced-motion: no-preference) {
+  #mg-result:not([hidden]) {
+    animation: mg-result-pop 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+}
+@keyframes mg-result-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 .mg-result-title {
   font-family: var(--ff-display, Georgia, serif);
@@ -3965,7 +4524,7 @@ body.reduce-motion *::after {
 }
 
 .mg-forage {
-  width: 280px;
+  width: min(280px, 100%);
 }
 .mg-forage-grid {
   display: grid;
@@ -4000,6 +4559,23 @@ body.reduce-motion *::after {
 .mg-fog-ico {
   font-size: 20px;
 }
+.mg-fog-art {
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+/* Illustrated section-header banner (art-gated; only rendered when its art exists). */
+.section-banner {
+  width: 100%;
+  aspect-ratio: 1200 / 300;
+  max-height: 120px;
+  border-radius: var(--r-card, 14px);
+  background-size: cover;
+  background-position: center;
+  margin: 2px 0 8px;
+  box-shadow: inset 0 0 0 1px rgba(255, 210, 150, 0.14);
+}
 .mg-fog-view {
   opacity: 0.5;
 }
@@ -4014,14 +4590,16 @@ body.reduce-motion *::after {
 }
 
 .mg-stacks {
-  width: 280px;
+  width: min(280px, 100%);
 }
 .mg-stacks-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
 }
-.mg-card {
+/* Named mg-stack-card (not mg-card) — mg-card is the modal panel itself;
+   sharing the name broke every flipped tile with the panel's own sizing. */
+.mg-stack-card {
   aspect-ratio: 3 / 4;
   border-radius: 8px;
   border: 1px solid rgba(236, 220, 182, 0.16);
@@ -4035,18 +4613,18 @@ body.reduce-motion *::after {
     transform 0.12s,
     background 0.2s;
 }
-.mg-card.up {
+.mg-stack-card.up {
   background: #1b2138;
   transform: scale(1.03);
   cursor: default;
 }
-.mg-card.done {
+.mg-stack-card.done {
   background: #223018;
   border-color: rgba(127, 191, 106, 0.35);
   opacity: 0.85;
   cursor: default;
 }
-.mg-card img {
+.mg-stack-card img {
   width: 80%;
   height: 80%;
 }
@@ -4245,17 +4823,82 @@ body.reduce-motion *::after {
   }
 }
 .mg-forge-cell.struck {
-  animation: mgStruck 0.32s ease-out;
+  animation: mgStruck 0.3s ease-out;
 }
 @keyframes mgStruck {
   0% {
     background-color: #ffe6b0;
     transform: scale(1.12);
   }
+  35% {
+    transform: scale(0.92) translateX(-2px);
+  }
+  60% {
+    transform: scale(1.02) translateX(2px);
+  }
   100% {
     background-color: #20283f;
     transform: scale(1);
   }
+}
+
+/* --- mini-game FX: spark strip, water splash, streak glow, animated flames --- */
+.mg-spark {
+  position: absolute;
+  width: 56px;
+  height: 20px;
+  margin: -10px 0 0 -28px; /* centre on its left/top point */
+  pointer-events: none;
+  background-repeat: no-repeat;
+  z-index: 6;
+}
+.mg-spark-dot,
+.mg-splash-dot {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 6;
+  animation: mgFling 0.5s ease-out forwards;
+}
+.mg-spark-dot {
+  background: radial-gradient(circle, #ffe1a0, #f4a63b 60%, #e5761e);
+  box-shadow: 0 0 6px rgba(255, 180, 80, 0.9);
+}
+.mg-splash-dot {
+  background: radial-gradient(circle, #dff0ff, #7fb8d8 65%, #4f8698);
+  box-shadow: 0 0 5px rgba(150, 200, 235, 0.8);
+}
+@keyframes mgFling {
+  from {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--dx, 0), var(--dy, 0)) scale(0.5);
+  }
+}
+.mg-beacon-flame {
+  width: 48px;
+  height: 44px;
+  margin-top: -8px;
+  background-repeat: no-repeat;
+  background-size: 700% 100%; /* playStrip steps the position; reduced-motion shows frame 0 */
+  filter: drop-shadow(0 0 14px rgba(255, 190, 90, 0.6));
+}
+.mg-forge.hot-streak .mg-forge-grid {
+  filter: drop-shadow(0 0 12px rgba(255, 170, 70, 0.6));
+  transition: filter 0.3s ease;
+}
+/* Forage tiles + stack cards host their own spark bursts (a matched pair / a
+   good find), so they must be positioned and not clip the overflow. */
+.mg-fog,
+.mg-stack-card {
+  position: relative;
+  overflow: visible;
 }
 
 /* Joss's Catch: the bobber idles on the swell, then dips with a spring. */
@@ -4319,7 +4962,7 @@ body.reduce-motion *::after {
 }
 
 /* Sorting the Stacks: a quick squash-flip as a card turns; matches glow warm. */
-.mg-card.up {
+.mg-stack-card.up {
   animation: mgFlip 0.32s var(--mg-ease-out);
 }
 @keyframes mgFlip {
@@ -4333,7 +4976,7 @@ body.reduce-motion *::after {
     transform: rotateY(0) scale(1.03);
   }
 }
-.mg-card.done {
+.mg-stack-card.done {
   animation: mgMatched 0.5s var(--mg-spring) both;
   box-shadow: 0 0 14px rgba(127, 191, 106, 0.5);
 }
@@ -4357,12 +5000,73 @@ body.reduce-motion *::after {
   .mg-bobber,
   .mg-fog.found,
   .mg-fog.k-heart,
-  .mg-card.up,
-  .mg-card.done {
+  .mg-stack-card.up,
+  .mg-stack-card.done {
     animation: none;
   }
   .mg-result-title {
     color: #ffd27a;
     -webkit-text-fill-color: #ffd27a;
   }
+}
+
+/* Weekly reflection card atop the Chronicle — a gentle ritual, warmer than the daily pages. */
+.chron-week {
+  margin: 0 0 14px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(244, 166, 59, 0.16), transparent 55%),
+    linear-gradient(180deg, #22283f, #191f34);
+  border: 1px solid rgba(244, 166, 59, 0.3);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.32);
+}
+.chron-week-eyebrow {
+  display: block;
+  font-family: var(--ff-display, Georgia, serif);
+  font-size: var(--fs-md, 15px);
+  color: #ffd27a;
+  margin-bottom: 6px;
+}
+.chron-week p {
+  margin: 0;
+  color: #e7ddc4;
+  line-height: 1.55;
+  font-size: var(--fs-sm, 13px);
+}
+
+/* ===== PWA new-version banner (main.ts update flow) ===== */
+#update-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 148px; /* sits above the toast so the two never collide */
+  transform: translateX(-50%);
+  z-index: 81;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 340px;
+  padding: 11px 12px 11px 16px;
+  border-radius: var(--r-card);
+  background: rgba(12, 8, 4, 0.94);
+  border: 1px solid rgba(255, 210, 150, 0.5);
+  color: var(--cream);
+  font-size: 12.5px;
+  line-height: 1.45;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+#update-banner[hidden] {
+  display: none;
+}
+#update-banner button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 210, 122, 0.4);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(244, 166, 59, 0.28), rgba(229, 118, 30, 0.2));
+  color: #ffe6b8;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
 }

@@ -22,3 +22,4 @@ tools/_*.json
 tools/_build_preview/
 
 tools/__pycache__/
+.wrangler/
