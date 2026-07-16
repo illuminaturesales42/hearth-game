@@ -114,6 +114,21 @@ export class MapView {
         img.src = url;
       }
     }
+    // Warm the painted island plate immediately: it's the whole scene's base, so
+    // if the first frame paints before it decodes the player sees a flash of the
+    // procedural fallback island (the "old" green oval). Preloading + a redraw on
+    // load keeps that from ever showing.
+    {
+      const url = artUrl('map_island_plate');
+      if (url) {
+        const img = new Image();
+        img.onload = () => {
+          if (this.visible) this.draw(0);
+        };
+        img.src = url;
+        this.sprites.set('map_island_plate', img);
+      }
+    }
     game.subscribe((ev) => {
       const refresh =
         ev.type === 'delivered' ||
@@ -645,6 +660,18 @@ export class MapView {
     // stars, weather, foam, boats, buildings, people, effects) on top, so the
     // plate reads as a single painting yet still breathes with the time of day.
     const plate = this.sprite('map_island_plate');
+    // The plate is still decoding: show a calm sea wash and wait for the
+    // preload's redraw, rather than flashing one frame of the procedural
+    // fallback island (the "old" green oval).
+    if (!plate && artUrl('map_island_plate')) {
+      const wash = ctx.createLinearGradient(0, 0, 0, H);
+      wash.addColorStop(0, '#14304a');
+      wash.addColorStop(1, '#0b1f30');
+      ctx.fillStyle = wash;
+      ctx.fillRect(0, 0, W, H);
+      this.updateBar(prog, stage, mood);
+      return;
+    }
     if (plate) ctx.drawImage(plate, 0, 0, W, H);
 
     // --- sky by real time of day ---
@@ -669,50 +696,55 @@ export class MapView {
     }
     // sun or moon
     const night = hour >= 21 || hour < 5;
-    // stars emerge at night — a scattered field that gently twinkles, fading
-    // out as cloud rolls in (Daily Rhythm: "stars emerge").
-    if (night) {
-      const twinkle = 1 - mood.cloudCover * 0.7;
-      for (let i = 0; i < 42; i++) {
-        const sx = (((i * 73) % 100) / 100) * W;
-        const sy = (((i * 37) % 42) / 100) * H * 0.42 + H * 0.01;
-        const big = i % 8 === 0;
-        const tw = this.reduce ? 0.6 : 0.3 + 0.55 * Math.abs(Math.sin(t / 900 + i * 1.3));
-        ctx.globalAlpha = tw * 0.85 * twinkle;
-        ctx.fillStyle = 'rgba(240, 244, 255, 1)';
-        ctx.fillRect(sx, sy, big ? 1.7 : 1, big ? 1.7 : 1);
+    // The plate is a top-down island with no sky, so a sun/moon disc, star field
+    // and cloud puffs painted over it read as objects floating on the map. On the
+    // plate we keep the scene "breathing" with a gentle full-frame time-of-day
+    // wash instead; the sky-anchored elements below only run for the procedural
+    // fallback scene.
+    if (!plate) {
+      // stars emerge at night — a scattered field that gently twinkles, fading
+      // out as cloud rolls in (Daily Rhythm: "stars emerge").
+      if (night) {
+        const twinkle = 1 - mood.cloudCover * 0.7;
+        for (let i = 0; i < 42; i++) {
+          const sx = (((i * 73) % 100) / 100) * W;
+          const sy = (((i * 37) % 42) / 100) * H * 0.42 + H * 0.01;
+          const big = i % 8 === 0;
+          const tw = this.reduce ? 0.6 : 0.3 + 0.55 * Math.abs(Math.sin(t / 900 + i * 1.3));
+          ctx.globalAlpha = tw * 0.85 * twinkle;
+          ctx.fillStyle = 'rgba(240, 244, 255, 1)';
+          ctx.fillRect(sx, sy, big ? 1.7 : 1, big ? 1.7 : 1);
+        }
+        ctx.globalAlpha = 1;
       }
-      ctx.globalAlpha = 1;
-    }
-    const sunX = W * 0.78;
-    const sunY = H * 0.14;
-    if (night) {
-      // a pale moon
-      ctx.fillStyle = 'rgba(230,235,250,0.9)';
-      ctx.beginPath();
-      ctx.arc(sunX, sunY, 11, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      // warm bloom
-      const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 66);
-      glow.addColorStop(0, `rgba(255,224,160,${(0.6 * (1 - mood.cloudCover * 0.7)).toFixed(3)})`);
-      glow.addColorStop(1, 'rgba(255,220,150,0)');
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, W, H * 0.42);
-      // a dimensional sun: bright core → golden rim (not a flat moon-disc)
-      const disc = ctx.createRadialGradient(sunX - 5, sunY - 5, 1, sunX, sunY, 16);
-      disc.addColorStop(0, 'rgba(255,252,238,1)');
-      disc.addColorStop(0.6, 'rgba(255,232,168,1)');
-      disc.addColorStop(1, 'rgba(255,204,118,0.95)');
-      ctx.fillStyle = disc;
-      ctx.beginPath();
-      ctx.arc(sunX, sunY, 16, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // Clouds always drift the sky — soft, warm wisps, not hard blobs. Each is
-    // a cluster of radial puffs so the edges feather into the sky.
-    const nClouds = Math.max(2, Math.round(mood.cloudCover * 4));
-    {
+      const sunX = W * 0.78;
+      const sunY = H * 0.14;
+      if (night) {
+        // a pale moon
+        ctx.fillStyle = 'rgba(230,235,250,0.9)';
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 11, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // warm bloom
+        const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 66);
+        glow.addColorStop(0, `rgba(255,224,160,${(0.6 * (1 - mood.cloudCover * 0.7)).toFixed(3)})`);
+        glow.addColorStop(1, 'rgba(255,220,150,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, W, H * 0.42);
+        // a dimensional sun: bright core → golden rim (not a flat moon-disc)
+        const disc = ctx.createRadialGradient(sunX - 5, sunY - 5, 1, sunX, sunY, 16);
+        disc.addColorStop(0, 'rgba(255,252,238,1)');
+        disc.addColorStop(0.6, 'rgba(255,232,168,1)');
+        disc.addColorStop(1, 'rgba(255,204,118,0.95)');
+        ctx.fillStyle = disc;
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 16, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Clouds always drift the sky — soft, warm wisps, not hard blobs. Each is
+      // a cluster of radial puffs so the edges feather into the sky.
+      const nClouds = Math.max(2, Math.round(mood.cloudCover * 4));
       const dusk = hour >= 17 && hour < 21;
       const dawn = hour >= 5 && hour < 8;
       const tint = night ? '190,200,225' : dusk ? '255,224,196' : dawn ? '255,232,214' : '250,251,255';
@@ -740,6 +772,19 @@ export class MapView {
           ctx.fill();
         }
       }
+    } else {
+      // painted plate: a soft time-of-day wash so the island still shifts with
+      // morning warmth / dusk amber / cool night, but stays a top-down map.
+      const wash =
+        hour >= 5 && hour < 11
+          ? 'rgba(255, 214, 150, 0.06)'
+          : hour >= 17 && hour < 21
+            ? 'rgba(255, 138, 66, 0.12)'
+            : night
+              ? 'rgba(22, 32, 78, 0.30)'
+              : 'rgba(255, 255, 245, 0.02)';
+      ctx.fillStyle = wash;
+      ctx.fillRect(0, 0, W, H);
     }
     // Heavy weather leans on the whole scene, gently.
     if (mood.weather === 'overcast' || mood.precip > 0) {
@@ -1470,11 +1515,11 @@ export class MapView {
     // --- the painted lighthouse keeps its watch on the northern point ---
     {
       const img = this.sprite('prop_lighthouse');
-      const lx = W * 0.93;
-      const baseY = H * 0.5; // sits on the north headland
+      const lx = W * 0.95;
+      const baseY = H * 0.48; // out on the eastern rock point, clear of the fisher hut
       const lit = delivered >= 9; // the beacon story beat
       if (img) {
-        const lw = W * 0.15;
+        const lw = W * 0.13;
         const lh = lw * (img.naturalHeight / img.naturalWidth);
         ctx.drawImage(img, lx - lw / 2, baseY - lh, lw, lh);
         // Tappable once the beacon is lit — opens The Lighthouse card (Beacon Drop).
@@ -1756,8 +1801,9 @@ export class MapView {
     mood: WorldMood,
     stage: number,
   ): void {
-    // God-rays fanning from the low sun on clear-ish days.
-    if (!night && mood.cloudCover < 0.55) {
+    // God-rays fanning from the low sun on clear-ish days. Skipped on the painted
+    // plate, which has no sky/sun for them to fan from.
+    if (!night && mood.cloudCover < 0.55 && !this.sprite('map_island_plate')) {
       const sx = W * 0.78;
       const sy = H * 0.14;
       ctx.save();

@@ -34,7 +34,7 @@ export const TOWN_BUILDINGS: readonly TownPiece[] = [
   { art: 'town_townhall', x: 0.505, y: 0.375, w: 0.185, unlockAt: 12, ruinVariant: 3 },
   { art: 'town_workshop', x: 0.155, y: 0.43, w: 0.16, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
   { art: 'town_farm', x: 0.095, y: 0.635, w: 0.17, unlockAt: 16, ruinVariant: 5 },
-  { art: 'town_fisherhut', x: 0.865, y: 0.56, w: 0.165, unlockAt: 18, ruinVariant: 6 },
+  { art: 'town_fisherhut', x: 0.82, y: 0.56, w: 0.165, unlockAt: 18, ruinVariant: 6 },
   { art: 'town_sawmill', x: 0.21, y: 0.76, w: 0.165, unlockAt: 20, ruinVariant: 1 },
   { art: 'town_blacksmith', x: 0.36, y: 0.72, w: 0.16, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
   { art: 'town_dock', x: 0.79, y: 0.84, w: 0.21, unlockAt: 22, ruinVariant: 5 },
@@ -99,8 +99,8 @@ export const TOWN_WALKERS: readonly TownWalker[] = [
     unlockAt: 9,
     period: 32,
     path: [
-      { x: 0.82, y: 0.62 },
-      { x: 0.9, y: 0.61 },
+      { x: 0.79, y: 0.61 },
+      { x: 0.87, y: 0.6 },
     ],
   }, // Sorin near his hut
   {
