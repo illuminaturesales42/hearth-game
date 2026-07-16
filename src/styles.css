@@ -806,14 +806,6 @@ body {
   transform: translate(-50%, -50%) scale(0.55);
   transform-origin: center;
 }
-@keyframes fxHeart {
-  from {
-    background-position-x: 0;
-  }
-  to {
-    background-position-x: -1232px;
-  }
-}
 .fx-sparkle {
   position: absolute;
   width: 72px;
@@ -843,9 +835,8 @@ body {
   .fx-sparkle {
     animation: fxSparkle 0.46s ease-out forwards;
   }
-  .fx-heart {
-    animation: fxHeart 0.56s steps(7) forwards;
-  }
+  /* .fx-heart is driven by the shared JS sprite-strip stepper (board-view.ts) —
+     no CSS steps() here, so it can't flash the blank 8th frame at the end. */
   .fx-ring {
     animation: fxRing 0.46s ease-out forwards;
   }

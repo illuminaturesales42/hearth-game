@@ -34,6 +34,7 @@ import type { ChainId } from '../core/types';
 import { MINIGAME_BY_ID, WISHES } from '../data/minigames';
 import { artUrl, tileMarkup } from './art';
 import { feedback } from './feedback';
+import { playStrip } from './sprite-strip';
 import { toast } from './toast';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
@@ -52,6 +53,7 @@ export class MinigameUI {
   private id: string | null = null;
   private timers: number[] = [];
   private rafs: number[] = [];
+  private strips: (() => void)[] = [];
 
   constructor(private game: Game) {
     const close = el('mg-close');
@@ -77,13 +79,12 @@ export class MinigameUI {
     this.timers = [];
     this.rafs.forEach((r) => cancelAnimationFrame(r));
     this.rafs = [];
+    this.strips.forEach((stop) => stop());
+    this.strips = [];
   }
 
-  /**
-   * Play a sliced sprite-strip (fx_* atlas, 7 equal frames) on an element by
-   * stepping the background-position. Looping for ambient flames, one-shot for a
-   * spark burst. Returns a stop() so callers can cancel. Pure DOM — no canvas.
-   */
+  /** Play a sliced sprite-strip on an element (shared stepper), tracked so it's
+   *  stopped when the overlay closes. Returns a stop() for early cancel. */
   private playStrip(
     host: HTMLElement,
     artId: string,
@@ -94,41 +95,9 @@ export class MinigameUI {
       opts.onEnd?.();
       return () => {};
     }
-    const frames = opts.frames ?? 7;
-    const fps = opts.fps ?? 16;
-    host.style.backgroundImage = `url(${url})`;
-    host.style.backgroundRepeat = 'no-repeat';
-    host.style.backgroundSize = `${frames * 100}% 100%`;
-    let f = 0;
-    let last = 0;
-    let stopped = false;
-    const stepMs = 1000 / fps;
-    const tick = (t: number): void => {
-      if (stopped) return;
-      if (!last) last = t;
-      if (t - last >= stepMs) {
-        last = t;
-        f += 1;
-        if (f >= frames) {
-          if (opts.loop) f = 0;
-          else {
-            stopped = true;
-            opts.onEnd?.();
-            return;
-          }
-        }
-      }
-      // bg-size is frames×wide, so the scrollable range is (frames-1)×box; a
-      // position of f/(frames-1) shows exactly frame f.
-      host.style.backgroundPositionX = `${(f / (frames - 1)) * 100}%`;
-      const id = requestAnimationFrame(tick);
-      this.rafs.push(id);
-    };
-    const id = requestAnimationFrame(tick);
-    this.rafs.push(id);
-    return () => {
-      stopped = true;
-    };
+    const stop = playStrip(host, url, opts);
+    this.strips.push(stop);
+    return stop;
   }
 
   /**
@@ -590,7 +559,6 @@ export class MinigameUI {
     const stage = el('mg-stage');
     if (!stage) return;
     const schedule = forgeSchedule(seed);
-    const flameUrl = artUrl('fx_flame_forge') ?? artUrl('fx_flame_small');
     let cells = '';
     for (let i = 0; i < FORGE_CELLS; i++)
       cells += `<button class="mg-forge-cell" data-cell="${i}" aria-label="anvil"></button>`;
@@ -644,10 +612,9 @@ export class MinigameUI {
             liveSpawn[sp.cell] = si;
             c.classList.add('hot');
             // A living, looping flame on the hot anvil (fx_flame_forge, 7-frame
-            // strip). Reduced-motion holds a single static frame instead.
-            if (this.reduce()) {
-              if (flameUrl) c.style.backgroundImage = `url(${flameUrl})`;
-            } else {
+            // strip). Under reduced motion the cell's warm `.hot` glow stands in
+            // — no squished static strip.
+            if (!this.reduce()) {
               flameStop[sp.cell] = this.playStrip(c, 'fx_flame_forge', { fps: 14, loop: true });
             }
             this.timers.push(
