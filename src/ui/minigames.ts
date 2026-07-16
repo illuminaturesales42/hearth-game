@@ -338,7 +338,8 @@ export class MinigameUI {
       const targetX = ((slot + 0.5) / WELL_SLOTS) * W;
       const startX = W / 2;
       const startY = 6;
-      const surfaceY = 150; // the water line inside the well art
+      // the water line inside the well art — % of the (now fluid) well height
+      const surfaceY = (well.clientHeight || 240) * 0.62;
       pebble.style.opacity = '1';
       feedback.chime(320);
       let t = 0;
