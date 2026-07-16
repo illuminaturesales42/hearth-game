@@ -141,3 +141,53 @@ describe('export / import', () => {
     expect(exportSave()).toBe(before);
   });
 });
+
+describe('sanitizer completeness (audit C3)', () => {
+  it('rejects a migrated save missing a required numeric field', () => {
+    const g = new Game(Date.now());
+    const raw = JSON.parse(JSON.stringify(g.snapshot)) as Record<string, unknown>;
+    delete raw.coins;
+    expect(migrateState(raw)).toBeNull();
+  });
+
+  it('rejects a save missing a required object/array field', () => {
+    const g = new Game(Date.now());
+    for (const key of ['repository', 'decor', 'achievements', 'flags', 'storySeen']) {
+      const raw = JSON.parse(JSON.stringify(g.snapshot)) as Record<string, unknown>;
+      delete raw[key];
+      expect(migrateState(raw), `missing ${key} should be rejected`).toBeNull();
+    }
+  });
+
+  it('accepts legitimate zero values (a brand-new village has coins 0)', () => {
+    const g = new Game(Date.now());
+    const raw = JSON.parse(JSON.stringify(g.snapshot)) as Record<string, unknown>;
+    raw.coins = 0;
+    raw.xp = 0;
+    raw.orderIndex = 0;
+    raw.duelStreak = 0;
+    expect(migrateState(raw)).not.toBeNull();
+  });
+});
+
+describe('beginDay chronicle gate (audit C4)', () => {
+  it('writes yesterday to the Chronicle exactly once, then stays quiet on later ticks', () => {
+    const t0 = new Date('2026-07-07T13:00:00').getTime();
+    const g = new Game(t0);
+    const events: string[] = [];
+    g.subscribe((ev) => events.push(ev.type));
+    const nextDay = new Date('2026-07-08T00:00:30').getTime();
+    g.tick(nextDay); // first tick after midnight: chronicle written once
+    const chronicles1 = events.filter((e) => e === 'chronicle').length;
+    expect(chronicles1).toBe(1);
+    const before = events.length;
+    g.tick(nextDay + 20_000); // the 20s heartbeat — must NOT rewrite/emit chronicle
+    g.tick(nextDay + 40_000);
+    const chroniclesAfter = events.filter((e) => e === 'chronicle').length;
+    expect(chroniclesAfter).toBe(1);
+    // and no state-rebuild churn from the chronicle branch either (regen may
+    // legitimately emit 'state' when energy accrues — allow only those)
+    const newEvents = events.slice(before);
+    expect(newEvents.every((e) => e === 'state')).toBe(true);
+  });
+});

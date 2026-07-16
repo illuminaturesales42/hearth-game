@@ -15,6 +15,7 @@ import { HttpSyncProvider, LocalMirrorSyncProvider } from './platform/sync-provi
 import { SyncController } from './platform/sync-controller';
 import { Metrics, exposeMetricsConsole } from './platform/metrics';
 import { computeMood, meditatedToday } from './core/world-mood';
+import { registerSW } from 'virtual:pwa-register';
 
 const game = new Game();
 
@@ -33,6 +34,26 @@ new MinigameUI(game);
 
 // A quiet offline indicator (the game is local-first; this only reassures).
 initNetStatus();
+
+// New-version flow: the SW installs updates in the background but never swaps
+// under the player's feet — a warm banner offers a refresh whenever they're
+// ready. (This is the structural fix for the "testers stuck on a stale build"
+// problem; registerType 'prompt' + this banner replace the self-destroying SW.)
+const updateSW = registerSW({
+  onNeedRefresh() {
+    const banner = document.getElementById('update-banner');
+    const btn = document.getElementById('update-banner-btn');
+    if (!banner || !btn) return;
+    banner.hidden = false;
+    btn.onclick = () => {
+      banner.hidden = true;
+      void updateSW(true);
+    };
+  },
+  onOfflineReady() {
+    toast('Emberhollow is ready to play offline.');
+  },
+});
 
 // The splash lifts once the shell is mounted (a breath later, so it never blinks).
 const splash = document.getElementById('splash');

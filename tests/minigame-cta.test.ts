@@ -72,3 +72,20 @@ describe('minigameCta — shared card/index copy', () => {
     expect(c.sub).toContain('real-world action');
   });
 });
+
+describe('personal bests on the CTA (audit U2a)', () => {
+  it('ready + a recorded best → the sub-line shows it', () => {
+    const c = minigameCta({ ...st('ready', true, 2), best: 87 }, false);
+    expect(c.sub).toContain('Best 87');
+  });
+
+  it('tester mode shows the best too', () => {
+    const c = minigameCta({ ...st('ready', true, 0), best: 100 }, true);
+    expect(c.sub).toContain('Best 100');
+  });
+
+  it('no best recorded → sub-line unchanged', () => {
+    const c = minigameCta(st('ready', true, 2), false);
+    expect(c.sub).not.toContain('Best');
+  });
+});

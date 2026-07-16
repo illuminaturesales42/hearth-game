@@ -107,6 +107,8 @@ export interface MinigameStatus {
   reason: MinigameReason;
   /** When 'locked-story': orders left until the game's building returns. */
   ordersToGo?: number;
+  /** The player's personal best for this game (0-100 score), if any. */
+  best?: number;
 }
 
 export type GameEvent =
@@ -390,7 +392,13 @@ export class Game {
    */
   private beginDay(now: number): void {
     const today = localDayKey(now);
-    if (this.state.actions.day !== today) {
+    // Write yesterday into the Chronicle exactly once. `actions.day` only
+    // advances when the player logs an action (rolloverActions is lazy), so
+    // without the last-entry check this branch re-entered on EVERY 20s tick
+    // after midnight — rebuilding state, emitting, and re-saving each time
+    // until the first action of the day. The chronicle's own last entry is the
+    // persisted "already written" marker; appendEntry's dedupe stays as belt.
+    if (this.state.actions.day !== today && this.state.chronicle.entries.at(-1)?.day !== this.state.actions.day) {
       const a = this.state.actions;
       const entry = composeEntry(
         a.day,
@@ -1197,6 +1205,7 @@ export class Game {
     else if (this.state.energy.current < MINIGAME_ENERGY_COST) reason = 'no-energy';
     // How many more orders until the building is back — for warm lock copy.
     const ordersToGo = !returned && at !== null ? Math.max(0, at - this.state.orderIndex) : undefined;
+    const best = this.state.minigames.bests?.[def.id];
     return {
       def,
       unlocked,
@@ -1204,6 +1213,7 @@ export class Game {
       tokens,
       reason,
       ...(ordersToGo !== undefined ? { ordersToGo } : {}),
+      ...(best !== undefined ? { best } : {}),
     };
   }
 

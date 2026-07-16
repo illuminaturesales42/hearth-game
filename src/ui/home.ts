@@ -121,7 +121,9 @@ export class Home {
           }
           break;
         case 'upgrade':
-          feedback.chime(660);
+          // The one purchase a player deliberately saves for deserves the full
+          // flourish — arpeggio + haptic (the toast fires from the map's button).
+          feedback.chapter();
           break;
         case 'achievement':
           feedback.chime(660);
@@ -146,6 +148,7 @@ export class Home {
           toast(`✦ ${ev.title} has opened its doors. Tap the building to play.`);
           break;
         case 'minigameEnd':
+          feedback.deliver(); // a warm 3-note landing — chapter() stays reserved for unlocks
           toast(
             `${ev.title}: 🪙 +${ev.coins}${ev.ember > 0 ? ` · 🔥 +${ev.ember}` : ''}${ev.itemCount > 0 ? ` · ${ev.itemCount} to your Repository` : ''}.`,
           );
