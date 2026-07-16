@@ -620,10 +620,14 @@ export class MinigameUI {
     let cells = '';
     for (let i = 0; i < FORGE_CELLS; i++)
       cells += `<button class="mg-forge-cell" data-cell="${i}" aria-label="anvil"></button>`;
+    // Ingot art for the strike counter and the lump→ingot transform. The lump
+    // is a dedicated sprite when sliced, else the raw copper ore (chain L0).
+    const lumpUrl = artUrl('mg_forge_lump') ?? artUrl('item_copper_0');
+    const ingotUrl = artUrl('item_copper_2');
     stage.innerHTML =
       `<div class="mg-forge"><div class="mg-forge-grid">${cells}</div>` +
       `<div class="mg-forge-bar"><span class="mg-forge-fill"></span></div>` +
-      `<p class="mg-forge-score">Strikes: <b id="mg-forge-hits">0</b><span id="mg-forge-combo" class="mg-combo"></span></p></div>`;
+      `<p class="mg-forge-score">${ingotUrl ? `<img class="mg-forge-counter-ingot" src="${ingotUrl}" alt="" />` : ''}Strikes: <b id="mg-forge-hits">0</b><span id="mg-forge-combo" class="mg-combo"></span></p></div>`;
     this.coachOnce('forge-strike', 'Strike each glowing anvil before it cools — a clean run forges a bar.');
     const hitsEl = el('mg-forge-hits');
     const comboEl = el('mg-forge-combo');
@@ -641,6 +645,33 @@ export class MinigameUI {
       c.style.backgroundImage = '';
       c.style.backgroundSize = '';
       c.style.backgroundPositionX = '';
+      c.querySelector('.mg-forge-lump')?.remove(); // the unstruck lump cools away
+    };
+    // A clean strike turns the glowing lump into a finished ingot that flies to
+    // the strike counter — the whole point of a forge, made visible.
+    const counterEl = stage.querySelector<HTMLElement>('.mg-forge-score');
+    const flyIngot = (c: HTMLButtonElement): void => {
+      if (!ingotUrl || this.reduce()) return;
+      const cr = c.getBoundingClientRect();
+      const fly = document.createElement('img');
+      fly.className = 'mg-fly-ingot';
+      fly.src = ingotUrl;
+      fly.style.left = `${cr.left + cr.width / 2 - 16}px`;
+      fly.style.top = `${cr.top + cr.height / 2 - 16}px`;
+      document.body.appendChild(fly);
+      const tr = (counterEl ?? c).getBoundingClientRect();
+      requestAnimationFrame(() => {
+        fly.style.transform = `translate(${tr.left + tr.width / 2 - (cr.left + cr.width / 2)}px, ${tr.top + tr.height / 2 - (cr.top + cr.height / 2)}px) scale(0.35)`;
+        fly.style.opacity = '0.9';
+      });
+      this.timers.push(
+        window.setTimeout(() => {
+          fly.remove();
+          counterEl?.classList.remove('bump');
+          void counterEl?.offsetWidth; // restart the pop
+          counterEl?.classList.add('bump');
+        }, 440),
+      );
     };
     cellEls.forEach((c) => {
       c.onclick = () => {
@@ -650,6 +681,7 @@ export class MinigameUI {
         c.classList.add('struck'); // bright flash + shake on a clean strike
         this.timers.push(window.setTimeout(() => c.classList.remove('struck'), 300));
         this.spark(c, 50, 44); // ember burst where the hammer lands
+        flyIngot(c); // lump → ingot, banked on the counter
         (navigator as Navigator & { vibrate?: (n: number) => void }).vibrate?.(12);
         hits += 1;
         combo += 1;
@@ -669,6 +701,15 @@ export class MinigameUI {
             if (!c) return;
             liveSpawn[sp.cell] = si;
             c.classList.add('hot');
+            // A glowing lump of copper sits on the hot anvil — what the hammer
+            // is FOR. (Sprite when sliced; the raw ore stands in meanwhile.)
+            if (lumpUrl) {
+              const lump = document.createElement('img');
+              lump.className = 'mg-forge-lump';
+              lump.src = lumpUrl;
+              lump.alt = '';
+              c.appendChild(lump);
+            }
             // A living, looping flame on the hot anvil (fx_flame_forge, 7-frame
             // strip). Under reduced motion the cell's warm `.hot` glow stands in
             // — no squished static strip.
