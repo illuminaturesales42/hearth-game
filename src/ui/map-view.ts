@@ -1820,14 +1820,25 @@ export class MapView {
       ctx.fill();
     }
 
-    // --- the painted lighthouse keeps its watch on the northern point ---
+    // --- the painted lighthouse keeps its watch from its rock islet (SW) ---
     {
-      const img = this.sprite('prop_lighthouse');
-      const lx = W * 0.93;
-      const baseY = H * 0.5; // sits on the north headland
+      // Four painted states track the beacon's story: storm-wrecked ruin →
+      // under-construction scaffold (the beat being rebuilt) → lit (order 9) →
+      // a flourishing keeper's lighthouse once the town is well restored.
       const lit = delivered >= 9; // the beacon story beat
+      const artId =
+        delivered >= 20
+          ? 'prop_lighthouse_l2'
+          : delivered >= 9
+            ? 'prop_lighthouse'
+            : delivered === 8
+              ? 'prop_lighthouse_wip'
+              : 'prop_lighthouse_ruin';
+      const img = this.sprite(artId) ?? this.sprite('prop_lighthouse');
+      const lx = W * 0.15;
+      const baseY = H * 0.99; // on its own rock islet in the SW water (P22 re-lay)
       if (img) {
-        const lw = W * 0.15;
+        const lw = W * 0.23;
         const lh = lw * (img.naturalHeight / img.naturalWidth);
         ctx.drawImage(img, lx - lw / 2, baseY - lh, lw, lh);
         // Tappable once the beacon is lit — opens The Lighthouse card (Beacon Drop).
@@ -1839,7 +1850,9 @@ export class MapView {
           art: 'prop_lighthouse',
           unlockAt: lit ? 9 : -9,
         });
-        const oy = baseY - lh * 0.82; // the lantern room, ~82% up the sprite
+        // the lantern room's height differs per state (measured from the art)
+        const lanternFrac = artId === 'prop_lighthouse_l2' ? 0.81 : 0.88;
+        const oy = baseY - lh * lanternFrac;
         if (lit) {
           // the beacon fire itself, burning in the lantern room
           this.drawFlame(ctx, 'fx_flame_beacon', lx, oy + lh * 0.09, lw * 0.5, t);

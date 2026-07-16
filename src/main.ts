@@ -7,6 +7,7 @@ import { AppShell } from './ui/app-shell';
 import { MinigameUI } from './ui/minigames';
 import { confirmDialog } from './ui/confirm-modal';
 import { initNetStatus } from './ui/net-status';
+import { initTimeBadge } from './ui/time-badge';
 import { recentEvents, setSink, track } from './analytics';
 import { createNetworkSink } from './platform/analytics-sink';
 import type { HealthSnapshot } from './health/health-provider';
@@ -31,6 +32,10 @@ new AppShell(game, metrics);
 // Village Life: building mini-games, launched from the map building cards via a
 // 'hearth:play-minigame' event (unlock at story-complete; attempts from living well).
 new MinigameUI(game);
+
+// The corner time-of-day badge on the Home map (reflects the real clock; the
+// map's own lighting turns with the same phase).
+initTimeBadge();
 
 // A quiet offline indicator (the game is local-first; this only reassures).
 initNetStatus();
