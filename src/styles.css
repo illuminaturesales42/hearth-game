@@ -4302,6 +4302,38 @@ body.reduce-motion *::after {
   height: 7px;
   border-radius: 50%;
   background: rgba(236, 220, 182, 0.55);
+  box-shadow: 0 0 4px rgba(236, 220, 182, 0.25); /* a faint idle glow */
+  transition:
+    background 0.25s,
+    box-shadow 0.25s,
+    transform 0.25s;
+}
+/* A struck peg flashes gold and swells — the ember's path reads at a glance. */
+.mg-peg.hit {
+  background: #ffd27a;
+  box-shadow: 0 0 10px rgba(255, 210, 122, 0.9);
+  transform: scale(1.6);
+  transition:
+    background 0.05s,
+    box-shadow 0.05s,
+    transform 0.05s;
+}
+/* The ember's warm wake — small dots that shrink and fade behind it. */
+.mg-trail-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, rgba(255, 226, 170, 0.9), rgba(229, 118, 30, 0.55));
+  pointer-events: none;
+  animation: mgTrailFade 0.45s ease-out forwards;
+}
+@keyframes mgTrailFade {
+  to {
+    opacity: 0;
+    transform: scale(0.2);
+  }
 }
 .mg-slots {
   position: absolute;
@@ -4331,6 +4363,33 @@ body.reduce-motion *::after {
 .mg-slot.lit {
   background: #ffd27a;
   box-shadow: 0 0 16px rgba(255, 210, 122, 0.8);
+}
+.mg-slot.lit .mg-slot-val {
+  color: #1b1206;
+}
+/* Each slot shows what it's worth — every boat pays; the centre pays finest. */
+.mg-slot-val {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(236, 220, 182, 0.8);
+  pointer-events: none;
+}
+.mg-slot.heart .mg-slot-val {
+  font-size: 13px;
+  color: #ffd27a;
+}
+/* The slot the ember is heading for leans in — anticipation. */
+.mg-slot.near {
+  background: rgba(255, 210, 122, 0.32);
+  animation: mgSlotNear 0.5s ease-in-out infinite alternate;
+}
+@keyframes mgSlotNear {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-2px);
+  }
 }
 .mg-ember {
   position: absolute;

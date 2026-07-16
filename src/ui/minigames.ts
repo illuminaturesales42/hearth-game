@@ -419,7 +419,10 @@ export class MinigameUI {
     let slotCells = '';
     for (let s = 0; s < BEACON_SLOTS; s++) {
       const dist = Math.abs(s - BEACON_ROWS / 2);
-      slotCells += `<button class="mg-slot ${dist === 0 ? 'heart' : dist <= 2 ? 'good' : ''}" data-slot="${s}" aria-label="slot ${s + 1}"></button>`;
+      // Show what each slot is worth (commercial-plinko clarity): every slot pays
+      // coins — no-fail — the centre pays the finest catch.
+      const val = dist === 0 ? '✦' : `${beaconReward(s).coins}`;
+      slotCells += `<button class="mg-slot ${dist === 0 ? 'heart' : dist <= 2 ? 'good' : ''}" data-slot="${s}" aria-label="slot ${s + 1}"><span class="mg-slot-val">${val}</span></button>`;
     }
     stage.innerHTML =
       `<div class="mg-beacon">` +
@@ -444,8 +447,19 @@ export class MinigameUI {
     // so aim (and a little plinko luck) earns it. Deterministic per (aim, seed).
     const release = (targetSlot: number): void => {
       const land = (slot: number): void => {
-        stage.querySelector<HTMLElement>(`.mg-slot[data-slot="${slot}"]`)?.classList.add('lit');
+        const slotEl = stage.querySelector<HTMLElement>(`.mg-slot[data-slot="${slot}"]`);
+        slotEl?.classList.add('lit');
+        stage.querySelectorAll<HTMLElement>('.mg-slot.near').forEach((n) => n.classList.remove('near'));
+        // A landing burst where the ember settles — the catch arrives.
+        if (beacon && slotEl && !this.reduce()) {
+          const br2 = beacon.getBoundingClientRect();
+          const sr = slotEl.getBoundingClientRect();
+          const lx = ((sr.left + sr.width / 2 - br2.left) / (br2.width || 1)) * 100;
+          const ly = ((sr.top - br2.top) / (br2.height || 1)) * 100;
+          this.spark(beacon, lx, ly);
+        }
         feedback.chime(slot === BEACON_ROWS / 2 ? 620 : 300);
+        if (slot === BEACON_ROWS / 2) feedback.deliver(); // centre catch: the 3-note motif + haptic
         this.timers.push(window.setTimeout(() => this.finish(beaconReward(slot), undefined, beaconScore(slot)), 460));
       };
       // Reduced motion (or no stage): fall back to the seeded outcome, no sim.
@@ -455,10 +469,24 @@ export class MinigameUI {
       const br = beacon.getBoundingClientRect();
       const bW = br.width || 260;
       const bH = br.height || 300;
-      const pegs = Array.from(stage.querySelectorAll<HTMLElement>('.mg-peg')).map((p) => {
+      const pegEls = Array.from(stage.querySelectorAll<HTMLElement>('.mg-peg'));
+      const pegs = pegEls.map((p) => {
         const r = p.getBoundingClientRect();
-        return { x: r.left + r.width / 2 - br.left, y: r.top + r.height / 2 - br.top };
+        return { x: r.left + r.width / 2 - br.left, y: r.top + r.height / 2 - br.top, el: p };
       });
+      const slotEls = Array.from(stage.querySelectorAll<HTMLElement>('.mg-slot'));
+      // A fading ember trail — the light leaves a warm wake as it tumbles.
+      let trailTick = 0;
+      const trail = (tx: number, ty: number): void => {
+        trailTick += 1;
+        if (trailTick % 3 !== 0) return;
+        const d = document.createElement('div');
+        d.className = 'mg-trail-dot';
+        d.style.left = `${(tx / bW) * 100}%`;
+        d.style.top = `${(ty / bH) * 100}%`;
+        beacon.appendChild(d);
+        this.timers.push(window.setTimeout(() => d.remove(), 500));
+      };
       const slotsTop = bH - 44;
       const R = 7;
       const PEG = 5;
@@ -501,6 +529,9 @@ export class MinigameUI {
             const dot = vx * nx + vy * ny;
             vx = (vx - 2 * dot * nx) * 0.55 + (rand() - 0.5) * 0.9; // reflect + lively jitter
             vy = Math.max(0.6, (vy - 2 * dot * ny) * 0.55); // keep it falling
+            // The struck peg flashes gold — you can read the ember's whole path.
+            pg.el.classList.add('hit');
+            this.timers.push(window.setTimeout(() => pg.el.classList.remove('hit'), 300));
             if (sinceChime > 3) {
               feedback.chime(430 + rand() * 150);
               sinceChime = 0;
@@ -509,6 +540,12 @@ export class MinigameUI {
         }
         ember.style.left = `${(x / bW) * 100}%`;
         ember.style.top = `${(y / bH) * 100}%`;
+        trail(x, y);
+        // Anticipation: as the ember nears the boats, the slot it's heading for leans in.
+        if (y > slotsTop - 44) {
+          const proj = Math.max(0, Math.min(BEACON_SLOTS - 1, Math.floor((x / bW) * BEACON_SLOTS)));
+          slotEls.forEach((s2, i) => s2.classList.toggle('near', i === proj));
+        }
         if (y >= slotsTop || frames > 360) {
           const slot = Math.max(0, Math.min(BEACON_SLOTS - 1, Math.floor((x / bW) * BEACON_SLOTS)));
           return land(slot);
@@ -539,6 +576,26 @@ export class MinigameUI {
     const aim = stage.querySelector<HTMLElement>('.mg-beacon-aim');
     const track = stage.querySelector<HTMLElement>('.mg-beacon-aim-track');
     aim?.classList.add('sweep');
+    // Drag-to-aim: touch the track to pause the sweep and steer the launch light
+    // with your finger — lift (or tap Release) to keep that aim.
+    if (aim && track) {
+      track.style.touchAction = 'none';
+      track.onpointerdown = (e) => {
+        track.setPointerCapture(e.pointerId);
+        aim.classList.remove('sweep');
+        const move = (ev: PointerEvent): void => {
+          const t = track.getBoundingClientRect();
+          const pct = t.width ? Math.max(0, Math.min(1, (ev.clientX - t.left) / t.width)) : 0.5;
+          aim.style.left = `${pct * 100}%`;
+        };
+        move(e);
+        track.onpointermove = move;
+        track.onpointerup = () => {
+          track.onpointermove = null;
+          track.onpointerup = null;
+        };
+      };
+    }
     this.startButton('Release the light', () => {
       const actions = el('mg-actions');
       if (actions) actions.innerHTML = '';
