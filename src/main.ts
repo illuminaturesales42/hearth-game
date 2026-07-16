@@ -14,6 +14,7 @@ import { pickHealthProvider } from './platform/providers';
 import { HttpSyncProvider, LocalMirrorSyncProvider } from './platform/sync-provider';
 import { SyncController } from './platform/sync-controller';
 import { Metrics, exposeMetricsConsole } from './platform/metrics';
+import { computeMood, meditatedToday } from './core/world-mood';
 
 const game = new Game();
 
@@ -219,6 +220,7 @@ declare global {
     hearthHealthSim: (steps: number, sleepHours?: number, flights?: number) => void;
     hearthEvents: () => void;
     hearthSeeTown: (orders?: number) => void;
+    hearthMood: () => unknown;
   }
 }
 // Tester hooks (hearthSeeTown, hearthReset, …). Always on in dev; in the
@@ -244,9 +246,28 @@ const testerMode =
     }
   })();
 if (testerMode) {
+  // Unlimited mini-game goes so a tester can try every mechanic freely.
+  game.setTesterUnlimited(true);
   window.hearthReset = () => {
     clearSave();
     location.reload();
+  };
+  // Live reactive-world readout: watch the WorldMood values change as real
+  // actions are logged (proves the world is reacting; weather is null here).
+  window.hearthMood = () => {
+    const s = game.snapshot;
+    const m = computeMood({
+      weather: null,
+      meditatedToday: meditatedToday(s.actions.counts),
+      lastCalmDay: s.wellbeing.lastCalmDay,
+      today: s.actions.day,
+      sleptWell: (s.healthLedger?.sleepGranted ?? 0) > 0,
+      counts: s.actions.counts,
+      walkedToday: (s.healthLedger?.stepsGranted ?? 0) > 0,
+      streak: s.actions.streak,
+    });
+    console.table(m);
+    return m;
   };
   // Preview the composed town: jump the story forward so buildings appear.
   // e.g. hearthSeeTown(12) = end of Chapter 1; hearthSeeTown() = everything.

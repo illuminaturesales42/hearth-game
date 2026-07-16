@@ -36,6 +36,13 @@ const ASK: readonly ((item: string) => string)[] = [
   (item) => `We’re getting on well now. Still, ${item} would brighten the week.`,
   (item) => `Would you spare ${item}? Small things keep Emberhollow humming.`,
   (item) => `The storeroom’s looking bare of ${item}. No rush — whenever you can.`,
+  (item) => `The harbour’s been generous — but ${item} would round out the day.`,
+  (item) => `If your hands are idle, a little ${item} never goes to waste.`,
+  (item) => `We’re putting on a small supper. ${item} would help it along.`,
+  (item) => `The tide’s left us short on ${item}. When it suits you, mind.`,
+  (item) => `Winter’s a way off, but a store of ${item} lets a body rest easy.`,
+  (item) => `You’ve done so much already — only if you fancy it, some ${item}?`,
+  (item) => `The little ones asked after ${item}. You know how they are.`,
 ];
 
 const DONE: readonly string[] = [
@@ -43,6 +50,12 @@ const DONE: readonly string[] = [
   'Kindly done. Someone will smile at that tomorrow.',
   'Perfect. Emberhollow keeps its small, warm rhythm.',
   'That’ll do nicely. Thank you for tending to us still.',
+  'Bless you. The square’s the better for it.',
+  'A small kindness, felt all round. Ta.',
+  'That settles it nicely. The kettle’s on, if you’ve a minute.',
+  'Grand. One less thing for anyone to fret over.',
+  'You’ve a good heart. Emberhollow won’t forget it.',
+  'Lovely. The days go easier for such small mercies.',
 ];
 
 function lcg(seed: number): () => number {

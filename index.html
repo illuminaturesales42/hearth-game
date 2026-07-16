@@ -67,6 +67,7 @@
             </div>
           </section>
           <div class="map-actions">
+            <button id="map-zoom-btn" class="tool-btn" aria-pressed="false">🔍 Zoom in</button>
             <button id="decor-btn" class="tool-btn">🪴 Decorate</button>
             <button id="share-town-btn" class="tool-btn">📸 Share my town</button>
           </div>
@@ -423,10 +424,14 @@
 
     <div id="bldg-modal" class="modal" role="dialog" aria-modal="true" aria-label="Building" hidden>
       <div class="modal-card">
-        <img id="bldg-art" class="bldg-art" alt="" />
+        <button id="bldg-art-btn" class="bldg-art-wrap" type="button">
+          <img id="bldg-art" class="bldg-art" alt="" />
+          <span id="bldg-art-badge" class="bldg-art-badge" hidden>✦ Tap to play</span>
+        </button>
         <p id="bldg-name" class="bldg-name"></p>
         <p id="bldg-story" class="bldg-story"></p>
         <p id="bldg-meta" class="story-reward"></p>
+        <div id="bldg-bond" class="bldg-bond" hidden></div>
         <p id="bldg-tier" class="bldg-tier" hidden></p>
         <button id="bldg-upgrade" class="btn-primary bldg-upgrade" hidden></button>
         <button id="bldg-play" class="btn-primary bldg-play" hidden></button>
