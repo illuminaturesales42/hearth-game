@@ -220,6 +220,7 @@ declare global {
     hearthHealthSim: (steps: number, sleepHours?: number, flights?: number) => void;
     hearthEvents: () => void;
     hearthSeeTown: (orders?: number) => void;
+    hearthTestGames: () => void;
     hearthMood: () => unknown;
   }
 }
@@ -274,6 +275,13 @@ if (testerMode) {
   window.hearthSeeTown = (orders = 24) => {
     game.devPreviewStory(orders);
     document.querySelector<HTMLButtonElement>('.nav-btn[data-screen="home"]')?.click();
+  };
+  // One-call setup to test every Village Life game: story complete, town funded,
+  // all six games opened (incl. the L2-gated ones), plenty of energy + goes.
+  window.hearthTestGames = () => {
+    game.devUnlockMinigames();
+    document.querySelector<HTMLButtonElement>('.nav-btn[data-screen="home"]')?.click();
+    console.info('Village Life ready — tap the well, lighthouse, blacksmith, fisher hut, garden, or library.');
   };
   window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {
     const snap: HealthSnapshot = {

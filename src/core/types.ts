@@ -104,6 +104,8 @@ export interface ActionState {
   lastActiveDay: string | null;
   /** active days accrued toward the next chest. */
   chestProgress: number;
+  /** Earned "hearthstones" that auto-save a streak across a single missed day. */
+  freezes?: number;
 }
 
 export interface HealthLedgerState {

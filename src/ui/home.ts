@@ -84,6 +84,12 @@ export class Home {
         case 'daily':
           toast(`Day ${ev.streak} at the hearth — +${ev.energy} energy for showing up.`);
           break;
+        case 'streakSaved':
+          feedback.chime(523);
+          toast(
+            `A hearthstone kept your streak safe through a missed day.${ev.freezesLeft > 0 ? ` ${ev.freezesLeft} left.` : ''}`,
+          );
+          break;
         case 'gratitude':
           if (ev.energy > 0)
             toast(`+${ev.energy} energy (×${ev.multiplier.toFixed(1)} streak). A good day, written down.`);

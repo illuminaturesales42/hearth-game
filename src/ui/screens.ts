@@ -9,6 +9,7 @@ import { GRATITUDE } from '../data/gratitude';
 import { ACHIEVEMENTS } from '../core/achievements';
 import { BOARD_SKINS } from '../data/shop';
 import { BUILDING_INFO, DECOR_CATALOG, TOWN_BUILDINGS } from '../data/town-layout';
+import { composeWeek } from '../core/chronicle';
 import { chainDef } from '../core/board';
 import { artUrl, portraitFor, tileMarkup } from './art';
 import { feedback } from './feedback';
@@ -93,13 +94,21 @@ export class Screens {
         `Come back tomorrow and the first page will be waiting.</p></div>`
       );
     }
-    return entries
-      .map((e) => {
-        const d = new Date(`${e.day}T12:00:00`);
-        const label = d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
-        return `<div class="chron-page"><span class="chron-day">${label}</span><p>${e.text}</p></div>`;
-      })
-      .join('');
+    // A gentle weekly reflection sits atop the daily pages (Finch-style ritual).
+    const week = composeWeek(entries);
+    const weekCard = week
+      ? `<div class="chron-week"><span class="chron-week-eyebrow">${esc(week.title)}</span><p>${esc(week.text)}</p></div>`
+      : '';
+    return (
+      weekCard +
+      entries
+        .map((e) => {
+          const d = new Date(`${e.day}T12:00:00`);
+          const label = d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+          return `<div class="chron-page"><span class="chron-day">${label}</span><p>${e.text}</p></div>`;
+        })
+        .join('')
+    );
   }
 
   private storyEntries(): string {

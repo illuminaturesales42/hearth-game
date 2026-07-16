@@ -5009,3 +5009,28 @@ body.reduce-motion *::after {
     -webkit-text-fill-color: #ffd27a;
   }
 }
+
+/* Weekly reflection card atop the Chronicle — a gentle ritual, warmer than the daily pages. */
+.chron-week {
+  margin: 0 0 14px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(244, 166, 59, 0.16), transparent 55%),
+    linear-gradient(180deg, #22283f, #191f34);
+  border: 1px solid rgba(244, 166, 59, 0.3);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.32);
+}
+.chron-week-eyebrow {
+  display: block;
+  font-family: var(--ff-display, Georgia, serif);
+  font-size: var(--fs-md, 15px);
+  color: #ffd27a;
+  margin-bottom: 6px;
+}
+.chron-week p {
+  margin: 0;
+  color: #e7ddc4;
+  line-height: 1.55;
+  font-size: var(--fs-sm, 13px);
+}
