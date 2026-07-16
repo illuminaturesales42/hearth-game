@@ -761,6 +761,11 @@ export class MapView {
   }
 
   private loop(): void {
+    // Re-entry guard: setVisible(true) fires on EVERY nav-to-home (app-shell
+    // calls it unconditionally), and without this a second perpetual rAF chain
+    // would start each time — the old handle gets overwritten and can never be
+    // cancelled, compounding a full-canvas redraw per orphaned loop per frame.
+    if (this.raf) return;
     const step = (t: number) => {
       this.draw(t);
       // weather drifts on its own clock — re-key the ambience every few seconds

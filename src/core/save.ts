@@ -72,6 +72,9 @@ export function migrateState(raw: unknown): GameState | null {
     s = step(s);
   }
   if (s.version !== CURRENT_VERSION) return null;
+  // Every non-optional GameState field must be present — a truncated or
+  // corrupt save that passed the migration chain must still be rejected here,
+  // never loaded half-broken (and then re-saved over the player's village).
   if (
     !s.board ||
     !s.energy ||
@@ -85,9 +88,20 @@ export function migrateState(raw: unknown): GameState | null {
     !s.wellbeing ||
     !s.relationships ||
     !s.buildingUpgrades ||
-    !s.minigames
+    !s.minigames ||
+    !s.achievements ||
+    !s.questsClaimed ||
+    !s.flags ||
+    !s.decor ||
+    !s.repository ||
+    !s.storySeen
   )
     return null;
+  // Numeric fields are checked for presence, not truthiness — 0 is a
+  // perfectly valid value for all of them (a brand-new village has coins 0).
+  for (const key of ['coins', 'xp', 'orderIndex', 'duelStreak', 'nextUid', 'nextDecorId'] as const) {
+    if (typeof (s as Record<string, unknown>)[key] !== 'number') return null;
+  }
   return s;
 }
 
