@@ -18,6 +18,9 @@ import {
   isEligible,
   recordBest,
   rolloverMinigames,
+  sawmillReward,
+  sawmillSchedule,
+  sawmillScore,
   spendToken,
   stacksDeck,
   stacksReward,
@@ -26,8 +29,12 @@ import {
   wishingWellReward,
   BEACON_ROWS,
   FORAGE_SIZE,
+  SAWMILL_DURATION_MS,
+  SAWMILL_FALL_MS,
+  SAWMILL_LANES,
   STACKS_PAIRS,
 } from '../src/core/minigames';
+import { MINIGAME_BY_ID } from '../src/data/minigames';
 import { ORDERS } from '../src/data/economy';
 import { Game } from '../src/core/game';
 
@@ -300,5 +307,60 @@ describe('Game ↔ Village Life', () => {
     expect(g.repository.some((r) => r.chain === 'fish' && r.level === 2)).toBe(false);
     // Nothing left to give → the request is gone and a second gift fails.
     expect(g.giveFromRepository('fish', 2)).toBe(false);
+  });
+});
+
+describe('The Saw Song (sawmill) engine', () => {
+  it('schedule is deterministic, in-bounds, ascending, and lane-spaced', () => {
+    const a = sawmillSchedule(7);
+    expect(a).toEqual(sawmillSchedule(7));
+    expect(a.length).toBe(22);
+    const laneLast: Record<number, number> = {};
+    let prevAt = -1;
+    let prevLane = -1;
+    for (const sp of a) {
+      expect(sp.lane).toBeGreaterThanOrEqual(0);
+      expect(sp.lane).toBeLessThan(SAWMILL_LANES);
+      expect(sp.atMs).toBeGreaterThanOrEqual(0);
+      expect(sp.atMs).toBeLessThan(SAWMILL_DURATION_MS - SAWMILL_FALL_MS);
+      expect(sp.atMs).toBeGreaterThanOrEqual(prevAt - 260); // near-ascending (small jitter)
+      expect(sp.lane).not.toBe(prevLane); // never the same lane twice running
+      const lastInLane = laneLast[sp.lane];
+      if (lastInLane !== undefined) expect(sp.atMs - lastInLane).toBeGreaterThanOrEqual(SAWMILL_FALL_MS * 0.55);
+      laneLast[sp.lane] = sp.atMs;
+      prevAt = sp.atMs;
+      prevLane = sp.lane;
+    }
+  });
+
+  it('reward is no-fail: zero hits still stacks timber', () => {
+    const r = sawmillReward(0, 0, 22);
+    expect(r.items.length).toBeGreaterThanOrEqual(1);
+    expect(r.items[0]!.chain).toBe('wood');
+    expect(r.coins).toBeGreaterThanOrEqual(6);
+    expect(r.ember).toBeGreaterThanOrEqual(1);
+  });
+
+  it('reward rises with accuracy; beams need clean cuts', () => {
+    const low = sawmillReward(5, 0, 22);
+    const mid = sawmillReward(12, 2, 22);
+    const high = sawmillReward(20, 8, 22);
+    expect(mid.coins).toBeGreaterThan(low.coins);
+    expect(high.coins).toBeGreaterThan(mid.coins);
+    expect(mid.items.some((i) => i.level === 2)).toBe(true);
+    expect(high.items.some((i) => i.level === 3)).toBe(true);
+    // high accuracy WITHOUT clean cuts stays at planks
+    expect(sawmillReward(20, 2, 22).items.some((i) => i.level === 3)).toBe(false);
+  });
+
+  it('score is monotone in each part', () => {
+    expect(sawmillScore(10, 3, 5)).toBeGreaterThan(sawmillScore(9, 3, 5));
+    expect(sawmillScore(10, 4, 5)).toBeGreaterThan(sawmillScore(10, 3, 5));
+    expect(sawmillScore(10, 3, 6)).toBeGreaterThan(sawmillScore(10, 3, 5));
+  });
+
+  it('is registered against the sawmill building', () => {
+    expect(MINIGAME_BY_ID['sawmill']!.buildingArt).toBe('town_sawmill');
+    expect(MINIGAME_BY_ID['sawmill']!.unlock).toBe('l2');
   });
 });

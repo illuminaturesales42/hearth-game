@@ -370,3 +370,76 @@ export function stacksReward(flips: number, pairs = STACKS_PAIRS): MgReward {
     heart: clean ? 'Every shelf in order — a scholar’s eye.' : 'The stacks are sorted, near enough.',
   };
 }
+
+// ---------- 7) The Saw Song (sawmill) — rhythm lanes ----------
+// Guitar-hero-hearted: logs ride five flume lanes down to the blade line; saw
+// each as it crosses. A missed log just drifts on — no-fail — but clean cuts
+// build a combo. Wood revived; rhythm earns the finer timber.
+
+export const SAWMILL_LANES = 5;
+export const SAWMILL_DURATION_MS = 36_000;
+export const SAWMILL_FALL_MS = 2600; // top → blade line travel time
+export const SAWMILL_WINDOW_MS = 520; // generous hit window centred on the line
+export const SAWMILL_PERFECT_MS = 160; // the inner "clean cut" window
+
+export interface SawmillSpawn {
+  lane: number; // 0..SAWMILL_LANES-1
+  atMs: number; // when the log enters its lane
+}
+
+/**
+ * Deterministic log schedule: ~22 logs over the round, gently ramping denser,
+ * never the same lane twice in a row, and never two logs so close in one lane
+ * that they'd overlap on the flume.
+ */
+export function sawmillSchedule(seed: number, count = 22, durationMs = SAWMILL_DURATION_MS): SawmillSpawn[] {
+  const rand = lcg(seed);
+  const out: SawmillSpawn[] = [];
+  const laneFree: number[] = Array.from({ length: SAWMILL_LANES }, () => -Infinity);
+  const minGap = Math.round(SAWMILL_FALL_MS * 0.55);
+  const span = durationMs - SAWMILL_FALL_MS - 400;
+  let last = -1;
+  for (let i = 0; i < count; i++) {
+    // slight ramp: early logs spread out, late logs arrive a touch quicker
+    const t = i / count;
+    const atMs = Math.round(span * (t + 0.12 * t * (1 - t))) + Math.floor(rand() * 260);
+    let lane = Math.floor(rand() * SAWMILL_LANES);
+    for (let tries = 0; tries < SAWMILL_LANES; tries++) {
+      if (lane !== last && atMs - laneFree[lane]! >= minGap) break;
+      lane = (lane + 1) % SAWMILL_LANES;
+    }
+    laneFree[lane] = atMs;
+    last = lane;
+    out.push({ lane, atMs });
+  }
+  return out;
+}
+
+/** Personal-best metric: cuts, clean cuts, and the longest run all count. */
+export function sawmillScore(hits: number, perfects: number, bestCombo: number): number {
+  return hits * 10 + perfects * 5 + bestCombo * 2;
+}
+
+/**
+ * No-fail reward: the timber always stacks — at least a wood billet — and
+ * accuracy + clean cuts raise the cut to planks, then beams.
+ */
+export function sawmillReward(hits: number, perfects: number, count: number): MgReward {
+  const acc = count > 0 ? Math.min(1, hits / count) : 0;
+  const coins = 6 + Math.round(acc * 14); // 6..20
+  const items: { chain: ChainId; level: number }[] = [{ chain: 'wood', level: 1 }];
+  if (acc >= 0.5) items.push({ chain: 'wood', level: 2 });
+  if (acc >= 0.8 && perfects >= 5) items.push({ chain: 'wood', level: 3 });
+  const ember = acc >= 0.6 ? 2 : 1;
+  return {
+    coins,
+    items,
+    ember,
+    heart:
+      acc >= 0.8 && perfects >= 5
+        ? 'Every log sawn clean — timber fit for rafters.'
+        : acc >= 0.5
+          ? 'A good day’s milling — the stack grows.'
+          : 'The flume ran on; the timber still stacks.',
+  };
+}

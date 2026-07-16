@@ -12,6 +12,11 @@ import {
   FORAGE_STEPS,
   FORGE_CELLS,
   FORGE_DURATION_MS,
+  SAWMILL_DURATION_MS,
+  SAWMILL_FALL_MS,
+  SAWMILL_LANES,
+  SAWMILL_PERFECT_MS,
+  SAWMILL_WINDOW_MS,
   STACKS_PAIRS,
   WELL_SLOTS,
   beaconDrop,
@@ -23,6 +28,9 @@ import {
   forageTile,
   forgeReward,
   forgeSchedule,
+  sawmillReward,
+  sawmillSchedule,
+  sawmillScore,
   stacksDeck,
   stacksReward,
   wellScore,
@@ -47,6 +55,7 @@ const MINIGAME_BACKDROP: Record<string, string> = {
   'joss-catch': 'mg_bg_catch',
   foraging: 'mg_bg_forage',
   'sorting-stacks': 'mg_bg_stacks',
+  sawmill: 'mg_bg_sawmill',
 };
 
 export class MinigameUI {
@@ -232,6 +241,7 @@ export class MinigameUI {
     else if (id === 'joss-catch') this.playCatch(run.seed);
     else if (id === 'foraging') this.playForage(run.seed);
     else if (id === 'sorting-stacks') this.playStacks(run.seed);
+    else if (id === 'sawmill') this.playSawmill(run.seed);
   }
 
   /** A one-time, self-dismissing coaching line for a game's first play. */
@@ -954,6 +964,158 @@ export class MinigameUI {
           );
         }
       };
+    });
+  }
+
+  // ---------- 7) The Saw Song (rhythm lanes) ----------
+
+  private playSawmill(seed: number): void {
+    const stage = el('mg-stage');
+    if (!stage) return;
+    const schedule = sawmillSchedule(seed);
+    const logUrl = artUrl('mg_sawmill_log') ?? artUrl('item_wood_1');
+    const bladeUrl = artUrl('mg_sawmill_blade');
+    const logMarkup = logUrl ? `<img src="${logUrl}" alt="" draggable="false" />` : '🪵';
+    let lanes = '';
+    for (let l = 0; l < SAWMILL_LANES; l++) lanes += `<div class="mg-lane" data-lane="${l}"></div>`;
+    stage.innerHTML =
+      `<div class="mg-saw"><div class="mg-sawmill">${lanes}` +
+      `<div class="mg-sawline">${bladeUrl ? `<img class="mg-sawblade" src="${bladeUrl}" alt="" />` : `<span class="mg-sawblade-fallback" aria-hidden="true">🪚</span>`}</div>` +
+      `</div>` +
+      `<p class="mg-saw-score">Cut: <b id="mg-saw-hits">0</b><span id="mg-saw-combo" class="mg-combo"></span></p></div>`;
+    this.coachOnce('sawmill', 'Tap a log the moment it crosses the blade line — a missed log just floats on.');
+
+    const mill = stage.querySelector<HTMLElement>('.mg-sawmill');
+    const laneEls = Array.from(stage.querySelectorAll<HTMLElement>('.mg-lane'));
+    const hitsEl = el('mg-saw-hits');
+    const comboEl = el('mg-saw-combo');
+    const reduce = this.reduce();
+    let hits = 0;
+    let perfects = 0;
+    let combo = 0;
+    let bestCombo = 0;
+    // Per-lane live log: element + the time it crosses the blade line.
+    type LiveLog = { elm: HTMLElement; crossAt: number; done: boolean };
+    const live: (LiveLog | undefined)[] = Array.from({ length: SAWMILL_LANES }, () => undefined);
+
+    const LINE_PCT = 0.78; // the blade line's position down the lane
+
+    // Split the log in two — halves part, tilt, and fade; sawdust flies.
+    const sawInHalf = (lane: HTMLElement, log: HTMLElement): void => {
+      const y = log.offsetTop;
+      log.remove();
+      if (reduce) return;
+      for (const side of ['l', 'r'] as const) {
+        const half = document.createElement('div');
+        half.className = `mg-log-half mg-log-half-${side}`;
+        half.innerHTML = logMarkup;
+        half.style.top = `${y}px`;
+        lane.appendChild(half);
+        this.timers.push(window.setTimeout(() => half.remove(), 520));
+      }
+      this.spark(lane, 50, LINE_PCT * 100); // sawdust burst at the blade
+    };
+
+    const onCut = (lane: HTMLElement, log: LiveLog, perfect: boolean): void => {
+      log.done = true;
+      // freeze the fall where it stands, then split
+      log.elm.style.transition = 'none';
+      log.elm.style.top = `${log.elm.offsetTop}px`;
+      sawInHalf(lane, log.elm);
+      lane.classList.add('flash');
+      this.timers.push(window.setTimeout(() => lane.classList.remove('flash'), 240));
+      hits += 1;
+      combo += 1;
+      bestCombo = Math.max(bestCombo, combo);
+      if (perfect) perfects += 1;
+      if (hitsEl) hitsEl.textContent = String(hits);
+      if (comboEl)
+        comboEl.textContent =
+          combo >= 3 ? ` · ×${combo}${perfect ? ' clean cut!' : ''}` : perfect ? ' · clean cut!' : '';
+      mill?.classList.toggle('hot-streak', combo >= 3);
+      feedback.chime(420 + Math.min(combo, 8) * 45); // the song rises with the streak
+      (navigator as Navigator & { vibrate?: (n: number) => void }).vibrate?.(perfect ? 18 : 12);
+    };
+
+    laneEls.forEach((lane, li) => {
+      lane.onpointerdown = () => {
+        const log = live[li];
+        if (!log || log.done) return; // nothing to saw: no penalty, just nothing
+        const dt = performance.now() - log.crossAt;
+        if (Math.abs(dt) > SAWMILL_WINDOW_MS / 2) return; // too early/late: the log drifts on
+        onCut(lane, log, Math.abs(dt) <= SAWMILL_PERFECT_MS / 2);
+      };
+    });
+
+    this.startButton('Start the saw', () => {
+      const actions = el('mg-actions');
+      if (actions) actions.innerHTML = '';
+      const t0 = performance.now();
+      schedule.forEach((sp) => {
+        this.timers.push(
+          window.setTimeout(() => {
+            const lane = laneEls[sp.lane];
+            if (!lane) return;
+            const log = document.createElement('div');
+            log.className = 'mg-log';
+            log.innerHTML = logMarkup;
+            lane.appendChild(log);
+            if (reduce) {
+              // Reduced motion: the log waits ON the line — tap it in your own time.
+              log.style.top = `${LINE_PCT * 100}%`;
+              const entry: LiveLog = { elm: log, crossAt: performance.now(), done: false };
+              live[sp.lane] = entry;
+              log.onpointerdown = (ev) => {
+                ev.stopPropagation();
+                if (!entry.done) onCut(lane, entry, true);
+              };
+              this.timers.push(
+                window.setTimeout(() => {
+                  if (!entry.done) log.remove();
+                  if (live[sp.lane] === entry) live[sp.lane] = undefined;
+                }, SAWMILL_WINDOW_MS * 3),
+              );
+              return;
+            }
+            // Full motion: ride the flume — a linear fall past the blade line to
+            // the lane's foot. crossAt is exact wall-clock (transition-independent).
+            const crossAt = t0 + sp.atMs + SAWMILL_FALL_MS;
+            const entry: LiveLog = { elm: log, crossAt, done: false };
+            live[sp.lane] = entry;
+            const totalMs = SAWMILL_FALL_MS / LINE_PCT; // constant speed to 100%
+            requestAnimationFrame(() => {
+              log.style.transition = `top ${Math.round(totalMs)}ms linear`;
+              log.style.top = '104%';
+            });
+            this.timers.push(
+              window.setTimeout(
+                () => {
+                  if (!entry.done) {
+                    log.classList.add('drift'); // slides off — no penalty, streak rests
+                    this.timers.push(window.setTimeout(() => log.remove(), 400));
+                    combo = 0;
+                    mill?.classList.remove('hot-streak');
+                    if (comboEl) comboEl.textContent = '';
+                  }
+                  if (live[sp.lane] === entry) live[sp.lane] = undefined;
+                },
+                sp.atMs + SAWMILL_FALL_MS + SAWMILL_WINDOW_MS / 2,
+              ),
+            );
+          }, sp.atMs),
+        );
+      });
+      this.timers.push(
+        window.setTimeout(
+          () =>
+            this.finish(
+              sawmillReward(hits, perfects, schedule.length),
+              undefined,
+              sawmillScore(hits, perfects, bestCombo),
+            ),
+          SAWMILL_DURATION_MS + 600,
+        ),
+      );
     });
   }
 }

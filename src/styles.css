@@ -4780,6 +4780,135 @@ body.reduce-motion *::after {
   margin-top: 4px;
 }
 
+/* --- The Saw Song (sawmill rhythm lanes) --- */
+.mg-saw {
+  width: min(300px, 100%);
+  text-align: center;
+}
+.mg-sawmill {
+  position: relative;
+  width: 100%;
+  height: clamp(230px, 40dvh, 320px);
+  display: flex;
+  gap: 4px;
+}
+.mg-lane {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(79, 134, 152, 0.1), rgba(79, 134, 152, 0.2));
+  border: 1px solid rgba(236, 220, 182, 0.1);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.mg-lane.flash {
+  background: linear-gradient(180deg, rgba(255, 210, 122, 0.14), rgba(255, 210, 122, 0.26));
+}
+.mg-sawmill.hot-streak .mg-lane {
+  border-color: rgba(255, 190, 90, 0.35);
+}
+/* The blade line — the moment to saw. */
+.mg-sawline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 78%;
+  height: 3px;
+  background: linear-gradient(90deg, #f4a63b, #ffd27a, #f4a63b);
+  box-shadow: 0 0 10px rgba(255, 190, 90, 0.7);
+  z-index: 2;
+  pointer-events: none;
+}
+.mg-sawblade {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  transform: translateY(-50%);
+  object-fit: contain;
+  animation: mgBladeSpin 0.9s linear infinite;
+}
+.mg-sawblade-fallback {
+  position: absolute;
+  right: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  filter: drop-shadow(0 0 6px rgba(255, 190, 90, 0.6));
+}
+@keyframes mgBladeSpin {
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  }
+}
+/* A log riding the flume. */
+.mg-log {
+  position: absolute;
+  left: 8%;
+  width: 84%;
+  top: -40px;
+  z-index: 1;
+  pointer-events: auto;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.4));
+}
+.mg-log img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.mg-log.drift {
+  transition: opacity 0.35s ease !important;
+  opacity: 0;
+}
+/* The sawn halves — they part, tilt, and settle out of sight. */
+.mg-log-half {
+  position: absolute;
+  left: 8%;
+  width: 84%;
+  z-index: 1;
+  pointer-events: none;
+}
+.mg-log-half img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.mg-log-half-l {
+  clip-path: inset(0 50% 0 0);
+  animation: mgHalfL 0.5s ease-in forwards;
+}
+.mg-log-half-r {
+  clip-path: inset(0 0 0 50%);
+  animation: mgHalfR 0.5s ease-in forwards;
+}
+@keyframes mgHalfL {
+  to {
+    transform: translate(-16px, 26px) rotate(-20deg);
+    opacity: 0;
+  }
+}
+@keyframes mgHalfR {
+  to {
+    transform: translate(16px, 26px) rotate(20deg);
+    opacity: 0;
+  }
+}
+.mg-saw-score {
+  font-size: var(--fs-sm, 12px);
+  color: #b9c2dc;
+  margin: 8px 0 0;
+}
+.mg-saw-score b {
+  color: #ffd27a;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mg-sawblade {
+    animation: none;
+  }
+}
+
 /* ===================== VILLAGE LIFE — FEEL POLISH ===================== */
 /* Taste "soft variant": premium-calm, warm, spring motion, satisfying feedback.
    Appended so these rules win the cascade over the base mini-game styles. */
