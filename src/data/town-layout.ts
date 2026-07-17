@@ -274,9 +274,10 @@ export const TOWN_TERRAIN: readonly TownPiece[] = [
   { art: 'terrain_flowers2', x: 0.845, y: 0.63, w: 0.06, unlockAt: 0 },
   // (the old scattered cobble patches are gone — the map now draws worn dirt
   // lanes that grow with the town; see the routes table in map-view.ts)
-  // the harbour reaches into the water at the south-east
-  { art: 'dock_straight', x: 0.775, y: 0.905, w: 0.1, unlockAt: 0 },
-  { art: 'dock_end', x: 0.865, y: 0.925, w: 0.075, unlockAt: 0 },
+  // A small jetty grounds on the south-east beach. (The old dock_straight +
+  // dock_end pair was removed — on the painted plate it floated as a stray raft
+  // of planks out in open water, disconnected from any shore; the town_dock
+  // building is the real working pier.)
   { art: 'dock_small', x: 0.7, y: 0.875, w: 0.065, unlockAt: 0 },
 ] as const;
 

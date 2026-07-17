@@ -24,7 +24,6 @@ import {
   SAWMILL_FALL_MS,
   SAWMILL_HOLD_MS,
   SAWMILL_LANES,
-  SAWMILL_PERFECT_MS,
   SAWMILL_WINDOW_MS,
   WELL_COINS,
   WELL_MULT,
@@ -786,24 +785,41 @@ export class MinigameUI {
             x = pg.x + nx * min;
             y = pg.y + ny * min;
             const dot = vx * nx + vy * ny;
-            const bounce = pg.kind === 'bumper' ? 0.85 : 0.55; // bumpers BOING
-            vx = (vx - 2 * dot * nx) * bounce + (rand() - 0.5) * 0.9;
-            vy = Math.max(0.6, (vy - 2 * dot * ny) * bounce);
             if (pg.kind === 'bumper') {
-              vy = Math.max(1.4, vy);
-              this.squash(pg.el, 1.35);
-              if (sinceChime > 2) {
-                feedback.chime(220);
+              // A PINBALL BUMPER: not a soft deflection but an active KICK —
+              // the ember is flung straight out along the normal at a strong
+              // fixed speed (plus a little of its own), so it pops and ricochets
+              // like a real machine. It may even leap back up the board.
+              const KICK = 7.5;
+              vx = nx * KICK + (rand() - 0.5) * 1.6;
+              vy = ny * KICK + (rand() - 0.5) * 1.2;
+              if (Math.abs(vy) < 1.2) vy = ny < 0 ? -1.6 : 1.6; // never skate flat along it
+              this.squash(pg.el, 1.5);
+              pg.el.classList.add('boing');
+              this.timers.push(window.setTimeout(() => pg.el.classList.remove('boing'), 220));
+              beacon.classList.add('jolt'); // a tiny machine-shake on a bumper hit
+              this.timers.push(window.setTimeout(() => beacon.classList.remove('jolt'), 130));
+              if (sinceChime > 1) {
+                feedback.chime(180 + rand() * 80); // a low, punchy "thunk-boing"
+                feedback.comboChime(3);
                 sinceChime = 0;
               }
-              vibrate(10);
+              vibrate(22);
             } else if (pg.kind === 'golden' && !goldenHit) {
+              const bounce = 0.6;
+              vx = (vx - 2 * dot * nx) * bounce + (rand() - 0.5) * 0.9;
+              vy = Math.max(0.6, (vy - 2 * dot * ny) * bounce);
               goldenHit = true;
               pg.el.classList.add('struck-gold');
               this.spark(beacon, (pg.x / bW) * 100, (pg.y / bH) * 100);
               feedback.comboChime(5);
               vibrate([14, 40, 14]);
             } else {
+              // an ordinary peg: a livelier reflection than before (more play in
+              // the board), plus a little jitter so no two paths feel identical
+              const bounce = 0.72;
+              vx = (vx - 2 * dot * nx) * bounce + (rand() - 0.5) * 1.1;
+              vy = Math.max(0.6, (vy - 2 * dot * ny) * bounce);
               pg.el.classList.add('hit');
               this.timers.push(window.setTimeout(() => pg.el.classList.remove('hit'), 300));
               if (sinceChime > 3) {
@@ -1404,6 +1420,7 @@ export class MinigameUI {
     this.coachOnce('sawmill', 'Saw each log as it crosses the blade line — hold the long ones right through.');
 
     const mill = stage.querySelector<HTMLElement>('.mg-sawmill');
+    const lineEl = stage.querySelector<HTMLElement>('.mg-sawline');
     const laneEls = Array.from(stage.querySelectorAll<HTMLElement>('.mg-lane'));
     const hitsEl = el('mg-saw-hits');
     const comboEl = el('mg-saw-combo');
@@ -1519,13 +1536,50 @@ export class MinigameUI {
       return true;
     };
 
+    // How far a log's cut point (the round face, low on the sprite) sits from
+    // the blade line RIGHT NOW, in pixels — the live on-screen truth, so a tap
+    // is judged against exactly what the player sees, not a separate clock.
+    const cutOffset = (log: LiveLog): number => {
+      if (!lineEl) return 9999;
+      const body = (log.elm.querySelector('.mg-log-body') ?? log.elm).getBoundingClientRect();
+      const line = lineEl.getBoundingClientRect();
+      // the cut point is ~78% down the log body (where the round end-grain sits)
+      return body.top + body.height * 0.78 - (line.top + line.height / 2);
+    };
+    // Anticipation: the blade line brightens as a log enters the good zone.
+    if (!reduce) {
+      const pulse = (): void => {
+        let near = false;
+        for (const q of live) for (const lg of q) if (!lg.done && Math.abs(cutOffset(lg)) < 46) near = true;
+        if (liveStrum && !liveStrum.done && Math.abs(cutOffset(liveStrum)) < 60) near = true;
+        lineEl?.classList.toggle('ready', near);
+        this.rafs.push(requestAnimationFrame(pulse));
+      };
+      this.rafs.push(requestAnimationFrame(pulse));
+    }
+
     laneEls.forEach((lane, li) => {
       lane.style.touchAction = 'none';
       lane.onpointerdown = (ev) => {
         if (tryStrum()) return;
-        const log = live[li]!.find((lg) => !lg.done && Math.abs(performance.now() - lg.crossAt) <= SAWMILL_WINDOW_MS / 2);
-        if (!log) return; // nothing to saw: no penalty, just nothing
-        const dt = performance.now() - log.crossAt;
+        if (reduce) return; // reduced motion: the per-log tap handlers do the work
+        // Judge by LIVE position: the nearest live log to the blade line wins,
+        // and only if its round face is actually within the cut band — so the
+        // click lands where the eye is, every time.
+        const laneH = lane.getBoundingClientRect().height || 300;
+        const good = laneH * 0.15; // forgiving cut band
+        const perfect = laneH * 0.05; // the clean-cut sliver
+        let log: LiveLog | undefined;
+        let bestAbs = Infinity;
+        for (const lg of live[li]!) {
+          if (lg.done) continue;
+          const abs = Math.abs(cutOffset(lg));
+          if (abs < bestAbs) {
+            bestAbs = abs;
+            log = lg;
+          }
+        }
+        if (!log || bestAbs > good) return; // nothing at the blade: no penalty
         if (log.kind === 'hold') {
           // A LONG CUT: hold the saw through the log. Press in-window, keep
           // holding — the full ride is a clean cut; letting go early still cuts.
@@ -1548,13 +1602,11 @@ export class MinigameUI {
           lane.onpointerup = () => settle(performance.now() - startHold >= SAWMILL_HOLD_MS * 0.8);
           this.timers.push(window.setTimeout(() => settle(true), SAWMILL_HOLD_MS));
           // the saw sings while you hold
-          if (!reduce) {
-            for (let k = 1; k <= 3; k++)
-              this.timers.push(window.setTimeout(() => !settled && feedback.tick(360 + k * 70), k * 240));
-          }
+          for (let k = 1; k <= 3; k++)
+            this.timers.push(window.setTimeout(() => !settled && feedback.tick(360 + k * 70), k * 240));
           return;
         }
-        onCut(lane, log, Math.abs(dt) <= SAWMILL_PERFECT_MS / 2);
+        onCut(lane, log, bestAbs <= perfect);
       };
     });
 

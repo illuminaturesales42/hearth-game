@@ -1821,7 +1821,7 @@ export class MapView {
       ctx.fill();
     }
 
-    // --- the painted lighthouse keeps its watch from its rock islet (SW) ---
+    // --- the painted lighthouse keeps its watch from the eastern rock point ---
     {
       // Four painted states track the beacon's story: storm-wrecked ruin →
       // under-construction scaffold (the beat being rebuilt) → lit (order 9) →
@@ -1836,12 +1836,13 @@ export class MapView {
               ? 'prop_lighthouse_wip'
               : 'prop_lighthouse_ruin';
       const img = this.sprite(artId) ?? this.sprite('prop_lighthouse');
-      const lx = W * 0.15;
-      const baseY = H * 0.99; // on its own rock islet in the SW water (P22 re-lay)
+      // On the east rocky point, its own rock base meeting the plate's waterline.
+      const lx = W * 0.915;
+      const baseY = H * 0.635;
       if (img) {
         // the new painted lighthouse is a tall portrait sprite with its own rock
         // base, so it's narrower than the old near-square art (0.23 dwarfed the map).
-        const lw = W * 0.16;
+        const lw = W * 0.155;
         const lh = lw * (img.naturalHeight / img.naturalWidth);
         ctx.drawImage(img, lx - lw / 2, baseY - lh, lw, lh);
         // Tappable once the beacon is lit — opens The Lighthouse card (Beacon Drop).

@@ -6005,3 +6005,49 @@ body.reduce-motion .mg-peg-golden {
 .alm-cell.found .alm-name {
   color: #cdd6ec;
 }
+
+/* ===================== PINBALL BUMPERS + BLADE-LINE CUE ===================== */
+
+/* A bumper that's just been hit — a hard pop far beyond the idle squash. */
+.mg-peg-bumper.boing {
+  animation: mgBumperBoing 0.22s cubic-bezier(0.22, 1.6, 0.4, 1);
+}
+@keyframes mgBumperBoing {
+  0% {
+    scale: 1.6;
+    filter: brightness(1.9);
+    box-shadow: 0 0 22px rgba(255, 226, 170, 1);
+  }
+  100% {
+    scale: 1;
+    filter: brightness(1);
+  }
+}
+/* The whole machine jolts a hair on a bumper strike — restrained, arcade. */
+.mg-beacon.jolt {
+  animation: mgBeaconJolt 0.13s ease-out;
+}
+@keyframes mgBeaconJolt {
+  25% {
+    transform: translate(1.5px, -1px);
+  }
+  60% {
+    transform: translate(-1.5px, 1px);
+  }
+}
+
+/* The blade line brightens + swells the instant a log enters the cut band —
+   the anticipation cue that makes the timing legible ("cut NOW"). */
+.mg-sawline.ready {
+  height: 5px;
+  background: linear-gradient(90deg, #ffd27a, #fff3d0, #ffd27a);
+  box-shadow:
+    0 0 16px rgba(255, 210, 122, 0.95),
+    0 0 30px rgba(255, 190, 90, 0.5);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mg-peg-bumper.boing,
+  .mg-beacon.jolt {
+    animation: none;
+  }
+}
