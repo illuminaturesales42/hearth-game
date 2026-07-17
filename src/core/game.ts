@@ -34,6 +34,7 @@ import {
   sellValue,
   stageFor,
 } from '../data/economy';
+import { stampItems, type AlmanacPage, type AlmanacState } from './almanac';
 import { appendEntry, composeEntry, rolloverStats } from './chronicle';
 import { newlyEarned } from './achievements';
 import { questMultiplier, questsForDay } from '../data/daily-quests';
@@ -218,6 +219,7 @@ export class Game {
       decor: [],
       nextDecorId: 1,
       minigames: initialMinigames(localDayKey(now)),
+      almanac: {},
       repository: [],
       duelStreak: 0,
       coins: 0,
@@ -1284,9 +1286,9 @@ export class Game {
     reward: MgReward,
     wish?: { who: string; text: string },
     score?: number,
-  ): { isBest: boolean; best: number | null } {
+  ): { isBest: boolean; best: number | null; discovered: AlmanacPage[] } {
     const def = MINIGAME_BY_ID[id];
-    if (!def) return { isBest: false, best: null };
+    if (!def) return { isBest: false, best: null, discovered: [] };
     const em = addEmber(this.state.minigames, reward.ember);
     let minigames = em.state;
     if (wish) {
@@ -1305,12 +1307,16 @@ export class Game {
       minigames = rb.state;
       isBest = rb.isBest;
     }
+    // The Keeper's Almanac remembers the first of each kind — the collection
+    // that gives the games a reason past the coins.
+    const stamped = stampItems(this.state.almanac, reward.items);
     this.state = {
       ...this.state,
       coins: this.state.coins + reward.coins,
       repository: addToRepository(this.state.repository, reward.items),
       energy: em.granted > 0 ? grant(this.state.energy, em.granted) : this.state.energy,
       minigames,
+      almanac: stamped.state,
       nextUid: this.state.nextUid + 1,
     };
     this.emit({
@@ -1322,12 +1328,17 @@ export class Game {
       itemCount: reward.items.length,
       ...(wish ? { wish: `${wish.who} ${wish.text}` } : {}),
     });
-    return { isBest, best: this.state.minigames.bests?.[id] ?? null };
+    return { isBest, best: this.state.minigames.bests?.[id] ?? null, discovered: stamped.discovered };
   }
 
   /** The player's personal best for a mini-game, or null if never played. */
   minigameBest(id: string): number | null {
     return this.state.minigames.bests?.[id] ?? null;
+  }
+
+  /** The Keeper's Almanac as it stands (stamp id -> times found). */
+  get almanac(): AlmanacState {
+    return this.state.almanac;
   }
 
   /** Living well tops up a mini-game attempt (never bought). Capped per day. */

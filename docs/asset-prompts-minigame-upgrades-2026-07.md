@@ -19,17 +19,13 @@ Every asset below is **fallback-guarded** in code: the game already plays withou
 
 Placement: card backdrop behind The Saw Song, cover-cropped like the other `mg_bg_*` — subject centred vertically.
 
-## 2) `mg_sawmill_log.png` — 512×256, transparent
+## 2) `mg_sawmill_log_v.png` — 256×512, transparent  ⚠️ **UPRIGHT — replaces the old horizontal brief**
 
-> A single horizontal birch log, storybook-painted: silvery-white bark with dark flecks, one visible cut face showing warm honey-coloured growth rings at the right end, a little moss on top. Soft contact shadow directly beneath. Fills the frame's width, centred.
+> A single birch log standing **upright / end-on**, storybook-painted: the **round cut face looks straight down the frame at the bottom** — warm honey-coloured growth rings, bright and fresh-sawn — with the silvery-white bark barrel (dark flecks, a little moss) rising above it to the top of the frame. Long edge vertical, taller than it is wide. Soft contact shadow beneath the round face. Fills the frame's height, centred horizontally.
 
-Placement: falls down each lane (rendered ~50px wide). Must read at small size — bold shapes, high bark/ring contrast.
+Placement: rides **down** each of the five flume lanes, round face leading (rendered ~46% of a lane's width, aspect ≈ 0.44). Must read at small size — bold bark/ring contrast. **The old `mg_sawmill_log` (horizontal) is superseded and is no longer requested;** the code now asks for `mg_sawmill_log_v` only, and until it lands a hand-painted CSS log (bark barrel + ring face) stands in.
 
-## 3) `mg_sawmill_log_halves.png` — 512×256, transparent
-
-> The **same birch log** as `mg_sawmill_log`, now sawn cleanly in two through the middle, the halves parted by a small gap (about a tenth of the frame). Matching grain across the cut — bright fresh-cut faces glowing warm at the two inner ends. Same lighting, same palette, same painterly style.
-
-Placement: swapped in at the moment of a cut, halves animate apart. The UI clips the left/right halves separately, so keep the gap dead-centre.
+**No `_halves` asset needed.** The split is done in-engine: the app clips this same sprite down the middle and animates the two planks apart, so the halves always match the log exactly.
 
 ## 4) `mg_sawmill_blade.png` — 256×256, transparent
 
@@ -43,17 +39,29 @@ Placement: sits at the right end of the glowing blade line, CSS-rotated; static 
 
 Placement: appears on hot cells in Strike While Hot; pulsing glow is added by CSS. On a clean strike the app swaps it for the copper ingot (existing `item_copper_2`).
 
-## 6) `mg_forge_hammer.png` — 256×256, transparent *(optional, nice-to-have)*
+## 6) `mg_forge_hammer.png` — 256×256, transparent  ⚠️ **now wired — please deliver**
 
-> A smith's cross-peen hammer, storybook painted: worn ash handle, dark polished steel head with one warm highlight. Angled diagonally (head upper-right), centred.
+> A **large** smith's cross-peen hammer, storybook painted: worn ash handle running to the lower-right, dark polished steel head at the **upper-left** with one warm forge highlight along its striking face. Angled roughly 45°. Centred, head reading big and heavy — this is the hero of the swing.
 
-Placement: a possible strike-swing animation over a hit cell — not yet wired; deliver last.
+Placement: **now animated** — the hammer rears back, swings down onto the struck anvil and recoils (the app rotates it about its lower-right handle end, so keep the handle butt near the bottom-right corner and the head upper-left). Until it lands, a 🔨 stands in.
 
 ## 7) `mg_peg_brass.png` — 64×64, transparent *(optional)*
 
 > A single round brass peg seen face-on, like a small ship's porthole rivet: warm brass rim, soft centre dome catching a golden glint. Centred, circle filling ~80% of frame.
 
 Placement: replaces the plain glow dots on the Beacon Drop peg board (CSS versions already shipped; this is polish).
+
+## 8) `mg_peg_gold.png` — 64×64, transparent *(optional)*
+
+> The same peg as `mg_peg_brass` but **blessed with light**: pale gold centre blooming to ember-gold `#f4a63b` at the rim, a warm halo glow bleeding just past the circle. Reads as "hit me."
+
+Placement: the Beacon Drop's single **golden peg** — striking it pays a bonus and deepens the catch. CSS pulses it; a shipped sprite would just look richer.
+
+## 9) `mg_forage_clearing.png` — 128×128, transparent *(optional)*
+
+> A small sunlit break in the undergrowth seen top-down: a ring of parted ferns and grass opening onto warm bare earth, a shaft of golden light landing in the middle, one or two tiny wildflowers at the edge. Matches the other `mg_forage_*` tokens in weight and framing.
+
+Placement: the foraging grid's **clearing** tile — uncovering it cascade-reveals its neighbours for free. Falls back to a ✨ until delivered.
 
 ---
 

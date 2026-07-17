@@ -5884,3 +5884,124 @@ body.reduce-motion .mg-peg-mover,
 body.reduce-motion .mg-peg-golden {
   animation: none;
 }
+
+/* ===================== THE KEEPER'S ALMANAC ===================== */
+/* The collection the mini-games fill. Folded away by default — a curiosity,
+   never a chore. Undiscovered pages are soft silhouettes: nothing here can be
+   missed, so nothing here scolds. */
+
+.mg-almanac-line {
+  margin: 6px 0 0;
+  font-size: var(--fs-sm, 12px);
+  color: #ffd27a;
+  animation: mgAlmanacIn 0.5s var(--mg-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+.mg-almanac-new {
+  display: block;
+}
+.mg-almanac-new b {
+  color: #ffe6b8;
+}
+@keyframes mgAlmanacIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.94);
+  }
+}
+
+.alm-book {
+  margin: 10px 0 4px;
+  border-radius: var(--r-panel, 12px);
+  border: 1px solid rgba(236, 220, 182, 0.18);
+  background: linear-gradient(180deg, rgba(29, 35, 64, 0.6), rgba(18, 24, 43, 0.6));
+  overflow: hidden;
+}
+.alm-summary {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 700;
+  color: #ffe6b8;
+  font-size: var(--fs-md, 14px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+}
+.alm-summary::-webkit-details-marker {
+  display: none;
+}
+.alm-summary::after {
+  content: '▾';
+  color: #8b94ae;
+  font-size: 11px;
+  transition: transform 0.2s ease;
+}
+.alm-book[open] .alm-summary::after {
+  transform: rotate(180deg);
+}
+.alm-count {
+  margin-left: auto;
+  font-weight: 600;
+  font-size: var(--fs-sm, 12px);
+  color: #f4a63b;
+  font-variant-numeric: tabular-nums;
+}
+.alm-intro {
+  margin: 0 12px 8px;
+  font-size: var(--fs-sm, 12px);
+  color: #8b94ae;
+}
+.alm-section {
+  padding: 0 12px 10px;
+}
+.alm-section-title {
+  margin: 4px 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #7a88a8;
+}
+.alm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px;
+}
+.alm-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 3px;
+  border-radius: 10px;
+  background: rgba(12, 16, 34, 0.45);
+  border: 1px solid rgba(236, 220, 182, 0.1);
+}
+.alm-cell .alm-art {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+}
+.alm-cell .alm-art > * {
+  max-width: 100%;
+  max-height: 100%;
+}
+/* undiscovered: a soft silhouette to be curious about */
+.alm-cell:not(.found) .alm-art {
+  filter: brightness(0) invert(0.32);
+  opacity: 0.5;
+}
+.alm-name {
+  font-size: 9px;
+  line-height: 1.15;
+  text-align: center;
+  color: #6f7b96;
+}
+.alm-cell.found {
+  background: rgba(244, 166, 59, 0.1);
+  border-color: rgba(244, 166, 59, 0.3);
+}
+.alm-cell.found .alm-name {
+  color: #cdd6ec;
+}

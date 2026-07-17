@@ -54,6 +54,7 @@ import {
   type ForageKind,
   type MgReward,
 } from '../core/minigames';
+import type { AlmanacPage } from '../core/almanac';
 import type { ChainId } from '../core/types';
 import { MINIGAME_BY_ID, WISHES } from '../data/minigames';
 import { artUrl, tileMarkup } from './art';
@@ -309,7 +310,7 @@ export class MinigameUI {
     if (!this.id) return;
     const res = this.game.finishMinigame(this.id, reward, wish, score);
     feedback.chime(res.isBest ? 720 : 560);
-    this.showResult(reward, wish, res.isBest);
+    this.showResult(reward, wish, res.isBest, res.discovered);
   }
 
   /**
@@ -317,7 +318,12 @@ export class MinigameUI {
    * then the items pop in one by one, then (maybe) the personal-best banner —
    * the run ends on a rising note, every time. Reduced motion: instant totals.
    */
-  private showResult(reward: MgReward, wish?: { who: string; text: string }, isBest?: boolean): void {
+  private showResult(
+    reward: MgReward,
+    wish?: { who: string; text: string },
+    isBest?: boolean,
+    discovered: readonly AlmanacPage[] = [],
+  ): void {
     const result = el('mg-result');
     const title = el('mg-result-title');
     const body = el('mg-result-body');
@@ -326,13 +332,19 @@ export class MinigameUI {
     const items = reward.items
       .map((it, i) => `<span class="mg-reward-item" data-pop="${i}">${tileMarkup(it.chain, it.level)}</span>`)
       .join('');
+    // A new page in the Almanac — the quiet reason to keep playing.
+    const newPages = discovered
+      .map((p) => `<span class="mg-almanac-new">✦ New page: <b>${p.name}</b> — ${p.note}</span>`)
+      .join('');
     body.innerHTML =
       `<div class="mg-reward-row">${items}</div>` +
       `<p class="mg-reward-line">🪙 <b id="mg-tally-coins">0</b>${reward.ember > 0 ? ` · 🔥 +${reward.ember} energy` : ''}</p>` +
       `<p class="mg-best" id="mg-best-line" hidden>✦ A new personal best!</p>` +
+      (newPages ? `<p class="mg-almanac-line" id="mg-almanac-line" hidden>${newPages}</p>` : '') +
       (wish ? `<p class="mg-wish">“${wish.who} ${wish.text}”</p>` : '') +
       `<p class="mg-reward-hint">Kept in your Repository, ready for the village’s needs.</p>`;
     result.hidden = false;
+    const almanacLine = el('mg-almanac-line');
     const coinsEl = el('mg-tally-coins');
     const bestLine = el('mg-best-line');
     const itemEls = Array.from(body.querySelectorAll<HTMLElement>('.mg-reward-item'));
@@ -340,6 +352,7 @@ export class MinigameUI {
       if (coinsEl) coinsEl.textContent = String(reward.coins);
       itemEls.forEach((it) => it.classList.add('in'));
       if (bestLine) bestLine.hidden = !isBest;
+      if (almanacLine) almanacLine.hidden = false;
     } else {
       // items pop in first, then the coins tick up with rising pitch, then the banner
       itemEls.forEach((it, i) =>
@@ -364,15 +377,26 @@ export class MinigameUI {
           ),
         );
       }
+      const afterTally = startAt + steps * 55 + 220;
       if (isBest && bestLine) {
+        this.timers.push(
+          window.setTimeout(() => {
+            bestLine.hidden = false;
+            feedback.deliver();
+            vibrate([12, 60, 18]);
+          }, afterTally),
+        );
+      }
+      // the Almanac page turns last — the run's final little gift
+      if (almanacLine) {
         this.timers.push(
           window.setTimeout(
             () => {
-              bestLine.hidden = false;
-              feedback.deliver();
-              vibrate([12, 60, 18]);
+              almanacLine.hidden = false;
+              feedback.comboChime(6);
+              vibrate(14);
             },
-            startAt + steps * 55 + 220,
+            afterTally + (isBest ? 520 : 0),
           ),
         );
       }

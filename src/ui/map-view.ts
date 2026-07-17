@@ -29,7 +29,8 @@ import { stemLevels } from '../core/stem-levels';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
 import { currentWeather } from './weather';
-import { artUrl, portraitFor } from './art';
+import { artUrl, portraitFor, tileMarkup } from './art';
+import { ALMANAC_PAGES, ALMANAC_SECTIONS, almanacProgress } from '../core/almanac';
 import { VILLAGER_DEFS } from '../data/villagers';
 import { bondFor, greetingFor, hearts, HEARTS_MAX } from '../core/relationships';
 import { drawButterfly, drawFlower, drawSparkle, drawStroller } from './paint-flourishes';
@@ -2642,7 +2643,39 @@ export class MapView {
     const banner = hdr
       ? `<div class="section-banner" style="background-image:url(${hdr})" aria-hidden="true"></div>`
       : '';
-    return `${banner}<p class="map-locs-label">Village Life · tap to play</p><div class="vl-list">${rows}</div>`;
+    return (
+      `${banner}<p class="map-locs-label">Village Life · tap to play</p><div class="vl-list">${rows}</div>` +
+      this.almanacSection()
+    );
+  }
+
+  /**
+   * The Keeper's Almanac — the collection the mini-games quietly fill. Folded
+   * away by default so it's a curiosity, never a chore; undiscovered pages are
+   * soft silhouettes (nothing here can be missed, so nothing scolds).
+   */
+  private almanacSection(): string {
+    const book = this.game.almanac;
+    const { found, total } = almanacProgress(book);
+    const sections = ALMANAC_SECTIONS.map((sec) => {
+      const cells = ALMANAC_PAGES.filter((p) => p.section === sec)
+        .map((p) => {
+          const got = (book[p.id] ?? 0) > 0;
+          const label = got ? `${p.name} — ${p.note}` : 'Not yet found';
+          return (
+            `<div class="alm-cell${got ? ' found' : ''}" title="${label}" aria-label="${label}">` +
+            `<div class="alm-art">${tileMarkup(p.chain, p.level)}</div>` +
+            `<span class="alm-name">${got ? p.name : '· · ·'}</span></div>`
+          );
+        })
+        .join('');
+      return `<div class="alm-section"><p class="alm-section-title">${sec}</p><div class="alm-grid">${cells}</div></div>`;
+    }).join('');
+    return (
+      `<details class="alm-book"><summary class="alm-summary">` +
+      `The Keeper’s Almanac <span class="alm-count">${found} of ${total} pages</span></summary>` +
+      `<p class="alm-intro">What the village games turn up, remembered.</p>${sections}</details>`
+    );
   }
 
   /** Wire the Village Life index Play/Open buttons to the same paths the map uses. */
