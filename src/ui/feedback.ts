@@ -92,6 +92,89 @@ function buildMusic(ac: AudioContext): void {
   music = { master, layers };
 }
 
+/**
+ * Ambient stems: quiet looping layers keyed to the world's mood (see
+ * core/stem-levels.ts for the pure derivation). Same conventions as the music
+ * graph — sources start once, gains idle at 0.0001, levels move only by ramps.
+ * calmPad sits at 220/329.6 Hz, deliberately clear of the meditation drone
+ * (110/165.4) and the music pad layers (110/165), so nothing beats or clashes;
+ * it is also ducked to silence while the drone itself plays.
+ */
+type StemName = 'calmPad' | 'rain' | 'chatter';
+interface Stem {
+  gain: GainNode;
+  /** ceiling for this stem at level 1 (before musicVol) — deliberately quiet */
+  target: number;
+}
+let stems: Record<StemName, Stem> | null = null;
+/** last requested level per stem (0..1), so volume changes + drone ducking can re-apply */
+const stemLevel: Record<StemName, number> = { calmPad: 0, rain: 0, chatter: 0 };
+
+function noiseBuffer(ac: AudioContext, seconds = 2): AudioBuffer {
+  const buf = ac.createBuffer(1, Math.floor(ac.sampleRate * seconds), ac.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+function buildStems(ac: AudioContext): void {
+  const make = (target: number): Stem => {
+    const gain = ac.createGain();
+    gain.gain.value = 0.0001;
+    gain.connect(ac.destination);
+    return { gain, target };
+  };
+  // calm pad — two soft sines a clear register above the drone/music cluster
+  const calmPad = make(0.02);
+  for (const f of [220, 329.6]) {
+    const osc = ac.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = f;
+    osc.connect(calmPad.gain);
+    osc.start();
+  }
+  // rain — looped white noise through a warm lowpass (cosy, never hissy)
+  const rain = make(0.03);
+  const rainSrc = ac.createBufferSource();
+  rainSrc.buffer = noiseBuffer(ac);
+  rainSrc.loop = true;
+  const rainLp = ac.createBiquadFilter();
+  rainLp.type = 'lowpass';
+  rainLp.frequency.value = 1200;
+  rainSrc.connect(rainLp).connect(rain.gain);
+  rainSrc.start();
+  // chatter — faint band-passed shimmer with a slow swell, distant-bustle feel
+  const chatter = make(0.012);
+  const chSrc = ac.createBufferSource();
+  chSrc.buffer = noiseBuffer(ac);
+  chSrc.loop = true;
+  const chBp = ac.createBiquadFilter();
+  chBp.type = 'bandpass';
+  chBp.frequency.value = 700;
+  chBp.Q.value = 2.2;
+  const chSwell = ac.createGain();
+  chSwell.gain.value = 0.7;
+  const chLfo = ac.createOscillator();
+  const chLfoGain = ac.createGain();
+  chLfo.frequency.value = 0.13;
+  chLfoGain.gain.value = 0.3;
+  chLfo.connect(chLfoGain).connect(chSwell.gain);
+  chLfo.start();
+  chSrc.connect(chBp).connect(chSwell).connect(chatter.gain);
+  chSrc.start();
+  stems = { calmPad, rain, chatter };
+}
+
+/** Ramp a stem's gain to its effective level (respects musicVol + drone ducking). */
+function applyStem(name: StemName, rampSec: number): void {
+  if (!stems || !ctx) return;
+  // While the meditation drone plays, the calm pad steps aside entirely.
+  const ducked = name === 'calmPad' && drone !== null;
+  const level = ducked ? 0 : stemLevel[name];
+  const s = stems[name];
+  s.gain.gain.linearRampToValueAtTime(Math.max(0.0001, level * s.target * musicVol), ctx.currentTime + rampSec);
+}
+
 export const feedback = {
   setMuted(m: boolean): void {
     muted = m;
@@ -106,7 +189,28 @@ export const feedback = {
         if (ac) drone.gain.gain.linearRampToValueAtTime(0.06 * musicVol, ac.currentTime + 0.3);
       }
       if (music && ctx) music.master.gain.linearRampToValueAtTime(Math.max(0.0001, musicVol), ctx.currentTime + 0.3);
+      // the settings slider updates live ambience too
+      if (stems) (['calmPad', 'rain', 'chatter'] as const).forEach((n) => applyStem(n, 0.3));
     }
+  },
+  /**
+   * Set an ambient stem's level (0..1). Builds the stem graph lazily — needs an
+   * existing AudioContext (i.e. after the first user gesture, same rule as
+   * startMusic). Levels come from core/stem-levels.ts, keyed to the world mood.
+   */
+  setStem(name: 'calmPad' | 'rain' | 'chatter', level: number): void {
+    stemLevel[name] = Math.max(0, Math.min(1, level));
+    const ac = audio();
+    if (!ac) return;
+    if (!stems) buildStems(ac);
+    applyStem(name, 2.5);
+  },
+  /** Fade every ambient stem out (leaving the map, etc.). Levels are forgotten. */
+  stopStems(): void {
+    (['calmPad', 'rain', 'chatter'] as const).forEach((n) => {
+      stemLevel[n] = 0;
+      applyStem(n, 1.2);
+    });
   },
   /** Soft low ambient pad for meditation sessions. Idempotent on/off. */
   ambient(on: boolean): void {
@@ -128,6 +232,7 @@ export const feedback = {
       osc1.start();
       osc2.start();
       drone = { osc1, osc2, gain };
+      applyStem('calmPad', 1); // the calm pad steps aside for the session drone
     } else if (drone && ac) {
       const d = drone;
       drone = null;
@@ -136,11 +241,29 @@ export const feedback = {
         d.osc1.stop();
         d.osc2.stop();
       }, 900);
+      applyStem('calmPad', 3); // and eases back in afterwards
     }
   },
   /** Soft bell to mark a breath phase. */
   chime(freq = 528): void {
     tone(freq, 420, 'sine', 0.08);
+  },
+  /**
+   * A rising pentatonic ladder for combo streaks — every step up the streak is
+   * a step up the scale, so a run *sounds* like it's climbing. Steps past the
+   * ladder's top loop the octave musically (never harsh). Always in key.
+   */
+  comboChime(step: number): void {
+    // A-major pentatonic from A4 — warm, folk, in key with the ambient score
+    const LADDER = [440, 494, 554, 659, 740, 880, 988, 1108];
+    const i = Math.max(0, step);
+    const f = LADDER[i % LADDER.length]! * (i >= LADDER.length ? 1 : 1);
+    tone(f, 160, 'triangle', 0.12);
+    tone(f * 2, 120, 'sine', 0.05, 30); // a soft octave shimmer on top
+  },
+  /** The tally tick — a tiny rising blip per counted step (pitch climbs outside). */
+  tick(freq: number): void {
+    tone(freq, 60, 'triangle', 0.07);
   },
   /** Start (idempotent) the ambient score at the given town stage. Needs a user gesture. */
   startMusic(stage: number): void {

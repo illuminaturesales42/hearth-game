@@ -104,6 +104,8 @@ export interface ActionState {
   lastActiveDay: string | null;
   /** active days accrued toward the next chest. */
   chestProgress: number;
+  /** Earned "hearthstones" that auto-save a streak across a single missed day. */
+  freezes?: number;
 }
 
 export interface HealthLedgerState {
@@ -256,6 +258,8 @@ export interface MinigameState {
   emberToday: number;
   /** Villager wishes drawn at the well, kept as small keepsakes. */
   wishes: readonly Wish[];
+  /** Personal best per game id (higher = better; a warm memento, never a leaderboard). */
+  bests?: Record<string, number>;
 }
 
 /** A player-placed decoration on the town map (normalized coords). */
@@ -300,6 +304,8 @@ export interface GameState {
   nextDecorId: number;
   /** Village Life mini-games: unlock + daily attempt state (save v14). */
   minigames: MinigameState;
+  /** The Keeper's Almanac: stamp id -> times found (0/absent = undiscovered). */
+  almanac: Record<string, number>;
   /** Items won from duels, spendable to progress the story. */
   repository: readonly RepositoryItem[];
   /** Consecutive duel wins → reward multiplier. */

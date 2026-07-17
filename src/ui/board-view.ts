@@ -5,6 +5,7 @@ import type { Game } from '../core/game';
 import { chainDef } from '../core/board';
 import { PRODUCER_INDEX, sellValue } from '../data/economy';
 import { artUrl, tileMarkup } from './art';
+import { playStrip } from './sprite-strip';
 
 export class BoardView {
   private root: HTMLElement;
@@ -339,13 +340,15 @@ export class BoardView {
 
     // The ember-heart blooms at the merge — Hearth's signature juice (7-frame
     // sprite strip, plays once). Only when motion is allowed (this.reduce guards).
-    if (artUrl('fx_heartfire')) {
+    const heartUrl = artUrl('fx_heartfire');
+    if (heartUrl) {
       const heart = document.createElement('div');
       heart.className = 'fx-heart';
       heart.style.left = `${c.x}px`;
       heart.style.top = `${c.y}px`;
       this.fxLayer.appendChild(heart);
-      setTimeout(() => heart.remove(), 620);
+      playStrip(heart, heartUrl, { fps: 14, onEnd: () => heart.remove() });
+      setTimeout(() => heart.remove(), 700); // safety net if a frame stalls
     }
   }
 
@@ -372,14 +375,16 @@ export class BoardView {
     setTimeout(() => orb.remove(), 640);
 
     // the order lands: a heartfire bloom greets it at the order card
-    if (artUrl('fx_heartfire')) {
+    const heartUrl = artUrl('fx_heartfire');
+    if (heartUrl) {
       setTimeout(() => {
         const heart = document.createElement('div');
         heart.className = 'fx-heart';
         heart.style.left = `${to.x}px`;
         heart.style.top = `${to.y}px`;
         this.fxLayer.appendChild(heart);
-        setTimeout(() => heart.remove(), 620);
+        playStrip(heart, heartUrl, { fps: 14, onEnd: () => heart.remove() });
+        setTimeout(() => heart.remove(), 700);
       }, 430);
     }
   }

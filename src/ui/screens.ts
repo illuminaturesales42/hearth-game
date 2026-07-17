@@ -9,15 +9,33 @@ import { GRATITUDE } from '../data/gratitude';
 import { ACHIEVEMENTS } from '../core/achievements';
 import { BOARD_SKINS } from '../data/shop';
 import { BUILDING_INFO, DECOR_CATALOG, TOWN_BUILDINGS } from '../data/town-layout';
-import { artUrl } from './art';
+import { composeWeek } from '../core/chronicle';
+import { seasonForMonth, type Season } from '../core/world-mood';
+import { chainDef } from '../core/board';
+import { artUrl, portraitFor, tileMarkup } from './art';
+import { feedback } from './feedback';
 import { toast } from './toast';
 
 const byId = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
+
+/** An honest, warm line about the real season — mirrors the map's seasonal
+ *  ambience (blossom / motes / leaves / snow). No fabricated countdowns. */
+const SEASON_NOTE: Record<Season, string> = {
+  spring: 'Blossom drifts through the lanes.',
+  summer: 'Long, warm evenings down by the water.',
+  autumn: 'Leaves turn gold along the harbour.',
+  winter: 'Snow settles soft on the rooftops.',
+};
 type JTab = 'Chronicle' | 'Good Days' | 'Clues' | 'Letters' | 'People' | 'Places';
 const TABS: JTab[] = ['Chronicle', 'Good Days', 'Clues', 'Letters', 'People', 'Places'];
 
 function esc(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c);
+}
+/** An illustrated section-header banner, only when the art id has been sliced. */
+function sectionBanner(id: string): string {
+  const url = artUrl(id);
+  return url ? `<div class="section-banner" style="background-image:url(${url})" aria-hidden="true"></div>` : '';
 }
 function ago(now: number, then: number): string {
   const d = Math.max(0, Math.round((now - then) / 86_400_000));
@@ -32,11 +50,23 @@ export class Screens {
       if ((ev.type === 'gratitude' || ev.type === 'flashback' || ev.type === 'delivered') && this.journalVisible()) {
         this.renderJournal();
       }
+      // The Collect tab shows what you've gathered — keep it live as loot lands
+      // (mini-game/duel wins) or leaves (gifted, delivered) while it's on screen.
+      if (
+        (ev.type === 'minigameEnd' || ev.type === 'duelEnd' || ev.type === 'repoGiven' || ev.type === 'delivered') &&
+        this.shopVisible()
+      ) {
+        this.renderShop();
+      }
     });
   }
 
   private journalVisible(): boolean {
     return byId('screen-journal')?.classList.contains('active') ?? false;
+  }
+
+  private shopVisible(): boolean {
+    return byId('screen-shop')?.classList.contains('active') ?? false;
   }
 
   renderJournal(): void {
@@ -74,13 +104,21 @@ export class Screens {
         `Come back tomorrow and the first page will be waiting.</p></div>`
       );
     }
-    return entries
-      .map((e) => {
-        const d = new Date(`${e.day}T12:00:00`);
-        const label = d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
-        return `<div class="chron-page"><span class="chron-day">${label}</span><p>${e.text}</p></div>`;
-      })
-      .join('');
+    // A gentle weekly reflection sits atop the daily pages (Finch-style ritual).
+    const week = composeWeek(entries);
+    const weekCard = week
+      ? `<div class="chron-week"><span class="chron-week-eyebrow">${esc(week.title)}</span><p>${esc(week.text)}</p></div>`
+      : '';
+    return (
+      weekCard +
+      entries
+        .map((e) => {
+          const d = new Date(`${e.day}T12:00:00`);
+          const label = d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+          return `<div class="chron-page"><span class="chron-day">${label}</span><p>${e.text}</p></div>`;
+        })
+        .join('')
+    );
   }
 
   private storyEntries(): string {
@@ -155,6 +193,72 @@ export class Screens {
     if (claim) claim.onclick = () => this.game.claimFlashback();
   }
 
+  /**
+   * "Your Repository" — everything gathered from Village Life games and Bonfire
+   * Duels, kept safe. Each mini-game chain has a villager who'd love it (gift for
+   * coins); when the current town order matches something held, you can deliver
+   * it straight from here. Keep-everything: nothing is ever sold off or discarded.
+   */
+  private repositorySection(): string {
+    const repo = this.game.repository;
+    const requests = this.game.repositoryRequests();
+    const canDeliver = this.game.canDeliverFromRepository();
+    const need = this.game.currentOrder().need;
+    // Art-gated illustrated header banner (lights up when ui_repository_header lands).
+    const banner = sectionBanner('ui_repository_header');
+
+    if (repo.length === 0) {
+      return (
+        banner +
+        `<h2 class="screen-title">Your Repository</h2>` +
+        `<p class="screen-sub repo-empty">Nothing kept yet. Play a building’s game, or win a Bonfire Duel, ` +
+        `and what you gather rests here — safe until the village asks for it.</p>`
+      );
+    }
+
+    // Group the shelves by chain so a run visibly adds to a growing pile.
+    const shelves = repo
+      .slice()
+      .sort((a, b) => a.chain.localeCompare(b.chain) || a.level - b.level)
+      .map((r) => {
+        const name = chainDef(r.chain).levelNames[r.level] ?? '';
+        const req = requests.find((q) => q.chain === r.chain && q.level === r.level);
+        const matchesOrder = need.chain === r.chain && need.level === r.level;
+        const bust = req ? portraitFor(req.who) : null;
+        const action = matchesOrder
+          ? `<button class="repo-give repo-deliver" data-deliver="1">Give to ${esc(
+              this.game.currentOrder().who,
+            )}</button>`
+          : req
+            ? `<button class="repo-give" data-chain="${r.chain}" data-level="${r.level}">` +
+              `Give to ${esc(req.who)} · +${req.coins}🪙</button>`
+            : '';
+        const ask = matchesOrder
+          ? `<p class="repo-ask repo-ask-order">${esc(this.game.currentOrder().who)} needs exactly this.</p>`
+          : req
+            ? `<p class="repo-ask">${bust ? `<span class="repo-bust" style="background-image:url(${bust})"></span>` : ''}“${esc(req.text)}”</p>`
+            : '';
+        return (
+          `<div class="repo-shelf">` +
+          `<div class="repo-tile">${tileMarkup(r.chain, r.level)}<span class="repo-count">×${r.count}</span></div>` +
+          `<div class="repo-body"><b>${esc(name)}</b>${ask}${action}</div>` +
+          `</div>`
+        );
+      })
+      .join('');
+
+    const hint = canDeliver
+      ? `The village is asking for something you hold — hand it over below.`
+      : `Gather more from the building games; when the town asks for what you’ve kept, you can give it here.`;
+
+    return (
+      banner +
+      `<h2 class="screen-title">Your Repository</h2>` +
+      `<p class="screen-sub">${hint}</p>` +
+      `<div class="repo-list">${shelves}</div>`
+    );
+  }
+
   renderShop(): void {
     const host = byId('shop-body');
     if (!host) return;
@@ -203,6 +307,7 @@ export class Screens {
     }).join('');
 
     host.innerHTML =
+      this.repositorySection() +
       `<h2 class="screen-title">Market</h2>` +
       `<p class="screen-sub">Coins buy beauty and comfort — never power, never energy.</p>` +
       `<p class="earn-label">Your coins · ${coins}🪙</p>` +
@@ -243,8 +348,9 @@ export class Screens {
         );
       }).join('') +
       `</div>` +
-      `<h3 class="screen-h3">Events</h3>` +
+      `<h3 class="screen-h3">In Emberhollow</h3>` +
       `<div class="event-list">` +
+      `<div class="event"><b>This season</b><span>${SEASON_NOTE[seasonForMonth(new Date().getMonth())]}</span></div>` +
       EVENTS.map((e) => `<div class="event"><b>${e.name}</b><span>${e.timing}</span></div>`).join('') +
       `</div>` +
       `<p class="set-note">Energy is never for sale — that never changes.</p>`;
@@ -273,6 +379,23 @@ export class Screens {
         } else {
           toast('Not enough coins yet.');
         }
+      };
+    });
+    // Repository: gift held loot for coins, or deliver it to the current order.
+    host.querySelectorAll<HTMLButtonElement>('.repo-give').forEach((btn) => {
+      btn.onclick = () => {
+        if (btn.dataset.deliver === '1') {
+          this.game.deliverFromRepository();
+          feedback.chime(587);
+          toast('Handed over from your Repository — the village is grateful.');
+        } else {
+          const chain = btn.dataset.chain as import('../core/types').ChainId;
+          const level = Number(btn.dataset.level);
+          if (this.game.giveFromRepository(chain, level)) {
+            feedback.chime(560);
+          }
+        }
+        this.renderShop();
       };
     });
     // Jump to Home and open the map's Decorate mode to place decorations.

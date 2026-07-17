@@ -7,6 +7,7 @@ import { AppShell } from './ui/app-shell';
 import { MinigameUI } from './ui/minigames';
 import { confirmDialog } from './ui/confirm-modal';
 import { initNetStatus } from './ui/net-status';
+import { initTimeBadge } from './ui/time-badge';
 import { recentEvents, setSink, track } from './analytics';
 import { createNetworkSink } from './platform/analytics-sink';
 import type { HealthSnapshot } from './health/health-provider';
@@ -14,6 +15,8 @@ import { pickHealthProvider } from './platform/providers';
 import { HttpSyncProvider, LocalMirrorSyncProvider } from './platform/sync-provider';
 import { SyncController } from './platform/sync-controller';
 import { Metrics, exposeMetricsConsole } from './platform/metrics';
+import { computeMood, meditatedToday } from './core/world-mood';
+import { registerSW } from 'virtual:pwa-register';
 
 const game = new Game();
 
@@ -30,8 +33,32 @@ new AppShell(game, metrics);
 // 'hearth:play-minigame' event (unlock at story-complete; attempts from living well).
 new MinigameUI(game);
 
+// The corner time-of-day badge on the Home map (reflects the real clock; the
+// map's own lighting turns with the same phase).
+initTimeBadge();
+
 // A quiet offline indicator (the game is local-first; this only reassures).
 initNetStatus();
+
+// New-version flow: the SW installs updates in the background but never swaps
+// under the player's feet — a warm banner offers a refresh whenever they're
+// ready. (This is the structural fix for the "testers stuck on a stale build"
+// problem; registerType 'prompt' + this banner replace the self-destroying SW.)
+const updateSW = registerSW({
+  onNeedRefresh() {
+    const banner = document.getElementById('update-banner');
+    const btn = document.getElementById('update-banner-btn');
+    if (!banner || !btn) return;
+    banner.hidden = false;
+    btn.onclick = () => {
+      banner.hidden = true;
+      void updateSW(true);
+    };
+  },
+  onOfflineReady() {
+    toast('Emberhollow is ready to play offline.');
+  },
+});
 
 // The splash lifts once the shell is mounted (a breath later, so it never blinks).
 const splash = document.getElementById('splash');
@@ -219,6 +246,8 @@ declare global {
     hearthHealthSim: (steps: number, sleepHours?: number, flights?: number) => void;
     hearthEvents: () => void;
     hearthSeeTown: (orders?: number) => void;
+    hearthTestGames: () => void;
+    hearthMood: () => unknown;
   }
 }
 // Tester hooks (hearthSeeTown, hearthReset, …). Always on in dev; in the
@@ -244,15 +273,41 @@ const testerMode =
     }
   })();
 if (testerMode) {
+  // Unlimited mini-game goes so a tester can try every mechanic freely.
+  game.setTesterUnlimited(true);
   window.hearthReset = () => {
     clearSave();
     location.reload();
+  };
+  // Live reactive-world readout: watch the WorldMood values change as real
+  // actions are logged (proves the world is reacting; weather is null here).
+  window.hearthMood = () => {
+    const s = game.snapshot;
+    const m = computeMood({
+      weather: null,
+      meditatedToday: meditatedToday(s.actions.counts),
+      lastCalmDay: s.wellbeing.lastCalmDay,
+      today: s.actions.day,
+      sleptWell: (s.healthLedger?.sleepGranted ?? 0) > 0,
+      counts: s.actions.counts,
+      walkedToday: (s.healthLedger?.stepsGranted ?? 0) > 0,
+      streak: s.actions.streak,
+    });
+    console.table(m);
+    return m;
   };
   // Preview the composed town: jump the story forward so buildings appear.
   // e.g. hearthSeeTown(12) = end of Chapter 1; hearthSeeTown() = everything.
   window.hearthSeeTown = (orders = 24) => {
     game.devPreviewStory(orders);
     document.querySelector<HTMLButtonElement>('.nav-btn[data-screen="home"]')?.click();
+  };
+  // One-call setup to test every Village Life game: story complete, town funded,
+  // all six games opened (incl. the L2-gated ones), plenty of energy + goes.
+  window.hearthTestGames = () => {
+    game.devUnlockMinigames();
+    document.querySelector<HTMLButtonElement>('.nav-btn[data-screen="home"]')?.click();
+    console.info('Village Life ready — tap the well, lighthouse, blacksmith, fisher hut, garden, or library.');
   };
   window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {
     const snap: HealthSnapshot = {

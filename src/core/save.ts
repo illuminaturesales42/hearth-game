@@ -4,11 +4,11 @@
  * Rotating backups (3 slots, refreshed at most once per hour) guard against
  * corruption, and export/import gives players a manual lifeline.
  */
-import type { GameState } from './types';
+import type { GameState, MinigameState } from './types';
 import { localDayKey } from './energy';
 import { initialMinigames } from './minigames';
 
-export const CURRENT_VERSION = 14;
+export const CURRENT_VERSION = 16;
 
 const KEY = 'hearth:save';
 /** Older builds wrote the version into the key. Read them once, then adopt KEY. */
@@ -50,6 +50,15 @@ const MIGRATIONS: Record<number, (s: LooseState) => LooseState> = {
   12: (s) => ({ ...s, version: 13, buildingUpgrades: {} }),
   // v13 → v14: Village Life mini-games (post-story building games).
   13: (s) => ({ ...s, version: 14, minigames: initialMinigames(localDayKey(Date.now())) }),
+  // v14 → v15: per-game personal bests on the minigame state.
+  14: (s) => {
+    const mg = (s.minigames as MinigameState | undefined) ?? initialMinigames(localDayKey(Date.now()));
+    return { ...s, version: 15, minigames: { ...mg, bests: mg.bests ?? {} } };
+  },
+  // v15 → v16: the Keeper's Almanac (a collection stamped by mini-game finds).
+  // Existing villages start with an empty book — nothing is ever missed, so
+  // there's nothing to back-fill; the next catch writes the first page.
+  15: (s) => ({ ...s, version: 16, almanac: {} }),
 };
 
 /** Upgrade any historical state to CURRENT_VERSION, or null if unrecognizable. */
@@ -67,6 +76,9 @@ export function migrateState(raw: unknown): GameState | null {
     s = step(s);
   }
   if (s.version !== CURRENT_VERSION) return null;
+  // Every non-optional GameState field must be present — a truncated or
+  // corrupt save that passed the migration chain must still be rejected here,
+  // never loaded half-broken (and then re-saved over the player's village).
   if (
     !s.board ||
     !s.energy ||
@@ -80,9 +92,21 @@ export function migrateState(raw: unknown): GameState | null {
     !s.wellbeing ||
     !s.relationships ||
     !s.buildingUpgrades ||
-    !s.minigames
+    !s.minigames ||
+    !s.almanac ||
+    !s.achievements ||
+    !s.questsClaimed ||
+    !s.flags ||
+    !s.decor ||
+    !s.repository ||
+    !s.storySeen
   )
     return null;
+  // Numeric fields are checked for presence, not truthiness — 0 is a
+  // perfectly valid value for all of them (a brand-new village has coins 0).
+  for (const key of ['coins', 'xp', 'orderIndex', 'duelStreak', 'nextUid', 'nextDecorId'] as const) {
+    if (typeof (s as Record<string, unknown>)[key] !== 'number') return null;
+  }
   return s;
 }
 

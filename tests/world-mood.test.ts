@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { computeMood, daysBetween, meditatedToday, moodCaption, weatherFromWmo } from '../src/core/world-mood';
+import {
+  computeMood,
+  daysBetween,
+  earnedFlourishes,
+  meditatedToday,
+  moodCaption,
+  seasonForMonth,
+  weatherFromWmo,
+} from '../src/core/world-mood';
 import type { WeatherNow } from '../src/core/world-mood';
 
 const w = (over: Partial<WeatherNow>): WeatherNow => ({
@@ -162,6 +170,35 @@ describe('computeMood — real-world actions bloom the town', () => {
     expect(healthWalk.villagersOut).toBeGreaterThan(0);
   });
 
+  it('cold plunge draws a cool sea mist; sauna warms the chimneys', () => {
+    const rest = computeMood(base);
+    expect(rest.seaMist).toBe(0);
+    expect(rest.saunaWarm).toBe(false);
+    const plunged = computeMood({ ...base, counts: { 'log-cold-plunge': 1 } });
+    expect(plunged.seaMist).toBeGreaterThan(0);
+    const sauna = computeMood({ ...base, counts: { 'log-sauna': 1 } });
+    expect(sauna.saunaWarm).toBe(true);
+  });
+
+  it('stargazing lights a constellation flag (the map shows it after dark)', () => {
+    expect(computeMood(base).stargazed).toBe(false);
+    expect(computeMood({ ...base, counts: { stargaze: 1 } }).stargazed).toBe(true);
+  });
+
+  it('the new flourishes surface in the caption', () => {
+    expect(moodCaption(computeMood({ ...base, counts: { stargaze: 1 } }))).toContain('constellation');
+    expect(moodCaption(computeMood({ ...base, counts: { 'log-cold-plunge': 1 } }))).toContain('mist');
+  });
+
+  it('earnedFlourishes lists only what the day brought (empty when nothing, never a scold)', () => {
+    expect(earnedFlourishes(computeMood(base))).toEqual([]);
+    const busy = earnedFlourishes(
+      computeMood({ ...base, meditatedToday: true, counts: { water: 1, steps: 2, 'nature-photo': 1 } }),
+    );
+    expect(busy.length).toBeGreaterThan(2);
+    expect(busy.join(' ')).not.toMatch(/skip|didn|rough|miss/i); // never a guilt line
+  });
+
   it('festival banners gather only over a long streak', () => {
     expect(computeMood({ ...base, streak: 3 }).festive).toBe(0);
     const week = computeMood({ ...base, streak: 8 }).festive;
@@ -188,5 +225,23 @@ describe('computeMood — real-world actions bloom the town', () => {
     expect(moodCaption(bloomy)).toContain('flowers');
     const festivy = computeMood({ ...base, streak: 20 });
     expect(moodCaption(festivy)).toContain('festival');
+  });
+});
+
+describe('seasonForMonth (northern hemisphere)', () => {
+  it('maps months to seasons', () => {
+    expect(seasonForMonth(11)).toBe('winter'); // Dec
+    expect(seasonForMonth(0)).toBe('winter'); // Jan
+    expect(seasonForMonth(1)).toBe('winter'); // Feb
+    expect(seasonForMonth(2)).toBe('spring'); // Mar
+    expect(seasonForMonth(4)).toBe('spring'); // May
+    expect(seasonForMonth(5)).toBe('summer'); // Jun
+    expect(seasonForMonth(7)).toBe('summer'); // Aug
+    expect(seasonForMonth(8)).toBe('autumn'); // Sep
+    expect(seasonForMonth(10)).toBe('autumn'); // Nov
+  });
+  it('wraps out-of-range months', () => {
+    expect(seasonForMonth(12)).toBe('winter'); // == Jan
+    expect(seasonForMonth(-1)).toBe('winter'); // == Dec
   });
 });

@@ -33,14 +33,26 @@ describe('building upgrades — coins buy pride, never power', () => {
     expect(g.upgradeBuilding('town_bakery')).toBe(false);
   });
 
-  it('spends coins at the escalating cost', () => {
+  it('spends coins at the escalating, per-building cost', () => {
     const g = withCoinsAndStory(500, 4);
+    const c0 = g.upgradeCost('town_bakery')!;
     const before = g.snapshot.coins;
-    g.upgradeBuilding('town_bakery'); // costs 120
-    expect(g.snapshot.coins).toBe(before - Game.UPGRADE_COSTS[0]);
+    g.upgradeBuilding('town_bakery');
+    expect(g.snapshot.coins).toBe(before - c0);
+    const c1 = g.upgradeCost('town_bakery')!;
     const mid = g.snapshot.coins;
-    g.upgradeBuilding('town_bakery'); // costs 320
-    expect(g.snapshot.coins).toBe(mid - Game.UPGRADE_COSTS[1]);
+    g.upgradeBuilding('town_bakery');
+    expect(g.snapshot.coins).toBe(mid - c1);
+    // the second tier always costs more than the first
+    expect(c1).toBeGreaterThan(c0);
+  });
+
+  it('scales cost by building — grander homes cost more to cherish (beauty, never power)', () => {
+    const g = withCoinsAndStory(500, 4);
+    const townhall = g.upgradeCost('town_townhall')!; // factor 1.5
+    const cottage = g.upgradeCost('town_cottage')!; // factor 1.0 (default)
+    expect(cottage).toBe(Game.UPGRADE_COSTS[0]); // unscaled base
+    expect(townhall).toBeGreaterThan(cottage);
   });
 
   it('cannot upgrade a building that has not returned yet', () => {

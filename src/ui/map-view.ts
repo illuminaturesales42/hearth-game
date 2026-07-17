@@ -8,8 +8,9 @@
  * This is the shippable procedural stand-in; the painted stage art swaps in
  * behind the same `stage()` data during the M2 art pass.
  */
-import type { Game } from '../core/game';
+import type { Game, GameEvent } from '../core/game';
 import { MAP_LOCATIONS } from '../data/world';
+import { MINIGAMES } from '../data/minigames';
 import { ORDERS, RESTORE_ORDERS, chapterFor, stageFor } from '../data/economy';
 import { orderAt } from '../data/endless';
 import { questsForDay } from '../data/daily-quests';
@@ -22,13 +23,20 @@ import {
   TOWN_TERRAIN,
   TOWN_WALKERS,
 } from '../data/town-layout';
-import { computeMood, meditatedToday, moodCaption } from '../core/world-mood';
+import { computeMood, earnedFlourishes, meditatedToday, moodCaption, seasonForMonth } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
+import { stemLevels } from '../core/stem-levels';
+import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
+import { ReactionOnsets, type OnsetKind } from './world-reactions';
 import { currentWeather } from './weather';
-import { artUrl } from './art';
+import { artUrl, portraitFor, tileMarkup } from './art';
+import { ALMANAC_PAGES, ALMANAC_SECTIONS, almanacProgress } from '../core/almanac';
+import { VILLAGER_DEFS } from '../data/villagers';
+import { bondFor, greetingFor, hearts, HEARTS_MAX } from '../core/relationships';
 import { drawButterfly, drawFlower, drawSparkle, drawStroller } from './paint-flourishes';
 import { toast } from './toast';
 import { feedback } from './feedback';
+import { minigameCta } from './minigame-cta';
 import { tomorrowLine } from './tease';
 
 const STAGE_NAMES = [
@@ -74,7 +82,14 @@ export class MapView {
   private ctx: CanvasRenderingContext2D | null = null;
   private raf = 0;
   private visible = false;
-  private reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  private mediaReduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /** Reduced-motion is honoured from BOTH the OS media query AND the in-app
+   *  Settings toggle (body.reduce-motion) — matching board-view and the minigame
+   *  overlay, so choosing "reduce motion" in Settings actually calms the map
+   *  (onset cues become toasts, ambient loops hold still). */
+  private get reduce(): boolean {
+    return this.mediaReduce || document.body.classList.contains('reduce-motion');
+  }
   /** Painted stage backdrops (sliced from the concept sheets); null until loaded. */
   private stageArt: (HTMLImageElement | null)[] = [null, null, null, null, null];
   /** Sprite cache for the composed town scene. */
@@ -95,6 +110,22 @@ export class MapView {
   private decorMode = false;
   private decorPick: string | null = null;
   private decorHit: { x0: number; y0: number; x1: number; y1: number; id: number }[] = [];
+
+  /**
+   * Camera for the "look around the island" pan/zoom. `zoom` 1 = fit (identical
+   * to the classic view); >1 zooms into the same scene. `panX/panY` are viewport
+   * offsets in CSS px, clamped so the viewport never leaves the scaled scene.
+   * draw() and the click hit-test share this transform, so a tap always lands on
+   * what's under the finger at any zoom.
+   */
+  private cam: Camera = { zoom: 1, panX: 0, panY: 0 };
+  private static readonly ZOOM_STEPS = [1, 1.8, 2.6] as const;
+  private dragging = false;
+  private dragMoved = false;
+  private dragFrom = { x: 0, y: 0, panX: 0, panY: 0 };
+
+  /** One-shot reaction cues (the *felt* onset when a real action changes the town). */
+  private onsets = new ReactionOnsets();
 
   constructor(private game: Game) {
     // The painted stage backdrops are a fallback for when the composed-town art
@@ -130,6 +161,37 @@ export class MapView {
         if (this.reduce) this.draw(0);
       }
     });
+    // The *felt* living world: when a real action lands, fire a brief onset cue
+    // (light + motion + one soft tone) right where the town answers, plus a
+    // one-line note. Positive-only, self-dismissing — reflect, never punish.
+    game.subscribe((ev) => this.onReactionEvent(ev));
+  }
+
+  /** Map a game event to a reaction onset (cue + caption) at the town spot. */
+  private onReactionEvent(ev: GameEvent): void {
+    if (!this.visible) return; // seen-while-away is handled by the return recap
+    this.updateStems(); // a real-world action can shift the ambience (calm/chatter)
+    let cue: { x: number; y: number; kind: OnsetKind; note: string; colour?: string } | null = null;
+    if (ev.type === 'action' && ev.energy > 0) cue = reactionForAction(ev.actionId);
+    else if (ev.type === 'health' && ev.fromSteps > 0)
+      cue = { x: 0.42, y: 0.72, kind: 'motes', note: 'The lanes fill after your walk.' };
+    else if (ev.type === 'gratitude' && ev.energy > 0)
+      cue = { x: 0.5, y: 0.5, kind: 'glow', note: 'A warmth spreads from the hearth.' };
+    else if (ev.type === 'kindness' && ev.energy > 0)
+      cue = { x: 0.5, y: 0.62, kind: 'heart', note: 'A kindness ripples out.', colour: '#e6739a' };
+    else if (ev.type === 'stargaze' && ev.energy > 0)
+      cue = { x: 0.5, y: 0.22, kind: 'glow', note: 'The stars lean a little closer.' };
+    if (!cue) return;
+    feedback.chime(cue.kind === 'ripple' ? 300 : 520);
+    // Reduced-motion: no rAF loop to animate a cue, so acknowledge with a
+    // self-timing toast instead of a canvas onset (still "the town noticed").
+    if (this.reduce) {
+      toast(cue.note);
+      return;
+    }
+    this.onsets.add(cue.kind, cue.x, cue.y, cue.colour ? { colour: cue.colour } : {});
+    if (cue.kind === 'ripple' || cue.kind === 'bloom') this.onsets.add('motes', cue.x, cue.y - 0.03);
+    this.onsets.add('caption', cue.x, cue.y - 0.06, { text: cue.note });
   }
 
   private progress(): number {
@@ -208,10 +270,78 @@ export class MapView {
       this.resize();
       if (this.reduce) this.draw(0);
       else this.loop();
+      this.maybeShowRecap();
+      this.updateStems();
     } else {
       cancelAnimationFrame(this.raf);
       this.raf = 0;
+      feedback.stopStems(); // the map's ambience belongs to the map
     }
+  }
+
+  /** last stem levels sent, so ramps only fire when something actually changed */
+  private lastStems: { calmPad: number; rain: number; chatter: number } | null = null;
+  private stemsCheckedAt = 0;
+
+  /**
+   * Key the quiet ambient stems to the world's mood (the ear catches what the
+   * eye misses): meditation stills the day into a soft pad, rain brings a cosy
+   * bed of it, a good walk raises a faint distant bustle. Additive only.
+   */
+  private updateStems(): void {
+    if (!this.visible) return;
+    this.stemsCheckedAt = Date.now();
+    const levels = stemLevels(this.mood());
+    const last = this.lastStems;
+    if (last && last.calmPad === levels.calmPad && last.rain === levels.rain && last.chatter === levels.chatter) return;
+    this.lastStems = levels;
+    feedback.setStem('calmPad', levels.calmPad);
+    feedback.setStem('rain', levels.rain);
+    feedback.setStem('chatter', levels.chatter);
+  }
+
+  /**
+   * "Emberhollow today" — a gentle once-a-day recap on returning to the map,
+   * celebrating the flourishes the player's real-world day has brought the town
+   * (research: the return-and-notice payoff). Shown at most once per day, and only
+   * when there's something to celebrate. Never lists anything skipped.
+   */
+  private maybeShowRecap(): void {
+    const body = document.getElementById('map-body');
+    const home = document.getElementById('screen-home');
+    if (!body || !home) return;
+    const day = this.game.snapshot.actions.day;
+    const key = `hearth:recap:${day}`;
+    try {
+      if (localStorage.getItem(key)) return;
+    } catch {
+      /* private mode: show it, just won't remember */
+    }
+    const flourishes = earnedFlourishes(this.mood());
+    if (flourishes.length === 0) return; // nothing earned yet — don't nag, try again later
+    try {
+      localStorage.setItem(key, '1');
+    } catch {
+      /* ignore */
+    }
+    const lines = flourishes
+      .slice(0, 4)
+      .map((f) => `<li>${f}</li>`)
+      .join('');
+    const card = document.createElement('div');
+    card.className = 'map-recap';
+    card.innerHTML =
+      `<button class="map-recap-close" aria-label="Close">✕</button>` +
+      `<h3>Emberhollow today</h3>` +
+      `<p class="map-recap-sub">Your day has left its mark on the town:</p>` +
+      `<ul class="map-recap-list">${lines}</ul>`;
+    // Insert as a sibling before the list (renderList rebuilds map-body, so a
+    // child there would be wiped on the next refresh — a sibling survives).
+    home.insertBefore(card, body);
+    const close = () => card.remove();
+    card.querySelector<HTMLButtonElement>('.map-recap-close')?.addEventListener('click', close);
+    // auto-dismiss so it never lingers (calm-tech: recede)
+    window.setTimeout(close, 9000);
   }
 
   private mount(): void {
@@ -220,10 +350,17 @@ export class MapView {
     this.ctx = this.canvas?.getContext('2d') ?? null;
     // Tap a returned building to hear how it came back — or, in decorate
     // mode, tap the town to place a piece / tap a piece to pick it back up.
+    // Coordinates are converted through the camera (screenToWorld) so taps land
+    // true at any zoom; a drag (when zoomed in) pans instead of tapping.
     this.canvas?.addEventListener('click', (e) => {
+      if (this.dragMoved) {
+        this.dragMoved = false;
+        return; // that gesture was a pan, not a tap
+      }
       const rect = this.canvas!.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const p = this.screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+      const x = p.x;
+      const y = p.y;
       if (this.decorMode) {
         const W = this.canvas!.clientWidth || 360;
         for (let i = this.decorHit.length - 1; i >= 0; i--) {
@@ -257,6 +394,7 @@ export class MapView {
         }
       }
     });
+    this.mountCamControls();
     this.mountDecorTray();
     document.getElementById('bldg-close')?.addEventListener('click', () => {
       const m = document.getElementById('bldg-modal');
@@ -280,6 +418,69 @@ export class MapView {
     });
   }
 
+  /**
+   * "Look around the island": drag to pan when zoomed in, wheel/pinch to zoom,
+   * and a zoom button as the primary touch-friendly control. Pan is disabled in
+   * decorate mode (there, drags place pieces) and at fit-zoom (nothing to pan).
+   */
+  private mountCamControls(): void {
+    const cv = this.canvas;
+    if (!cv) return;
+
+    // Zoom button (added to the map actions bar).
+    const zoomBtn = document.getElementById('map-zoom-btn');
+    if (zoomBtn) zoomBtn.addEventListener('click', () => this.cycleZoom());
+    this.updateZoomBtn();
+
+    // Desktop wheel-zoom, centred on the cursor.
+    cv.addEventListener(
+      'wheel',
+      (e) => {
+        if (this.decorMode) return;
+        e.preventDefault();
+        const rect = cv.getBoundingClientRect();
+        const steps = MapView.ZOOM_STEPS;
+        const i = steps.indexOf(this.cam.zoom as (typeof steps)[number]);
+        const dir = e.deltaY < 0 ? 1 : -1;
+        const next = steps[Math.min(steps.length - 1, Math.max(0, i + dir))] ?? 1;
+        if (next !== this.cam.zoom) this.zoomTo(next, { x: e.clientX - rect.left, y: e.clientY - rect.top });
+      },
+      { passive: false },
+    );
+
+    // Pointer drag to pan (touch + mouse). A small move threshold distinguishes
+    // a pan from a tap so buildings still open on a clean tap.
+    cv.addEventListener('pointerdown', (e) => {
+      if (this.decorMode || this.cam.zoom <= 1) return;
+      this.dragging = true;
+      this.dragMoved = false;
+      this.dragFrom = { x: e.clientX, y: e.clientY, panX: this.cam.panX, panY: this.cam.panY };
+      cv.setPointerCapture(e.pointerId);
+    });
+    cv.addEventListener('pointermove', (e) => {
+      if (!this.dragging) return;
+      const dx = e.clientX - this.dragFrom.x;
+      const dy = e.clientY - this.dragFrom.y;
+      if (Math.abs(dx) + Math.abs(dy) > 6) this.dragMoved = true;
+      this.cam.panX = this.dragFrom.panX + dx;
+      this.cam.panY = this.dragFrom.panY + dy;
+      this.clampCam();
+      if (this.reduce) this.draw(0);
+    });
+    const endDrag = (e: PointerEvent) => {
+      if (!this.dragging) return;
+      this.dragging = false;
+      try {
+        cv.releasePointerCapture(e.pointerId);
+      } catch {
+        /* pointer already released */
+      }
+    };
+    cv.addEventListener('pointerup', endDrag);
+    cv.addEventListener('pointercancel', endDrag);
+    cv.style.touchAction = 'none'; // let us own drag-pan without the page scrolling
+  }
+
   /** The decorate tray: pick a piece, tap the town. Coins buy beauty, never power. */
   private mountDecorTray(): void {
     const btn = document.getElementById('decor-btn');
@@ -288,7 +489,7 @@ export class MapView {
     const renderTray = () => {
       const coins = this.game.snapshot.coins;
       tray.innerHTML =
-        `<p class="decor-hint">${this.decorPick ? 'Tap the town to place it — tap a placed piece to pick it up.' : 'Choose a piece. Picking one back up refunds it in full.'}</p>` +
+        `<p class="decor-hint">${this.decorPick ? 'Tap the town to place it — tap a placed piece to pick it up.' : 'Choose a piece. Picking one back up reclaims half its materials.'}</p>` +
         DECOR_CATALOG.map((d) => {
           const url = artUrl(d.art);
           const afford = coins >= d.cost;
@@ -358,8 +559,17 @@ export class MapView {
         upBtn.hidden = true;
       } else {
         const tier = this.game.upgradeTier(art);
+        // What caring brings is purely cosmetic — deeper colours, a golden aura
+        // of pride. Coins buy beauty, never power (a hard pillar).
+        const tierNote = [
+          'Tend it and its colours deepen — a home lovingly kept.',
+          'One more kindness and it glows with a quiet golden pride.',
+          'As cherished as Emberhollow can make it.',
+        ];
         tierEl.hidden = false;
-        tierEl.textContent = `${tierNames[tier] ?? 'Beloved'} · ${'★'.repeat(tier + 1)}${'☆'.repeat(Math.max(0, 2 - tier))}`;
+        tierEl.innerHTML =
+          `<span class="bldg-tier-name">${tierNames[tier] ?? 'Beloved'} · ${'★'.repeat(tier + 1)}${'☆'.repeat(Math.max(0, 2 - tier))}</span>` +
+          `<span class="bldg-tier-note">${tierNote[tier] ?? tierNote[2]}</span>`;
         const cost = this.game.upgradeCost(art);
         if (cost === null) {
           upBtn.hidden = false;
@@ -379,62 +589,123 @@ export class MapView {
         }
       }
     }
-    // Village Life: once the story's told, buildings open their doors.
+    // Village Life: buildings open their doors as each one returns.
     this.renderMinigameCta(art, locked);
+    // Whose home this is, and how your bond stands (Codex Book III).
+    this.renderBond(art, locked);
 
     const m = document.getElementById('bldg-modal');
     if (m) m.hidden = false;
   }
 
-  /** The "play the building's mini-game" affordance on the building card. */
+  /** Show the villager who lives here + your bond + a greeting, on the card. */
+  private renderBond(art: string, locked: boolean): void {
+    const host = document.getElementById('bldg-bond');
+    if (!host) return;
+    const villager = VILLAGER_DEFS.find((v) => v.home === art);
+    if (!villager || locked) {
+      host.hidden = true;
+      return;
+    }
+    const bond = bondFor(this.game.snapshot.relationships, villager.id);
+    const filled = hearts(bond.points);
+    const heartRow = '♥'.repeat(filled) + '♡'.repeat(Math.max(0, HEARTS_MAX - filled));
+    const greet = greetingFor(this.game.snapshot.relationships, villager.id);
+    const bust = portraitFor(villager.name);
+    host.hidden = false;
+    host.innerHTML =
+      (bust ? `<span class="bldg-bond-bust" style="background-image:url(${bust})"></span>` : '') +
+      `<div class="bldg-bond-body">` +
+      `<b>${villager.name}<span class="bldg-bond-hearts" role="img" aria-label="${filled} of ${HEARTS_MAX} hearts">${heartRow}</span></b>` +
+      `<span class="bldg-bond-trait">${villager.trait}</span>` +
+      `<p class="bldg-bond-greet">“${greet}”</p></div>`;
+  }
+
+  /** Hide the building card and launch its game. */
+  private launchMinigame(id: string): void {
+    const m = document.getElementById('bldg-modal');
+    if (m) m.hidden = true;
+    document.dispatchEvent(new CustomEvent('hearth:play-minigame', { detail: { id } }));
+  }
+
+  /**
+   * The "play the building's mini-game" affordance on the building card. The
+   * building image itself is the primary control (tap it to play when a game is
+   * ready), with a badge inviting the tap; the button below is the secondary.
+   */
   private renderMinigameCta(art: string, locked: boolean): void {
     const btn = document.getElementById('bldg-play') as HTMLButtonElement | null;
     const note = document.getElementById('bldg-play-note');
+    const artBtn = document.getElementById('bldg-art-btn') as HTMLButtonElement | null;
+    const badge = document.getElementById('bldg-art-badge');
     if (!btn || !note) return;
     const st = locked ? null : this.game.minigameStatus(art);
+
+    // Reset the tappable-image affordance each render.
+    const setArt = (on: boolean, label: string, onTap?: () => void) => {
+      if (badge) {
+        badge.hidden = !on;
+        badge.textContent = label;
+      }
+      if (artBtn) {
+        artBtn.classList.toggle('is-playable', on);
+        artBtn.onclick = on && onTap ? onTap : null;
+        artBtn.style.cursor = on ? 'pointer' : 'default';
+        // Keyboard + screen-reader: the building image is only a live control
+        // when it can be played/opened. Otherwise it's decorative and the
+        // #bldg-play button is the accessible affordance — skip it in the tab
+        // order so there's no focusable no-op.
+        if (on) {
+          artBtn.removeAttribute('aria-hidden');
+          artBtn.tabIndex = 0;
+          artBtn.setAttribute('aria-label', label);
+        } else {
+          artBtn.setAttribute('aria-hidden', 'true');
+          artBtn.tabIndex = -1;
+          artBtn.removeAttribute('aria-label');
+        }
+      }
+    };
+    setArt(false, '');
+
     if (!st) {
       btn.hidden = true;
       note.hidden = true;
       return;
     }
-    btn.hidden = false;
+    const cta = minigameCta(st, this.game.isTesterUnlimited);
     note.hidden = false;
-    if (!st.unlocked) {
-      // Not opened yet: offer to open the doors (throttled to one/day).
-      if (st.reason === 'locked-story') {
-        btn.hidden = true;
-        note.textContent = `${st.def.title} opens here once Emberhollow's story is told.`;
-      } else if (st.reason === 'locked-l2') {
-        btn.hidden = true;
-        note.textContent = `Care for this building (upgrade it) and ${st.def.title} will open its doors.`;
-      } else {
-        btn.disabled = false;
-        btn.textContent = `✦ Open ${st.def.title}`;
-        note.textContent = st.def.blurb;
-        btn.onclick = () => {
-          if (this.game.openMinigameDoors(art) === 'opened') {
-            feedback.chime(520);
-            this.showBuilding(art, this.cardUnlockAt); // refresh into the "play" state
-          }
-        };
-      }
+    note.textContent = cta.sub;
+
+    // The card hides the button entirely when there's nothing to open (locked
+    // states just explain themselves in the note); otherwise it shows the
+    // shared label. Copy comes from the helper so it can't drift from the index.
+    if (cta.kind === 'locked-story' || cta.kind === 'locked-l2') {
+      btn.hidden = true;
+      return;
+    }
+    btn.hidden = false;
+    if (cta.kind === 'open') {
+      const open = () => {
+        if (this.game.openMinigameDoors(art) === 'opened') {
+          feedback.chime(520);
+          this.showBuilding(art, this.cardUnlockAt); // refresh into the "play" state
+        }
+      };
+      btn.disabled = false;
+      btn.textContent = cta.label;
+      btn.onclick = open;
+      setArt(true, cta.badge, open); // the image invites the tap
       return;
     }
     // Unlocked: play, if there's a token + the energy.
-    note.textContent = `${st.tokens} ${st.tokens === 1 ? 'go' : 'goes'} today · costs 4 energy. More goes come from living well.`;
-    btn.disabled = st.reason !== 'ready';
-    btn.textContent =
-      st.reason === 'no-tokens'
-        ? 'No goes left today'
-        : st.reason === 'no-energy'
-          ? 'Need more energy'
-          : `${st.def.verb}`;
+    btn.disabled = !cta.actionable;
+    btn.textContent = cta.label;
     btn.onclick = () => {
-      if (st.reason !== 'ready') return;
-      const m = document.getElementById('bldg-modal');
-      if (m) m.hidden = true;
-      document.dispatchEvent(new CustomEvent('hearth:play-minigame', { detail: { id: st.def.id } }));
+      if (!cta.actionable) return;
+      this.launchMinigame(st.def.id);
     };
+    if (cta.actionable) setArt(true, cta.badge, () => this.launchMinigame(st.def.id));
   }
 
   private resize(): void {
@@ -445,11 +716,61 @@ export class MapView {
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(h * dpr);
     this.ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.clampCam();
+  }
+
+  // ---------- camera (pan / zoom the same island) ----------
+  // The transform math lives in core/map-camera.ts (pure + unit tested) so the
+  // draw-space ↔ hit-space inverse can never silently drift.
+
+  private get logicalW(): number {
+    return this.canvas?.clientWidth || 360;
+  }
+  private static readonly LOGICAL_H = 285;
+
+  /** Keep the viewport inside the scaled scene; fit-zoom is always centred. */
+  private clampCam(): void {
+    this.cam = clampCamera(this.cam, this.logicalW, MapView.LOGICAL_H);
+  }
+
+  /** Viewport CSS px → logical scene coords (undoes the camera transform). */
+  private screenToWorld(x: number, y: number): { x: number; y: number } {
+    return screenToWorld(this.cam, x, y);
+  }
+
+  /** Zoom to `z`, keeping the world point under `centre` (viewport px) fixed. */
+  private zoomTo(z: number, centre?: { x: number; y: number }): void {
+    const c = centre ?? { x: this.logicalW / 2, y: MapView.LOGICAL_H / 2 };
+    this.cam = zoomAt(this.cam, z, c.x, c.y, this.logicalW, MapView.LOGICAL_H);
+    this.updateZoomBtn();
+    if (this.reduce) this.draw(0);
+  }
+
+  /** Cycle fit → close → closer → fit (the primary, touch-friendly zoom control). */
+  private cycleZoom(): void {
+    const steps = MapView.ZOOM_STEPS;
+    const i = steps.indexOf(this.cam.zoom as (typeof steps)[number]);
+    this.zoomTo(steps[(i + 1) % steps.length] ?? 1);
+  }
+
+  private updateZoomBtn(): void {
+    const btn = document.getElementById('map-zoom-btn');
+    if (!btn) return;
+    const zoomed = this.cam.zoom > 1;
+    btn.textContent = zoomed ? '🔍 Zoom out' : '🔍 Zoom in';
+    btn.setAttribute('aria-pressed', zoomed ? 'true' : 'false');
   }
 
   private loop(): void {
+    // Re-entry guard: setVisible(true) fires on EVERY nav-to-home (app-shell
+    // calls it unconditionally), and without this a second perpetual rAF chain
+    // would start each time — the old handle gets overwritten and can never be
+    // cancelled, compounding a full-canvas redraw per orphaned loop per frame.
+    if (this.raf) return;
     const step = (t: number) => {
       this.draw(t);
+      // weather drifts on its own clock — re-key the ambience every few seconds
+      if (Date.now() - this.stemsCheckedAt > 5000) this.updateStems();
       this.raf = requestAnimationFrame(step);
     };
     this.raf = requestAnimationFrame(step);
@@ -485,10 +806,23 @@ export class MapView {
     const stage = this.stage();
     ctx.clearRect(0, 0, W, H);
 
+    // Camera: pan/zoom the same island. At fit-zoom (1) this is the identity, so
+    // the classic view is unchanged; when zoomed in, the whole scene (sky, sea,
+    // town) scales together and the viewport shows a sub-region. draw() and the
+    // click hit-test share this transform (see screenToWorld), so taps stay true.
+    ctx.save();
+    ctx.translate(this.cam.panX, this.cam.panY);
+    ctx.scale(this.cam.zoom, this.cam.zoom);
+
     // Composed living town (building sprites unlock with the story).
     if (artUrl('town_townhall')) {
       const mood = this.mood();
       this.drawTown(ctx, W, H, t, prog, stage, mood);
+      ctx.restore();
+      // Whole-world colour grade (outside the camera so it covers the viewport):
+      // a warm wash after sleep + meditation, cooler when the mind is restless —
+      // the cheapest way to make the *entire* town feel like it answered your day.
+      this.applyColourGrade(ctx, W, H, mood);
       this.updateBar(prog, stage, mood);
       return;
     }
@@ -532,6 +866,7 @@ export class MapView {
           ctx.fill();
         }
       }
+      ctx.restore();
       this.updateBar(prog, stage);
       return;
     }
@@ -600,6 +935,7 @@ export class MapView {
       ctx.stroke();
     }
 
+    ctx.restore();
     this.updateBar(prog, stage);
   }
 
@@ -609,6 +945,13 @@ export class MapView {
       const url = artUrl(id);
       if (!url) return null;
       img = new Image();
+      // Once the sprite decodes, redraw so it appears AND its hitbox is created.
+      // Under reduced-motion there is no rAF loop, so without this a building
+      // (the small well especially) could stay untappable until an unrelated
+      // redraw. Harmless under the animated loop (it redraws every frame anyway).
+      img.onload = () => {
+        if (this.visible && this.reduce) this.draw(0);
+      };
       img.src = url;
       this.sprites.set(id, img);
     }
@@ -669,9 +1012,12 @@ export class MapView {
     }
     // sun or moon
     const night = hour >= 21 || hour < 5;
-    // stars emerge at night — a scattered field that gently twinkles, fading
-    // out as cloud rolls in (Daily Rhythm: "stars emerge").
-    if (night) {
+    // The painted plate is a top-down island with NO sky, and the corner
+    // time-of-day badge now shows the sun/moon — so the star field and the
+    // celestial disc only run for the procedural fallback (no plate). Otherwise
+    // a stray white disc floated over the sea and a rectangular sky-glow washed
+    // the top of the map.
+    if (night && !plate) {
       const twinkle = 1 - mood.cloudCover * 0.7;
       for (let i = 0; i < 42; i++) {
         const sx = (((i * 73) % 100) / 100) * W;
@@ -684,30 +1030,32 @@ export class MapView {
       }
       ctx.globalAlpha = 1;
     }
-    const sunX = W * 0.78;
-    const sunY = H * 0.14;
-    if (night) {
-      // a pale moon
-      ctx.fillStyle = 'rgba(230,235,250,0.9)';
-      ctx.beginPath();
-      ctx.arc(sunX, sunY, 11, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      // warm bloom
-      const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 66);
-      glow.addColorStop(0, `rgba(255,224,160,${(0.6 * (1 - mood.cloudCover * 0.7)).toFixed(3)})`);
-      glow.addColorStop(1, 'rgba(255,220,150,0)');
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, W, H * 0.42);
-      // a dimensional sun: bright core → golden rim (not a flat moon-disc)
-      const disc = ctx.createRadialGradient(sunX - 5, sunY - 5, 1, sunX, sunY, 16);
-      disc.addColorStop(0, 'rgba(255,252,238,1)');
-      disc.addColorStop(0.6, 'rgba(255,232,168,1)');
-      disc.addColorStop(1, 'rgba(255,204,118,0.95)');
-      ctx.fillStyle = disc;
-      ctx.beginPath();
-      ctx.arc(sunX, sunY, 16, 0, Math.PI * 2);
-      ctx.fill();
+    if (!plate) {
+      const sunX = W * 0.78;
+      const sunY = H * 0.14;
+      if (night) {
+        // a pale moon
+        ctx.fillStyle = 'rgba(230,235,250,0.9)';
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 11, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // warm bloom
+        const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 66);
+        glow.addColorStop(0, `rgba(255,224,160,${(0.6 * (1 - mood.cloudCover * 0.7)).toFixed(3)})`);
+        glow.addColorStop(1, 'rgba(255,220,150,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, W, H * 0.42);
+        // a dimensional sun: bright core → golden rim (not a flat moon-disc)
+        const disc = ctx.createRadialGradient(sunX - 5, sunY - 5, 1, sunX, sunY, 16);
+        disc.addColorStop(0, 'rgba(255,252,238,1)');
+        disc.addColorStop(0.6, 'rgba(255,232,168,1)');
+        disc.addColorStop(1, 'rgba(255,204,118,0.95)');
+        ctx.fillStyle = disc;
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 16, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     // Clouds always drift the sky — soft, warm wisps, not hard blobs. Each is
     // a cluster of radial puffs so the edges feather into the sky.
@@ -1108,7 +1456,7 @@ export class MapView {
       if (!img) continue;
       // buildings read bigger against the detailed painted plate so the town
       // stands out from the landscape; props/nature keep their scale.
-      const w = p.w * W * (plate && BUILDING_INFO[p.art] ? 1.16 : 1);
+      const w = p.w * W * (plate && BUILDING_INFO[p.art] ? 1.04 : 1);
       const h = w * (img.naturalHeight / img.naturalWidth);
       if (p.decorId !== undefined) {
         this.decorHit.push({ x0: p.x * W - w / 2, y0: p.y * H - h, x1: p.x * W + w / 2, y1: p.y * H, id: p.decorId });
@@ -1120,11 +1468,14 @@ export class MapView {
         }
       }
       if (BUILDING_INFO[p.art] && 'unlockAt' in p && p.unlockAt > 0) {
+        // Small props (the well) draw at a fraction of a building's footprint —
+        // pad their tap target so they're not needle-thin to hit on a touch screen.
+        const pad = Math.max(0, 22 - w / 2);
         this.hitboxes.push({
-          x0: p.x * W - w / 2,
-          y0: p.y * H - h,
-          x1: p.x * W + w / 2,
-          y1: p.y * H,
+          x0: p.x * W - w / 2 - pad,
+          y0: p.y * H - h - pad,
+          x1: p.x * W + w / 2 + pad,
+          y1: p.y * H + pad,
           art: p.art,
           unlockAt: p.ruined ? -p.unlockAt : p.unlockAt,
         });
@@ -1151,7 +1502,7 @@ export class MapView {
         }
         const rimg = ruinArt ? this.sprite(ruinArt) : undefined;
         if (rimg) {
-          const rw = p.w * W * (plate && BUILDING_INFO[p.art] ? 1.16 : 1);
+          const rw = p.w * W * (plate && BUILDING_INFO[p.art] ? 1.04 : 1);
           const rh = rw * (rimg.naturalHeight / rimg.naturalWidth);
           ctx.save();
           ctx.globalAlpha = p.unlockAt === nextUnlock ? 0.97 : 0.85; // distant ruins recede a touch
@@ -1176,20 +1527,33 @@ export class MapView {
           alpha = Math.min(1, age * 2);
         } else this.appeared.delete(p.art);
       }
-      // a soft contact shadow grounds the building on the meadow so it doesn't
-      // look like it's floating
-      if (BUILDING_INFO[p.art] && !this.reduce) {
+      // Ground the building into the meadow: a soft warm earth "pad" blends its
+      // footprint into the painted terrain (so it doesn't look pasted on), then a
+      // darker contact shadow sits it down. The pad is static (drawn even under
+      // reduced-motion, where it does the visual grounding); the shadow layers on.
+      if (BUILDING_INFO[p.art]) {
         const bx = p.x * W;
         const by = p.y * H - h * 0.02;
-        const sh = ctx.createRadialGradient(bx, by, 2, bx, by, w * 0.55);
-        sh.addColorStop(0, 'rgba(18, 24, 14, 0.30)');
-        sh.addColorStop(1, 'rgba(18, 24, 14, 0)');
-        ctx.fillStyle = sh;
+        // warm groomed-earth pad — wide + whisper-subtle so it only softens the
+        // seam between building and painted ground, never reads as a dirt blob
+        const pad = ctx.createRadialGradient(bx, by, 2, bx, by, w * 0.66);
+        pad.addColorStop(0, 'rgba(150, 128, 78, 0.14)');
+        pad.addColorStop(0.6, 'rgba(150, 128, 78, 0.07)');
+        pad.addColorStop(1, 'rgba(150, 128, 78, 0)');
         ctx.save();
         ctx.translate(bx, by);
-        ctx.scale(1, 0.3);
+        ctx.scale(1, 0.32);
+        ctx.fillStyle = pad;
         ctx.beginPath();
-        ctx.arc(0, 0, w * 0.55, 0, Math.PI * 2);
+        ctx.arc(0, 0, w * 0.68, 0, Math.PI * 2);
+        ctx.fill();
+        // darker contact shadow, tighter under the base
+        const sh = ctx.createRadialGradient(0, 0, 2, 0, 0, w * 0.5);
+        sh.addColorStop(0, 'rgba(18, 24, 14, 0.32)');
+        sh.addColorStop(1, 'rgba(18, 24, 14, 0)');
+        ctx.fillStyle = sh;
+        ctx.beginPath();
+        ctx.arc(0, 0, w * 0.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -1449,8 +1813,8 @@ export class MapView {
 
     // --- the forge burns once the blacksmith is raised (a working fire, day + night) ---
     if (delivered >= 21) {
-      const gx = W * 0.36;
-      const gy = H * 0.7;
+      const gx = W * 0.45; // tracks the blacksmith's map position (town-layout)
+      const gy = H * 0.86;
       const fl = this.reduce ? 1 : 0.78 + 0.22 * Math.abs(Math.sin(t / 95));
       const r = W * 0.052;
       const fg = ctx.createRadialGradient(gx, gy, 1, gx, gy, r);
@@ -1462,13 +1826,28 @@ export class MapView {
       ctx.fill();
     }
 
-    // --- the painted lighthouse keeps its watch on the northern point ---
+    // --- the painted lighthouse keeps its watch from the eastern rock point ---
     {
-      const img = this.sprite('prop_lighthouse');
-      const lx = W * 0.93;
-      const baseY = H * 0.5; // sits on the north headland
+      // Four painted states track the beacon's story: storm-wrecked ruin →
+      // under-construction scaffold (the beat being rebuilt) → lit (order 9) →
+      // a flourishing keeper's lighthouse once the town is well restored.
       const lit = delivered >= 9; // the beacon story beat
+      const artId =
+        delivered >= 20
+          ? 'prop_lighthouse_l2'
+          : delivered >= 9
+            ? 'prop_lighthouse'
+            : delivered === 8
+              ? 'prop_lighthouse_wip'
+              : 'prop_lighthouse_ruin';
+      const img = this.sprite(artId) ?? this.sprite('prop_lighthouse');
+      // Off the east point, standing in the sea clear of the fisher hut — its
+      // own rock base sits over open water, not up on the green land plate.
+      const lx = W * 0.95;
+      const baseY = H * 0.72;
       if (img) {
+        // the new painted lighthouse is a tall portrait sprite with its own rock
+        // base, so it's narrower than the old near-square art (0.23 dwarfed the map).
         const lw = W * 0.15;
         const lh = lw * (img.naturalHeight / img.naturalWidth);
         ctx.drawImage(img, lx - lw / 2, baseY - lh, lw, lh);
@@ -1481,7 +1860,9 @@ export class MapView {
           art: 'prop_lighthouse',
           unlockAt: lit ? 9 : -9,
         });
-        const oy = baseY - lh * 0.82; // the lantern room, ~82% up the sprite
+        // the lantern room's height differs per state (measured from the art)
+        const lanternFrac = artId === 'prop_lighthouse_l2' ? 0.81 : 0.88;
+        const oy = baseY - lh * lanternFrac;
         if (lit) {
           // the beacon fire itself, burning in the lantern room
           this.drawFlame(ctx, 'fx_flame_beacon', lx, oy + lh * 0.09, lw * 0.5, t);
@@ -1591,6 +1972,8 @@ export class MapView {
     // --- your day, reflected: real-world actions bloom in the town ---
     // (see src/core/world-mood.ts — every reaction only ever brightens the scene)
     this.drawReactions(ctx, W, H, t, night, mood, delivered);
+    // One-shot onset cues (the *felt* moment a real action lands), on top.
+    this.onsets.draw(ctx, W, H, this.reduce);
   }
 
   /**
@@ -1599,6 +1982,26 @@ export class MapView {
    * a busier road after a walk, and festival banners for a long streak.
    * Kept apart from drawTown's scenery so the mapping stays legible.
    */
+  /**
+   * A whole-viewport warm colour grade that deepens with the hearth glow (sleep +
+   * meditation). Purely additive warmth — it only ever makes the town feel cosier,
+   * never cooler or darker (pillar: reflect, never punish). Static, so reduced-
+   * motion is unaffected. Drawn outside the camera transform to cover the viewport.
+   */
+  private applyColourGrade(ctx: CanvasRenderingContext2D, W: number, H: number, mood: WorldMood): void {
+    const warmth = Math.max(0, mood.glow - 0.25); // 0 until a restful day earns it
+    if (warmth <= 0.001) return;
+    const a = Math.min(0.13, warmth * 0.18);
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, `rgba(255, 214, 150, ${a.toFixed(3)})`);
+    g.addColorStop(1, `rgba(255, 190, 120, ${(a * 0.5).toFixed(3)})`);
+    ctx.save();
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
   private drawReactions(
     ctx: CanvasRenderingContext2D,
     W: number,
@@ -1656,8 +2059,8 @@ export class MapView {
     // Water + stretch → the gardens green up: a soft vitality over the meadow
     // and a few flowers by the garden plot once it's been restored.
     if (mood.gardenLush > 0) {
-      const gx = W * 0.73;
-      const gy = H * 0.66;
+      const gx = W * 0.63; // the garden's live map position (town-layout)
+      const gy = H * 0.57;
       const gr = W * 0.16;
       const g = ctx.createRadialGradient(gx, gy - gr * 0.25, gr * 0.15, gx, gy - gr * 0.25, gr);
       g.addColorStop(0, `rgba(126, 196, 106, ${(0.08 + mood.gardenLush * 0.14).toFixed(3)})`);
@@ -1684,8 +2087,8 @@ export class MapView {
         for (let i = 0; i < 3; i++) {
           drawFlower(
             ctx,
-            W * (0.68 + i * 0.03),
-            H * (0.7 + (i % 2) * 0.015),
+            W * (0.6 + i * 0.03),
+            H * (0.55 + (i % 2) * 0.015),
             2.6,
             FLOWER_COLOURS[(i + 2) % FLOWER_COLOURS.length]!,
           );
@@ -1695,8 +2098,8 @@ export class MapView {
 
     // Drink water → the well sparkles and its plaza feels fresh.
     if (mood.wellSparkle && delivered >= 6) {
-      const wx = W * 0.475;
-      const wy = H * 0.635 - H * 0.03;
+      const wx = W * 0.5; // the well's live map position (town-layout)
+      const wy = H * 0.6 - H * 0.05;
       const count = this.reduce ? 3 : 6;
       for (let i = 0; i < count; i++) {
         const seed = i * 1.7;
@@ -1734,6 +2137,89 @@ export class MapView {
         drawButterfly(ctx, x, y, 3.2, flap, cols[i % cols.length]!);
       }
     }
+
+    // Cold plunge → a cool mist drifts low over the water (drifts on the wind).
+    if (mood.seaMist > 0) {
+      const drift = this.reduce ? 0 : Math.sin(t / 3600) * W * 0.05;
+      const my = H * 0.9;
+      const g = ctx.createLinearGradient(0, my - H * 0.06, 0, my + H * 0.04);
+      g.addColorStop(0, 'rgba(214, 238, 246, 0)');
+      g.addColorStop(0.5, `rgba(214, 238, 246, ${(0.1 + mood.seaMist * 0.16).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(214, 238, 246, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(-W * 0.1 + drift, my - H * 0.06, W * 1.2, H * 0.1);
+    }
+
+    // Stargaze after dark → a small constellation lights over the bay.
+    if (mood.stargazed && night) {
+      const cx = W * 0.8;
+      const cy = H * 0.16;
+      const stars = [
+        [0, 0],
+        [0.05, -0.03],
+        [0.1, 0.01],
+        [0.14, -0.04],
+        [0.08, 0.05],
+      ] as const;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(210, 226, 255, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      stars.forEach(([sx, sy], i) => {
+        const px = cx + sx * W;
+        const py = cy + sy * H;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.stroke();
+      for (const [sx, sy] of stars) {
+        const px = cx + sx * W;
+        const py = cy + sy * H;
+        const tw = this.reduce ? 0.8 : 0.6 + 0.4 * Math.abs(Math.sin(t / 700 + sx * 40));
+        drawSparkle(ctx, px, py, 2.2, tw);
+      }
+      ctx.restore();
+    }
+
+    // Real rain outside → the town stays cosy, never gloomy: a villager or two
+    // takes a turn under an umbrella, and puddles catch the light on the paths.
+    if (mood.precip > 0) {
+      const brollies = mood.precip >= 0.4 ? 2 : 1;
+      const cloaks = ['#5a6e88', '#7a4a5e'];
+      for (let i = 0; i < brollies; i++) {
+        const sweep = this.reduce ? 0.4 : (Math.sin(t / (5200 + i * 1100)) + 1) / 2;
+        const x = W * (0.3 + i * 0.3 + 0.12 * sweep);
+        const y = H * (0.74 + i * 0.05);
+        drawStroller(ctx, x, y, H * 0.05, cloaks[i % cloaks.length]!);
+        // a simple umbrella dome over them
+        ctx.save();
+        ctx.fillStyle = i === 0 ? '#c0563f' : '#3f6f6a';
+        ctx.beginPath();
+        ctx.ellipse(x, y - H * 0.058, H * 0.03, H * 0.017, 0, Math.PI, 0);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(40,30,24,0.6)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, y - H * 0.058);
+        ctx.lineTo(x, y - H * 0.02);
+        ctx.stroke();
+        ctx.restore();
+      }
+      // puddles glinting on the plaza
+      const puddles = this.reduce ? 2 : 3;
+      for (let i = 0; i < puddles; i++) {
+        const px = W * (0.4 + i * 0.11);
+        const py = H * (0.7 + (i % 2) * 0.03);
+        const k = this.reduce ? 0.5 : 0.35 + 0.35 * Math.abs(Math.sin(t / 600 + i));
+        ctx.save();
+        ctx.globalAlpha = 0.4 * k;
+        ctx.fillStyle = 'rgba(180, 210, 230, 0.6)';
+        ctx.beginPath();
+        ctx.ellipse(px, py, W * 0.02, H * 0.008, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
   }
 
   /**
@@ -1751,6 +2237,7 @@ export class MapView {
     mood: WorldMood,
     stage: number,
   ): void {
+    this.drawSeason(ctx, W, H, t, night);
     // God-rays fanning from the low sun on clear-ish days.
     if (!night && mood.cloudCover < 0.55) {
       const sx = W * 0.78;
@@ -1839,6 +2326,65 @@ export class MapView {
         ctx.globalAlpha = 1;
       }
     }
+  }
+
+  /**
+   * A gentle flourish keyed to the player's real-world season — blossom petals
+   * in spring, drifting motes in summer, tumbling leaves in autumn, slow snow in
+   * winter. Emberhollow breathes with the season the player is actually living
+   * in. Caller already guards reduced motion.
+   */
+  private drawSeason(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, night: boolean): void {
+    const season = seasonForMonth(new Date().getMonth());
+    // Summer's twinkle is the night fireflies already drawn — keep day light.
+    const n = season === 'winter' ? 30 : season === 'summer' ? 12 : 18;
+    const fallMs = season === 'winter' ? 11000 : season === 'autumn' ? 7500 : 13000;
+    ctx.save();
+    if (season === 'summer') ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < n; i++) {
+      const seed = Math.sin(i * 12.9898) * 43758.5453;
+      const col = (seed - Math.floor(seed) + i / n) % 1; // stable per-particle column
+      const fall = (t / fallMs + i / n) % 1; // 0 (top) → 1 (bottom)
+      const swayAmp = season === 'summer' ? 0.015 : season === 'winter' ? 0.03 : 0.06;
+      const sway = Math.sin(t / 1500 + i * 1.7) * W * swayAmp;
+      const x = col * W + sway;
+      const y = fall * H;
+      const fade = Math.sin(fall * Math.PI); // fade in/out at the edges
+      if (fade <= 0.02) continue;
+      ctx.globalAlpha = fade * (season === 'summer' ? 0.5 : 0.62);
+      if (season === 'spring') {
+        ctx.fillStyle = i % 3 === 0 ? '#ffd7e6' : '#ffc0d4';
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(t / 900 + i);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 3.4, 1.7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else if (season === 'autumn') {
+        ctx.fillStyle = ['#d98a3a', '#c46a2a', '#b5623a', '#caa24a'][i % 4]!;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(Math.sin(t / 700 + i) * 0.9 + i);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 4, 2.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      } else if (season === 'winter') {
+        ctx.fillStyle = 'rgba(240, 246, 255, 0.9)';
+        ctx.beginPath();
+        ctx.arc(x, y, 1.8 + (i % 3) * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (!night) {
+        // summer: soft warm pollen motes drifting by day
+        ctx.fillStyle = 'rgba(255, 236, 180, 0.7)';
+        ctx.beginPath();
+        ctx.arc(x, y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
   }
 
   private drawHomestead(ctx: CanvasRenderingContext2D, cx: number, groundY: number, stage: number, t: number): void {
@@ -2023,20 +2569,31 @@ export class MapView {
       'north-docks': 'loc_docks',
       quarry: 'loc_cove',
     };
+    // Two of these vignettes are the same buildings tappable on the town map
+    // above (with a Village Life game behind them) — wire them to the same
+    // building card so this list is a second way in, not a dead end.
+    const locBuilding: Record<string, { art: string; unlockAt: number }> = {
+      lighthouse: { art: 'prop_lighthouse', unlockAt: 9 },
+      pier: { art: 'town_fisherhut', unlockAt: 18 },
+    };
     host.innerHTML =
       challenge +
       `<div class="map-tease">🌅 ${tomorrowLine(s)}</div>` +
       `<p class="map-locs-label">Today in Emberhollow</p><div class="dq-list">${quests}</div>` +
       chapterCard +
-      `<p class="map-locs-label">Chapter ${ch.id} · ${ch.title} · ${inChapter}/${ch.end - ch.start} orders · village ${Math.round(
-        (delivered / ORDERS.length) * 100,
+      this.villageLifeSection() +
+      `<p class="map-locs-label">Chapter ${ch.id} · ${ch.title} · ${inChapter}/${ch.end - ch.start} orders · village ${Math.min(
+        100,
+        Math.round((delivered / RESTORE_ORDERS) * 100),
       )}% restored</p>` +
       `<div class="loc-list">` +
       MAP_LOCATIONS.map((l) => {
         const locked = delivered < l.unlockAt;
         const thumb = artUrl(locArt[l.id] ?? '');
+        const bld = locBuilding[l.id];
+        const playable = bld !== undefined && !locked;
         return (
-          `<div class="loc ${locked ? 'locked' : ''}">` +
+          `<div class="loc ${locked ? 'locked' : ''} ${playable ? 'loc-playable' : ''}" ${playable ? `data-art="${bld.art}" data-unlock-at="${bld.unlockAt}" role="button" tabindex="0"` : ''}>` +
           (thumb ? `<div class="loc-thumb" style="background-image:url(${thumb})" aria-hidden="true"></div>` : '') +
           `<div class="loc-body">` +
           `<div class="loc-main"><b>${l.name}</b>` +
@@ -2047,7 +2604,132 @@ export class MapView {
         );
       }).join('') +
       `</div>`;
+
+    this.wireVillageLife();
   }
+
+  /**
+   * Village Life index: a single list of the building games with big Play
+   * buttons, so every mini-game is reachable in one tap without hunting for the
+   * building on the map. Appears as soon as the first game's building returns
+   * (the well, order 6); not-yet-returned games show as gentle teasers so the
+   * list telegraphs what's coming.
+   */
+  private villageLifeSection(): string {
+    const statuses = MINIGAMES.map((m) => ({ m, st: this.game.minigameStatus(m.buildingArt) }));
+    // Nothing to show until at least one game's building has returned.
+    if (!statuses.some(({ st }) => st && st.reason !== 'locked-story')) return '';
+    const rows = statuses
+      .map(({ m, st }) => {
+        if (!st) return '';
+        const cta = minigameCta(st, this.game.isTesterUnlimited);
+        const thumb = artUrl(m.buildingArt);
+        // Same copy as the building card (via minigameCta); the index differs only
+        // in that locked games show a disabled affordance rather than hiding it.
+        let action: string;
+        if (cta.kind === 'open') {
+          action = `<button class="vl-play" data-open="${m.buildingArt}">${cta.label}</button>`;
+        } else if (cta.kind === 'ready') {
+          action = `<button class="vl-play" data-play="${m.id}">${cta.label}</button>`;
+        } else if (cta.kind === 'locked-l2') {
+          action = `<button class="vl-play" data-open="${m.buildingArt}" disabled>${cta.label}</button>`;
+        } else if (cta.kind === 'locked-story') {
+          action = `<button class="vl-play" disabled>Returning</button>`;
+        } else {
+          action = `<button class="vl-play" data-play="${m.id}" disabled>${cta.label}</button>`;
+        }
+        return (
+          `<div class="vl-row${cta.kind === 'locked-story' ? ' vl-row-teaser' : ''}">` +
+          (thumb ? `<div class="vl-thumb" style="background-image:url(${thumb})" aria-hidden="true"></div>` : '') +
+          `<div class="vl-body"><b>${m.title}</b><span>${cta.sub}</span></div>${action}</div>`
+        );
+      })
+      .join('');
+    // (The old ui_villagelife_header banner was removed — it painted an EMPTY
+    // island with no town on it, which read as a stray "blank terrain tile"
+    // wedged under the chapter card. The list speaks for itself.)
+    return (
+      `<p class="map-locs-label">Village Life · tap to play</p><div class="vl-list">${rows}</div>` +
+      this.almanacSection()
+    );
+  }
+
+  /**
+   * The Keeper's Almanac — the collection the mini-games quietly fill. Folded
+   * away by default so it's a curiosity, never a chore; undiscovered pages are
+   * soft silhouettes (nothing here can be missed, so nothing scolds).
+   */
+  private almanacSection(): string {
+    const book = this.game.almanac;
+    const { found, total } = almanacProgress(book);
+    const sections = ALMANAC_SECTIONS.map((sec) => {
+      const cells = ALMANAC_PAGES.filter((p) => p.section === sec)
+        .map((p) => {
+          const got = (book[p.id] ?? 0) > 0;
+          const label = got ? `${p.name} — ${p.note}` : 'Not yet found';
+          return (
+            `<div class="alm-cell${got ? ' found' : ''}" title="${label}" aria-label="${label}">` +
+            `<div class="alm-art">${tileMarkup(p.chain, p.level)}</div>` +
+            `<span class="alm-name">${got ? p.name : '· · ·'}</span></div>`
+          );
+        })
+        .join('');
+      return `<div class="alm-section"><p class="alm-section-title">${sec}</p><div class="alm-grid">${cells}</div></div>`;
+    }).join('');
+    return (
+      `<details class="alm-book"><summary class="alm-summary">` +
+      `The Keeper’s Almanac <span class="alm-count">${found} of ${total} pages</span></summary>` +
+      `<p class="alm-intro">What the village games turn up, remembered.</p>${sections}</details>`
+    );
+  }
+
+  /** Wire the Village Life index Play/Open buttons to the same paths the map uses. */
+  private wireVillageLife(): void {
+    const host = document.getElementById('map-body');
+    if (!host) return;
+    host.querySelectorAll<HTMLButtonElement>('.vl-play[data-play]').forEach((btn) => {
+      btn.onclick = () => {
+        const id = btn.dataset.play!;
+        document.dispatchEvent(new CustomEvent('hearth:play-minigame', { detail: { id } }));
+      };
+    });
+    host.querySelectorAll<HTMLButtonElement>('.vl-play[data-open]').forEach((btn) => {
+      btn.onclick = () => {
+        const art = btn.dataset.open!;
+        if (this.game.openMinigameDoors(art) === 'opened') {
+          feedback.chime(520);
+          this.renderList();
+        } else {
+          // 'ineligible' — the building needs caring for first (no daily throttle exists).
+          toast('Care for the building first — its doors open once it’s loved.');
+        }
+      };
+    });
+  }
+}
+
+/**
+ * Which real-world action lights which part of the town, and the one-line note.
+ * Positions are normalized to the live building layout. Positive-only — every
+ * gesture *adds* a flourish; nothing here can ever darken the scene.
+ */
+function reactionForAction(
+  actionId: string,
+): { x: number; y: number; kind: OnsetKind; note: string; colour?: string } | null {
+  if (actionId === 'water')
+    return { x: 0.5, y: 0.6, kind: 'ripple', note: 'The wells drank with you.', colour: '#bfe6ff' };
+  if (actionId === 'steps' || actionId === 'stairs')
+    return { x: 0.42, y: 0.72, kind: 'motes', note: 'The lanes fill after your walk.' };
+  if (actionId === 'stretch' || actionId === 'squats')
+    return { x: 0.63, y: 0.55, kind: 'bloom', note: 'The gardens stir awake.' };
+  if (actionId.endsWith('-photo') || actionId === 'photo-outside')
+    return { x: 0.5, y: 0.84, kind: 'bloom', note: 'Colour returns to the shore.' };
+  if (actionId.startsWith('med-') || actionId === 'log-meditation')
+    return { x: 0.5, y: 0.9, kind: 'ripple', note: 'The seas settle as you breathe.', colour: '#bfe6ff' };
+  if (actionId === 'log-cold-plunge')
+    return { x: 0.5, y: 0.9, kind: 'mist', note: 'A cool mist drifts in off the water.', colour: '#d6eef6' };
+  if (actionId === 'log-sauna') return { x: 0.35, y: 0.52, kind: 'glow', note: 'Warmth curls from the chimneys.' };
+  return null;
 }
 
 // ---- colour helpers ----
