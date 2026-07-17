@@ -63,6 +63,20 @@ Placement: the Beacon Drop's single **golden peg** — striking it pays a bonus 
 
 Placement: the foraging grid's **clearing** tile — uncovering it cascade-reveals its neighbours for free. Falls back to a ✨ until delivered.
 
+## 10–13) The four time-of-day badges — **REDO (current ones are rough placeholders)**
+
+The map's top-right corner shows a small painted badge for the time of day, and the current four were hand-sliced from a montage with the **time and label baked into the picture** (`06:00 SUNRISE`, `00:30 NIGHT`, …) — the app should draw any text, so these need redoing **clean, with NO baked text**. Deliver four **separate square PNGs, 512×512, transparent** (the app rounds/scales them; keep the art within a centred circular medallion so corners can be trimmed):
+
+Filenames (exact): `time_badge_sunrise.png`, `time_badge_midday.png`, `time_badge_sunset.png`, `time_badge_night.png`.
+
+> A small round **medallion / porthole badge** in the Hearth storybook style — a warm brass-and-timber rim framing a tiny painted vignette of Emberhollow's harbour + lighthouse at **[PHASE]**. Centred, the scene filling the medallion, soft rim light, gentle painterly brushwork. **No text, no numbers, no clock** anywhere. Transparent outside the circular rim.
+> - **sunrise** — low gold sun just over the sea, rosy dawn sky, long warm reflection.
+> - **midday** — bright blue sky, high small sun, sparkling water, a couple of soft clouds.
+> - **sunset** — deep amber-and-violet sky, sun sinking to the horizon, lit windows beginning to glow.
+> - **night** — deep navy sky, a **crescent moon** and a few stars, the lighthouse beacon lit, cool moonlit water.
+
+Keep the four rims identical so only the sky/scene changes — they swap in place as the hours turn. Fallback: until these land the current placeholder badges keep showing.
+
 ---
 
 ## Delivery

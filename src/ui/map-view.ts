@@ -1012,9 +1012,12 @@ export class MapView {
     }
     // sun or moon
     const night = hour >= 21 || hour < 5;
-    // stars emerge at night — a scattered field that gently twinkles, fading
-    // out as cloud rolls in (Daily Rhythm: "stars emerge").
-    if (night) {
+    // The painted plate is a top-down island with NO sky, and the corner
+    // time-of-day badge now shows the sun/moon — so the star field and the
+    // celestial disc only run for the procedural fallback (no plate). Otherwise
+    // a stray white disc floated over the sea and a rectangular sky-glow washed
+    // the top of the map.
+    if (night && !plate) {
       const twinkle = 1 - mood.cloudCover * 0.7;
       for (let i = 0; i < 42; i++) {
         const sx = (((i * 73) % 100) / 100) * W;
@@ -1027,30 +1030,32 @@ export class MapView {
       }
       ctx.globalAlpha = 1;
     }
-    const sunX = W * 0.78;
-    const sunY = H * 0.14;
-    if (night) {
-      // a pale moon
-      ctx.fillStyle = 'rgba(230,235,250,0.9)';
-      ctx.beginPath();
-      ctx.arc(sunX, sunY, 11, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      // warm bloom
-      const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 66);
-      glow.addColorStop(0, `rgba(255,224,160,${(0.6 * (1 - mood.cloudCover * 0.7)).toFixed(3)})`);
-      glow.addColorStop(1, 'rgba(255,220,150,0)');
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, W, H * 0.42);
-      // a dimensional sun: bright core → golden rim (not a flat moon-disc)
-      const disc = ctx.createRadialGradient(sunX - 5, sunY - 5, 1, sunX, sunY, 16);
-      disc.addColorStop(0, 'rgba(255,252,238,1)');
-      disc.addColorStop(0.6, 'rgba(255,232,168,1)');
-      disc.addColorStop(1, 'rgba(255,204,118,0.95)');
-      ctx.fillStyle = disc;
-      ctx.beginPath();
-      ctx.arc(sunX, sunY, 16, 0, Math.PI * 2);
-      ctx.fill();
+    if (!plate) {
+      const sunX = W * 0.78;
+      const sunY = H * 0.14;
+      if (night) {
+        // a pale moon
+        ctx.fillStyle = 'rgba(230,235,250,0.9)';
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 11, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // warm bloom
+        const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 66);
+        glow.addColorStop(0, `rgba(255,224,160,${(0.6 * (1 - mood.cloudCover * 0.7)).toFixed(3)})`);
+        glow.addColorStop(1, 'rgba(255,220,150,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, W, H * 0.42);
+        // a dimensional sun: bright core → golden rim (not a flat moon-disc)
+        const disc = ctx.createRadialGradient(sunX - 5, sunY - 5, 1, sunX, sunY, 16);
+        disc.addColorStop(0, 'rgba(255,252,238,1)');
+        disc.addColorStop(0.6, 'rgba(255,232,168,1)');
+        disc.addColorStop(1, 'rgba(255,204,118,0.95)');
+        ctx.fillStyle = disc;
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 16, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     // Clouds always drift the sky — soft, warm wisps, not hard blobs. Each is
     // a cluster of radial puffs so the edges feather into the sky.
@@ -2640,13 +2645,11 @@ export class MapView {
         );
       })
       .join('');
-    // Art-gated illustrated header (lights up when ui_villagelife_header lands).
-    const hdr = artUrl('ui_villagelife_header');
-    const banner = hdr
-      ? `<div class="section-banner" style="background-image:url(${hdr})" aria-hidden="true"></div>`
-      : '';
+    // (The old ui_villagelife_header banner was removed — it painted an EMPTY
+    // island with no town on it, which read as a stray "blank terrain tile"
+    // wedged under the chapter card. The list speaks for itself.)
     return (
-      `${banner}<p class="map-locs-label">Village Life · tap to play</p><div class="vl-list">${rows}</div>` +
+      `<p class="map-locs-label">Village Life · tap to play</p><div class="vl-list">${rows}</div>` +
       this.almanacSection()
     );
   }
