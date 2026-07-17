@@ -1,0 +1,45 @@
+/**
+ * The corner time-of-day badge on the Home map. A painted framed vignette
+ * (sunrise / midday / sunset / night) that reflects the real clock and refreshes
+ * itself as the hours turn — the same phase that drives the map's own lighting
+ * (see core/time-of-day + map-view), so the badge and the scene stay in step.
+ *
+ * Art-gated: until the badge art is sliced, artUrl() returns null and the badge
+ * simply stays hidden — the map is unaffected.
+ */
+import { phaseForHour, type TimeOfDay } from '../core/time-of-day';
+import { artUrl } from './art';
+
+let current: TimeOfDay | null = null;
+let timer: number | undefined;
+
+function paint(): void {
+  const badge = document.getElementById('time-badge');
+  if (!badge) return;
+  const p = phaseForHour(new Date().getHours());
+  if (p.phase === current) return; // only touch the DOM when the phase actually turns
+  const url = artUrl(p.art);
+  if (!url) {
+    badge.hidden = true;
+    return;
+  }
+  current = p.phase;
+  badge.style.backgroundImage = `url(${url})`;
+  badge.setAttribute('aria-label', `Time of day: ${p.label}`);
+  badge.title = p.label;
+  badge.hidden = false;
+  // a gentle cross-fade as the light turns
+  badge.classList.remove('turn');
+  void badge.offsetWidth;
+  badge.classList.add('turn');
+}
+
+/** Start the badge: paint now, then re-check every minute (cheap; only redraws
+ *  on an actual phase change) and whenever the app returns to the foreground. */
+export function initTimeBadge(): void {
+  paint();
+  if (timer === undefined) timer = window.setInterval(paint, 60_000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) paint();
+  });
+}

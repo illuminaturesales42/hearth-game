@@ -36,7 +36,7 @@ export const TOWN_BUILDINGS: readonly TownPiece[] = [
   { art: 'prop_sign', x: 0.51, y: 0.47, w: 0.042, unlockAt: 1 },
   { art: 'town_cottage', x: 0.305, y: 0.445, w: 0.148, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
   { art: 'town_bakery', x: 0.655, y: 0.37, w: 0.138, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
-  { art: 'prop_well', x: 0.465, y: 0.56, w: 0.052, unlockAt: 6 },
+  { art: 'prop_well', x: 0.465, y: 0.56, w: 0.092, unlockAt: 6 },
   { art: 'town_market', x: 0.44, y: 0.375, w: 0.138, unlockAt: 8, ruinVariant: 7 },
   { art: 'town_garden', x: 0.715, y: 0.515, w: 0.148, unlockAt: 10, ruinVariant: 4 },
   { art: 'town_townhall', x: 0.235, y: 0.735, w: 0.148, unlockAt: 12, ruinVariant: 3 },
@@ -274,9 +274,10 @@ export const TOWN_TERRAIN: readonly TownPiece[] = [
   { art: 'terrain_flowers2', x: 0.845, y: 0.63, w: 0.06, unlockAt: 0 },
   // (the old scattered cobble patches are gone — the map now draws worn dirt
   // lanes that grow with the town; see the routes table in map-view.ts)
-  // the harbour reaches into the water at the south-east
-  { art: 'dock_straight', x: 0.775, y: 0.905, w: 0.1, unlockAt: 0 },
-  { art: 'dock_end', x: 0.865, y: 0.925, w: 0.075, unlockAt: 0 },
+  // A small jetty grounds on the south-east beach. (The old dock_straight +
+  // dock_end pair was removed — on the painted plate it floated as a stray raft
+  // of planks out in open water, disconnected from any shore; the town_dock
+  // building is the real working pier.)
   { art: 'dock_small', x: 0.7, y: 0.875, w: 0.065, unlockAt: 0 },
 ] as const;
 

@@ -8,7 +8,7 @@ import type { GameState, MinigameState } from './types';
 import { localDayKey } from './energy';
 import { initialMinigames } from './minigames';
 
-export const CURRENT_VERSION = 15;
+export const CURRENT_VERSION = 16;
 
 const KEY = 'hearth:save';
 /** Older builds wrote the version into the key. Read them once, then adopt KEY. */
@@ -55,6 +55,10 @@ const MIGRATIONS: Record<number, (s: LooseState) => LooseState> = {
     const mg = (s.minigames as MinigameState | undefined) ?? initialMinigames(localDayKey(Date.now()));
     return { ...s, version: 15, minigames: { ...mg, bests: mg.bests ?? {} } };
   },
+  // v15 → v16: the Keeper's Almanac (a collection stamped by mini-game finds).
+  // Existing villages start with an empty book — nothing is ever missed, so
+  // there's nothing to back-fill; the next catch writes the first page.
+  15: (s) => ({ ...s, version: 16, almanac: {} }),
 };
 
 /** Upgrade any historical state to CURRENT_VERSION, or null if unrecognizable. */
@@ -89,6 +93,7 @@ export function migrateState(raw: unknown): GameState | null {
     !s.relationships ||
     !s.buildingUpgrades ||
     !s.minigames ||
+    !s.almanac ||
     !s.achievements ||
     !s.questsClaimed ||
     !s.flags ||

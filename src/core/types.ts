@@ -304,6 +304,8 @@ export interface GameState {
   nextDecorId: number;
   /** Village Life mini-games: unlock + daily attempt state (save v14). */
   minigames: MinigameState;
+  /** The Keeper's Almanac: stamp id -> times found (0/absent = undiscovered). */
+  almanac: Record<string, number>;
   /** Items won from duels, spendable to progress the story. */
   repository: readonly RepositoryItem[];
   /** Consecutive duel wins → reward multiplier. */

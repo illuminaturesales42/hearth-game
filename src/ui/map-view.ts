@@ -29,7 +29,8 @@ import { stemLevels } from '../core/stem-levels';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
 import { currentWeather } from './weather';
-import { artUrl, portraitFor } from './art';
+import { artUrl, portraitFor, tileMarkup } from './art';
+import { ALMANAC_PAGES, ALMANAC_SECTIONS, almanacProgress } from '../core/almanac';
 import { VILLAGER_DEFS } from '../data/villagers';
 import { bondFor, greetingFor, hearts, HEARTS_MAX } from '../core/relationships';
 import { drawButterfly, drawFlower, drawSparkle, drawStroller } from './paint-flourishes';
@@ -1011,9 +1012,12 @@ export class MapView {
     }
     // sun or moon
     const night = hour >= 21 || hour < 5;
-    // stars emerge at night — a scattered field that gently twinkles, fading
-    // out as cloud rolls in (Daily Rhythm: "stars emerge").
-    if (night) {
+    // The painted plate is a top-down island with NO sky, and the corner
+    // time-of-day badge now shows the sun/moon — so the star field and the
+    // celestial disc only run for the procedural fallback (no plate). Otherwise
+    // a stray white disc floated over the sea and a rectangular sky-glow washed
+    // the top of the map.
+    if (night && !plate) {
       const twinkle = 1 - mood.cloudCover * 0.7;
       for (let i = 0; i < 42; i++) {
         const sx = (((i * 73) % 100) / 100) * W;
@@ -1026,30 +1030,32 @@ export class MapView {
       }
       ctx.globalAlpha = 1;
     }
-    const sunX = W * 0.78;
-    const sunY = H * 0.14;
-    if (night) {
-      // a pale moon
-      ctx.fillStyle = 'rgba(230,235,250,0.9)';
-      ctx.beginPath();
-      ctx.arc(sunX, sunY, 11, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      // warm bloom
-      const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 66);
-      glow.addColorStop(0, `rgba(255,224,160,${(0.6 * (1 - mood.cloudCover * 0.7)).toFixed(3)})`);
-      glow.addColorStop(1, 'rgba(255,220,150,0)');
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, W, H * 0.42);
-      // a dimensional sun: bright core → golden rim (not a flat moon-disc)
-      const disc = ctx.createRadialGradient(sunX - 5, sunY - 5, 1, sunX, sunY, 16);
-      disc.addColorStop(0, 'rgba(255,252,238,1)');
-      disc.addColorStop(0.6, 'rgba(255,232,168,1)');
-      disc.addColorStop(1, 'rgba(255,204,118,0.95)');
-      ctx.fillStyle = disc;
-      ctx.beginPath();
-      ctx.arc(sunX, sunY, 16, 0, Math.PI * 2);
-      ctx.fill();
+    if (!plate) {
+      const sunX = W * 0.78;
+      const sunY = H * 0.14;
+      if (night) {
+        // a pale moon
+        ctx.fillStyle = 'rgba(230,235,250,0.9)';
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 11, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // warm bloom
+        const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 66);
+        glow.addColorStop(0, `rgba(255,224,160,${(0.6 * (1 - mood.cloudCover * 0.7)).toFixed(3)})`);
+        glow.addColorStop(1, 'rgba(255,220,150,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, W, H * 0.42);
+        // a dimensional sun: bright core → golden rim (not a flat moon-disc)
+        const disc = ctx.createRadialGradient(sunX - 5, sunY - 5, 1, sunX, sunY, 16);
+        disc.addColorStop(0, 'rgba(255,252,238,1)');
+        disc.addColorStop(0.6, 'rgba(255,232,168,1)');
+        disc.addColorStop(1, 'rgba(255,204,118,0.95)');
+        ctx.fillStyle = disc;
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 16, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     // Clouds always drift the sky — soft, warm wisps, not hard blobs. Each is
     // a cluster of radial puffs so the edges feather into the sky.
@@ -1820,13 +1826,28 @@ export class MapView {
       ctx.fill();
     }
 
-    // --- the painted lighthouse keeps its watch on the northern point ---
+    // --- the painted lighthouse keeps its watch from the eastern rock point ---
     {
-      const img = this.sprite('prop_lighthouse');
-      const lx = W * 0.93;
-      const baseY = H * 0.5; // sits on the north headland
+      // Four painted states track the beacon's story: storm-wrecked ruin →
+      // under-construction scaffold (the beat being rebuilt) → lit (order 9) →
+      // a flourishing keeper's lighthouse once the town is well restored.
       const lit = delivered >= 9; // the beacon story beat
+      const artId =
+        delivered >= 20
+          ? 'prop_lighthouse_l2'
+          : delivered >= 9
+            ? 'prop_lighthouse'
+            : delivered === 8
+              ? 'prop_lighthouse_wip'
+              : 'prop_lighthouse_ruin';
+      const img = this.sprite(artId) ?? this.sprite('prop_lighthouse');
+      // Off the east point, standing in the sea clear of the fisher hut — its
+      // own rock base sits over open water, not up on the green land plate.
+      const lx = W * 0.95;
+      const baseY = H * 0.72;
       if (img) {
+        // the new painted lighthouse is a tall portrait sprite with its own rock
+        // base, so it's narrower than the old near-square art (0.23 dwarfed the map).
         const lw = W * 0.15;
         const lh = lw * (img.naturalHeight / img.naturalWidth);
         ctx.drawImage(img, lx - lw / 2, baseY - lh, lw, lh);
@@ -1839,7 +1860,9 @@ export class MapView {
           art: 'prop_lighthouse',
           unlockAt: lit ? 9 : -9,
         });
-        const oy = baseY - lh * 0.82; // the lantern room, ~82% up the sprite
+        // the lantern room's height differs per state (measured from the art)
+        const lanternFrac = artId === 'prop_lighthouse_l2' ? 0.81 : 0.88;
+        const oy = baseY - lh * lanternFrac;
         if (lit) {
           // the beacon fire itself, burning in the lantern room
           this.drawFlame(ctx, 'fx_flame_beacon', lx, oy + lh * 0.09, lw * 0.5, t);
@@ -2622,12 +2645,42 @@ export class MapView {
         );
       })
       .join('');
-    // Art-gated illustrated header (lights up when ui_villagelife_header lands).
-    const hdr = artUrl('ui_villagelife_header');
-    const banner = hdr
-      ? `<div class="section-banner" style="background-image:url(${hdr})" aria-hidden="true"></div>`
-      : '';
-    return `${banner}<p class="map-locs-label">Village Life · tap to play</p><div class="vl-list">${rows}</div>`;
+    // (The old ui_villagelife_header banner was removed — it painted an EMPTY
+    // island with no town on it, which read as a stray "blank terrain tile"
+    // wedged under the chapter card. The list speaks for itself.)
+    return (
+      `<p class="map-locs-label">Village Life · tap to play</p><div class="vl-list">${rows}</div>` +
+      this.almanacSection()
+    );
+  }
+
+  /**
+   * The Keeper's Almanac — the collection the mini-games quietly fill. Folded
+   * away by default so it's a curiosity, never a chore; undiscovered pages are
+   * soft silhouettes (nothing here can be missed, so nothing scolds).
+   */
+  private almanacSection(): string {
+    const book = this.game.almanac;
+    const { found, total } = almanacProgress(book);
+    const sections = ALMANAC_SECTIONS.map((sec) => {
+      const cells = ALMANAC_PAGES.filter((p) => p.section === sec)
+        .map((p) => {
+          const got = (book[p.id] ?? 0) > 0;
+          const label = got ? `${p.name} — ${p.note}` : 'Not yet found';
+          return (
+            `<div class="alm-cell${got ? ' found' : ''}" title="${label}" aria-label="${label}">` +
+            `<div class="alm-art">${tileMarkup(p.chain, p.level)}</div>` +
+            `<span class="alm-name">${got ? p.name : '· · ·'}</span></div>`
+          );
+        })
+        .join('');
+      return `<div class="alm-section"><p class="alm-section-title">${sec}</p><div class="alm-grid">${cells}</div></div>`;
+    }).join('');
+    return (
+      `<details class="alm-book"><summary class="alm-summary">` +
+      `The Keeper’s Almanac <span class="alm-count">${found} of ${total} pages</span></summary>` +
+      `<p class="alm-intro">What the village games turn up, remembered.</p>${sections}</details>`
+    );
   }
 
   /** Wire the Village Life index Play/Open buttons to the same paths the map uses. */

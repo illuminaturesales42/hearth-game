@@ -69,6 +69,15 @@ export const MINIGAMES: readonly MinigameDef[] = [
     blurb: 'The library’s in disarray — match the shelves to set it right, and a clean sort turns up a lost volume.',
     unlock: 'l2',
   },
+  {
+    id: 'sawmill',
+    buildingArt: 'town_sawmill',
+    title: 'The Saw Song',
+    verb: 'Start the saw',
+    blurb:
+      'Logs ride the flume — saw each one as it crosses the blade line. A missed log just drifts on; the timber still stacks.',
+    unlock: 'l2',
+  },
 ];
 
 export const MINIGAME_BY_ID: Record<string, MinigameDef> = Object.fromEntries(MINIGAMES.map((m) => [m.id, m]));

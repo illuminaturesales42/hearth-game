@@ -248,6 +248,23 @@ export const feedback = {
   chime(freq = 528): void {
     tone(freq, 420, 'sine', 0.08);
   },
+  /**
+   * A rising pentatonic ladder for combo streaks — every step up the streak is
+   * a step up the scale, so a run *sounds* like it's climbing. Steps past the
+   * ladder's top loop the octave musically (never harsh). Always in key.
+   */
+  comboChime(step: number): void {
+    // A-major pentatonic from A4 — warm, folk, in key with the ambient score
+    const LADDER = [440, 494, 554, 659, 740, 880, 988, 1108];
+    const i = Math.max(0, step);
+    const f = LADDER[i % LADDER.length]! * (i >= LADDER.length ? 1 : 1);
+    tone(f, 160, 'triangle', 0.12);
+    tone(f * 2, 120, 'sine', 0.05, 30); // a soft octave shimmer on top
+  },
+  /** The tally tick — a tiny rising blip per counted step (pitch climbs outside). */
+  tick(freq: number): void {
+    tone(freq, 60, 'triangle', 0.07);
+  },
   /** Start (idempotent) the ambient score at the given town stage. Needs a user gesture. */
   startMusic(stage: number): void {
     const ac = audio();
