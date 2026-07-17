@@ -1836,13 +1836,14 @@ export class MapView {
               ? 'prop_lighthouse_wip'
               : 'prop_lighthouse_ruin';
       const img = this.sprite(artId) ?? this.sprite('prop_lighthouse');
-      // On the east rocky point, its own rock base meeting the plate's waterline.
-      const lx = W * 0.915;
-      const baseY = H * 0.635;
+      // Off the east point, standing in the sea clear of the fisher hut — its
+      // own rock base sits over open water, not up on the green land plate.
+      const lx = W * 0.95;
+      const baseY = H * 0.72;
       if (img) {
         // the new painted lighthouse is a tall portrait sprite with its own rock
         // base, so it's narrower than the old near-square art (0.23 dwarfed the map).
-        const lw = W * 0.155;
+        const lw = W * 0.15;
         const lh = lw * (img.naturalHeight / img.naturalWidth);
         ctx.drawImage(img, lx - lw / 2, baseY - lh, lw, lh);
         // Tappable once the beacon is lit — opens The Lighthouse card (Beacon Drop).
