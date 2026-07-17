@@ -98,9 +98,11 @@ export class MinigameUI {
   }
 
   private reduce(): boolean {
-    return (
-      document.body.classList.contains('reduce-motion') || window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    );
+    // The in-app Reduce Motion setting only (manual opt-in, like the animated
+    // icons). The OS-level media query is NOT consulted here: desktop Windows
+    // commonly reports it, which silently swapped every game for its static
+    // accessibility path — "the games don't play" — while phones ran them fully.
+    return document.body.classList.contains('reduce-motion');
   }
 
   private clearTimers(): void {
@@ -475,9 +477,14 @@ export class MinigameUI {
       }
       if (nEl) nEl.textContent = String(slots.length + 1);
       throwing = false;
-      pebble?.style.removeProperty('left');
-      pebble?.style.removeProperty('top');
-      if (pebble) pebble.style.opacity = '1';
+      // the next pebble returns to the hand
+      if (pebble) {
+        pebble.style.removeProperty('left');
+        pebble.style.removeProperty('top');
+        pebble.style.removeProperty('position');
+        if (hand && pebble.parentElement !== hand) hand.appendChild(pebble);
+        pebble.style.opacity = '1';
+      }
       // the bank choice appears once there's something worth keeping
       const actions = el('mg-actions');
       if (actions && slots.length >= 2) {
@@ -513,6 +520,12 @@ export class MinigameUI {
         landed(slot);
       };
       if (this.reduce() || !pebble) return done();
+      // the pebble leaves the hand: re-parent onto the well so left/top drive
+      // the arc (inside the hand it sits in flex flow and never moves)
+      if (pebble.parentElement !== well) {
+        well.appendChild(pebble);
+        pebble.style.position = 'absolute';
+      }
       feedback.chime(340);
       // a lobbed arc: up first, then gravity brings it down to the ring
       const peak = Math.min(startY, surfaceY) - H * 0.34;
@@ -813,25 +826,25 @@ export class MinigameUI {
 
     // Full motion: the LIGHTHOUSE BEAM sweeps the board top like the old
     // carnival clown game — tap anywhere to drop the ember from roughly where
-    // the beam points at that instant.
+    // the beam points at that instant. The sweep is a CSS animation (not rAF)
+    // so it never stalls under rAF throttling; the tap reads the beam's LIVE
+    // position from layout.
     this.coachOnce('beacon-drop', 'The beam sweeps the boats — tap to drop the ember where it points.');
-    let beamX = 0.5;
     let released = false;
-    const t0 = performance.now();
-    const sweep = (): void => {
-      if (released) return;
-      const t = (performance.now() - t0) / 1400; // one full left-right pass ~2.8s
-      beamX = 0.5 + 0.44 * Math.sin(t * Math.PI);
-      if (beam) beam.style.setProperty('--bx', `${(beamX * 100).toFixed(2)}%`);
-      this.rafs.push(requestAnimationFrame(sweep));
-    };
-    this.rafs.push(requestAnimationFrame(sweep));
+    beam?.classList.add('sweep');
     if (beacon) {
       beacon.style.touchAction = 'none';
       const startDrop = (): void => {
         if (released) return;
         released = true;
-        beam?.classList.add('drop');
+        let beamX = 0.5;
+        if (beam) {
+          const bb = beacon.getBoundingClientRect();
+          const brc = beam.getBoundingClientRect();
+          if (bb.width) beamX = Math.max(0.05, Math.min(0.95, (brc.left + brc.width / 2 - bb.left) / bb.width));
+          beam.style.animationPlayState = 'paused'; // the light holds where you called it
+          beam.classList.add('drop');
+        }
         release(beamX);
       };
       beacon.onpointerdown = startDrop;

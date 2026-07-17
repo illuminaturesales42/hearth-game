@@ -5544,11 +5544,11 @@ body.reduce-motion *::after {
   z-index: 2;
 }
 
-/* -- beacon: the carnival beam -- */
+/* -- beacon: the carnival beam (CSS-driven sweep — survives rAF throttling) -- */
 .mg-beam {
   position: absolute;
   top: 0;
-  left: var(--bx, 50%);
+  left: 50%;
   width: 0;
   height: 0;
   z-index: 2;
@@ -5558,6 +5558,17 @@ body.reduce-motion *::after {
   border-right: 14px solid transparent;
   border-top: 46px solid rgba(255, 226, 170, 0.34);
   filter: drop-shadow(0 0 10px rgba(255, 210, 122, 0.5));
+}
+.mg-beam.sweep {
+  animation: mgBeamSweep 1.5s ease-in-out infinite alternate;
+}
+@keyframes mgBeamSweep {
+  from {
+    left: 7%;
+  }
+  to {
+    left: 93%;
+  }
 }
 .mg-beam::after {
   content: '';
