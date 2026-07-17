@@ -6051,3 +6051,26 @@ body.reduce-motion .mg-peg-golden {
     animation: none;
   }
 }
+
+/* ===================== BEACON PEG SPRITES (wired art) ===================== */
+/* The pegfield's brass/gold peg sprites now ship — the base pegs and the
+   golden beacon peg use them; the bumpers + mover keep their painted gradients
+   (re-asserted as background-image so they win over the base). */
+.mg-peg {
+  background-image: url(/art/mg_peg_brass.png);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.mg-peg-bumper {
+  background-image: radial-gradient(circle at 38% 32%, #f0cf95, #b07f42 70%);
+}
+.mg-peg-mover {
+  background-image: radial-gradient(circle at 38% 32%, #cfe0ea, #6c93a8 70%);
+}
+.mg-peg-golden {
+  background-image: url(/art/mg_peg_gold.png);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
