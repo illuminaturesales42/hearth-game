@@ -3,35 +3,51 @@
  * which one runs is chosen by the building you tapped on the map. Each is a
  * short, no-fail delight built from sprites we already ship. The maths lives in
  * ../core/minigames (pure + seeded); this file is only presentation + timing.
+ *
+ * Feel grammar (shared by every game): floor guaranteed, ceiling earned;
+ * onboard → ramp → climax → tally-flourish; combos soft-decay (a miss steps
+ * down one, never shatters); every confirm lands on sight + sound + touch.
  */
 import type { Game } from '../core/game';
 import {
+  BEACON_EMBER_R,
   BEACON_ROWS,
   BEACON_SLOTS,
+  CATCH_REEL_MS,
+  CATCH_REEL_ZONE,
+  FORAGE_COLS,
   FORAGE_SIZE,
   FORAGE_STEPS,
-  FORGE_CELLS,
   FORGE_DURATION_MS,
+  FORGE_SWEET_FRAC,
   SAWMILL_DURATION_MS,
   SAWMILL_FALL_MS,
+  SAWMILL_HOLD_MS,
   SAWMILL_LANES,
   SAWMILL_PERFECT_MS,
   SAWMILL_WINDOW_MS,
-  STACKS_PAIRS,
+  WELL_COINS,
+  WELL_MULT,
+  WELL_PEBBLES,
   WELL_SLOTS,
   beaconDrop,
+  beaconPegField,
   beaconReward,
   beaconScore,
   catchReward,
+  comboStep,
   fishBite,
   forageField,
+  forageReward,
   forageTile,
   forgeReward,
   forgeSchedule,
+  forgeScore,
   sawmillReward,
   sawmillSchedule,
   sawmillScore,
   stacksDeck,
+  stacksPairsFor,
   stacksReward,
   wellScore,
   wishingWellReward,
@@ -56,6 +72,10 @@ const MINIGAME_BACKDROP: Record<string, string> = {
   foraging: 'mg_bg_forage',
   'sorting-stacks': 'mg_bg_stacks',
   sawmill: 'mg_bg_sawmill',
+};
+
+const vibrate = (n: number | number[]): void => {
+  (navigator as Navigator & { vibrate?: (p: number | number[]) => void }).vibrate?.(n);
 };
 
 export class MinigameUI {
@@ -145,21 +165,42 @@ export class MinigameUI {
     }
   }
 
-  /** A little cool-blue splash where the pebble meets the water. */
-  private waterSplash(host: HTMLElement, xPx: number, yPx: number): void {
+  /** A proper splash where something meets the water: a fanned crown of
+   *  droplets + a double ripple that spreads and fades. */
+  private waterSplash(host: HTMLElement, xPx: number, yPx: number, big = false): void {
     if (this.reduce()) return;
-    for (let i = 0; i < 5; i++) {
+    const n = big ? 10 : 6;
+    for (let i = 0; i < n; i++) {
       const d = document.createElement('div');
       d.className = 'mg-splash-dot';
-      const ang = -Math.PI / 2 + (i - 2) * 0.5; // fan upward
-      const dist = 10 + Math.random() * 12;
+      const ang = -Math.PI / 2 + (i - (n - 1) / 2) * (Math.PI / (n + 1)); // crown fan
+      const dist = (big ? 16 : 10) + Math.random() * (big ? 20 : 12);
       d.style.left = `${xPx}px`;
       d.style.top = `${yPx}px`;
       d.style.setProperty('--dx', `${Math.cos(ang) * dist}px`);
       d.style.setProperty('--dy', `${Math.sin(ang) * dist}px`);
       host.appendChild(d);
-      this.timers.push(window.setTimeout(() => d.remove(), 520));
+      this.timers.push(window.setTimeout(() => d.remove(), 560));
     }
+    for (let r = 0; r < (big ? 2 : 1); r++) {
+      const ring = document.createElement('div');
+      ring.className = 'mg-splash-ring';
+      ring.style.left = `${xPx}px`;
+      ring.style.top = `${yPx}px`;
+      ring.style.animationDelay = `${r * 140}ms`;
+      host.appendChild(ring);
+      this.timers.push(window.setTimeout(() => ring.remove(), 700 + r * 140));
+    }
+  }
+
+  /** Squash-and-stretch on hit — the primary cosy juice verb (shake stays rare). */
+  private squash(elm: HTMLElement, scale = 1.18): void {
+    if (this.reduce()) return;
+    elm.style.setProperty('--squash', String(scale));
+    elm.classList.remove('mg-squash');
+    void elm.offsetWidth;
+    elm.classList.add('mg-squash');
+    this.timers.push(window.setTimeout(() => elm.classList.remove('mg-squash'), 260));
   }
 
   /** Open the overlay for a building's game and begin the first run. */
@@ -269,6 +310,11 @@ export class MinigameUI {
     this.showResult(reward, wish, res.isBest);
   }
 
+  /**
+   * The tally flourish: the result card counts the coins UP with a rising tick,
+   * then the items pop in one by one, then (maybe) the personal-best banner —
+   * the run ends on a rising note, every time. Reduced motion: instant totals.
+   */
   private showResult(reward: MgReward, wish?: { who: string; text: string }, isBest?: boolean): void {
     const result = el('mg-result');
     const title = el('mg-result-title');
@@ -276,15 +322,59 @@ export class MinigameUI {
     if (!result || !title || !body) return;
     title.textContent = reward.heart || 'A good little while.';
     const items = reward.items
-      .map((it) => `<span class="mg-reward-item">${tileMarkup(it.chain, it.level)}</span>`)
+      .map((it, i) => `<span class="mg-reward-item" data-pop="${i}">${tileMarkup(it.chain, it.level)}</span>`)
       .join('');
     body.innerHTML =
       `<div class="mg-reward-row">${items}</div>` +
-      `<p class="mg-reward-line">🪙 ${reward.coins}${reward.ember > 0 ? ` · 🔥 +${reward.ember} energy` : ''}</p>` +
-      (isBest ? `<p class="mg-best">✦ A new personal best!</p>` : '') +
+      `<p class="mg-reward-line">🪙 <b id="mg-tally-coins">0</b>${reward.ember > 0 ? ` · 🔥 +${reward.ember} energy` : ''}</p>` +
+      `<p class="mg-best" id="mg-best-line" hidden>✦ A new personal best!</p>` +
       (wish ? `<p class="mg-wish">“${wish.who} ${wish.text}”</p>` : '') +
       `<p class="mg-reward-hint">Kept in your Repository, ready for the village’s needs.</p>`;
     result.hidden = false;
+    const coinsEl = el('mg-tally-coins');
+    const bestLine = el('mg-best-line');
+    const itemEls = Array.from(body.querySelectorAll<HTMLElement>('.mg-reward-item'));
+    if (this.reduce()) {
+      if (coinsEl) coinsEl.textContent = String(reward.coins);
+      itemEls.forEach((it) => it.classList.add('in'));
+      if (bestLine) bestLine.hidden = !isBest;
+    } else {
+      // items pop in first, then the coins tick up with rising pitch, then the banner
+      itemEls.forEach((it, i) =>
+        this.timers.push(
+          window.setTimeout(() => {
+            it.classList.add('in');
+            feedback.tick(380 + i * 60);
+          }, 120 + i * 160),
+        ),
+      );
+      const startAt = 200 + itemEls.length * 160;
+      const steps = Math.min(14, Math.max(5, reward.coins));
+      for (let s = 1; s <= steps; s++) {
+        this.timers.push(
+          window.setTimeout(
+            () => {
+              if (coinsEl) coinsEl.textContent = String(Math.round((reward.coins * s) / steps));
+              feedback.tick(300 + (s / steps) * 420);
+              if (s === steps && coinsEl?.parentElement) this.squash(coinsEl.parentElement, 1.12);
+            },
+            startAt + s * 55,
+          ),
+        );
+      }
+      if (isBest && bestLine) {
+        this.timers.push(
+          window.setTimeout(
+            () => {
+              bestLine.hidden = false;
+              feedback.deliver();
+              vibrate([12, 60, 18]);
+            },
+            startAt + steps * 55 + 220,
+          ),
+        );
+      }
+    }
     // Reflect whether another go is possible, rather than toasting on tap.
     const again = el<HTMLButtonElement>('mg-again');
     if (again && this.id) {
@@ -309,7 +399,7 @@ export class MinigameUI {
     actions.appendChild(btn);
   }
 
-  // ---------- 1) Wishing Well (aim the drop) ----------
+  // ---------- 1) Wishing Well (pull back & release — three pebbles) ----------
 
   private playWell(seed: number): void {
     const stage = el('mg-stage');
@@ -321,129 +411,216 @@ export class MinigameUI {
     const rings = Array.from({ length: WELL_SLOTS }, (_, s) => {
       const dist = Math.abs(s - 2);
       const cls = dist === 0 ? 'heart' : dist === 1 ? 'good' : '';
-      return `<button class="mg-ring ${cls}" data-slot="${s}" aria-label="ring ${s + 1} of ${WELL_SLOTS}"></button>`;
+      return (
+        `<button class="mg-ring ${cls}" data-slot="${s}" aria-label="ring ${s + 1} of ${WELL_SLOTS}">` +
+        `<span class="mg-ring-val">${s === 2 ? '✦' : WELL_COINS[s]}</span></button>`
+      );
     }).join('');
+    const multChips = WELL_MULT.map(
+      (m, i) => `<span class="mg-mult-chip${i === 0 ? ' on' : ''}" data-m="${i}">×${m}</span>`,
+    ).join('');
     stage.innerHTML =
       `<div class="mg-well">${wellArt}` +
-      `<div class="mg-well-track"><div class="mg-aim"></div></div>` +
       `<div class="mg-well-rings">${rings}</div>` +
-      `<div class="mg-pebble"></div><div class="mg-ripple"></div></div>`;
+      `<div class="mg-well-arc" hidden></div>` +
+      `<div class="mg-pebble-hand"><div class="mg-pebble"></div></div>` +
+      `<div class="mg-ripple"></div>` +
+      `<div class="mg-well-hud"><span class="mg-well-count">Pebble <b id="mg-well-n">1</b> of ${WELL_PEBBLES}</span>` +
+      `<span class="mg-well-mult">${multChips}</span></div></div>`;
 
-    // Resolve a chosen ring → reward, animate the pebble to it, then bank it.
-    const drop = (slotRaw: number): void => {
-      const slot = Math.max(0, Math.min(WELL_SLOTS - 1, slotRaw));
-      const res = wishingWellReward(slot, seed, this.game.wishCount());
-      const wsrc = res.wishIndex >= 0 ? WISHES[res.wishIndex] : undefined;
-      const wish = wsrc ? { who: wsrc.who, text: wsrc.text } : undefined;
-      stage.querySelector<HTMLElement>(`.mg-ring[data-slot="${slot}"]`)?.classList.add('lit');
-      const done = () => this.finish(res, wish, wellScore(slot));
-      if (this.reduce()) return done();
-      const well = stage.querySelector<HTMLElement>('.mg-well');
-      const pebble = stage.querySelector<HTMLElement>('.mg-pebble');
-      const ripple = stage.querySelector<HTMLElement>('.mg-ripple');
-      if (!well || !pebble) return void this.timers.push(window.setTimeout(done, 300));
-      // A real gravity drop: the pebble is tossed from the hand (top-centre),
-      // accelerates down, and arcs into the aimed ring — then a splash + ripple.
-      const W = well.clientWidth || 220;
-      const targetX = ((slot + 0.5) / WELL_SLOTS) * W;
-      const startX = W / 2;
-      const startY = 6;
-      // the water line inside the well art — % of the (now fluid) well height
-      const surfaceY = (well.clientHeight || 240) * 0.62;
-      pebble.style.opacity = '1';
-      feedback.chime(320);
-      let t = 0;
-      const sim = (): void => {
-        t += 1;
-        const y = startY + 0.5 * 0.6 * t * t; // constant gravity
-        const prog = Math.min(1, (y - startY) / (surfaceY - startY));
-        const x = startX + (targetX - startX) * (prog * prog) + Math.sin(t * 0.5) * (1 - prog) * 2;
-        pebble.style.left = `${x}px`;
-        pebble.style.top = `${Math.min(y, surfaceY)}px`;
-        if (y >= surfaceY) {
-          pebble.style.opacity = '0';
-          if (ripple) {
-            ripple.style.left = `${targetX - 6}px`;
-            ripple.classList.add('go');
-          }
-          this.waterSplash(well, targetX, surfaceY);
-          feedback.chime(slot === 2 ? 540 : 220);
-          this.timers.push(window.setTimeout(done, 560));
-          return;
-        }
-        const id = requestAnimationFrame(sim);
-        this.rafs.push(id);
-      };
-      const id = requestAnimationFrame(sim);
-      this.rafs.push(id);
+    const well = stage.querySelector<HTMLElement>('.mg-well');
+    const hand = stage.querySelector<HTMLElement>('.mg-pebble-hand');
+    const pebble = stage.querySelector<HTMLElement>('.mg-pebble');
+    const arc = stage.querySelector<HTMLElement>('.mg-well-arc');
+    const nEl = el('mg-well-n');
+    if (!well) return;
+
+    const slots: number[] = [];
+    let centres = 0;
+    let throwing = false;
+
+    const updateMult = (): void => {
+      stage
+        .querySelectorAll<HTMLElement>('.mg-mult-chip')
+        .forEach((c) => c.classList.toggle('on', Number(c.dataset.m) <= centres));
     };
 
-    // Reduced motion: tap the ring you want (no timed sweep). Fully accessible.
+    const endRun = (): void => {
+      const res = wishingWellReward(slots, seed, this.game.wishCount());
+      const wsrc = res.wishIndex >= 0 ? WISHES[res.wishIndex] : undefined;
+      const wish = wsrc ? { who: wsrc.who, text: wsrc.text } : undefined;
+      this.finish(res, wish, wellScore(slots));
+    };
+
+    // After a pebble lands: bank the slot, light the ring, splash, next pebble
+    // or the run's end. After pebble 2 the player may bank early (the only
+    // "risk" is that the multiplier could have been higher).
+    const landed = (slot: number): void => {
+      slots.push(slot);
+      if (slot === 2) {
+        centres += 1;
+        updateMult();
+        feedback.comboChime(2 + centres);
+        vibrate(16);
+      } else {
+        feedback.chime(300);
+        vibrate(8);
+      }
+      const ring = stage.querySelector<HTMLElement>(`.mg-ring[data-slot="${slot}"]`);
+      ring?.classList.add('lit');
+      if (ring) this.squash(ring, 1.22);
+      if (slots.length >= WELL_PEBBLES) {
+        this.timers.push(window.setTimeout(endRun, 620));
+        return;
+      }
+      if (nEl) nEl.textContent = String(slots.length + 1);
+      throwing = false;
+      pebble?.style.removeProperty('left');
+      pebble?.style.removeProperty('top');
+      if (pebble) pebble.style.opacity = '1';
+      // the bank choice appears once there's something worth keeping
+      const actions = el('mg-actions');
+      if (actions && slots.length >= 2) {
+        actions.innerHTML = '';
+        const bank = document.createElement('button');
+        bank.className = 'btn-ghost mg-go';
+        bank.textContent = 'Keep this wish';
+        bank.onclick = endRun;
+        actions.appendChild(bank);
+      }
+    };
+
+    // The lob itself: a gravity arc from the hand to the chosen ring, then the
+    // splash — droplet crown + double ripple (the well answers every wish).
+    const lob = (slot: number): void => {
+      const W = well.clientWidth || 260;
+      const H = well.clientHeight || 240;
+      const targetX = ((slot + 0.5) / WELL_SLOTS) * W;
+      const surfaceY = H * 0.6;
+      const startX = W / 2;
+      const startY = H * 0.9;
+      const done = (): void => {
+        if (arc) arc.hidden = true;
+        const ripple = stage.querySelector<HTMLElement>('.mg-ripple');
+        if (ripple) {
+          ripple.style.left = `${targetX - 6}px`;
+          ripple.style.top = `${surfaceY}px`;
+          ripple.classList.remove('go');
+          void ripple.offsetWidth;
+          ripple.classList.add('go');
+        }
+        this.waterSplash(well, targetX, surfaceY, slot === 2);
+        landed(slot);
+      };
+      if (this.reduce() || !pebble) return done();
+      feedback.chime(340);
+      // a lobbed arc: up first, then gravity brings it down to the ring
+      const peak = Math.min(startY, surfaceY) - H * 0.34;
+      let t = 0;
+      const T = 34; // frames
+      const sim = (): void => {
+        t += 1;
+        const p = Math.min(1, t / T);
+        const x = startX + (targetX - startX) * p;
+        // quadratic arc through the peak
+        const y = (1 - p) * (1 - p) * startY + 2 * (1 - p) * p * peak + p * p * surfaceY;
+        pebble.style.left = `${x}px`;
+        pebble.style.top = `${y}px`;
+        if (p >= 1) {
+          pebble.style.opacity = '0';
+          feedback.chime(slot === 2 ? 560 : 240);
+          this.timers.push(window.setTimeout(done, 80));
+          return;
+        }
+        this.rafs.push(requestAnimationFrame(sim));
+      };
+      pebble.style.opacity = '1';
+      pebble.style.left = `${startX}px`;
+      pebble.style.top = `${startY}px`;
+      this.rafs.push(requestAnimationFrame(sim));
+    };
+
+    // Reduced motion: tap the ring you want, three times. Fully accessible.
     if (this.reduce()) {
-      this.coachOnce('wishing-well', 'Choose a ring — the centre roots the deepest wish.');
+      this.coachOnce('wishing-well', 'Choose a ring for each pebble — the centre deepens every wish.');
       stage.querySelectorAll<HTMLButtonElement>('.mg-ring').forEach((b) => {
         b.onclick = () => {
-          stage.querySelectorAll<HTMLButtonElement>('.mg-ring').forEach((r) => (r.disabled = true));
-          drop(Number(b.dataset.slot));
+          if (throwing || slots.length >= WELL_PEBBLES) return;
+          lob(Number(b.dataset.slot));
         };
       });
-      const actions = el('mg-actions');
-      if (actions) actions.innerHTML = '';
       return;
     }
 
-    // Full motion: a light sweeps the rings; tap to release it where it lands.
-    this.coachOnce('wishing-well', 'Tap the moment the light lines up with the centre ring.');
-    const aim = stage.querySelector<HTMLElement>('.mg-aim');
-    const track = stage.querySelector<HTMLElement>('.mg-well-track');
-    aim?.classList.add('sweep');
-    this.startButton('Drop the pebble', () => {
-      const actions = el('mg-actions');
-      if (actions) actions.innerHTML = '';
-      let slot = 2;
-      if (aim && track) {
-        const a = aim.getBoundingClientRect();
-        const t = track.getBoundingClientRect();
-        const pct = t.width ? (a.left + a.width / 2 - t.left) / t.width : 0.5;
-        slot = Math.max(0, Math.min(WELL_SLOTS - 1, Math.floor(pct * WELL_SLOTS)));
-        aim.classList.remove('sweep');
-        aim.style.left = `${((slot + 0.5) / WELL_SLOTS) * 100}%`;
-      }
-      drop(slot);
-    });
+    // Full motion: PULL BACK & RELEASE. Press the pebble, drag DOWN to draw
+    // power (the arc preview climbs ring by ring), release to lob. Slingshot
+    // in the hand; power picks the ring.
+    this.coachOnce('wishing-well', 'Press the pebble and pull DOWN to aim — release to let the wish fly.');
+    const powerToSlot = (pull: number): number => {
+      // pull 0..1 → rings walk outward-in: gentle lob = ring 0, full draw = ring 4
+      return Math.max(0, Math.min(WELL_SLOTS - 1, Math.floor(pull * WELL_SLOTS)));
+    };
+    if (hand && pebble) {
+      hand.style.touchAction = 'none';
+      hand.onpointerdown = (e) => {
+        if (throwing || slots.length >= WELL_PEBBLES) return;
+        throwing = true;
+        hand.setPointerCapture(e.pointerId);
+        const y0 = e.clientY;
+        let pull = 0;
+        if (arc) arc.hidden = false;
+        const move = (ev: PointerEvent): void => {
+          pull = Math.max(0, Math.min(1, (ev.clientY - y0) / 110));
+          const slot = powerToSlot(pull);
+          pebble.style.transform = `translateY(${pull * 16}px) scale(${1 + pull * 0.25})`;
+          // the preview glows the ring the current draw would reach
+          stage
+            .querySelectorAll<HTMLElement>('.mg-ring')
+            .forEach((r, i) => r.classList.toggle('aim', i === slot));
+          if (arc) arc.style.setProperty('--pull', String(pull));
+        };
+        const up = (): void => {
+          hand.onpointermove = null;
+          hand.onpointerup = null;
+          pebble.style.transform = '';
+          stage.querySelectorAll<HTMLElement>('.mg-ring.aim').forEach((r) => r.classList.remove('aim'));
+          if (arc) arc.hidden = true;
+          lob(powerToSlot(pull));
+        };
+        move(e);
+        hand.onpointermove = move;
+        hand.onpointerup = up;
+      };
+    }
   }
 
-  // ---------- 2) Beacon Drop (aim the release) ----------
+  // ---------- 2) Beacon Drop (carnival beam + dynamic pegfield) ----------
 
   private playBeacon(seed: number): void {
     const stage = el('mg-stage');
     if (!stage) return;
     const beaconUrl = artUrl('fx_flame_beacon');
-    let pegs = '';
-    for (let r = 0; r < BEACON_ROWS; r++) {
-      const count = r + 2;
-      let row = '';
-      for (let c = 0; c < count; c++) row += `<span class="mg-peg"></span>`;
-      pegs += `<div class="mg-peg-row">${row}</div>`;
-    }
+    const field = beaconPegField(seed);
+    const pegHtml = field
+      .map(
+        (p, i) =>
+          `<span class="mg-peg mg-peg-${p.kind}" data-i="${i}" style="left:${(p.x * 100).toFixed(1)}%;top:${(p.y * 100).toFixed(1)}%;--pr:${(p.r * 200).toFixed(1)}%"></span>`,
+      )
+      .join('');
     let slotCells = '';
     for (let s = 0; s < BEACON_SLOTS; s++) {
       const dist = Math.abs(s - BEACON_ROWS / 2);
-      // Show what each slot is worth (commercial-plinko clarity): every slot pays
-      // coins — no-fail — the centre pays the finest catch.
       const val = dist === 0 ? '✦' : `${beaconReward(s).coins}`;
       slotCells += `<button class="mg-slot ${dist === 0 ? 'heart' : dist <= 2 ? 'good' : ''}" data-slot="${s}" aria-label="slot ${s + 1}"><span class="mg-slot-val">${val}</span></button>`;
     }
     stage.innerHTML =
       `<div class="mg-beacon">` +
       `<div class="mg-beacon-lamp">${beaconUrl ? `<div class="mg-beacon-flame" aria-hidden="true"></div>` : '🔆'}</div>` +
-      `<div class="mg-beacon-aim-track"><div class="mg-beacon-aim"></div></div>` +
-      `<div class="mg-pegs">${pegs}</div>` +
+      `<div class="mg-beam" aria-hidden="true"></div>` +
+      `<div class="mg-pegfield">${pegHtml}</div>` +
       `<div class="mg-slots">${slotCells}</div>` +
       `<div class="mg-ember"></div></div>`;
     const ember = stage.querySelector<HTMLElement>('.mg-ember');
-    // The beacon's lamp is a living flame (fx_flame_beacon, 7-frame strip) —
-    // static single frame under reduced motion.
     const lampFlame = stage.querySelector<HTMLElement>('.mg-beacon-flame');
     if (lampFlame && beaconUrl) {
       if (this.reduce()) lampFlame.style.backgroundImage = `url(${beaconUrl})`;
@@ -451,41 +628,56 @@ export class MinigameUI {
     }
 
     const beacon = stage.querySelector<HTMLElement>('.mg-beacon');
+    const beam = stage.querySelector<HTMLElement>('.mg-beam');
+    const pegfield = stage.querySelector<HTMLElement>('.mg-pegfield');
+    const pegEls = Array.from(stage.querySelectorAll<HTMLElement>('.mg-peg'));
+    const moverIdx = field.findIndex((p) => p.kind === 'mover');
 
-    // Release from a chosen column: a real ember with gravity that bounces off
-    // the pegs and settles into a slot — the slot it *lands* in is the reward,
-    // so aim (and a little plinko luck) earns it. Deterministic per (aim, seed).
-    const release = (targetSlot: number): void => {
-      const land = (slot: number): void => {
-        const slotEl = stage.querySelector<HTMLElement>(`.mg-slot[data-slot="${slot}"]`);
-        slotEl?.classList.add('lit');
-        stage.querySelectorAll<HTMLElement>('.mg-slot.near').forEach((n) => n.classList.remove('near'));
-        // A landing burst where the ember settles — the catch arrives.
-        if (beacon && slotEl && !this.reduce()) {
-          const br2 = beacon.getBoundingClientRect();
-          const sr = slotEl.getBoundingClientRect();
-          const lx = ((sr.left + sr.width / 2 - br2.left) / (br2.width || 1)) * 100;
-          const ly = ((sr.top - br2.top) / (br2.height || 1)) * 100;
-          this.spark(beacon, lx, ly);
-        }
-        feedback.chime(slot === BEACON_ROWS / 2 ? 620 : 300);
-        if (slot === BEACON_ROWS / 2) feedback.deliver(); // centre catch: the 3-note motif + haptic
-        this.timers.push(window.setTimeout(() => this.finish(beaconReward(slot), undefined, beaconScore(slot)), 460));
-      };
-      // Reduced motion (or no stage): fall back to the seeded outcome, no sim.
-      if (this.reduce() || !ember || !beacon) return land(beaconDrop(targetSlot, seed));
+    let goldenHit = false;
 
-      ember.style.transition = 'none'; // physics drives left/top per frame — no CSS smoothing
+    const land = (slot: number): void => {
+      const slotEl = stage.querySelector<HTMLElement>(`.mg-slot[data-slot="${slot}"]`);
+      slotEl?.classList.add('lit');
+      if (slotEl) this.squash(slotEl, 1.25);
+      stage.querySelectorAll<HTMLElement>('.mg-slot.near').forEach((n) => n.classList.remove('near'));
+      if (beacon && slotEl && !this.reduce()) {
+        const br2 = beacon.getBoundingClientRect();
+        const sr = slotEl.getBoundingClientRect();
+        const lx = ((sr.left + sr.width / 2 - br2.left) / (br2.width || 1)) * 100;
+        const ly = ((sr.top - br2.top) / (br2.height || 1)) * 100;
+        this.spark(beacon, lx, ly);
+      }
+      feedback.chime(slot === BEACON_ROWS / 2 ? 620 : 300);
+      if (slot === BEACON_ROWS / 2) feedback.deliver(); // centre catch: the 3-note motif + haptic
+      this.timers.push(
+        window.setTimeout(() => this.finish(beaconReward(slot, goldenHit), undefined, beaconScore(slot, goldenHit)), 500),
+      );
+    };
+
+    // The drop: a real ember with gravity through THIS run's pegfield — pegs
+    // flash, bumpers boing, the golden peg blesses the run, the mover is read
+    // live, and a centre-bound finish plays out in slow motion.
+    const release = (xFrac: number): void => {
+      if (this.reduce() || !ember || !beacon || !pegfield) {
+        const targetSlot = Math.max(0, Math.min(BEACON_ROWS, Math.round(xFrac * BEACON_ROWS)));
+        return land(beaconDrop(targetSlot, seed));
+      }
+      ember.style.transition = 'none';
       const br = beacon.getBoundingClientRect();
+      const fr = pegfield.getBoundingClientRect();
       const bW = br.width || 260;
       const bH = br.height || 300;
-      const pegEls = Array.from(stage.querySelectorAll<HTMLElement>('.mg-peg'));
-      const pegs = pegEls.map((p) => {
-        const r = p.getBoundingClientRect();
-        return { x: r.left + r.width / 2 - br.left, y: r.top + r.height / 2 - br.top, el: p };
-      });
+      const fieldTop = fr.top - br.top;
+      const fieldH = fr.height || 1;
+      // pegs in board space (mover re-read live each frame)
+      const pegs = field.map((p, i) => ({
+        x: p.x * bW,
+        y: fieldTop + p.y * fieldH,
+        r: p.r * bW,
+        kind: p.kind,
+        el: pegEls[i]!,
+      }));
       const slotEls = Array.from(stage.querySelectorAll<HTMLElement>('.mg-slot'));
-      // A fading ember trail — the light leaves a warm wake as it tumbles.
       let trailTick = 0;
       const trail = (tx: number, ty: number): void => {
         trailTick += 1;
@@ -498,27 +690,40 @@ export class MinigameUI {
         this.timers.push(window.setTimeout(() => d.remove(), 500));
       };
       const slotsTop = bH - 44;
-      const R = 7;
-      const PEG = 5;
+      const R = BEACON_EMBER_R * bW;
       let s = seed >>> 0 || 1;
       const rand = (): number => {
         s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
         return s / 4294967296;
       };
-      let x = ((targetSlot + 0.5) / BEACON_SLOTS) * bW;
-      let y = 34;
+      let x = Math.max(R, Math.min(bW - R, xFrac * bW + (rand() - 0.5) * 14)); // "roughly where the beam was"
+      let y = 30;
       let vx = (rand() - 0.5) * 0.6;
       let vy = 0;
       let frames = 0;
       let sinceChime = 9;
+      let nudged = false;
+      let slow = false;
+      // one mid-fall nudge: tap a side of the board to puff the ember that way
+      beacon.style.touchAction = 'none';
+      beacon.onpointerdown = (ev) => {
+        if (nudged) return;
+        nudged = true;
+        const half = ev.clientX - br.left < bW / 2 ? -1 : 1;
+        vx += half * 1.1;
+        feedback.chime(500);
+        beam?.classList.add('puff');
+        this.timers.push(window.setTimeout(() => beam?.classList.remove('puff'), 220));
+      };
       feedback.chime(480);
       const step = (): void => {
         frames += 1;
         sinceChime += 1;
-        vy += 0.42; // gravity
-        vx *= 0.995; // slight air drag
-        x += vx;
-        y += vy;
+        const dt = slow ? 0.45 : 1; // the climax leans into slow motion
+        vy += 0.42 * dt;
+        vx *= 0.995;
+        x += vx * dt;
+        y += vy * dt;
         if (x < R) {
           x = R;
           vx = Math.abs(vx) * 0.6;
@@ -526,140 +731,167 @@ export class MinigameUI {
           x = bW - R;
           vx = -Math.abs(vx) * 0.6;
         }
+        // live mover position
+        if (moverIdx >= 0) {
+          const mv = pegs[moverIdx]!;
+          const mr = mv.el.getBoundingClientRect();
+          mv.x = mr.left + mr.width / 2 - br.left;
+          mv.y = mr.top + mr.height / 2 - br.top;
+        }
         for (const pg of pegs) {
           const dx = x - pg.x;
           const dy = y - pg.y;
           const d = Math.hypot(dx, dy);
-          const min = R + PEG;
+          const min = R + pg.r;
           if (d < min && d > 0.001) {
             const nx = dx / d;
             const ny = dy / d;
             x = pg.x + nx * min;
             y = pg.y + ny * min;
             const dot = vx * nx + vy * ny;
-            vx = (vx - 2 * dot * nx) * 0.55 + (rand() - 0.5) * 0.9; // reflect + lively jitter
-            vy = Math.max(0.6, (vy - 2 * dot * ny) * 0.55); // keep it falling
-            // The struck peg flashes gold — you can read the ember's whole path.
-            pg.el.classList.add('hit');
-            this.timers.push(window.setTimeout(() => pg.el.classList.remove('hit'), 300));
-            if (sinceChime > 3) {
-              feedback.chime(430 + rand() * 150);
-              sinceChime = 0;
+            const bounce = pg.kind === 'bumper' ? 0.85 : 0.55; // bumpers BOING
+            vx = (vx - 2 * dot * nx) * bounce + (rand() - 0.5) * 0.9;
+            vy = Math.max(0.6, (vy - 2 * dot * ny) * bounce);
+            if (pg.kind === 'bumper') {
+              vy = Math.max(1.4, vy);
+              this.squash(pg.el, 1.35);
+              if (sinceChime > 2) {
+                feedback.chime(220);
+                sinceChime = 0;
+              }
+              vibrate(10);
+            } else if (pg.kind === 'golden' && !goldenHit) {
+              goldenHit = true;
+              pg.el.classList.add('struck-gold');
+              this.spark(beacon, (pg.x / bW) * 100, (pg.y / bH) * 100);
+              feedback.comboChime(5);
+              vibrate([14, 40, 14]);
+            } else {
+              pg.el.classList.add('hit');
+              this.timers.push(window.setTimeout(() => pg.el.classList.remove('hit'), 300));
+              if (sinceChime > 3) {
+                feedback.chime(430 + rand() * 150);
+                sinceChime = 0;
+              }
             }
           }
         }
         ember.style.left = `${(x / bW) * 100}%`;
         ember.style.top = `${(y / bH) * 100}%`;
         trail(x, y);
-        // Anticipation: as the ember nears the boats, the slot it's heading for leans in.
         if (y > slotsTop - 44) {
           const proj = Math.max(0, Math.min(BEACON_SLOTS - 1, Math.floor((x / bW) * BEACON_SLOTS)));
           slotEls.forEach((s2, i) => s2.classList.toggle('near', i === proj));
+          // heading for the heart: the last moments stretch out
+          if (!slow && proj === BEACON_ROWS / 2) {
+            slow = true;
+            beacon.classList.add('slowmo');
+          }
         }
-        if (y >= slotsTop || frames > 360) {
+        if (y >= slotsTop || frames > 620) {
+          beacon.classList.remove('slowmo');
+          beacon.onpointerdown = null;
           const slot = Math.max(0, Math.min(BEACON_SLOTS - 1, Math.floor((x / bW) * BEACON_SLOTS)));
           return land(slot);
         }
-        const id = requestAnimationFrame(step);
-        this.rafs.push(id);
+        this.rafs.push(requestAnimationFrame(step));
       };
-      const id = requestAnimationFrame(step);
-      this.rafs.push(id);
+      this.rafs.push(requestAnimationFrame(step));
     };
 
-    // Reduced motion: tap the slot you aim for (no sweep).
+    // Reduced motion: tap the slot you aim for (no sweep, no sim).
     if (this.reduce()) {
       this.coachOnce('beacon-drop', 'Aim for the centre slot — the light draws the finest catch there.');
       stage.querySelectorAll<HTMLButtonElement>('.mg-slot').forEach((b) => {
         b.onclick = () => {
           stage.querySelectorAll<HTMLButtonElement>('.mg-slot').forEach((r) => (r.disabled = true));
-          release(Number(b.dataset.slot));
+          release((Number(b.dataset.slot) + 0.5) / BEACON_SLOTS);
         };
       });
-      const actions = el('mg-actions');
-      if (actions) actions.innerHTML = '';
       return;
     }
 
-    // Full motion: a launch marker sweeps the top; tap to release from there.
-    this.coachOnce('beacon-drop', 'A launch light sweeps above — release it aimed at the centre.');
-    const aim = stage.querySelector<HTMLElement>('.mg-beacon-aim');
-    const track = stage.querySelector<HTMLElement>('.mg-beacon-aim-track');
-    aim?.classList.add('sweep');
-    // Drag-to-aim: touch the track to pause the sweep and steer the launch light
-    // with your finger — lift (or tap Release) to keep that aim.
-    if (aim && track) {
-      track.style.touchAction = 'none';
-      track.onpointerdown = (e) => {
-        track.setPointerCapture(e.pointerId);
-        aim.classList.remove('sweep');
-        const move = (ev: PointerEvent): void => {
-          const t = track.getBoundingClientRect();
-          const pct = t.width ? Math.max(0, Math.min(1, (ev.clientX - t.left) / t.width)) : 0.5;
-          aim.style.left = `${pct * 100}%`;
-        };
-        move(e);
-        track.onpointermove = move;
-        track.onpointerup = () => {
-          track.onpointermove = null;
-          track.onpointerup = null;
-        };
+    // Full motion: the LIGHTHOUSE BEAM sweeps the board top like the old
+    // carnival clown game — tap anywhere to drop the ember from roughly where
+    // the beam points at that instant.
+    this.coachOnce('beacon-drop', 'The beam sweeps the boats — tap to drop the ember where it points.');
+    let beamX = 0.5;
+    let released = false;
+    const t0 = performance.now();
+    const sweep = (): void => {
+      if (released) return;
+      const t = (performance.now() - t0) / 1400; // one full left-right pass ~2.8s
+      beamX = 0.5 + 0.44 * Math.sin(t * Math.PI);
+      if (beam) beam.style.setProperty('--bx', `${(beamX * 100).toFixed(2)}%`);
+      this.rafs.push(requestAnimationFrame(sweep));
+    };
+    this.rafs.push(requestAnimationFrame(sweep));
+    if (beacon) {
+      beacon.style.touchAction = 'none';
+      const startDrop = (): void => {
+        if (released) return;
+        released = true;
+        beam?.classList.add('drop');
+        release(beamX);
       };
+      beacon.onpointerdown = startDrop;
+      this.startButton('Drop the light', startDrop);
     }
-    this.startButton('Release the light', () => {
-      const actions = el('mg-actions');
-      if (actions) actions.innerHTML = '';
-      let targetSlot = BEACON_ROWS / 2;
-      if (aim && track) {
-        const a = aim.getBoundingClientRect();
-        const t = track.getBoundingClientRect();
-        const pct = t.width ? (a.left + a.width / 2 - t.left) / t.width : 0.5;
-        targetSlot = Math.max(0, Math.min(BEACON_ROWS, Math.round(pct * BEACON_ROWS)));
-        aim.classList.remove('sweep');
-      }
-      release(targetSlot);
-    });
   }
 
-  // ---------- 3) Strike While Hot (whack-a-mole) ----------
+  // ---------- 3) Strike While Hot (whack-a-mole + the hammer) ----------
 
   private playForge(seed: number): void {
     const stage = el('mg-stage');
     if (!stage) return;
     const schedule = forgeSchedule(seed);
     let cells = '';
-    for (let i = 0; i < FORGE_CELLS; i++)
-      cells += `<button class="mg-forge-cell" data-cell="${i}" aria-label="anvil"></button>`;
-    // Ingot art for the strike counter and the lump→ingot transform. The lump
-    // is a dedicated sprite when sliced, else the raw copper ore (chain L0).
+    for (let i = 0; i < 9; i++) cells += `<button class="mg-forge-cell" data-cell="${i}" aria-label="anvil"></button>`;
+    // Ore → ingot: a glowing lump sits on the hot anvil; the hammer turns it
+    // into a bar. Lump sprite when sliced, else the raw copper ore (chain L0).
     const lumpUrl = artUrl('mg_forge_lump') ?? artUrl('item_copper_0');
     const ingotUrl = artUrl('item_copper_2');
+    const hammerUrl = artUrl('mg_forge_hammer');
     stage.innerHTML =
       `<div class="mg-forge"><div class="mg-forge-grid">${cells}</div>` +
       `<div class="mg-forge-bar"><span class="mg-forge-fill"></span></div>` +
       `<p class="mg-forge-score">${ingotUrl ? `<img class="mg-forge-counter-ingot" src="${ingotUrl}" alt="" />` : ''}Strikes: <b id="mg-forge-hits">0</b><span id="mg-forge-combo" class="mg-combo"></span></p></div>`;
-    this.coachOnce('forge-strike', 'Strike each glowing anvil before it cools — a clean run forges a bar.');
+    this.coachOnce('forge-strike', 'Strike while the glow is brightest — the sweet heat forges the finest copper.');
     const hitsEl = el('mg-forge-hits');
     const comboEl = el('mg-forge-combo');
     let hits = 0;
-    let combo = 0; // consecutive clean strikes — brighter chime, a warm streak note
+    let perfects = 0;
+    let combo = 0;
+    let bestCombo = 0;
     const liveSpawn: Record<number, number | undefined> = {};
+    const sweetNow: Record<number, boolean> = {};
     const flameStop: Record<number, (() => void) | undefined> = {};
     const forgeEl = stage.querySelector<HTMLElement>('.mg-forge');
     const cellEls = Array.from(stage.querySelectorAll<HTMLButtonElement>('.mg-forge-cell'));
     const coolCell = (c: HTMLButtonElement, cell: number): void => {
       liveSpawn[cell] = undefined;
+      sweetNow[cell] = false;
       flameStop[cell]?.();
       flameStop[cell] = undefined;
-      c.classList.remove('hot');
+      c.classList.remove('hot', 'sweet');
       c.style.backgroundImage = '';
       c.style.backgroundSize = '';
       c.style.backgroundPositionX = '';
       c.querySelector('.mg-forge-lump')?.remove(); // the unstruck lump cools away
     };
-    // A clean strike turns the glowing lump into a finished ingot that flies to
-    // the strike counter — the whole point of a forge, made visible.
+    // THE HAMMER: a big smith's hammer swings down onto the struck cell —
+    // anticipation (rear back) → impact (sparks + squash) → follow-through.
+    const swingHammer = (c: HTMLButtonElement): void => {
+      if (this.reduce()) return;
+      const h = document.createElement('div');
+      h.className = 'mg-hammer';
+      h.innerHTML = hammerUrl ? `<img src="${hammerUrl}" alt="" />` : '<span class="mg-hammer-ico">🔨</span>';
+      c.appendChild(h);
+      this.timers.push(window.setTimeout(() => h.remove(), 340));
+    };
     const counterEl = stage.querySelector<HTMLElement>('.mg-forge-score');
+    // A clean strike turns the glowing lump into a finished ingot that flies to
+    // the strike counter — ore in, copper out, made visible.
     const flyIngot = (c: HTMLButtonElement): void => {
       if (!ingotUrl || this.reduce()) return;
       const cr = c.getBoundingClientRect();
@@ -684,21 +916,34 @@ export class MinigameUI {
       );
     };
     cellEls.forEach((c) => {
-      c.onclick = () => {
+      c.onpointerdown = () => {
         const cell = Number(c.dataset.cell);
         if (liveSpawn[cell] === undefined) return; // not hot: no penalty, just nothing
+        const perfect = !!sweetNow[cell];
+        // the lump becomes an ingot IN PLACE for a beat, then flies to the counter
+        const lump = c.querySelector<HTMLImageElement>('.mg-forge-lump');
+        if (lump && ingotUrl) {
+          lump.src = ingotUrl;
+          lump.classList.add('mg-forge-ingot');
+        }
         coolCell(c, cell);
-        c.classList.add('struck'); // bright flash + shake on a clean strike
+        swingHammer(c);
+        c.classList.add('struck');
         this.timers.push(window.setTimeout(() => c.classList.remove('struck'), 300));
-        this.spark(c, 50, 44); // ember burst where the hammer lands
-        flyIngot(c); // lump → ingot, banked on the counter
-        (navigator as Navigator & { vibrate?: (n: number) => void }).vibrate?.(12);
+        this.squash(c, perfect ? 1.28 : 1.16);
+        this.spark(c, 50, 44);
+        flyIngot(c);
+        vibrate(perfect ? 18 : 12);
         hits += 1;
-        combo += 1;
+        if (perfect) perfects += 1;
+        combo = comboStep(combo, true);
+        bestCombo = Math.max(bestCombo, combo);
         if (hitsEl) hitsEl.textContent = String(hits);
-        if (comboEl) comboEl.textContent = combo >= 3 ? ` · ${combo} in a row!` : '';
-        forgeEl?.classList.toggle('hot-streak', combo >= 3); // the whole forge glows on a streak
-        feedback.chime(420 + Math.min(combo, 8) * 45); // rises with the streak
+        if (comboEl)
+          comboEl.textContent =
+            combo >= 3 ? ` · ${combo} in a row!${perfect ? ' ✦' : ''}` : perfect ? ' · sweet heat ✦' : '';
+        forgeEl?.classList.toggle('hot-streak', combo >= 3);
+        feedback.comboChime(combo); // the anvil rings up the scale
       };
     });
     this.startButton('Heat the forge', () => {
@@ -711,8 +956,6 @@ export class MinigameUI {
             if (!c) return;
             liveSpawn[sp.cell] = si;
             c.classList.add('hot');
-            // A glowing lump of copper sits on the hot anvil — what the hammer
-            // is FOR. (Sprite when sliced; the raw ore stands in meanwhile.)
             if (lumpUrl) {
               const lump = document.createElement('img');
               lump.className = 'mg-forge-lump';
@@ -720,19 +963,36 @@ export class MinigameUI {
               lump.alt = '';
               c.appendChild(lump);
             }
-            // A living, looping flame on the hot anvil (fx_flame_forge, 7-frame
-            // strip). Under reduced motion the cell's warm `.hot` glow stands in
-            // — no squished static strip.
             if (!this.reduce()) {
               flameStop[sp.cell] = this.playStrip(c, 'fx_flame_forge', { fps: 14, loop: true });
             }
+            // the SWEET HEAT: the middle stretch of the lump's life glows
+            // brightest — strike then for a perfect
+            const sweetIn = sp.ttlMs * (0.5 - FORGE_SWEET_FRAC / 2);
+            const sweetOut = sp.ttlMs * (0.5 + FORGE_SWEET_FRAC / 2);
+            this.timers.push(
+              window.setTimeout(() => {
+                if (liveSpawn[sp.cell] === si) {
+                  sweetNow[sp.cell] = true;
+                  c.classList.add('sweet');
+                }
+              }, sweetIn),
+            );
+            this.timers.push(
+              window.setTimeout(() => {
+                if (liveSpawn[sp.cell] === si) {
+                  sweetNow[sp.cell] = false;
+                  c.classList.remove('sweet');
+                }
+              }, sweetOut),
+            );
             this.timers.push(
               window.setTimeout(() => {
                 if (liveSpawn[sp.cell] === si) {
                   coolCell(c, sp.cell);
-                  combo = 0; // a cooled anvil breaks the streak (no other penalty)
-                  forgeEl?.classList.remove('hot-streak');
-                  if (comboEl) comboEl.textContent = '';
+                  combo = comboStep(combo, false); // soft decay — one step, never a shatter
+                  forgeEl?.classList.toggle('hot-streak', combo >= 3);
+                  if (comboEl) comboEl.textContent = combo >= 3 ? ` · ${combo} in a row!` : '';
                 }
               }, sp.ttlMs),
             );
@@ -748,57 +1008,115 @@ export class MinigameUI {
       }
       this.timers.push(
         window.setTimeout(
-          () => this.finish(forgeReward(hits, schedule.length), undefined, hits),
+          () =>
+            this.finish(
+              forgeReward(hits, schedule.length, perfects, bestCombo),
+              undefined,
+              forgeScore(hits, perfects, bestCombo),
+            ),
           FORGE_DURATION_MS + 400,
         ),
       );
     });
   }
 
-  // ---------- 4) Joss's Catch (bobber timing) ----------
+  // ---------- 4) Joss's Catch (strike, then reel) ----------
 
   private playCatch(seed: number): void {
     const stage = el('mg-stage');
     if (!stage) return;
     const { delayMs, windowMs } = fishBite(seed);
     stage.innerHTML =
-      `<div class="mg-catch"><div class="mg-catch-water"><div class="mg-bobber"></div></div>` +
+      `<div class="mg-catch"><div class="mg-catch-water"><div class="mg-bobber"></div><div class="mg-catch-shadow" hidden></div></div>` +
+      `<div class="mg-reel" hidden><div class="mg-reel-zone"></div><div class="mg-reel-marker"></div></div>` +
       `<p class="mg-catch-hint">Cast, then strike the moment the bobber dips.</p></div>`;
-    this.coachOnce('joss-catch', 'Wait for the bobber to dip, then tap the water — patience lands the best fish.');
+    this.coachOnce('joss-catch', 'Strike on the dip, then tap again as the marker crosses the golden water.');
     const water = stage.querySelector<HTMLElement>('.mg-catch-water');
     const bobber = stage.querySelector<HTMLElement>('.mg-bobber');
+    const shadow = stage.querySelector<HTMLElement>('.mg-catch-shadow');
+    const reel = stage.querySelector<HTMLElement>('.mg-reel');
+    const zone = stage.querySelector<HTMLElement>('.mg-reel-zone');
+    const marker = stage.querySelector<HTMLElement>('.mg-reel-marker');
     const hint = stage.querySelector<HTMLElement>('.mg-catch-hint');
+
+    // the run's climax: the catch surfaces as a silhouette, then the reveal
+    const resolveRun = (q: number, reelQ: number): void => {
+      const reward = catchReward(q, reelQ);
+      const blend = q * 0.55 + reelQ * 0.45;
+      if (water && blend > 0.25 && !this.reduce()) {
+        this.waterSplash(water, water.clientWidth / 2, water.clientHeight * 0.42, blend > 0.6);
+        if (shadow) {
+          shadow.hidden = false;
+          shadow.classList.add('rise');
+        }
+      }
+      vibrate(blend > 0.6 ? 18 : 8);
+      feedback.chime(blend > 0.6 ? 640 : 480);
+      this.timers.push(
+        window.setTimeout(() => this.finish(reward, undefined, Math.round(blend * 100)), this.reduce() ? 120 : 640),
+      );
+    };
+
+    // Stage B: THE REEL. A marker sweeps the bar twice; tap while it crosses
+    // the golden zone. Missing just reels it in plain — no-fail.
+    const startReel = (q: number): void => {
+      if (!reel || !marker || !zone || this.reduce()) return resolveRun(q, this.reduce() ? 0.75 : 0.3);
+      reel.hidden = false;
+      if (hint) hint.textContent = 'Reel — tap on the golden water!';
+      const zoneCentre = 0.3 + ((seed % 100) / 100) * 0.4; // seeded zone position
+      zone.style.left = `${(zoneCentre - CATCH_REEL_ZONE / 2) * 100}%`;
+      zone.style.width = `${CATCH_REEL_ZONE * 100}%`;
+      const rT0 = performance.now();
+      let reelDone = false;
+      const sweepReel = (): void => {
+        if (reelDone) return;
+        const t = (performance.now() - rT0) / CATCH_REEL_MS;
+        if (t >= 1) {
+          reelDone = true;
+          resolveRun(q, 0.3); // the line comes in anyway
+          return;
+        }
+        const p = 0.5 - 0.48 * Math.cos(t * Math.PI * 2); // two passes
+        marker.style.left = `${p * 100}%`;
+        this.rafs.push(requestAnimationFrame(sweepReel));
+      };
+      this.rafs.push(requestAnimationFrame(sweepReel));
+      reel.onpointerdown = () => {
+        if (reelDone) return;
+        reelDone = true;
+        const mp = parseFloat(marker.style.left) / 100;
+        const dist = Math.abs(mp - zoneCentre) / (CATCH_REEL_ZONE / 2);
+        const reelQ = Math.max(0.2, Math.min(1, 1.05 - dist * 0.5));
+        marker.classList.add(dist <= 1 ? 'in-zone' : 'out-zone');
+        feedback.chime(dist <= 1 ? 600 : 360);
+        resolveRun(q, dist <= 1 ? reelQ : 0.3);
+      };
+    };
+
     this.startButton('Cast the line', () => {
       const actions = el('mg-actions');
       if (actions) actions.innerHTML = '';
       if (hint) hint.textContent = 'Wait for it…';
       let dipAt = 0;
-      let resolved = false;
-      const resolve = (quality: number) => {
-        if (resolved) return;
-        resolved = true;
-        const q = Math.max(0, Math.min(1, quality));
-        if (q > 0.3 && water) {
-          this.waterSplash(water, water.clientWidth / 2, water.clientHeight * 0.42); // the fish breaks the surface
-          feedback.chime(q > 0.6 ? 640 : 480);
-        }
-        (navigator as Navigator & { vibrate?: (n: number) => void }).vibrate?.(q > 0.6 ? 18 : 8);
-        this.finish(catchReward(quality), undefined, Math.round(q * 100));
-      };
-      water?.addEventListener('click', () => {
-        if (resolved) return;
+      let struck = false;
+      water?.addEventListener('pointerdown', () => {
+        if (struck) return;
+        struck = true;
         if (!dipAt) {
-          if (hint) hint.textContent = 'Too soon — it darted off!';
-          resolve(0);
+          if (hint) hint.textContent = 'Too soon — but something’s still on the line…';
+          startReel(0.15);
           return;
         }
-        resolve(Math.max(0, 1 - (performance.now() - dipAt) / windowMs));
+        const q = Math.max(0, 1 - (performance.now() - dipAt) / windowMs);
+        bobber?.classList.remove('dip');
+        this.squash(water, 1.06);
+        startReel(q);
       });
       // a "nibble" tell just before the dip, so the strike can be anticipated
       this.timers.push(
         window.setTimeout(
           () => {
-            if (!resolved && hint) hint.textContent = 'A nibble…';
+            if (!struck && hint) hint.textContent = 'A nibble…';
             bobber?.classList.add('nibble');
           },
           Math.max(0, delayMs - 500),
@@ -806,25 +1124,33 @@ export class MinigameUI {
       );
       this.timers.push(
         window.setTimeout(() => {
-          if (resolved) return;
+          if (struck) return;
           dipAt = performance.now();
           bobber?.classList.remove('nibble');
           bobber?.classList.add('dip');
           if (hint) hint.textContent = 'Strike!';
           feedback.chime(300);
-          this.timers.push(window.setTimeout(() => resolve(0.2), windowMs + 250)); // slipped, but a nibble
+          this.timers.push(
+            window.setTimeout(() => {
+              if (!struck) {
+                struck = true;
+                startReel(0.2); // slipped, but a nibble — the reel still turns
+              }
+            }, windowMs + 250),
+          );
         }, delayMs),
       );
     });
   }
 
-  // ---------- 5) The Foraging Expedition (fog grid) ----------
+  // ---------- 5) The Foraging Expedition (warmer / colder) ----------
 
   private playForage(seed: number): void {
     const stage = el('mg-stage');
     if (!stage) return;
-    const { kinds } = forageField(seed);
+    const { kinds, warmth } = forageField(seed);
     let steps = FORAGE_STEPS;
+    let heartFound = false;
     const acc: { coins: number; items: { chain: ChainId; level: number }[]; ember: number } = {
       coins: 0,
       items: [],
@@ -837,14 +1163,15 @@ export class MinigameUI {
       `<div class="mg-forage"><div class="mg-forage-grid">${tiles}</div>` +
       `<p class="mg-forage-steps">Footsteps left: <b id="mg-forage-steps">${steps}</b></p></div>`;
     const stepsEl = el('mg-forage-steps');
-    this.coachOnce('foraging', 'Uncover the ground tile by tile. Keep everything — head home whenever you like.');
-    const end = () =>
-      this.finish(
-        { ...acc, heart: 'You came home with your basket full — and a story or two.' },
-        undefined,
-        acc.items.length + acc.ember, // finds gathered — the forage best
-      );
-    // A "head home" button so you can stop early and keep everything found.
+    this.coachOnce('foraging', 'Warm colours mean the honeycomb is near. Head home early to keep a light step.');
+    let ended = false;
+    const end = (): void => {
+      if (ended) return;
+      ended = true;
+      this.finish(forageReward(acc, heartFound, Math.max(0, steps)), undefined, acc.items.length + acc.ember + (heartFound ? Math.max(0, steps) : 0));
+    };
+    // "Head home" — stop early and keep everything; with the heart found, the
+    // unspent footsteps become the forager's bonus (a real decision at last).
     const actions = el('mg-actions');
     if (actions) {
       actions.innerHTML = '';
@@ -854,8 +1181,6 @@ export class MinigameUI {
       b.onclick = end;
       actions.appendChild(b);
     }
-    // Painted token if the art's been sliced (mg_forage_*), emoji otherwise —
-    // so the grid upgrades the moment the assets land, with no code change.
     const token = (art: string, emoji: string, extra = ''): string => {
       const url = artUrl(art);
       return url
@@ -867,37 +1192,66 @@ export class MinigameUI {
       if (kind === 'coins') return token('mg_forage_coin', '🪙');
       if (kind === 'ember') return token('mg_forage_ember', '🔥');
       if (kind === 'heart') return token('mg_forage_honeycomb', '🍯');
+      if (kind === 'clearing') return token('mg_forage_clearing', '✨', 'mg-fog-view');
       return token('mg_forage_leaf', '🌿', 'mg-fog-view');
     };
-    stage.querySelectorAll<HTMLButtonElement>('.mg-fog').forEach((t) => {
-      t.onclick = () => {
-        if (steps <= 0 || t.classList.contains('found')) return;
-        const i = Number(t.dataset.i);
-        const kind = kinds[i]!;
-        const pay = forageTile(seed, i, kind);
-        acc.coins += pay.coins;
-        acc.ember += pay.ember;
-        acc.items.push(...pay.items);
+    const tileEls = Array.from(stage.querySelectorAll<HTMLButtonElement>('.mg-fog'));
+    // Reveal a tile: bank its yield, tint it by WARMTH (the warmer/colder
+    // trail that turns blind taps into a hunt), and let clearings cascade.
+    const reveal = (i: number, free: boolean, depth = 0): void => {
+      const t = tileEls[i];
+      if (!t || t.classList.contains('found') || ended) return;
+      if (!free) {
+        if (steps <= 0) return;
         steps -= 1;
         if (stepsEl) stepsEl.textContent = String(steps);
-        t.classList.add('found', `k-${kind}`);
-        t.innerHTML = glyph(kind, pay);
-        // A little sparkle greets a real find (the honeycomb heart brightest).
-        if (kind === 'heart' || kind === 'ember' || kind === 'coins') this.spark(t, 50, 46);
-        if (kind === 'heart') (navigator as Navigator & { vibrate?: (n: number) => void }).vibrate?.(20);
-        feedback.chime(kind === 'heart' ? 520 : 360);
-        if (steps <= 0) this.timers.push(window.setTimeout(end, 600));
-      };
+      }
+      const kind = kinds[i]!;
+      const pay = forageTile(seed, i, kind);
+      acc.coins += pay.coins;
+      acc.ember += pay.ember;
+      acc.items.push(...pay.items);
+      const w = Math.min(4, warmth[i] ?? 4);
+      t.classList.add('found', `k-${kind}`, `w-${w}`);
+      t.innerHTML = glyph(kind, pay);
+      this.squash(t, 1.14);
+      if (kind === 'heart') {
+        heartFound = true;
+        this.spark(t, 50, 46);
+        vibrate([16, 60, 20]);
+        feedback.deliver();
+        const hint = stage.querySelector<HTMLElement>('.mg-forage-steps');
+        hint?.insertAdjacentHTML('beforeend', ' · <span class="mg-forage-bonus">honeycomb found — home pays +3/step!</span>');
+      } else if (kind === 'clearing') {
+        // the clearing opens its neighbours in a gentle rush — free reveals
+        feedback.chime(560);
+        const col = i % FORAGE_COLS;
+        const neigh = [i - FORAGE_COLS, i + FORAGE_COLS, col > 0 ? i - 1 : -1, col < FORAGE_COLS - 1 ? i + 1 : -1].filter(
+          (n) => n >= 0 && n < FORAGE_SIZE,
+        );
+        neigh.forEach((n, k) =>
+          this.timers.push(window.setTimeout(() => reveal(n, true, depth + 1), 140 + k * 110)),
+        );
+      } else {
+        if (kind === 'ember' || kind === 'coins') this.spark(t, 50, 46);
+        // warmer tiles ring higher — you can HEAR the trail
+        feedback.chime(300 + (4 - w) * 60);
+      }
+      if (steps <= 0 && !ended) this.timers.push(window.setTimeout(end, 700));
+    };
+    tileEls.forEach((t) => {
+      t.onclick = () => reveal(Number(t.dataset.i), false);
     });
   }
 
-  // ---------- 6) Sorting the Stacks (memory pairs) ----------
+  // ---------- 6) Sorting the Stacks (memory pairs, streaks) ----------
 
   private playStacks(seed: number): void {
     const stage = el('mg-stage');
     if (!stage) return;
-    const deck = stacksDeck(seed);
-    // Six distinct shelf faces, reusing item art.
+    const pairs = stacksPairsFor(this.game.minigameBest('sorting-stacks') ?? undefined);
+    const deck = stacksDeck(seed, pairs);
+    // Distinct shelf faces, reusing item art (enough for the ramped shelf too).
     const FACES: readonly [ChainId, number][] = [
       ['wood', 3],
       ['harvest', 3],
@@ -905,19 +1259,26 @@ export class MinigameUI {
       ['water', 3],
       ['honey', 3],
       ['herbs', 3],
+      ['fish', 2],
+      ['copper', 2],
+      ['seeds', 2],
+      ['books', 2],
     ];
-    const face = (v: number) => tileMarkup(FACES[v]![0], FACES[v]![1]);
+    const face = (v: number) => tileMarkup(FACES[v % FACES.length]![0], FACES[v % FACES.length]![1]);
     let cards = '';
     deck.forEach(
       (v, i) => (cards += `<button class="mg-stack-card" data-i="${i}" data-v="${v}" aria-label="card"></button>`),
     );
     stage.innerHTML =
-      `<div class="mg-stacks"><div class="mg-stacks-grid">${cards}</div>` +
-      `<p class="mg-stacks-hint">Flips: <b id="mg-stacks-flips">0</b></p></div>`;
-    this.coachOnce('sorting-stacks', 'Flip two cards to find a matching pair — fewer flips, a finer sort.');
+      `<div class="mg-stacks"><div class="mg-stacks-grid" style="--stack-cols:4">${cards}</div>` +
+      `<p class="mg-stacks-hint">Flips: <b id="mg-stacks-flips">0</b><span id="mg-stacks-streak" class="mg-combo"></span></p></div>`;
+    this.coachOnce('sorting-stacks', 'Matches in a row build a streak — the finer volumes come from memory.');
     const flipsEl = el('mg-stacks-flips');
+    const streakEl = el('mg-stacks-streak');
     let flips = 0;
     let matched = 0;
+    let streak = 0;
+    let bestStreak = 0;
     let first = -1;
     let busy = false;
     const cardEls = Array.from(stage.querySelectorAll<HTMLButtonElement>('.mg-stack-card'));
@@ -941,17 +1302,27 @@ export class MinigameUI {
           fc.classList.add('done');
           matched += 1;
           first = -1;
-          this.spark(c, 50, 42); // a matched pair sparkles together
+          streak = comboStep(streak, true);
+          bestStreak = Math.max(bestStreak, streak);
+          if (streakEl) streakEl.textContent = streak >= 2 ? ` · ${streak} from memory!` : '';
+          this.spark(c, 50, 42);
           this.spark(fc, 50, 42);
-          (navigator as Navigator & { vibrate?: (n: number) => void }).vibrate?.(12);
-          feedback.merge(1);
-          if (matched === STACKS_PAIRS)
+          this.squash(c, 1.2);
+          this.squash(fc, 1.2);
+          vibrate(12);
+          feedback.comboChime(streak); // the shelves sing up the scale
+          if (matched === pairs)
             this.timers.push(
-              // fewer flips → a higher best (perfect = STACKS_PAIRS flips)
-              window.setTimeout(() => this.finish(stacksReward(flips), undefined, Math.max(0, 40 - flips)), 550),
+              // fewer flips → a higher best (perfect = pairs flips)
+              window.setTimeout(
+                () => this.finish(stacksReward(flips, bestStreak, pairs), undefined, Math.max(0, 40 - flips)),
+                550,
+              ),
             );
         } else {
           busy = true;
+          streak = comboStep(streak, false); // a forgotten shelf steps down, never shatters
+          if (streakEl) streakEl.textContent = streak >= 2 ? ` · ${streak} from memory!` : '';
           this.timers.push(
             window.setTimeout(() => {
               c.classList.remove('up');
@@ -967,15 +1338,25 @@ export class MinigameUI {
     });
   }
 
-  // ---------- 7) The Saw Song (rhythm lanes) ----------
+  // ---------- 7) The Saw Song (rhythm lanes: holds, chords, the strum) ------
 
   private playSawmill(seed: number): void {
     const stage = el('mg-stage');
     if (!stage) return;
     const schedule = sawmillSchedule(seed);
-    const logUrl = artUrl('mg_sawmill_log') ?? artUrl('item_wood_1');
     const bladeUrl = artUrl('mg_sawmill_blade');
-    const logMarkup = logUrl ? `<img src="${logUrl}" alt="" draggable="false" />` : '🪵';
+    // The log stands UPRIGHT in its flume — long edge vertical, the round
+    // end-grain face looking down the lane. Painted sprite when sliced; a
+    // CSS-drawn bark-and-rings log otherwise (never a bare emoji).
+    const logVUrl = artUrl('mg_sawmill_log_v');
+    const logMarkup = (kind: 'log' | 'hold'): string => {
+      const tall = kind === 'hold' ? ' mg-log-tall' : '';
+      if (logVUrl) return `<div class="mg-log-body${tall}"><img src="${logVUrl}" alt="" draggable="false" /></div>`;
+      return (
+        `<div class="mg-log-body mg-log-css${tall}">` +
+        `<div class="mg-log-bark"></div><div class="mg-log-face"></div></div>`
+      );
+    };
     let lanes = '';
     for (let l = 0; l < SAWMILL_LANES; l++) lanes += `<div class="mg-lane" data-lane="${l}"></div>`;
     stage.innerHTML =
@@ -983,7 +1364,7 @@ export class MinigameUI {
       `<div class="mg-sawline">${bladeUrl ? `<img class="mg-sawblade" src="${bladeUrl}" alt="" />` : `<span class="mg-sawblade-fallback" aria-hidden="true">🪚</span>`}</div>` +
       `</div>` +
       `<p class="mg-saw-score">Cut: <b id="mg-saw-hits">0</b><span id="mg-saw-combo" class="mg-combo"></span></p></div>`;
-    this.coachOnce('sawmill', 'Tap a log the moment it crosses the blade line — a missed log just floats on.');
+    this.coachOnce('sawmill', 'Saw each log as it crosses the blade line — hold the long ones right through.');
 
     const mill = stage.querySelector<HTMLElement>('.mg-sawmill');
     const laneEls = Array.from(stage.querySelectorAll<HTMLElement>('.mg-lane'));
@@ -994,38 +1375,33 @@ export class MinigameUI {
     let perfects = 0;
     let combo = 0;
     let bestCombo = 0;
-    // Per-lane live log: element + the time it crosses the blade line.
-    type LiveLog = { elm: HTMLElement; crossAt: number; done: boolean };
-    const live: (LiveLog | undefined)[] = Array.from({ length: SAWMILL_LANES }, () => undefined);
+    type LiveLog = { elm: HTMLElement; crossAt: number; done: boolean; kind: 'log' | 'hold' | 'strum' };
+    // per-lane QUEUES — wave 3 allows same-lane repeats and chords
+    const live: LiveLog[][] = Array.from({ length: SAWMILL_LANES }, () => []);
+    let liveStrum: LiveLog | null = null;
 
-    const LINE_PCT = 0.78; // the blade line's position down the lane
+    const LINE_PCT = 0.78;
 
-    // Split the log in two — halves part, tilt, and fade; sawdust flies.
-    const sawInHalf = (lane: HTMLElement, log: HTMLElement): void => {
+    // Split the log DOWN THE MIDDLE into two planks that part, tilt and settle.
+    const sawInHalf = (host: HTMLElement, log: HTMLElement, big = false): void => {
       const y = log.offsetTop;
+      const html = log.querySelector('.mg-log-body')?.outerHTML ?? '';
       log.remove();
       if (reduce) return;
       for (const side of ['l', 'r'] as const) {
         const half = document.createElement('div');
-        half.className = `mg-log-half mg-log-half-${side}`;
-        half.innerHTML = logMarkup;
+        half.className = `mg-plank mg-plank-${side}${big ? ' mg-plank-big' : ''}`;
+        half.innerHTML = html;
         half.style.top = `${y}px`;
-        lane.appendChild(half);
-        this.timers.push(window.setTimeout(() => half.remove(), 520));
+        host.appendChild(half);
+        this.timers.push(window.setTimeout(() => half.remove(), 620));
       }
-      this.spark(lane, 50, LINE_PCT * 100); // sawdust burst at the blade
+      this.spark(host, 50, LINE_PCT * 100); // sawdust burst at the blade
     };
 
-    const onCut = (lane: HTMLElement, log: LiveLog, perfect: boolean): void => {
-      log.done = true;
-      // freeze the fall where it stands, then split
-      log.elm.style.transition = 'none';
-      log.elm.style.top = `${log.elm.offsetTop}px`;
-      sawInHalf(lane, log.elm);
-      lane.classList.add('flash');
-      this.timers.push(window.setTimeout(() => lane.classList.remove('flash'), 240));
+    const scoreCut = (perfect: boolean): void => {
       hits += 1;
-      combo += 1;
+      combo = comboStep(combo, true);
       bestCombo = Math.max(bestCombo, combo);
       if (perfect) perfects += 1;
       if (hitsEl) hitsEl.textContent = String(hits);
@@ -1033,16 +1409,114 @@ export class MinigameUI {
         comboEl.textContent =
           combo >= 3 ? ` · ×${combo}${perfect ? ' clean cut!' : ''}` : perfect ? ' · clean cut!' : '';
       mill?.classList.toggle('hot-streak', combo >= 3);
-      feedback.chime(420 + Math.min(combo, 8) * 45); // the song rises with the streak
-      (navigator as Navigator & { vibrate?: (n: number) => void }).vibrate?.(perfect ? 18 : 12);
+      feedback.comboChime(combo); // the song climbs with the streak
+      vibrate(perfect ? 18 : 12);
+    };
+
+    const missLog = (): void => {
+      combo = comboStep(combo, false); // the song rests a step — never shatters
+      mill?.classList.toggle('hot-streak', combo >= 3);
+      if (comboEl) comboEl.textContent = combo >= 3 ? ` · ×${combo}` : '';
+    };
+
+    const onCut = (lane: HTMLElement, log: LiveLog, perfect: boolean): void => {
+      log.done = true;
+      log.elm.style.transition = 'none';
+      log.elm.style.top = `${log.elm.offsetTop}px`;
+      sawInHalf(lane, log.elm);
+      lane.classList.add('flash');
+      this.timers.push(window.setTimeout(() => lane.classList.remove('flash'), 240));
+      scoreCut(perfect);
+    };
+
+    // THE BIG STRUM: one wide log across every lane ends the song — hit it and
+    // the whole mill sings (slow-mo pause + the full three-note motif).
+    const spawnStrum = (sp: { atMs: number }, t0: number): void => {
+      if (!mill) return;
+      const log = document.createElement('div');
+      log.className = 'mg-log mg-strum';
+      log.innerHTML = `<div class="mg-log-body mg-log-css mg-strum-body"><div class="mg-log-bark"></div></div>`;
+      mill.appendChild(log);
+      const crossAt = t0 + sp.atMs + SAWMILL_FALL_MS;
+      const entry: LiveLog = { elm: log, crossAt, done: false, kind: 'strum' };
+      liveStrum = entry;
+      if (reduce) {
+        log.style.top = `${LINE_PCT * 100}%`;
+        entry.crossAt = performance.now();
+      } else {
+        const totalMs = SAWMILL_FALL_MS / LINE_PCT;
+        requestAnimationFrame(() => {
+          log.style.transition = `top ${Math.round(totalMs)}ms linear`;
+          log.style.top = '104%';
+        });
+      }
+      this.timers.push(
+        window.setTimeout(
+          () => {
+            if (!entry.done) {
+              log.classList.add('drift');
+              this.timers.push(window.setTimeout(() => log.remove(), 400));
+              missLog();
+            }
+            if (liveStrum === entry) liveStrum = null;
+          },
+          reduce ? SAWMILL_WINDOW_MS * 4 : sp.atMs + SAWMILL_FALL_MS + SAWMILL_WINDOW_MS,
+        ),
+      );
+    };
+
+    const tryStrum = (): boolean => {
+      const log = liveStrum;
+      if (!log || log.done) return false;
+      const dt = performance.now() - log.crossAt;
+      if (!reduce && Math.abs(dt) > SAWMILL_WINDOW_MS) return false;
+      log.done = true;
+      log.elm.style.transition = 'none';
+      log.elm.style.top = `${log.elm.offsetTop}px`;
+      mill?.classList.add('strum-hit');
+      if (mill) sawInHalf(mill, log.elm, true);
+      this.timers.push(window.setTimeout(() => mill?.classList.remove('strum-hit'), 500));
+      scoreCut(true);
+      feedback.deliver(); // the final chord
+      vibrate([18, 60, 24]);
+      return true;
     };
 
     laneEls.forEach((lane, li) => {
-      lane.onpointerdown = () => {
-        const log = live[li];
-        if (!log || log.done) return; // nothing to saw: no penalty, just nothing
+      lane.style.touchAction = 'none';
+      lane.onpointerdown = (ev) => {
+        if (tryStrum()) return;
+        const log = live[li]!.find((lg) => !lg.done && Math.abs(performance.now() - lg.crossAt) <= SAWMILL_WINDOW_MS / 2);
+        if (!log) return; // nothing to saw: no penalty, just nothing
         const dt = performance.now() - log.crossAt;
-        if (Math.abs(dt) > SAWMILL_WINDOW_MS / 2) return; // too early/late: the log drifts on
+        if (log.kind === 'hold') {
+          // A LONG CUT: hold the saw through the log. Press in-window, keep
+          // holding — the full ride is a clean cut; letting go early still cuts.
+          log.done = true;
+          const startHold = performance.now();
+          log.elm.classList.add('holding');
+          log.elm.style.transition = 'none';
+          log.elm.style.top = `${log.elm.offsetTop}px`;
+          lane.setPointerCapture(ev.pointerId);
+          let settled = false;
+          const settle = (full: boolean): void => {
+            if (settled) return;
+            settled = true;
+            lane.onpointerup = null;
+            sawInHalf(lane, log.elm);
+            lane.classList.add('flash');
+            this.timers.push(window.setTimeout(() => lane.classList.remove('flash'), 240));
+            scoreCut(full);
+          };
+          lane.onpointerup = () => settle(performance.now() - startHold >= SAWMILL_HOLD_MS * 0.8);
+          this.timers.push(window.setTimeout(() => settle(true), SAWMILL_HOLD_MS));
+          // the saw sings while you hold
+          if (!reduce) {
+            for (let k = 1; k <= 3; k++)
+              this.timers.push(window.setTimeout(() => !settled && feedback.tick(360 + k * 70), k * 240));
+          }
+          return;
+        }
         onCut(lane, log, Math.abs(dt) <= SAWMILL_PERFECT_MS / 2);
       };
     });
@@ -1052,37 +1526,43 @@ export class MinigameUI {
       if (actions) actions.innerHTML = '';
       const t0 = performance.now();
       schedule.forEach((sp) => {
+        if (sp.kind === 'strum') {
+          this.timers.push(window.setTimeout(() => spawnStrum(sp, t0), sp.atMs));
+          return;
+        }
         this.timers.push(
           window.setTimeout(() => {
             const lane = laneEls[sp.lane];
             if (!lane) return;
             const log = document.createElement('div');
-            log.className = 'mg-log';
-            log.innerHTML = logMarkup;
+            log.className = `mg-log${sp.kind === 'hold' ? ' mg-log-hold' : ''}`;
+            log.innerHTML = logMarkup(sp.kind === 'hold' ? 'hold' : 'log');
             lane.appendChild(log);
             if (reduce) {
               // Reduced motion: the log waits ON the line — tap it in your own time.
               log.style.top = `${LINE_PCT * 100}%`;
-              const entry: LiveLog = { elm: log, crossAt: performance.now(), done: false };
-              live[sp.lane] = entry;
-              log.onpointerdown = (ev) => {
-                ev.stopPropagation();
+              const entry: LiveLog = { elm: log, crossAt: performance.now(), done: false, kind: sp.kind };
+              live[sp.lane]!.push(entry);
+              log.onpointerdown = (ev2) => {
+                ev2.stopPropagation();
                 if (!entry.done) onCut(lane, entry, true);
               };
               this.timers.push(
                 window.setTimeout(() => {
                   if (!entry.done) log.remove();
-                  if (live[sp.lane] === entry) live[sp.lane] = undefined;
+                  const q = live[sp.lane]!;
+                  const at = q.indexOf(entry);
+                  if (at >= 0) q.splice(at, 1);
                 }, SAWMILL_WINDOW_MS * 3),
               );
               return;
             }
-            // Full motion: ride the flume — a linear fall past the blade line to
-            // the lane's foot. crossAt is exact wall-clock (transition-independent).
+            // Full motion: ride the flume — a slow, readable fall past the blade
+            // line. crossAt is exact wall-clock (transition-independent).
             const crossAt = t0 + sp.atMs + SAWMILL_FALL_MS;
-            const entry: LiveLog = { elm: log, crossAt, done: false };
-            live[sp.lane] = entry;
-            const totalMs = SAWMILL_FALL_MS / LINE_PCT; // constant speed to 100%
+            const entry: LiveLog = { elm: log, crossAt, done: false, kind: sp.kind };
+            live[sp.lane]!.push(entry);
+            const totalMs = SAWMILL_FALL_MS / LINE_PCT;
             requestAnimationFrame(() => {
               log.style.transition = `top ${Math.round(totalMs)}ms linear`;
               log.style.top = '104%';
@@ -1091,15 +1571,15 @@ export class MinigameUI {
               window.setTimeout(
                 () => {
                   if (!entry.done) {
-                    log.classList.add('drift'); // slides off — no penalty, streak rests
+                    log.classList.add('drift'); // slides off — no penalty, the song rests
                     this.timers.push(window.setTimeout(() => log.remove(), 400));
-                    combo = 0;
-                    mill?.classList.remove('hot-streak');
-                    if (comboEl) comboEl.textContent = '';
+                    missLog();
                   }
-                  if (live[sp.lane] === entry) live[sp.lane] = undefined;
+                  const q = live[sp.lane]!;
+                  const at = q.indexOf(entry);
+                  if (at >= 0) q.splice(at, 1);
                 },
-                sp.atMs + SAWMILL_FALL_MS + SAWMILL_WINDOW_MS / 2,
+                sp.atMs + SAWMILL_FALL_MS + SAWMILL_WINDOW_MS / 2 + (sp.kind === 'hold' ? SAWMILL_HOLD_MS : 0),
               ),
             );
           }, sp.atMs),
@@ -1109,7 +1589,7 @@ export class MinigameUI {
         window.setTimeout(
           () =>
             this.finish(
-              sawmillReward(hits, perfects, schedule.length),
+              sawmillReward(hits, perfects, schedule.length, bestCombo),
               undefined,
               sawmillScore(hits, perfects, bestCombo),
             ),

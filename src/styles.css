@@ -4315,41 +4315,77 @@ body.reduce-motion *::after {
   align-items: center;
   font-size: 26px;
 }
-.mg-pegs {
+/* The pegfield: a fresh seeded board each drop. Pegs sit at absolute %
+   positions (from beaconPegField), sized by --pr (their radius as % of board
+   width doubled), so the DOM mirrors the physics exactly. */
+.mg-pegfield {
   position: absolute;
   top: 40px;
   left: 0;
   right: 0;
   bottom: 44px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-.mg-peg-row {
-  display: flex;
-  justify-content: center;
-  gap: 18px;
+  pointer-events: none;
 }
 .mg-peg {
-  width: 7px;
-  height: 7px;
+  position: absolute;
+  width: var(--pr, 3.6%);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
   background: rgba(236, 220, 182, 0.55);
   box-shadow: 0 0 4px rgba(236, 220, 182, 0.25); /* a faint idle glow */
   transition:
     background 0.25s,
     box-shadow 0.25s,
-    transform 0.25s;
+    scale 0.25s;
+}
+/* Round bumpers: bigger, brassier, and they BOING. */
+.mg-peg-bumper {
+  background: radial-gradient(circle at 38% 32%, #f0cf95, #b07f42 70%);
+  box-shadow:
+    0 0 8px rgba(240, 207, 149, 0.4),
+    inset 0 -2px 4px rgba(60, 34, 8, 0.4);
+}
+/* The golden beacon peg — the run's blessing, glowing until struck. */
+.mg-peg-golden {
+  background: radial-gradient(circle at 40% 32%, #fff2c8, #f4a63b 65%);
+  box-shadow: 0 0 12px rgba(255, 210, 122, 0.95);
+  animation: mgGoldenPulse 1.4s ease-in-out infinite;
+}
+.mg-peg-golden.struck-gold {
+  animation: none;
+  background: radial-gradient(circle at 40% 32%, #ffffff, #ffd27a 65%);
+  box-shadow: 0 0 18px rgba(255, 226, 170, 1);
+  scale: 1.5;
+}
+@keyframes mgGoldenPulse {
+  50% {
+    box-shadow: 0 0 18px rgba(255, 210, 122, 1);
+    scale: 1.15;
+  }
+}
+/* The mover swings gently side to side; physics reads its live position. */
+.mg-peg-mover {
+  background: radial-gradient(circle at 38% 32%, #cfe0ea, #6c93a8 70%);
+  animation: mgMoverSwing 2.6s ease-in-out infinite alternate;
+}
+@keyframes mgMoverSwing {
+  from {
+    translate: -26px 0;
+  }
+  to {
+    translate: 26px 0;
+  }
 }
 /* A struck peg flashes gold and swells — the ember's path reads at a glance. */
 .mg-peg.hit {
   background: #ffd27a;
   box-shadow: 0 0 10px rgba(255, 210, 122, 0.9);
-  transform: scale(1.6);
+  scale: 1.6;
   transition:
     background 0.05s,
     box-shadow 0.05s,
-    transform 0.05s;
+    scale 0.05s;
 }
 /* The ember's warm wake — small dots that shrink and fade behind it. */
 .mg-trail-dot {
@@ -5367,4 +5403,473 @@ body.reduce-motion *::after {
   font-weight: 700;
   font-size: 12px;
   cursor: pointer;
+}
+
+/* ===================== MINI-GAME FUN OVERHAUL ===================== */
+/* Appended last so these rules win the cascade. Shared juice + the new
+   per-game mechanics (pull-back well, beam plinko, hammer forge, reel catch,
+   warmth forage, streak stacks, vertical-log sawmill). */
+
+/* -- shared: squash & stretch (the cosy juice verb) -- */
+.mg-squash {
+  animation: mgSquash 0.24s var(--mg-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+@keyframes mgSquash {
+  30% {
+    scale: var(--squash, 1.18);
+  }
+  100% {
+    scale: 1;
+  }
+}
+
+/* -- shared: the splash ring (crown droplets come from .mg-splash-dot) -- */
+.mg-splash-ring {
+  position: absolute;
+  width: 10px;
+  height: 6px;
+  margin: -3px 0 0 -5px;
+  border: 1.5px solid rgba(170, 214, 240, 0.8);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: mgSplashRing 0.6s ease-out forwards;
+}
+@keyframes mgSplashRing {
+  to {
+    width: 46px;
+    height: 20px;
+    margin: -10px 0 0 -23px;
+    opacity: 0;
+  }
+}
+
+/* -- shared: tally flourish on the result card -- */
+.mg-reward-item {
+  opacity: 0;
+  transform: translateY(6px) scale(0.8);
+  transition:
+    opacity 0.22s ease,
+    transform 0.28s var(--mg-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+.mg-reward-item.in {
+  opacity: 1;
+  transform: none;
+}
+
+/* -- wishing well: pull back & release -- */
+.mg-well-hud {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #cdd6ec;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  z-index: 3;
+}
+.mg-well-count b {
+  color: #ffd27a;
+}
+.mg-mult-chip {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(20, 26, 46, 0.6);
+  border: 1px solid rgba(236, 220, 182, 0.25);
+  color: #8b94ae;
+  font-weight: 700;
+  transition:
+    color 0.3s,
+    border-color 0.3s,
+    box-shadow 0.3s;
+}
+.mg-mult-chip.on {
+  color: #ffd27a;
+  border-color: rgba(255, 210, 122, 0.7);
+  box-shadow: 0 0 8px rgba(255, 210, 122, 0.35);
+}
+.mg-pebble-hand {
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: 64px;
+  height: 44px;
+  transform: translateX(-50%);
+  border-radius: 14px;
+  background: rgba(20, 26, 46, 0.4);
+  border: 1px dashed rgba(236, 220, 182, 0.35);
+  cursor: grab;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mg-pebble-hand:active {
+  cursor: grabbing;
+}
+.mg-pebble-hand .mg-pebble {
+  position: static;
+  opacity: 1;
+}
+/* once thrown, the pebble is positioned by left/top on .mg-well */
+.mg-well > .mg-pebble {
+  position: absolute;
+}
+.mg-ring-val {
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffe6b8;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+.mg-ring.aim {
+  box-shadow: 0 0 14px rgba(255, 210, 122, 0.85);
+  filter: brightness(1.35);
+}
+.mg-well-arc {
+  position: absolute;
+  left: 50%;
+  bottom: 44px;
+  width: 2px;
+  height: calc(20% + var(--pull, 0) * 30%);
+  transform: translateX(-50%);
+  background: linear-gradient(to top, rgba(255, 210, 122, 0.8), transparent);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* -- beacon: the carnival beam -- */
+.mg-beam {
+  position: absolute;
+  top: 0;
+  left: var(--bx, 50%);
+  width: 0;
+  height: 0;
+  z-index: 2;
+  pointer-events: none;
+  transform: translateX(-50%);
+  border-left: 14px solid transparent;
+  border-right: 14px solid transparent;
+  border-top: 46px solid rgba(255, 226, 170, 0.34);
+  filter: drop-shadow(0 0 10px rgba(255, 210, 122, 0.5));
+}
+.mg-beam::after {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: -50px;
+  width: 6px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffe6b8;
+  box-shadow: 0 0 10px rgba(255, 226, 170, 0.9);
+}
+.mg-beam.puff {
+  filter: drop-shadow(0 0 18px rgba(255, 226, 170, 0.9)) brightness(1.4);
+}
+.mg-beam.drop {
+  animation: mgBeamDrop 0.5s ease-out forwards;
+}
+@keyframes mgBeamDrop {
+  to {
+    opacity: 0.25;
+  }
+}
+/* the climax leans into slow motion — a soft vignette closes in */
+.mg-beacon.slowmo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 46px rgba(12, 16, 34, 0.75);
+  animation: mgSlowmoIn 0.3s ease-out both;
+}
+@keyframes mgSlowmoIn {
+  from {
+    opacity: 0;
+  }
+}
+
+/* -- forge: sweet heat + the hammer -- */
+.mg-forge-cell.sweet {
+  box-shadow:
+    0 0 18px rgba(255, 226, 170, 0.95),
+    inset 0 0 14px rgba(255, 210, 122, 0.55);
+  filter: brightness(1.25);
+}
+.mg-forge-cell.sweet .mg-forge-lump {
+  animation: mgLumpSweet 0.4s ease-in-out infinite alternate;
+}
+@keyframes mgLumpSweet {
+  to {
+    filter: brightness(1.6) drop-shadow(0 0 10px rgba(255, 226, 170, 0.9));
+  }
+}
+.mg-hammer {
+  position: absolute;
+  right: -6px;
+  top: -26px;
+  width: 54px;
+  height: 54px;
+  z-index: 5;
+  pointer-events: none;
+  transform-origin: 88% 88%;
+  animation: mgHammerSwing 0.32s ease-in both;
+}
+.mg-hammer img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.mg-hammer-ico {
+  font-size: 40px;
+  display: block;
+  transform: scaleX(-1);
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5));
+}
+@keyframes mgHammerSwing {
+  0% {
+    transform: rotate(-72deg) translateY(-6px);
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  46% {
+    transform: rotate(4deg); /* the strike lands */
+  }
+  62% {
+    transform: rotate(-10deg); /* recoil */
+  }
+  100% {
+    transform: rotate(-4deg);
+    opacity: 0;
+  }
+}
+.mg-forge-ingot {
+  filter: brightness(1.3) drop-shadow(0 0 8px rgba(255, 210, 122, 0.8));
+}
+
+/* -- catch: the reel + the silhouette reveal -- */
+.mg-reel {
+  position: relative;
+  height: 26px;
+  margin: 10px 4px 0;
+  border-radius: 13px;
+  background: linear-gradient(180deg, rgba(30, 48, 72, 0.9), rgba(18, 30, 50, 0.9));
+  border: 1px solid rgba(122, 168, 199, 0.4);
+  overflow: hidden;
+  cursor: pointer;
+  touch-action: none;
+}
+.mg-reel-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(255, 210, 122, 0.55), rgba(244, 166, 59, 0.35));
+  box-shadow: 0 0 10px rgba(255, 210, 122, 0.4);
+}
+.mg-reel-marker {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  width: 5px;
+  margin-left: -2px;
+  border-radius: 3px;
+  background: #f4f7ff;
+  box-shadow: 0 0 8px rgba(244, 247, 255, 0.9);
+}
+.mg-reel-marker.in-zone {
+  background: #ffd27a;
+  box-shadow: 0 0 14px rgba(255, 210, 122, 1);
+}
+.mg-reel-marker.out-zone {
+  opacity: 0.5;
+}
+.mg-catch-shadow {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  width: 46px;
+  height: 20px;
+  margin-left: -23px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(10, 16, 30, 0.75), transparent 70%);
+  pointer-events: none;
+}
+.mg-catch-shadow.rise {
+  animation: mgShadowRise 0.6s ease-out forwards;
+}
+@keyframes mgShadowRise {
+  to {
+    top: 34%;
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+/* -- forage: the warmth trail -- */
+.mg-fog.found.w-0 {
+  box-shadow: 0 0 16px rgba(255, 190, 90, 0.9);
+}
+.mg-fog.found.w-1 {
+  background: rgba(214, 128, 52, 0.5);
+  box-shadow: 0 0 10px rgba(244, 166, 59, 0.55);
+}
+.mg-fog.found.w-2 {
+  background: rgba(178, 110, 60, 0.38);
+  box-shadow: 0 0 6px rgba(214, 140, 70, 0.35);
+}
+.mg-fog.found.w-3 {
+  background: rgba(96, 106, 92, 0.35);
+}
+.mg-fog.found.w-4 {
+  background: rgba(64, 84, 104, 0.35);
+}
+.mg-forage-bonus {
+  color: #ffd27a;
+}
+
+/* -- stacks: the grid can grow to the ramped shelf -- */
+.mg-stacks-grid {
+  grid-template-columns: repeat(var(--stack-cols, 4), minmax(0, 1fr));
+}
+
+/* -- sawmill: the upright log (round face down) + planks -- */
+.mg-log-body {
+  position: relative;
+  width: 46%;
+  margin: 0 auto;
+  aspect-ratio: 0.44; /* long edge vertical */
+}
+.mg-log-body img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.mg-log-tall {
+  aspect-ratio: 0.3; /* the hold log rides longer */
+}
+/* CSS-drawn log: bark body + the round end-grain face looking down the lane */
+.mg-log-css .mg-log-bark {
+  position: absolute;
+  inset: 0 0 7% 0;
+  border-radius: 40% 40% 30% 30% / 12% 12% 8% 8%;
+  background:
+    repeating-linear-gradient(175deg, rgba(58, 36, 18, 0.35) 0 3px, transparent 3px 7px),
+    linear-gradient(90deg, #5a3a1c, #7c5428 30%, #8a6030 50%, #6b4722 75%, #4e3116);
+  box-shadow: inset 0 -3px 6px rgba(20, 10, 2, 0.5);
+}
+.mg-log-css .mg-log-face {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 0;
+  height: 15%;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 50% 50%, #e8c893 8%, transparent 9%),
+    radial-gradient(ellipse at 50% 50%, transparent 24%, rgba(122, 82, 40, 0.7) 25%, transparent 27%),
+    radial-gradient(ellipse at 50% 50%, transparent 48%, rgba(122, 82, 40, 0.7) 49%, transparent 52%),
+    radial-gradient(ellipse at 50% 50%, #dfbc85, #c49a5e 70%, #8a6030);
+  box-shadow: 0 2px 4px rgba(20, 10, 2, 0.55);
+}
+/* the split: two PLANKS part down the middle and settle */
+.mg-plank {
+  position: absolute;
+  left: 8%;
+  width: 84%;
+  z-index: 1;
+  pointer-events: none;
+}
+.mg-plank .mg-log-body {
+  filter: brightness(1.08);
+}
+.mg-plank-l {
+  clip-path: inset(0 50% 0 0);
+  animation: mgPlankL 0.6s ease-in forwards;
+}
+.mg-plank-r {
+  clip-path: inset(0 0 0 50%);
+  animation: mgPlankR 0.6s ease-in forwards;
+}
+.mg-plank-big {
+  animation-duration: 0.8s;
+}
+@keyframes mgPlankL {
+  30% {
+    transform: translate(-10px, 4px) rotate(-6deg);
+    opacity: 1;
+  }
+  to {
+    transform: translate(-22px, 34px) rotate(-14deg);
+    opacity: 0;
+  }
+}
+@keyframes mgPlankR {
+  30% {
+    transform: translate(10px, 4px) rotate(6deg);
+    opacity: 1;
+  }
+  to {
+    transform: translate(22px, 34px) rotate(14deg);
+    opacity: 0;
+  }
+}
+/* a held log saws with a bright edge */
+.mg-log.holding .mg-log-body {
+  filter: brightness(1.25) drop-shadow(0 0 8px rgba(255, 210, 122, 0.7));
+}
+/* THE BIG STRUM — one wide log across every lane */
+.mg-log.mg-strum {
+  left: 2%;
+  width: 96%;
+  z-index: 2;
+}
+.mg-strum-body {
+  width: 100% !important;
+  aspect-ratio: 7 !important; /* lying across the lanes */
+}
+.mg-strum-body .mg-log-bark {
+  inset: 0;
+  border-radius: 10px / 50%;
+}
+.mg-sawmill.strum-hit {
+  animation: mgStrumHit 0.5s ease-out;
+}
+@keyframes mgStrumHit {
+  20% {
+    filter: brightness(1.35);
+  }
+}
+
+/* -- reduced motion: every new flourish stands down -- */
+@media (prefers-reduced-motion: reduce) {
+  .mg-squash,
+  .mg-beam.drop,
+  .mg-catch-shadow.rise,
+  .mg-peg-golden,
+  .mg-peg-mover,
+  .mg-hammer,
+  .mg-sawmill.strum-hit {
+    animation: none;
+  }
+  .mg-reward-item {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+body.reduce-motion .mg-peg-mover,
+body.reduce-motion .mg-peg-golden {
+  animation: none;
 }

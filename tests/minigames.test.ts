@@ -1,18 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MINIGAME_BASE_TOKENS,
   MINIGAME_EMBER_CAP,
   MINIGAME_ENERGY_COST,
   MINIGAME_MAX_TOKENS,
   addEmber,
   beaconDrop,
+  beaconPegField,
   beaconReward,
   beaconScore,
   catchReward,
+  comboStep,
   fishBite,
+  forageDistance,
   forageField,
+  forageReward,
   forageTile,
   forgeReward,
   forgeSchedule,
+  forgeScore,
   grantToken,
   initialMinigames,
   isEligible,
@@ -23,42 +29,60 @@ import {
   sawmillScore,
   spendToken,
   stacksDeck,
+  stacksPairsFor,
   stacksReward,
   tryUnlock,
   wellScore,
   wishingWellReward,
+  BEACON_EMBER_R,
   BEACON_ROWS,
   FORAGE_SIZE,
   SAWMILL_DURATION_MS,
   SAWMILL_FALL_MS,
   SAWMILL_LANES,
   STACKS_PAIRS,
+  STACKS_PAIRS_RAMPED,
+  WELL_MULT,
 } from '../src/core/minigames';
 import { MINIGAME_BY_ID } from '../src/data/minigames';
 import { ORDERS } from '../src/data/economy';
 import { Game } from '../src/core/game';
 
+describe('shared feel helpers', () => {
+  it('comboStep climbs on a hit and soft-decays one step on a miss (never below 0)', () => {
+    expect(comboStep(0, true)).toBe(1);
+    expect(comboStep(4, true)).toBe(5);
+    expect(comboStep(4, false)).toBe(3); // one step down, not a shatter
+    expect(comboStep(0, false)).toBe(0);
+  });
+});
+
 describe('minigame engines are deterministic', () => {
-  it('wishing well: reward is the AIMED ring (player-driven), centre roots deepest', () => {
-    const a = wishingWellReward(2, 7, 8);
-    const b = wishingWellReward(2, 7, 8);
+  it('wishing well: three pebbles, centre streak deepens the whole run', () => {
+    const a = wishingWellReward([2, 2, 2], 7, 8);
+    const b = wishingWellReward([2, 2, 2], 7, 8);
     expect(a).toEqual(b);
-    expect(a.slot).toBe(2); // aimed the centre → centre
+    expect(a.centres).toBe(3);
     expect(a.items[0]!.chain).toBe('seeds');
-    expect(a.items[0]!.level).toBe(2); // centre roots a fine seedling
-    expect(wishingWellReward(0, 7, 8).slot).toBe(0); // aim an edge → edge
-    // out-of-range aim clamps into the 5 rings
-    expect(wishingWellReward(9, 7, 8).slot).toBe(4);
-    // score is centre-100, edge-50 (personal-best metric, higher = closer)
-    expect(wellScore(2)).toBe(100);
-    expect(wellScore(0)).toBe(50);
-    expect(wellScore(2)).toBeGreaterThan(wellScore(1));
+    expect(a.items[0]!.level).toBe(3); // a triple-centre run roots the deepest seed
+    // the multiplier makes the ceiling ~3-4× the floor
+    const floor = wishingWellReward([0, 0, 0], 7, 8);
+    expect(a.coins).toBeGreaterThanOrEqual(floor.coins * 3);
+    expect(floor.coins).toBeGreaterThanOrEqual(6); // no-fail floor
+    expect(floor.items.length).toBeGreaterThanOrEqual(1);
+    // banking early (fewer pebbles) still pays, still no-fail
+    expect(wishingWellReward([2, 2], 7, 8).coins).toBeGreaterThanOrEqual(6);
+    // out-of-range aims clamp into the 5 rings
+    expect(wishingWellReward([9, -3, 2], 7, 8).centres).toBe(1);
+    // score: more centres → higher; three centres caps at 100
+    expect(wellScore([2, 2, 2])).toBe(100);
+    expect(wellScore([2, 2, 2])).toBeGreaterThan(wellScore([2, 2, 0]));
+    expect(wellScore([1])).toBeGreaterThan(wellScore([0]));
+    expect(WELL_MULT[0]).toBe(1);
   });
 
-  it('beacon drop: aim dominates, seed adds a little drift, centre is the heart', () => {
-    // Same aim + seed → same landing (deterministic).
+  it('beacon drop: aim dominates, golden peg blesses the run, centre is the heart', () => {
     expect(beaconDrop(4, 42)).toBe(beaconDrop(4, 42));
-    // Landing stays within a slot or two of the aim (aim, not luck, dominates).
     for (let seed = 0; seed < 40; seed++) {
       const slot = beaconDrop(4, seed);
       expect(slot).toBeGreaterThanOrEqual(0);
@@ -68,46 +92,106 @@ describe('minigame engines are deterministic', () => {
     const centre = beaconReward(BEACON_ROWS / 2);
     expect(centre.items[0]).toEqual({ chain: 'fish', level: 2 });
     expect(beaconReward(0).items[0]!.level).toBe(0);
-    expect(beaconScore(BEACON_ROWS / 2)).toBe(100);
-    expect(beaconScore(0)).toBe(0);
+    // the golden peg raises coins and the catch by a level
+    const golden = beaconReward(BEACON_ROWS / 2, true);
+    expect(golden.coins).toBe(centre.coins + 8);
+    expect(golden.items[0]!.level).toBe(3);
+    expect(beaconScore(BEACON_ROWS / 2, true)).toBe(100);
+    expect(beaconScore(BEACON_ROWS / 2)).toBeLessThan(100); // the golden peg completes it
+    expect(beaconScore(0)).toBeLessThanOrEqual(12);
   });
 
-  it('forge strike: schedule is seeded and never repeats a cell back-to-back', () => {
-    const s1 = forgeSchedule(9, 14);
-    const s2 = forgeSchedule(9, 14);
-    expect(s1).toEqual(s2);
-    expect(s1.length).toBe(14);
-    for (let i = 1; i < s1.length; i++) expect(s1[i]!.cell).not.toBe(s1[i - 1]!.cell);
-    // a clean run forges a bar (level 2); a total miss still yields copper
-    expect(forgeReward(14, 14).items.some((i) => i.level === 2)).toBe(true);
-    expect(forgeReward(0, 14).items.length).toBeGreaterThan(0);
+  it('beacon pegfield: seeded, varied, spaced, and always passable', () => {
+    const a = beaconPegField(31);
+    expect(a).toEqual(beaconPegField(31));
+    // different seeds lay different boards (replay variety)
+    expect(a).not.toEqual(beaconPegField(32));
+    expect(a.length).toBeGreaterThan(12);
+    const golden = a.filter((p) => p.kind === 'golden');
+    expect(golden.length).toBe(1);
+    expect(a.filter((p) => p.kind === 'bumper').length).toBeGreaterThanOrEqual(2);
+    const clearance = BEACON_EMBER_R * 2 * 1.6;
+    for (const p of a) {
+      expect(p.x).toBeGreaterThanOrEqual(0.06);
+      expect(p.x).toBeLessThanOrEqual(0.94);
+      expect(p.y).toBeGreaterThanOrEqual(0);
+      expect(p.y).toBeLessThanOrEqual(1);
+      for (const q of a) {
+        if (p === q) continue;
+        // surface-to-surface spacing lets the ember through everywhere
+        expect(Math.hypot(p.x - q.x, (p.y - q.y) * 1.15) - (p.r + q.r)).toBeGreaterThanOrEqual(clearance - 1e-9);
+      }
+    }
   });
 
-  it('joss’s catch: a clean strike lands a deeper fish, a miss still lands one', () => {
+  it('forge strike: seeded three-wave schedule ramps denser and hotter', () => {
+    const s1 = forgeSchedule(9);
+    expect(s1).toEqual(forgeSchedule(9));
+    expect(s1.length).toBe(20);
+    // ascending spawn times
+    for (let i = 1; i < s1.length; i++) expect(s1[i]!.atMs).toBeGreaterThanOrEqual(s1[i - 1]!.atMs);
+    // the ramp: early lumps stay hot longer than late ones (finale pairs aside)
+    const early = s1[0]!.ttlMs;
+    const lateRamp = s1[s1.length - 5]!.ttlMs;
+    expect(early).toBeGreaterThan(lateRamp);
+    // reward: floor guaranteed, perfects and streaks raise the ceiling
+    expect(forgeReward(0, 20).items.length).toBeGreaterThan(0);
+    expect(forgeReward(0, 20).coins).toBeGreaterThanOrEqual(6);
+    const good = forgeReward(16, 20, 4, 4);
+    const master = forgeReward(18, 20, 9, 8);
+    expect(master.coins).toBeGreaterThan(good.coins);
+    expect(master.items.some((i) => i.level === 3)).toBe(true);
+    expect(good.items.some((i) => i.level === 2)).toBe(true);
+    // a long streak banks an extra ingot
+    expect(forgeReward(10, 20, 0, 6).items.length).toBeGreaterThan(forgeReward(10, 20, 0, 2).items.length);
+    expect(forgeScore(10, 4, 6)).toBeGreaterThan(forgeScore(9, 4, 6));
+  });
+
+  it('joss’s catch: strike THEN reel — both clean surfaces the rare fish', () => {
     expect(fishBite(4)).toEqual(fishBite(4)); // seeded bite timing
-    expect(catchReward(1).items[0]).toEqual({ chain: 'fish', level: 2 });
-    expect(catchReward(0).items[0]!.chain).toBe('fish'); // no-fail: still a fish
-    expect(catchReward(0).items[0]!.level).toBe(0);
+    expect(catchReward(1, 1).items[0]).toEqual({ chain: 'fish', level: 3 }); // both perfect: the rarity
+    expect(catchReward(1, 0.3).items[0]!.level).toBe(2);
+    expect(catchReward(0, 0).items[0]!.chain).toBe('fish'); // no-fail: still a fish
+    expect(catchReward(0, 0).items[0]!.level).toBe(0);
+    expect(catchReward(1, 1).coins).toBeGreaterThan(catchReward(0.5, 0.3).coins);
   });
 
-  it('foraging: seeded field with exactly one heart; every tile pays a bounded find', () => {
+  it('foraging: seeded field with one heart, a warmth trail, and clearings', () => {
     const a = forageField(11);
-    const b = forageField(11);
-    expect(a.kinds).toEqual(b.kinds);
+    expect(a.kinds).toEqual(forageField(11).kinds);
     expect(a.kinds.length).toBe(FORAGE_SIZE);
     expect(a.kinds.filter((k) => k === 'heart').length).toBe(1);
+    expect(a.kinds.filter((k) => k === 'clearing').length).toBe(2);
     expect(a.kinds[a.heartIndex]).toBe('heart');
+    // warmth is the king-move distance to the heart — 0 at the heart itself
+    expect(a.warmth[a.heartIndex]).toBe(0);
+    expect(a.warmth.length).toBe(FORAGE_SIZE);
+    expect(forageDistance(0, 24)).toBe(4);
     expect(forageTile(11, a.heartIndex, 'heart').items[0]).toEqual({ chain: 'honey', level: 2 });
-    expect(forageTile(11, 3, 'view')).toEqual({ coins: 0, items: [], ember: 0 }); // a lovely view is empty
+    expect(forageTile(11, 3, 'view')).toEqual({ coins: 0, items: [], ember: 0 });
+    // the banked run: finding the heart with steps to spare pays the bonus
+    const found = { coins: 20, items: [{ chain: 'honey' as const, level: 2 }], ember: 2 };
+    expect(forageReward(found, true, 3).coins).toBe(29);
+    expect(forageReward(found, false, 3).coins).toBe(20); // no heart, no bonus
+    // no-fail floor: an empty basket still comes home with something
+    expect(forageReward({ coins: 0, items: [], ember: 0 }, false, 0).coins).toBeGreaterThanOrEqual(6);
+    expect(forageReward({ coins: 0, items: [], ember: 0 }, false, 0).items.length).toBe(1);
   });
 
-  it('sorting the stacks: seeded deck of pairs; a clean sort turns up a fine volume', () => {
+  it('sorting the stacks: bigger shelf, streaks earn the finer volumes', () => {
     const d = stacksDeck(5);
     expect(d).toEqual(stacksDeck(5));
     expect(d.length).toBe(STACKS_PAIRS * 2);
     for (let v = 0; v < STACKS_PAIRS; v++) expect(d.filter((x) => x === v).length).toBe(2);
-    expect(stacksReward(STACKS_PAIRS * 2).items[0]).toEqual({ chain: 'books', level: 2 }); // perfect
-    expect(stacksReward(99).items[0]!.level).toBe(1); // sloppy but still books
+    // streaks drive the reward now — five from memory finds the rare volume
+    expect(stacksReward(STACKS_PAIRS, 5).items.some((i) => i.level === 3)).toBe(true);
+    expect(stacksReward(STACKS_PAIRS + 1, 3).items.some((i) => i.level === 2)).toBe(true);
+    expect(stacksReward(99, 0).items[0]!.level).toBe(1); // sloppy but still books
+    expect(stacksReward(STACKS_PAIRS, 5).coins).toBeGreaterThan(stacksReward(99, 0).coins);
+    // a strong best deals the bigger shelf next time (gentle, invisible ramp)
+    expect(stacksPairsFor(undefined)).toBe(STACKS_PAIRS);
+    expect(stacksPairsFor(10)).toBe(STACKS_PAIRS);
+    expect(stacksPairsFor(24)).toBe(STACKS_PAIRS_RAMPED);
   });
 });
 
@@ -137,10 +221,10 @@ describe('minigame unlock, tokens and embers (pure)', () => {
 
   it('tokens grant capped, spend floored; embers cap per day; day rolls reset', () => {
     let s = initialMinigames('d1');
-    expect(s.tokens).toBe(1);
+    expect(s.tokens).toBe(MINIGAME_BASE_TOKENS); // generous enough to learn a game
     for (let i = 0; i < 10; i++) s = grantToken(s);
     expect(s.tokens).toBe(MINIGAME_MAX_TOKENS);
-    s = spendToken(spendToken(spendToken(spendToken(s))));
+    for (let i = 0; i < MINIGAME_MAX_TOKENS + 1; i++) s = spendToken(s);
     expect(s.tokens).toBe(0);
     const e1 = addEmber(s, 3);
     expect(e1.granted).toBe(3);
@@ -149,7 +233,7 @@ describe('minigame unlock, tokens and embers (pure)', () => {
     expect(e2.state.emberToday).toBe(MINIGAME_EMBER_CAP);
     // a new day refills tokens and clears embers
     const rolled = rolloverMinigames(e2.state, 'd2');
-    expect(rolled.tokens).toBe(1);
+    expect(rolled.tokens).toBe(MINIGAME_BASE_TOKENS);
     expect(rolled.emberToday).toBe(0);
     expect(rolloverMinigames(rolled, 'd2')).toBe(rolled); // idempotent same day
   });
@@ -189,11 +273,11 @@ describe('Game ↔ Village Life', () => {
     expect(g.openMinigameDoors('prop_lighthouse')).toBe('opened'); // no daily throttle
 
     const energyBefore = g.snapshot.energy.current;
+    const tokensBefore = g.minigameState.tokens;
     const run = g.startMinigame('wishing-well');
     expect(run).not.toBeNull();
     expect(g.snapshot.energy.current).toBe(energyBefore - MINIGAME_ENERGY_COST);
-    expect(g.minigameState.tokens).toBe(0);
-    expect(g.canPlayMinigame('wishing-well')).toBe(false); // out of tokens
+    expect(g.minigameState.tokens).toBe(tokensBefore - 1);
 
     const coinsBefore = g.snapshot.coins;
     g.finishMinigame(
@@ -265,17 +349,17 @@ describe('Game ↔ Village Life', () => {
       'wishing-well',
       { coins: 10, items: [{ chain: 'seeds', level: 1 }], ember: 1, heart: '' },
       undefined,
-      wellScore(1),
+      wellScore([1, 1, 1]),
     );
     expect(first.isBest).toBe(true);
-    expect(g.minigameBest('wishing-well')).toBe(wellScore(1));
+    expect(g.minigameBest('wishing-well')).toBe(wellScore([1, 1, 1]));
     const second = g.finishMinigame(
       'wishing-well',
       { coins: 14, items: [{ chain: 'seeds', level: 2 }], ember: 2, heart: '' },
       undefined,
-      wellScore(2),
+      wellScore([2, 2, 2]),
     );
-    expect(second.isBest).toBe(true); // centre beats adjacent
+    expect(second.isBest).toBe(true); // centres beat adjacent rings
     expect(g.minigameBest('wishing-well')).toBe(100);
   });
 
@@ -283,10 +367,11 @@ describe('Game ↔ Village Life', () => {
     const g = new Game(1000);
     g.devPreviewStory(ORDERS.length);
     g.openMinigameDoors('prop_well');
-    g.startMinigame('wishing-well'); // tokens 1 → 0
-    expect(g.minigameState.tokens).toBe(0);
+    const before = g.minigameState.tokens;
+    g.startMinigame('wishing-well'); // spends one
+    expect(g.minigameState.tokens).toBe(before - 1);
     g.completeAction('breathe'); // living well earns another go
-    expect(g.minigameState.tokens).toBe(1);
+    expect(g.minigameState.tokens).toBe(before);
   });
 
   it('gathered loot can be gifted for coins from the Repository', () => {
@@ -311,26 +396,31 @@ describe('Game ↔ Village Life', () => {
 });
 
 describe('The Saw Song (sawmill) engine', () => {
-  it('schedule is deterministic, in-bounds, ascending, and lane-spaced', () => {
+  it('schedule is deterministic, in-bounds, ascending, lane-spaced, and ends on the strum', () => {
     const a = sawmillSchedule(7);
     expect(a).toEqual(sawmillSchedule(7));
-    expect(a.length).toBe(22);
+    // different seeds cut different songs
+    expect(a).not.toEqual(sawmillSchedule(8));
+    const strums = a.filter((sp) => sp.kind === 'strum');
+    expect(strums.length).toBe(1); // one big finale note
+    expect(a[a.length - 1]!.kind).toBe('strum'); // and it ends the song
     const laneLast: Record<number, number> = {};
     let prevAt = -1;
-    let prevLane = -1;
     for (const sp of a) {
       expect(sp.lane).toBeGreaterThanOrEqual(0);
       expect(sp.lane).toBeLessThan(SAWMILL_LANES);
       expect(sp.atMs).toBeGreaterThanOrEqual(0);
       expect(sp.atMs).toBeLessThan(SAWMILL_DURATION_MS - SAWMILL_FALL_MS);
-      expect(sp.atMs).toBeGreaterThanOrEqual(prevAt - 260); // near-ascending (small jitter)
-      expect(sp.lane).not.toBe(prevLane); // never the same lane twice running
-      const lastInLane = laneLast[sp.lane];
-      if (lastInLane !== undefined) expect(sp.atMs - lastInLane).toBeGreaterThanOrEqual(SAWMILL_FALL_MS * 0.55);
-      laneLast[sp.lane] = sp.atMs;
+      expect(sp.atMs).toBeGreaterThanOrEqual(prevAt); // sorted ascending
       prevAt = sp.atMs;
-      prevLane = sp.lane;
+      if (sp.kind === 'strum') continue;
+      const lastInLane = laneLast[sp.lane];
+      // no two logs ever overlap on one flume
+      if (lastInLane !== undefined) expect(sp.atMs - lastInLane).toBeGreaterThanOrEqual(SAWMILL_FALL_MS * 0.6 - 1e-9);
+      laneLast[sp.lane] = sp.atMs;
     }
+    // the crescendo carries hold notes for variety
+    expect(a.some((sp) => sp.kind === 'hold')).toBe(true);
   });
 
   it('reward is no-fail: zero hits still stacks timber', () => {
@@ -341,16 +431,18 @@ describe('The Saw Song (sawmill) engine', () => {
     expect(r.ember).toBeGreaterThanOrEqual(1);
   });
 
-  it('reward rises with accuracy; beams need clean cuts', () => {
+  it('reward rises with accuracy and streak; beams need clean cuts', () => {
     const low = sawmillReward(5, 0, 22);
     const mid = sawmillReward(12, 2, 22);
-    const high = sawmillReward(20, 8, 22);
+    const high = sawmillReward(20, 8, 22, 10);
     expect(mid.coins).toBeGreaterThan(low.coins);
     expect(high.coins).toBeGreaterThan(mid.coins);
     expect(mid.items.some((i) => i.level === 2)).toBe(true);
     expect(high.items.some((i) => i.level === 3)).toBe(true);
     // high accuracy WITHOUT clean cuts stays at planks
     expect(sawmillReward(20, 2, 22).items.some((i) => i.level === 3)).toBe(false);
+    // the streak sweetens the coins
+    expect(sawmillReward(12, 2, 22, 8).coins).toBeGreaterThan(sawmillReward(12, 2, 22, 0).coins);
   });
 
   it('score is monotone in each part', () => {
