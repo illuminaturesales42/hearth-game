@@ -681,6 +681,7 @@ export class Game {
     const home = TOWN_BUILDINGS.find((b) => b.unlockAt === this.state.orderIndex && b.art === villagerDef(vid)?.home);
     if (home) rel = recordMemory(rel, vid, restoreMemory(day, BUILDING_INFO[home.art] ?? 'their home'));
     this.state = { ...this.state, relationships: rel };
+    this.discover(`villager:${vid}`); // met at last — retire their glow
     const after = hearts(bondFor(rel, vid).points);
     this.emit({
       type: 'bond',
@@ -799,6 +800,7 @@ export class Game {
   }
 
   private applyRecord(res: RecordResult, actionId: string): void {
+    this.discover(`action:${actionId}`); // first log of this action retires its glow
     // The sea remembers a quiet mind: any meditation marks today calm,
     // whether or not the energy cap already paid out.
     if (actionId.startsWith('med-') || actionId === 'log-meditation') {
@@ -1261,6 +1263,7 @@ export class Game {
   startMinigame(id: string, now = Date.now()): { seed: number } | null {
     this.beginDay(now);
     if (!this.canPlayMinigame(id)) return null;
+    this.discover(`game:${id}`); // first play retires the game's discovery glow
     // Tester mode: unlimited goes — don't spend the token or energy.
     if (!this.testerUnlimited) {
       this.state = {

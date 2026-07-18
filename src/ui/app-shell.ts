@@ -20,6 +20,8 @@ import { artUrl, actionArt } from './art';
 import { FtueUI } from './ftue';
 import { NewDayUI } from './new-day';
 import { GrowthUI } from './growth';
+import { refreshGlobalGlows } from './glow-marker';
+import { nudgesForScreen } from '../core/discovery';
 import type { Metrics } from '../platform/metrics';
 
 type ScreenId = 'home' | 'create' | 'villagers' | 'journal' | 'shop';
@@ -138,6 +140,15 @@ export class AppShell {
     }
     const duelCreate = document.getElementById('duel-create-btn');
     if (duelCreate) duelCreate.addEventListener('click', () => duel.start());
+
+    // Discovery glows: light the nav items + energy pill for untried features,
+    // and repaint whenever engagement state changes (a glow dies on first use).
+    refreshGlobalGlows(game);
+    game.subscribe((ev) => {
+      if (ev.type === 'state' || ev.type === 'action' || ev.type === 'minigameEnd' || ev.type === 'bond') {
+        refreshGlobalGlows(game);
+      }
+    });
   }
 
   private go(id: ScreenId): void {
@@ -157,5 +168,14 @@ export class AppShell {
       if (id === 'journal') this.screens.renderJournal();
       if (id === 'shop') this.screens.renderShop();
     }
+    // Opening a screen retires the screen-level nudges its nav dot pointed at —
+    // villager & week-digest. (Per-feature game/almanac glows clear only when
+    // the player actually plays/opens them, not on a screen visit.)
+    if (id === 'villagers' || id === 'journal') {
+      for (const nudge of nudgesForScreen(this.game.snapshot, id)) {
+        if (nudge.startsWith('villager:') || nudge.startsWith('week-digest:')) this.game.discover(nudge);
+      }
+    }
+    refreshGlobalGlows(this.game);
   }
 }

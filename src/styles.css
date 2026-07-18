@@ -6074,3 +6074,46 @@ body.reduce-motion .mg-peg-golden {
   background-repeat: no-repeat;
   background-position: center;
 }
+
+/* ===================== DISCOVERY GLOW MARKERS ===================== */
+/* A small soft pulse pointing at a feature the player hasn't tried yet. Retires
+   on first engagement (see core/discovery). Static ring under reduce-motion. */
+.glow-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #fff2c8, #f4a63b 70%);
+  box-shadow: 0 0 6px rgba(255, 210, 122, 0.9);
+  pointer-events: none;
+  z-index: 6;
+  animation: glowPulse 1.9s ease-in-out infinite;
+}
+@keyframes glowPulse {
+  0%,
+  100% {
+    transform: scale(0.82);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 1;
+    box-shadow: 0 0 12px rgba(255, 210, 122, 1);
+  }
+}
+/* on a Village Life card / Almanac summary the dot rides the top-right corner */
+.vl-row .glow-dot,
+.alm-summary .glow-dot {
+  top: 6px;
+  right: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .glow-dot {
+    animation: none;
+  }
+}
+body.reduce-motion .glow-dot {
+  animation: none;
+}
