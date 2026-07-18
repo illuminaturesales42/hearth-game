@@ -34,12 +34,13 @@ export function setGlow(host: HTMLElement | null, on: boolean): void {
  */
 export function refreshGlobalGlows(game: Game): void {
   const state = game.snapshot;
-  // Bottom nav — a dot when this screen holds an untried thing.
+  // Bottom nav — a dot on the screens you'd navigate TO (Villagers, Journal)
+  // when they hold something untried. Home is deliberately skipped: you're
+  // usually already on it, and its game/almanac nudges glow on the map itself
+  // (a dot on the round Home icon read as a stray second circle).
   document.querySelectorAll<HTMLElement>('.nav-btn').forEach((btn) => {
     const screen = btn.dataset.screen;
-    const lit =
-      (screen === 'villagers' || screen === 'journal' || screen === 'home') &&
-      nudgesForScreen(state, screen).length > 0;
+    const lit = (screen === 'villagers' || screen === 'journal') && nudgesForScreen(state, screen).length > 0;
     setGlow(btn, lit);
   });
   // The energy pill — a dot when there's a way to earn energy never tried.
