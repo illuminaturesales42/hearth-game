@@ -1843,8 +1843,9 @@ export class MapView {
       const img = this.sprite(artId) ?? this.sprite('prop_lighthouse');
       // Off the east point, standing in the sea clear of the fisher hut — its
       // own rock base sits over open water, not up on the green land plate.
-      const lx = W * 0.95;
-      const baseY = H * 0.72;
+      // Sprites are mirrored on disk so the keeper's door faces the land.
+      const lx = W * 0.94;
+      const baseY = H * 0.59;
       if (img) {
         // the new painted lighthouse is a tall portrait sprite with its own rock
         // base, so it's narrower than the old near-square art (0.23 dwarfed the map).
