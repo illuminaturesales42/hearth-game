@@ -37,14 +37,14 @@ export const TOWN_BUILDINGS: readonly TownPiece[] = [
   // 2026-07 re-lay (user-directed): cottage→old market plot, bakery→old cottage
   // plot, farm→old bakery plot, library→old farm plot (sprite flipped so the
   // door faces right/into town), market→old library plot, townhall↔workshop.
-  { art: 'town_cottage', x: 0.46, y: 0.375, w: 0.148, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
-  { art: 'town_bakery', x: 0.325, y: 0.445, w: 0.138, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
-  { art: 'prop_well', x: 0.48, y: 0.51, w: 0.092, unlockAt: 6 },
-  { art: 'town_market', x: 0.54, y: 0.625, w: 0.138, unlockAt: 8, ruinVariant: 7 },
-  { art: 'town_garden', x: 0.735, y: 0.515, w: 0.148, unlockAt: 10, ruinVariant: 4 },
-  { art: 'town_townhall', x: 0.165, y: 0.365, w: 0.148, unlockAt: 12, ruinVariant: 3 },
-  { art: 'town_workshop', x: 0.235, y: 0.78, w: 0.138, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
-  { art: 'town_farm', x: 0.675, y: 0.35, w: 0.148, unlockAt: 16, ruinVariant: 5 },
+  { art: 'town_cottage', x: 0.48, y: 0.375, w: 0.148, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
+  { art: 'town_bakery', x: 0.345, y: 0.445, w: 0.138, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
+  { art: 'prop_well', x: 0.485, y: 0.49, w: 0.092, unlockAt: 6 },
+  { art: 'town_market', x: 0.54, y: 0.605, w: 0.138, unlockAt: 8, ruinVariant: 7 },
+  { art: 'town_garden', x: 0.755, y: 0.515, w: 0.148, unlockAt: 10, ruinVariant: 4 },
+  { art: 'town_townhall', x: 0.185, y: 0.345, w: 0.148, unlockAt: 12, ruinVariant: 3 },
+  { art: 'town_workshop', x: 0.235, y: 0.8, w: 0.138, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
+  { art: 'town_farm', x: 0.695, y: 0.33, w: 0.148, unlockAt: 16, ruinVariant: 5 },
   // Joss's hut is a stilted pier: it sits on the SE point with its deck over the
   // bay water, connected to land only at the house body (back). Anchor is
   // intentionally over water so the sprite's own water blends with the plate.
@@ -53,8 +53,8 @@ export const TOWN_BUILDINGS: readonly TownPiece[] = [
   { art: 'town_blacksmith', x: 0.36, y: 0.71, w: 0.143, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
   // the dock pier sits up at the bay's north-west shore so its own water meets
   // the plate's bay, not the grass
-  { art: 'town_dock', x: 0.655, y: 0.7, w: 0.126, unlockAt: 22, ruinVariant: 5 },
-  { art: 'town_library', x: 0.205, y: 0.59, w: 0.148, unlockAt: 23, ruinVariant: 3 },
+  { art: 'town_dock', x: 0.665, y: 0.685, w: 0.126, unlockAt: 22, ruinVariant: 5 },
+  { art: 'town_library', x: 0.225, y: 0.59, w: 0.148, unlockAt: 23, ruinVariant: 3 },
 ] as const;
 
 /**

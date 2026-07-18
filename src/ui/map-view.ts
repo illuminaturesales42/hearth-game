@@ -1844,8 +1844,8 @@ export class MapView {
       // Off the east point, standing in the sea clear of the fisher hut — its
       // own rock base sits over open water, not up on the green land plate.
       // Sprites are mirrored on disk so the keeper's door faces the land.
-      const lx = W * 0.955;
-      const baseY = H * 0.625;
+      const lx = W * 0.94;
+      const baseY = H * 0.59;
       if (img) {
         // the new painted lighthouse is a tall portrait sprite with its own rock
         // base, so it's narrower than the old near-square art (0.23 dwarfed the map).
