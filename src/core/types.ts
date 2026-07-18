@@ -169,6 +169,10 @@ export interface Prefs {
   boardSkin?: string;
   /** Board skins the player has bought (re-equipping is free). */
   ownedSkins?: readonly string[];
+  /** Opt-in: one warm daily notification. Off by default (never nags). */
+  notifyDaily?: boolean;
+  /** Hour of day (0..23) the daily notification fires. */
+  notifyHour?: number;
 }
 
 /** An item held in the Repository (won from duels), usable to progress the story. */
