@@ -83,3 +83,25 @@ export function pendingNudges(state: GameState): NudgeId[] {
 export function nudgesForScreen(state: GameState, screen: 'home' | 'villagers' | 'journal'): NudgeId[] {
   return pendingNudges(state).filter((id) => screenOfNudge(id) === screen);
 }
+
+/**
+ * A single warm sentence inviting the player toward one nudge — for the dawn
+ * modal's "here's what's new" line. Never a to-do; always an invitation.
+ */
+export function nudgeLine(id: NudgeId): string {
+  if (id.startsWith('game:')) {
+    const m = MINIGAMES.find((g) => g.id === id.slice(5));
+    return m ? `${m.title} is waiting — ${m.verb.toLowerCase()}.` : 'A village game is waiting to be played.';
+  }
+  if (id.startsWith('action:')) {
+    const a = ACTIONS.find((x) => x.id === id.slice(7));
+    return a ? `A new way to warm the hearth: ${a.label}.` : 'There’s a new way to earn energy.';
+  }
+  if (id.startsWith('villager:')) {
+    const v = VILLAGERS.find((x) => x.id === id.slice(9));
+    return v ? `${v.name} is about the village — say hello.` : 'A neighbour you haven’t met is about.';
+  }
+  if (id === 'almanac') return 'The Keeper’s Almanac has new pages to fill.';
+  if (id.startsWith('week-digest:')) return 'Your week in Emberhollow is ready to read.';
+  return '';
+}

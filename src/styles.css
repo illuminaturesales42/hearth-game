@@ -6117,3 +6117,11 @@ body.reduce-motion .mg-peg-golden {
 body.reduce-motion .glow-dot {
   animation: none;
 }
+
+/* The dawn modal's "what's new" invitation line (Discovery nudge). */
+.newday-nudge {
+  margin: 6px 0 0;
+  font-size: var(--fs-sm, 12px);
+  color: #ffd27a;
+  font-weight: 600;
+}
