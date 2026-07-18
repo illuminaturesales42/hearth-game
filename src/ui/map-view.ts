@@ -10,7 +10,7 @@
  */
 import type { Game, GameEvent } from '../core/game';
 import { MAP_LOCATIONS } from '../data/world';
-import { MINIGAMES } from '../data/minigames';
+import { MINIGAMES, minigameForBuilding } from '../data/minigames';
 import { ORDERS, RESTORE_ORDERS, chapterFor, stageFor } from '../data/economy';
 import { orderAt } from '../data/endless';
 import { questsForDay } from '../data/daily-quests';
@@ -2709,6 +2709,30 @@ export class MapView {
         } else {
           // 'ineligible' — the building needs caring for first (no daily throttle exists).
           toast('Care for the building first — its doors open once it’s loved.');
+        }
+      };
+    });
+    // Building location cards go straight to their mini-game in one tap (their
+    // own game launches; if it's not yet opened, open its doors first).
+    host.querySelectorAll<HTMLElement>('.loc-playable[data-art]').forEach((card) => {
+      const launch = (): void => {
+        const art = card.dataset.art!;
+        const def = minigameForBuilding(art);
+        if (!def) return;
+        if (this.game.canPlayMinigame(def.id)) {
+          document.dispatchEvent(new CustomEvent('hearth:play-minigame', { detail: { id: def.id } }));
+        } else if (this.game.openMinigameDoors(art) === 'opened') {
+          feedback.chime(520);
+          document.dispatchEvent(new CustomEvent('hearth:play-minigame', { detail: { id: def.id } }));
+        } else {
+          this.showBuilding(art, Number(card.dataset.unlockAt) || 0); // fall back to the card
+        }
+      };
+      card.onclick = launch;
+      card.onkeydown = (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          launch();
         }
       };
     });
