@@ -35,6 +35,7 @@ import {
   stageFor,
 } from '../data/economy';
 import { stampItems, type AlmanacPage, type AlmanacState } from './almanac';
+import { pendingNudges } from './discovery';
 import { appendEntry, composeEntry, rolloverStats } from './chronicle';
 import { newlyEarned } from './achievements';
 import { questMultiplier, questsForDay } from '../data/daily-quests';
@@ -220,6 +221,7 @@ export class Game {
       nextDecorId: 1,
       minigames: initialMinigames(localDayKey(now)),
       almanac: {},
+      discovered: [],
       repository: [],
       duelStreak: 0,
       coins: 0,
@@ -1339,6 +1341,25 @@ export class Game {
   /** The Keeper's Almanac as it stands (stamp id -> times found). */
   get almanac(): AlmanacState {
     return this.state.almanac;
+  }
+
+  // ---------- discovery nudges ----------
+
+  /** Feature-ids that should glow right now — available but not yet engaged. */
+  pendingNudges(): string[] {
+    return pendingNudges(this.state);
+  }
+
+  /** Has this feature already been discovered (its glow retired)? */
+  isDiscovered(id: string): boolean {
+    return (this.state.discovered ?? []).includes(id);
+  }
+
+  /** Retire a feature's discovery glow for good (idempotent). */
+  discover(id: string): void {
+    if (this.isDiscovered(id)) return;
+    this.state = { ...this.state, discovered: [...(this.state.discovered ?? []), id] };
+    this.emit({ type: 'state' });
   }
 
   /** Living well tops up a mini-game attempt (never bought). Capped per day. */

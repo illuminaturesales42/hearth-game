@@ -306,6 +306,9 @@ export interface GameState {
   minigames: MinigameState;
   /** The Keeper's Almanac: stamp id -> times found (0/absent = undiscovered). */
   almanac: Record<string, number>;
+  /** Feature-ids the player has engaged with — clears their discovery glow for
+   *  good (see core/discovery). Absent on old saves = nothing discovered yet. */
+  discovered?: readonly string[];
   /** Items won from duels, spendable to progress the story. */
   repository: readonly RepositoryItem[];
   /** Consecutive duel wins → reward multiplier. */
