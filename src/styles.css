@@ -1068,7 +1068,7 @@ body {
    and turns with the map's own lighting (sunrise / midday / sunset / night). */
 .time-badge {
   position: absolute;
-  top: 6px;
+  top: 1px;
   right: 6px;
   width: 66px;
   aspect-ratio: 47 / 50;

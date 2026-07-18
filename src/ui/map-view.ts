@@ -1845,7 +1845,7 @@ export class MapView {
       // own rock base sits over open water, not up on the green land plate.
       // Sprites are mirrored on disk so the keeper's door faces the land.
       const lx = W * 0.955;
-      const baseY = H * 0.655;
+      const baseY = H * 0.625;
       if (img) {
         // the new painted lighthouse is a tall portrait sprite with its own rock
         // base, so it's narrower than the old near-square art (0.23 dwarfed the map).
