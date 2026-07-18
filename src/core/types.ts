@@ -169,6 +169,10 @@ export interface Prefs {
   boardSkin?: string;
   /** Board skins the player has bought (re-equipping is free). */
   ownedSkins?: readonly string[];
+  /** Opt-in: one warm daily notification. Off by default (never nags). */
+  notifyDaily?: boolean;
+  /** Hour of day (0..23) the daily notification fires. */
+  notifyHour?: number;
 }
 
 /** An item held in the Repository (won from duels), usable to progress the story. */
@@ -306,6 +310,9 @@ export interface GameState {
   minigames: MinigameState;
   /** The Keeper's Almanac: stamp id -> times found (0/absent = undiscovered). */
   almanac: Record<string, number>;
+  /** Feature-ids the player has engaged with — clears their discovery glow for
+   *  good (see core/discovery). Absent on old saves = nothing discovered yet. */
+  discovered?: readonly string[];
   /** Items won from duels, spendable to progress the story. */
   repository: readonly RepositoryItem[];
   /** Consecutive duel wins → reward multiplier. */

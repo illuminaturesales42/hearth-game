@@ -92,7 +92,11 @@ export class EnergyPanel {
     row.className = 'earn-row';
 
     const done = this.isDone(a);
+    // a soft glow on a way to earn energy the player has never tried
+    const untried = !this.game.isDiscovered(`action:${a.id}`);
+    if (untried) row.classList.add('earn-untried');
     row.innerHTML =
+      (untried ? '<span class="glow-dot" aria-hidden="true"></span>' : '') +
       actionIcon(a.id, a.icon) +
       `<span class="earn-body"><b>${a.label}</b><span>${a.sublabel}</span></span>` +
       `<span class="earn-gain">+${a.energy}</span>`;

@@ -9,6 +9,11 @@ import { EXPORT_STAMP_KEY } from './growth';
 import { recentEvents } from '../analytics';
 import { feedback } from './feedback';
 import { toast } from './toast';
+import {
+  pickNotificationProvider,
+  DAILY_NOTIF_BODY,
+  DEFAULT_NOTIF_HOUR,
+} from '../platform/notification-provider';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 
@@ -34,6 +39,9 @@ export class SettingsUI {
     });
     el<HTMLInputElement>('set-motion')?.addEventListener('change', (e) => {
       this.game.setPrefs({ forceReducedMotion: (e.target as HTMLInputElement).checked });
+    });
+    el<HTMLInputElement>('set-notif')?.addEventListener('change', (e) => {
+      void this.toggleNotifications((e.target as HTMLInputElement).checked);
     });
 
     el<HTMLButtonElement>('set-export')?.addEventListener('click', () => this.export());
@@ -83,8 +91,42 @@ export class SettingsUI {
     if (contrast) contrast.checked = p.highContrast;
     const motion = el<HTMLInputElement>('set-motion');
     if (motion) motion.checked = p.forceReducedMotion;
+    const notif = el<HTMLInputElement>('set-notif');
+    if (notif) notif.checked = !!p.notifyDaily;
+    const notifNote = el('set-notif-note');
+    if (notifNote) notifNote.hidden = !p.notifyDaily;
     const v = el('set-version');
     if (v) v.textContent = `Hearth MVP · save v${CURRENT_VERSION} · health data never leaves your device`;
+  }
+
+  /**
+   * Opt in/out of the daily hearth reminder. On enable, ask permission then
+   * schedule; if permission is refused, quietly revert the toggle (never nag).
+   * On disable, cancel the schedule. Persists the choice in prefs.
+   */
+  private async toggleNotifications(on: boolean): Promise<void> {
+    const provider = pickNotificationProvider();
+    if (on) {
+      const granted = await provider.requestPermission();
+      if (!granted) {
+        this.game.setPrefs({ notifyDaily: false });
+        const box = el<HTMLInputElement>('set-notif');
+        if (box) box.checked = false;
+        toast('Reminders need notification permission — enable it in your device settings.');
+        return;
+      }
+      const hour = this.game.prefs.notifyHour ?? DEFAULT_NOTIF_HOUR;
+      await provider.scheduleDaily(hour, DAILY_NOTIF_BODY);
+      this.game.setPrefs({ notifyDaily: true, notifyHour: hour });
+      toast(
+        provider.canSchedule
+          ? 'A gentle daily reminder is set. ☀'
+          : 'Saved — reminders arrive fully in the installed app.',
+      );
+    } else {
+      await provider.cancelAll();
+      this.game.setPrefs({ notifyDaily: false });
+    }
   }
 
   private export(): void {
