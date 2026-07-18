@@ -2620,9 +2620,12 @@ export class MapView {
     const statuses = MINIGAMES.map((m) => ({ m, st: this.game.minigameStatus(m.buildingArt) }));
     // Nothing to show until at least one game's building has returned.
     if (!statuses.some(({ st }) => st && st.reason !== 'locked-story')) return '';
+    const pending = new Set(this.game.pendingNudges());
     const rows = statuses
       .map(({ m, st }) => {
         if (!st) return '';
+        // a soft glow on a returned-but-never-played game (retires on first play)
+        const glow = pending.has(`game:${m.id}`) ? '<span class="glow-dot" aria-hidden="true"></span>' : '';
         const cta = minigameCta(st, this.game.isTesterUnlimited);
         const thumb = artUrl(m.buildingArt);
         // Same copy as the building card (via minigameCta); the index differs only
@@ -2640,7 +2643,7 @@ export class MapView {
           action = `<button class="vl-play" data-play="${m.id}" disabled>${cta.label}</button>`;
         }
         return (
-          `<div class="vl-row${cta.kind === 'locked-story' ? ' vl-row-teaser' : ''}">` +
+          `<div class="vl-row${cta.kind === 'locked-story' ? ' vl-row-teaser' : ''}">${glow}` +
           (thumb ? `<div class="vl-thumb" style="background-image:url(${thumb})" aria-hidden="true"></div>` : '') +
           `<div class="vl-body"><b>${m.title}</b><span>${cta.sub}</span></div>${action}</div>`
         );
@@ -2677,8 +2680,11 @@ export class MapView {
         .join('');
       return `<div class="alm-section"><p class="alm-section-title">${sec}</p><div class="alm-grid">${cells}</div></div>`;
     }).join('');
+    const glow = this.game.pendingNudges().includes('almanac')
+      ? '<span class="glow-dot" aria-hidden="true"></span>'
+      : '';
     return (
-      `<details class="alm-book"><summary class="alm-summary">` +
+      `<details class="alm-book"><summary class="alm-summary">${glow}` +
       `The Keeper’s Almanac <span class="alm-count">${found} of ${total} pages</span></summary>` +
       `<p class="alm-intro">What the village games turn up, remembered.</p>${sections}</details>`
     );
@@ -2705,6 +2711,11 @@ export class MapView {
           toast('Care for the building first — its doors open once it’s loved.');
         }
       };
+    });
+    // Opening the Almanac counts as discovering it — retire its glow.
+    const book = host.querySelector<HTMLDetailsElement>('.alm-book');
+    book?.addEventListener('toggle', () => {
+      if (book.open) this.game.discover('almanac');
     });
   }
 }

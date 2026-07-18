@@ -35,6 +35,7 @@ import {
   stageFor,
 } from '../data/economy';
 import { stampItems, type AlmanacPage, type AlmanacState } from './almanac';
+import { pendingNudges } from './discovery';
 import { appendEntry, composeEntry, rolloverStats } from './chronicle';
 import { newlyEarned } from './achievements';
 import { questMultiplier, questsForDay } from '../data/daily-quests';
@@ -220,6 +221,7 @@ export class Game {
       nextDecorId: 1,
       minigames: initialMinigames(localDayKey(now)),
       almanac: {},
+      discovered: [],
       repository: [],
       duelStreak: 0,
       coins: 0,
@@ -679,6 +681,7 @@ export class Game {
     const home = TOWN_BUILDINGS.find((b) => b.unlockAt === this.state.orderIndex && b.art === villagerDef(vid)?.home);
     if (home) rel = recordMemory(rel, vid, restoreMemory(day, BUILDING_INFO[home.art] ?? 'their home'));
     this.state = { ...this.state, relationships: rel };
+    this.discover(`villager:${vid}`); // met at last — retire their glow
     const after = hearts(bondFor(rel, vid).points);
     this.emit({
       type: 'bond',
@@ -797,6 +800,7 @@ export class Game {
   }
 
   private applyRecord(res: RecordResult, actionId: string): void {
+    this.discover(`action:${actionId}`); // first log of this action retires its glow
     // The sea remembers a quiet mind: any meditation marks today calm,
     // whether or not the energy cap already paid out.
     if (actionId.startsWith('med-') || actionId === 'log-meditation') {
@@ -1259,6 +1263,7 @@ export class Game {
   startMinigame(id: string, now = Date.now()): { seed: number } | null {
     this.beginDay(now);
     if (!this.canPlayMinigame(id)) return null;
+    this.discover(`game:${id}`); // first play retires the game's discovery glow
     // Tester mode: unlimited goes — don't spend the token or energy.
     if (!this.testerUnlimited) {
       this.state = {
@@ -1339,6 +1344,25 @@ export class Game {
   /** The Keeper's Almanac as it stands (stamp id -> times found). */
   get almanac(): AlmanacState {
     return this.state.almanac;
+  }
+
+  // ---------- discovery nudges ----------
+
+  /** Feature-ids that should glow right now — available but not yet engaged. */
+  pendingNudges(): string[] {
+    return pendingNudges(this.state);
+  }
+
+  /** Has this feature already been discovered (its glow retired)? */
+  isDiscovered(id: string): boolean {
+    return (this.state.discovered ?? []).includes(id);
+  }
+
+  /** Retire a feature's discovery glow for good (idempotent). */
+  discover(id: string): void {
+    if (this.isDiscovered(id)) return;
+    this.state = { ...this.state, discovered: [...(this.state.discovered ?? []), id] };
+    this.emit({ type: 'state' });
   }
 
   /** Living well tops up a mini-game attempt (never bought). Capped per day. */

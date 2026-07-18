@@ -8,7 +8,7 @@ import type { GameState, MinigameState } from './types';
 import { localDayKey } from './energy';
 import { initialMinigames } from './minigames';
 
-export const CURRENT_VERSION = 16;
+export const CURRENT_VERSION = 17;
 
 const KEY = 'hearth:save';
 /** Older builds wrote the version into the key. Read them once, then adopt KEY. */
@@ -59,6 +59,10 @@ const MIGRATIONS: Record<number, (s: LooseState) => LooseState> = {
   // Existing villages start with an empty book — nothing is ever missed, so
   // there's nothing to back-fill; the next catch writes the first page.
   15: (s) => ({ ...s, version: 16, almanac: {} }),
+  // v16 → v17: discovery-glow record. Optional field, so no back-fill and no
+  // presence-guard change — a returning player simply sees the glows for
+  // whatever they've not engaged with yet.
+  16: (s) => ({ ...s, version: 17, discovered: [] }),
 };
 
 /** Upgrade any historical state to CURRENT_VERSION, or null if unrecognizable. */

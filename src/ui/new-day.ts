@@ -5,6 +5,7 @@
  */
 import type { Game } from '../core/game';
 import { nextTease } from './tease';
+import { nudgeLine } from '../core/discovery';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 
@@ -37,6 +38,15 @@ export class NewDayUI {
     if (teaseEl) {
       teaseEl.textContent = tease ? `Today: ${tease}` : '';
       teaseEl.hidden = !tease;
+    }
+    // One warm nudge toward the most worthwhile thing not yet tried — an
+    // invitation, never a checklist. The matching glow marks the spot on return.
+    const nudgeEl = el('newday-nudge');
+    if (nudgeEl) {
+      const top = this.game.pendingNudges()[0];
+      const line = top ? nudgeLine(top) : '';
+      nudgeEl.textContent = line ? `✦ ${line}` : '';
+      nudgeEl.hidden = !line;
     }
     el('newday-modal')!.hidden = false;
   }

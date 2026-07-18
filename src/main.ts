@@ -8,6 +8,7 @@ import { MinigameUI } from './ui/minigames';
 import { confirmDialog } from './ui/confirm-modal';
 import { initNetStatus } from './ui/net-status';
 import { initTimeBadge } from './ui/time-badge';
+import { pickNotificationProvider, DAILY_NOTIF_BODY, DEFAULT_NOTIF_HOUR } from './platform/notification-provider';
 import { recentEvents, setSink, track } from './analytics';
 import { createNetworkSink } from './platform/analytics-sink';
 import type { HealthSnapshot } from './health/health-provider';
@@ -36,6 +37,16 @@ new MinigameUI(game);
 // The corner time-of-day badge on the Home map (reflects the real clock; the
 // map's own lighting turns with the same phase).
 initTimeBadge();
+
+// If the player opted into the daily hearth reminder, re-affirm the schedule on
+// boot (native only; the web/no-op paths do nothing). Never prompts — permission
+// was granted at opt-in time.
+if (game.prefs.notifyDaily) {
+  const provider = pickNotificationProvider();
+  if (provider.canSchedule) {
+    void provider.scheduleDaily(game.prefs.notifyHour ?? DEFAULT_NOTIF_HOUR, DAILY_NOTIF_BODY);
+  }
+}
 
 // A quiet offline indicator (the game is local-first; this only reassures).
 initNetStatus();
