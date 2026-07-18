@@ -37,13 +37,13 @@ export const TOWN_BUILDINGS: readonly TownPiece[] = [
   // 2026-07 re-lay (user-directed): cottage→old market plot, bakery→old cottage
   // plot, farm→old bakery plot, library→old farm plot (sprite flipped so the
   // door faces right/into town), market→old library plot, townhall↔workshop.
-  { art: 'town_cottage', x: 0.5, y: 0.375, w: 0.148, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
+  { art: 'town_cottage', x: 0.515, y: 0.375, w: 0.148, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
   { art: 'town_bakery', x: 0.36, y: 0.445, w: 0.138, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
-  { art: 'prop_well', x: 0.465, y: 0.49, w: 0.092, unlockAt: 6 },
+  { art: 'prop_well', x: 0.45, y: 0.49, w: 0.092, unlockAt: 6 },
   { art: 'town_market', x: 0.54, y: 0.59, w: 0.138, unlockAt: 8, ruinVariant: 7 },
   { art: 'town_garden', x: 0.775, y: 0.5, w: 0.148, unlockAt: 10, ruinVariant: 4 },
   { art: 'town_townhall', x: 0.2, y: 0.345, w: 0.148, unlockAt: 12, ruinVariant: 3 },
-  { art: 'town_workshop', x: 0.235, y: 0.8, w: 0.138, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
+  { art: 'town_workshop', x: 0.25, y: 0.8, w: 0.138, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
   { art: 'town_farm', x: 0.715, y: 0.31, w: 0.148, unlockAt: 16, ruinVariant: 5 },
   // Joss's hut is a stilted pier: it sits on the SE point with its deck over the
   // bay water, connected to land only at the house body (back). Anchor is
