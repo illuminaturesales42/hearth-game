@@ -55,8 +55,25 @@ initNetStatus();
 // under the player's feet — a warm banner offers a refresh whenever they're
 // ready. (This is the structural fix for the "testers stuck on a stale build"
 // problem; registerType 'prompt' + this banner replace the self-destroying SW.)
+/** True for testers (opted in via ?tester, remembered) — computed early so the
+ *  SW can auto-apply updates for them instead of waiting on the banner. */
+const isTester = (() => {
+  try {
+    if (new URLSearchParams(location.search).has('tester')) return true;
+    return localStorage.getItem('hearth:tester') === '1';
+  } catch {
+    return false;
+  }
+})();
+
 const updateSW = registerSW({
   onNeedRefresh() {
+    // Testers always run the freshest build — apply the update and reload at
+    // once, no banner, so map/feature tweaks show up without the refresh dance.
+    if (isTester) {
+      void updateSW(true);
+      return;
+    }
     const banner = document.getElementById('update-banner');
     const btn = document.getElementById('update-banner-btn');
     if (!banner || !btn) return;
