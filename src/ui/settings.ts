@@ -9,11 +9,7 @@ import { EXPORT_STAMP_KEY } from './growth';
 import { recentEvents } from '../analytics';
 import { feedback } from './feedback';
 import { toast } from './toast';
-import {
-  pickNotificationProvider,
-  DAILY_NOTIF_BODY,
-  DEFAULT_NOTIF_HOUR,
-} from '../platform/notification-provider';
+import { pickNotificationProvider, DAILY_NOTIF_BODY, DEFAULT_NOTIF_HOUR } from '../platform/notification-provider';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 

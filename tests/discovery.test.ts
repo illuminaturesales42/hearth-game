@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pendingNudges, screenOfNudge, nudgesForScreen, PENDING_CAP } from '../src/core/discovery';
+import { screenOfNudge, nudgesForScreen, PENDING_CAP } from '../src/core/discovery';
 import { Game } from '../src/core/game';
 import { migrateState, CURRENT_VERSION } from '../src/core/save';
 import { ORDERS } from '../src/data/economy';
@@ -74,7 +74,7 @@ describe('discovery engine (pure)', () => {
 describe('discovery save migration (16 → 17)', () => {
   it('adds an empty discovered set to a v16 save without breaking it', () => {
     const g = new Game(1000);
-    const raw = JSON.parse(JSON.stringify(g.snapshot));
+    const raw = JSON.parse(JSON.stringify(g.snapshot)) as Record<string, unknown>;
     // simulate an older save at v16 with no discovered field
     raw.version = 16;
     delete raw.discovered;

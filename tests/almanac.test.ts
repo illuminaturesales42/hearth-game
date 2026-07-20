@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  ALMANAC_PAGES,
-  ALMANAC_SECTIONS,
-  almanacProgress,
-  pageFor,
-  stampId,
-  stampItems,
-} from '../src/core/almanac';
+import { ALMANAC_PAGES, ALMANAC_SECTIONS, almanacProgress, pageFor, stampId, stampItems } from '../src/core/almanac';
 import {
   beaconReward,
   catchReward,

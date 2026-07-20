@@ -356,10 +356,13 @@ export class MinigameUI {
       // items pop in first, then the coins tick up with rising pitch, then the banner
       itemEls.forEach((it, i) =>
         this.timers.push(
-          window.setTimeout(() => {
-            it.classList.add('in');
-            feedback.tick(380 + i * 60);
-          }, 120 + i * 160),
+          window.setTimeout(
+            () => {
+              it.classList.add('in');
+              feedback.tick(380 + i * 60);
+            },
+            120 + i * 160,
+          ),
         ),
       );
       const startAt = 200 + itemEls.length * 160;
@@ -610,9 +613,7 @@ export class MinigameUI {
           const slot = powerToSlot(pull);
           pebble.style.transform = `translateY(${pull * 16}px) scale(${1 + pull * 0.25})`;
           // the preview glows the ring the current draw would reach
-          stage
-            .querySelectorAll<HTMLElement>('.mg-ring')
-            .forEach((r, i) => r.classList.toggle('aim', i === slot));
+          stage.querySelectorAll<HTMLElement>('.mg-ring').forEach((r, i) => r.classList.toggle('aim', i === slot));
           if (arc) arc.style.setProperty('--pull', String(pull));
         };
         const up = (): void => {
@@ -686,7 +687,10 @@ export class MinigameUI {
       feedback.chime(slot === BEACON_ROWS / 2 ? 620 : 300);
       if (slot === BEACON_ROWS / 2) feedback.deliver(); // centre catch: the 3-note motif + haptic
       this.timers.push(
-        window.setTimeout(() => this.finish(beaconReward(slot, goldenHit), undefined, beaconScore(slot, goldenHit)), 500),
+        window.setTimeout(
+          () => this.finish(beaconReward(slot, goldenHit), undefined, beaconScore(slot, goldenHit)),
+          500,
+        ),
       );
     };
 
@@ -1221,7 +1225,11 @@ export class MinigameUI {
     const end = (): void => {
       if (ended) return;
       ended = true;
-      this.finish(forageReward(acc, heartFound, Math.max(0, steps)), undefined, acc.items.length + acc.ember + (heartFound ? Math.max(0, steps) : 0));
+      this.finish(
+        forageReward(acc, heartFound, Math.max(0, steps)),
+        undefined,
+        acc.items.length + acc.ember + (heartFound ? Math.max(0, steps) : 0),
+      );
     };
     // "Head home" — stop early and keep everything; with the heart found, the
     // unspent footsteps become the forager's bonus (a real decision at last).
@@ -1274,17 +1282,21 @@ export class MinigameUI {
         vibrate([16, 60, 20]);
         feedback.deliver();
         const hint = stage.querySelector<HTMLElement>('.mg-forage-steps');
-        hint?.insertAdjacentHTML('beforeend', ' · <span class="mg-forage-bonus">honeycomb found — home pays +3/step!</span>');
+        hint?.insertAdjacentHTML(
+          'beforeend',
+          ' · <span class="mg-forage-bonus">honeycomb found — home pays +3/step!</span>',
+        );
       } else if (kind === 'clearing') {
         // the clearing opens its neighbours in a gentle rush — free reveals
         feedback.chime(560);
         const col = i % FORAGE_COLS;
-        const neigh = [i - FORAGE_COLS, i + FORAGE_COLS, col > 0 ? i - 1 : -1, col < FORAGE_COLS - 1 ? i + 1 : -1].filter(
-          (n) => n >= 0 && n < FORAGE_SIZE,
-        );
-        neigh.forEach((n, k) =>
-          this.timers.push(window.setTimeout(() => reveal(n, true, depth + 1), 140 + k * 110)),
-        );
+        const neigh = [
+          i - FORAGE_COLS,
+          i + FORAGE_COLS,
+          col > 0 ? i - 1 : -1,
+          col < FORAGE_COLS - 1 ? i + 1 : -1,
+        ].filter((n) => n >= 0 && n < FORAGE_SIZE);
+        neigh.forEach((n, k) => this.timers.push(window.setTimeout(() => reveal(n, true, depth + 1), 140 + k * 110)));
       } else {
         if (kind === 'ember' || kind === 'coins') this.spark(t, 50, 46);
         // warmer tiles ring higher — you can HEAR the trail

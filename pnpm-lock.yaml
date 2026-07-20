@@ -23,6 +23,9 @@ importers:
       '@capacitor/haptics':
         specifier: ^8.0.2
         version: 8.0.2(@capacitor/core@8.4.1)
+      '@capacitor/local-notifications':
+        specifier: ^8.0.0
+        version: 8.2.1(@capacitor/core@8.4.1)
     devDependencies:
       '@capacitor/cli':
         specifier: ^8.4.1
@@ -601,6 +604,11 @@ packages:
 
   '@capacitor/haptics@8.0.2':
     resolution: {integrity: sha512-c2hZzRR5Fk1tbTvhG1jhh2XBAf3EhnIerMIb2sl7Mt41Gxx1fhBJFDa0/BI1IbY4loVepyyuqNC9820/GZuoWQ==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+
+  '@capacitor/local-notifications@8.2.1':
+    resolution: {integrity: sha512-Bkim+MGl7UrDTjDferV4ECq0aWciTsa0k15+MX2jnx2PeWgEPvlBy5yrqzBlwEZPrtHFUvPVxPi5V66MPGHkAw==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
@@ -4038,6 +4046,10 @@ snapshots:
       '@capacitor/synapse': 1.0.4
 
   '@capacitor/haptics@8.0.2(@capacitor/core@8.4.1)':
+    dependencies:
+      '@capacitor/core': 8.4.1
+
+  '@capacitor/local-notifications@8.2.1(@capacitor/core@8.4.1)':
     dependencies:
       '@capacitor/core': 8.4.1
 

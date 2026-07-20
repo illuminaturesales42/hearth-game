@@ -160,7 +160,10 @@ export function wishingWellReward(slots: readonly number[], seed: number, wishCo
   const base = clamped.reduce((n, s) => n + WELL_COINS[s]!, 0);
   const coins = Math.max(6, Math.round(base * mult));
   const items: { chain: ChainId; level: number }[] = [
-    { chain: 'seeds', level: centres >= 3 ? 3 : centres === 2 ? 2 : centres === 1 ? (rand() < 0.5 ? 2 : 1) : rand() < 0.4 ? 1 : 0 },
+    {
+      chain: 'seeds',
+      level: centres >= 3 ? 3 : centres === 2 ? 2 : centres === 1 ? (rand() < 0.5 ? 2 : 1) : rand() < 0.4 ? 1 : 0,
+    },
   ];
   if (centres >= 2) items.push({ chain: 'seeds', level: 1 });
   const ember = centres >= 1 ? 2 : 1;
@@ -432,10 +435,10 @@ export function catchReward(quality: number, reelQuality = 0): MgReward {
       level === 3
         ? 'A deep-water rarity — Joss will talk about this one.'
         : level === 2
-        ? 'A fine fish, landed clean.'
-        : level === 1
-          ? 'A good catch off Joss’s line.'
-          : 'A nibble — enough for the pot.',
+          ? 'A fine fish, landed clean.'
+          : level === 1
+            ? 'A good catch off Joss’s line.'
+            : 'A nibble — enough for the pot.',
   };
 }
 
