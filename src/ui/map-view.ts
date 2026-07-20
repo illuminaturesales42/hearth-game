@@ -30,6 +30,7 @@ import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-cam
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
 import { currentWeather } from './weather';
 import { artUrl, portraitFor, tileMarkup } from './art';
+import { esc } from './esc';
 import { ALMANAC_PAGES, ALMANAC_SECTIONS, almanacProgress } from '../core/almanac';
 import { VILLAGER_DEFS } from '../data/villagers';
 import { bondFor, greetingFor, hearts, HEARTS_MAX } from '../core/relationships';
@@ -616,9 +617,9 @@ export class MapView {
     host.innerHTML =
       (bust ? `<span class="bldg-bond-bust" style="background-image:url(${bust})"></span>` : '') +
       `<div class="bldg-bond-body">` +
-      `<b>${villager.name}<span class="bldg-bond-hearts" role="img" aria-label="${filled} of ${HEARTS_MAX} hearts">${heartRow}</span></b>` +
-      `<span class="bldg-bond-trait">${villager.trait}</span>` +
-      `<p class="bldg-bond-greet">“${greet}”</p></div>`;
+      `<b>${esc(villager.name)}<span class="bldg-bond-hearts" role="img" aria-label="${filled} of ${HEARTS_MAX} hearts">${heartRow}</span></b>` +
+      `<span class="bldg-bond-trait">${esc(villager.trait)}</span>` +
+      `<p class="bldg-bond-greet">“${esc(greet)}”</p></div>`;
   }
 
   /** Hide the building card and launch its game. */

@@ -13,6 +13,7 @@ import { composeWeek } from '../core/chronicle';
 import { seasonForMonth, type Season } from '../core/world-mood';
 import { chainDef } from '../core/board';
 import { artUrl, portraitFor, tileMarkup } from './art';
+import { esc } from './esc';
 import { feedback } from './feedback';
 import { toast } from './toast';
 
@@ -29,9 +30,6 @@ const SEASON_NOTE: Record<Season, string> = {
 type JTab = 'Chronicle' | 'Good Days' | 'Clues' | 'Letters' | 'People' | 'Places';
 const TABS: JTab[] = ['Chronicle', 'Good Days', 'Clues', 'Letters', 'People', 'Places'];
 
-function esc(s: string): string {
-  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c);
-}
 /** An illustrated section-header banner, only when the art id has been sliced. */
 function sectionBanner(id: string): string {
   const url = artUrl(id);
@@ -115,7 +113,7 @@ export class Screens {
         .map((e) => {
           const d = new Date(`${e.day}T12:00:00`);
           const label = d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
-          return `<div class="chron-page"><span class="chron-day">${label}</span><p>${e.text}</p></div>`;
+          return `<div class="chron-page"><span class="chron-day">${label}</span><p>${esc(e.text)}</p></div>`;
         })
         .join('')
     );
