@@ -239,6 +239,18 @@ export class MapView {
   }
 
   /** How the world feels right now: real weather + the player's day. */
+  /**
+   * Signed horizontal wind (−1 = blowing left/west … +1 = right/east) from the
+   * real wind direction, so rain slants and snow drifts the way the wind is
+   * actually blowing where the player is. Meteorological windDir is where the
+   * wind comes FROM, so it blows toward windDir+180°. Gentle rightward default
+   * until a direction is known.
+   */
+  private windX(): number {
+    const d = this.weather?.windDir;
+    return d == null ? 0.6 : Math.sin(((d + 180) * Math.PI) / 180);
+  }
+
   /** The player's real sun times from the latest reading, or null (→ clock fallback). */
   private sunTimesFromWeather(): SunTimes | null {
     const w = this.weather;
@@ -1956,25 +1968,34 @@ export class MapView {
     if (mood.precip > 0 && !this.reduce) {
       const snow = mood.weather === 'snow';
       const n = Math.round(24 + mood.precip * (snow ? 30 : 60));
+      const windX = this.windX(); // real wind direction drives the slant/drift
       if (snow) {
         ctx.fillStyle = 'rgba(240, 244, 252, 0.8)';
+        const driftX = windX * (0.006 + mood.wind * 0.02); // flakes carried by the wind
         for (let i = 0; i < n; i++) {
-          const px = (((i * 97 + t * 0.012 * (1 + mood.wind)) % W) + W) % W;
+          const px = (((i * 97 + t * driftX * 60) % W) + W) % W;
           const py = (((i * 61 + t * (0.02 + mood.precip * 0.015)) % H) + H) % H;
           ctx.beginPath();
-          ctx.arc(px + Math.sin(t / 900 + i) * 4, py, 1.3 + (i % 3) * 0.4, 0, Math.PI * 2);
+          ctx.arc(
+            px + Math.sin(t / 900 + i) * 4 + windX * (2 + mood.wind * 6),
+            py,
+            1.3 + (i % 3) * 0.4,
+            0,
+            Math.PI * 2,
+          );
           ctx.fill();
         }
       } else {
         ctx.strokeStyle = 'rgba(190, 210, 235, 0.4)';
         ctx.lineWidth = 1;
-        const slant = mood.wind * 4;
+        // Heavier rain slants harder and falls faster (continuous intensity).
+        const slant = (2 + mood.wind * 6) * windX;
         for (let i = 0; i < n; i++) {
           const px = (((i * 83 + t * 0.05) % W) + W) % W;
           const py = (((i * 47 + t * (0.14 + mood.precip * 0.1)) % H) + H) % H;
           ctx.beginPath();
           ctx.moveTo(px, py);
-          ctx.lineTo(px - slant, py + 7 + mood.precip * 4);
+          ctx.lineTo(px + slant, py + 7 + mood.precip * 4);
           ctx.stroke();
         }
       }
@@ -2608,8 +2629,31 @@ export class MapView {
     if (fill) fill.style.width = `${Math.round(prog * 100)}%`;
     const label = document.getElementById('map-progress');
     const scene = mood ? moodCaption(mood) : '';
+    // A legible "your sky" readout so the player *feels* the link to their real
+    // world: local temperature + their own sunset time, from live data.
+    const sky = this.localSkyReadout();
     if (label)
-      label.textContent = `${STAGE_NAMES[stage]} · ${Math.round(prog * 100)}% restored${scene ? ` · ${scene}` : ''}`;
+      label.textContent =
+        `${STAGE_NAMES[stage]} · ${Math.round(prog * 100)}% restored` +
+        `${scene ? ` · ${scene}` : ''}${sky ? ` · ${sky}` : ''}`;
+  }
+
+  /** "12° · sunset 8:41pm" from the live reading, or '' when we have no data. */
+  private localSkyReadout(): string {
+    const w = this.weather;
+    if (!w) return '';
+    const parts: string[] = [];
+    if (typeof w.tempC === 'number') parts.push(`${Math.round(w.tempC)}°`);
+    if (typeof w.sunsetMs === 'number' && typeof w.sunriseMs === 'number') {
+      // Show the next solar event the player is heading toward.
+      const now = Date.now();
+      const upcomingSunset = now < w.sunsetMs;
+      const at = upcomingSunset ? w.sunsetMs : w.sunriseMs;
+      const label = upcomingSunset ? 'sunset' : 'sunrise';
+      const time = new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      parts.push(`${label} ${time}`);
+    }
+    return parts.join(' · ');
   }
 
   private renderList(): void {

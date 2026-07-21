@@ -23,6 +23,11 @@ export interface WeatherNow {
   /** Today's local sunrise/sunset as real instants (epoch ms). */
   sunriseMs?: number;
   sunsetMs?: number;
+  /** Wind direction in meteorological degrees (0=N, the direction it comes FROM). */
+  windDir?: number;
+  /** Current temperature °C, and the "feels like" apparent temperature °C. */
+  tempC?: number;
+  feelsLikeC?: number;
 }
 
 /** Extra live signals attached to a reading, all optional (best-effort fetch). */
@@ -30,6 +35,9 @@ export interface WeatherExtra {
   isDay?: boolean;
   sunriseMs?: number;
   sunsetMs?: number;
+  windDir?: number;
+  tempC?: number;
+  feelsLikeC?: number;
 }
 
 /** Map a WMO weather code (Open-Meteo `weather_code`) to a render category. */
@@ -58,6 +66,9 @@ export function weatherFromWmo(
   if (extra?.isDay !== undefined) now.isDay = extra.isDay;
   if (extra?.sunriseMs !== undefined) now.sunriseMs = extra.sunriseMs;
   if (extra?.sunsetMs !== undefined) now.sunsetMs = extra.sunsetMs;
+  if (extra?.windDir !== undefined) now.windDir = extra.windDir;
+  if (extra?.tempC !== undefined) now.tempC = extra.tempC;
+  if (extra?.feelsLikeC !== undefined) now.feelsLikeC = extra.feelsLikeC;
   return now;
 }
 

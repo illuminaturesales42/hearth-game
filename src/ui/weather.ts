@@ -72,7 +72,7 @@ export async function currentWeather(): Promise<WeatherNow | null> {
     // Attribution: weather data by Open-Meteo.com (CC BY 4.0).
     const url =
       `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat.toFixed(3)}&longitude=${coords.lng.toFixed(3)}` +
-      `&current=weather_code,cloud_cover,wind_speed_10m,precipitation,is_day` +
+      `&current=weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,precipitation,is_day,temperature_2m,apparent_temperature` +
       `&daily=sunrise,sunset&timezone=auto&timeformat=unixtime&wind_speed_unit=kmh`;
     const res = await fetch(url);
     if (!res.ok) return cached;
@@ -81,8 +81,11 @@ export async function currentWeather(): Promise<WeatherNow | null> {
         weather_code?: number;
         cloud_cover?: number;
         wind_speed_10m?: number;
+        wind_direction_10m?: number;
         precipitation?: number;
         is_day?: number;
+        temperature_2m?: number;
+        apparent_temperature?: number;
       };
       daily?: { sunrise?: number[]; sunset?: number[] };
     };
@@ -94,6 +97,9 @@ export async function currentWeather(): Promise<WeatherNow | null> {
     if (c.is_day !== undefined) extra.isDay = c.is_day === 1;
     if (typeof sr === 'number') extra.sunriseMs = sr * 1000;
     if (typeof ss === 'number') extra.sunsetMs = ss * 1000;
+    if (typeof c.wind_direction_10m === 'number') extra.windDir = c.wind_direction_10m;
+    if (typeof c.temperature_2m === 'number') extra.tempC = c.temperature_2m;
+    if (typeof c.apparent_temperature === 'number') extra.feelsLikeC = c.apparent_temperature;
     const now = weatherFromWmo(
       c.weather_code,
       c.cloud_cover ?? 0,
