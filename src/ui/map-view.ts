@@ -1636,17 +1636,24 @@ export class MapView {
       const dawn = tod.weights.dawn > 0.25;
       const dim = night || dusk || dawn;
       // cosy warmth spills from the windows of restored homes once the light
-      // fails — the single biggest "someone lives here" cue.
-      if (dim && BUILDING_INFO[p.art] && !this.reduce) {
-        const cx = p.x * W;
-        const cy = p.y * H - h * 0.4;
-        // gentle candle-flicker, phase-varied per home so they don't pulse in sync
-        const k = (night ? 0.46 : dusk ? 0.32 : 0.2) * (0.93 + 0.07 * Math.sin(t / 820 + p.x * 40));
-        const warm = ctx.createRadialGradient(cx, cy, 1, cx, cy, w * 0.6);
-        warm.addColorStop(0, `rgba(255, 198, 120, ${k})`);
-        warm.addColorStop(1, 'rgba(255, 190, 110, 0)');
-        ctx.fillStyle = warm;
-        ctx.fillRect(cx - w * 0.7, cy - h * 0.55, w * 1.4, h * 1.05);
+      // fails — the single biggest "someone lives here" cue. Homes now light up
+      // ONE BY ONE across the real dusk→night window (a per-home offset), not all
+      // at once, and a little morning warmth lingers at dawn.
+      if (BUILDING_INFO[p.art] && !this.reduce) {
+        const evening = Math.min(1, tod.weights.dusk * 0.7 + tod.weights.night); // 0 day → 1 deep night
+        const off = (((Math.sin(p.x * 127.1 + p.y * 311.7) * 43758.5453) % 1) + 1) % 1; // stable 0..1 per home
+        const lit = evening > off * 0.55 ? (evening - off * 0.55) / (1 - off * 0.55) : 0; // ramps once past its hour
+        const glow = Math.max(lit, tod.weights.dawn * 0.45); // homes still cosy at first light
+        if (glow > 0.02) {
+          const cx = p.x * W;
+          const cy = p.y * H - h * 0.4;
+          const k = glow * 0.5 * (0.93 + 0.07 * Math.sin(t / 820 + p.x * 40)); // gentle candle-flicker
+          const warm = ctx.createRadialGradient(cx, cy, 1, cx, cy, w * 0.6);
+          warm.addColorStop(0, `rgba(255, 198, 120, ${k.toFixed(3)})`);
+          warm.addColorStop(1, 'rgba(255, 190, 110, 0)');
+          ctx.fillStyle = warm;
+          ctx.fillRect(cx - w * 0.7, cy - h * 0.55, w * 1.4, h * 1.05);
+        }
       }
       // street lamps cast a warm pool on the ground + a glowing head at dusk/night
       if (dim && p.art === 'prop_lamp' && !this.reduce) {
@@ -1704,8 +1711,17 @@ export class MapView {
     }
 
     // --- villagers amble their rounds once their stories are told ---
+    // The village reads the sky: most folk head home after dark and shelter from
+    // a storm (the streets empty), while a lively real-world walk (villagersOut =
+    // your steps) brings more of them out. A deterministic subset, so it's steady.
+    const wkNight = night ? 0.4 : 1;
+    const wkWeather = mood.weather === 'storm' ? 0.12 : mood.weather === 'rain' ? 0.55 : 1;
+    const wkPresence = Math.min(1, (0.55 + mood.villagersOut * 0.55) * wkNight * wkWeather);
+    let wkIdx = -1;
     for (const wk of TOWN_WALKERS) {
+      wkIdx++;
       if (delivered < wk.unlockAt) continue;
+      if ((wkIdx + 0.5) / TOWN_WALKERS.length > wkPresence) continue; // gone home / sheltering
       const img = this.sprite(wk.art);
       if (!img || wk.path.length < 2) continue;
       // ping-pong along the waypoint list, phase-offset by art id hash
