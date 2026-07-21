@@ -15,6 +15,13 @@ import { resolveSync } from './sync-provider';
 import type { SyncEnvelope, SyncProvider } from './sync-provider';
 
 const REV_KEY = 'hearth:sync-rev';
+// The local rev as of the last CONFIRMED cloud sync (successful push, adopt, or
+// seed). Persisted separately from REV_KEY so that local edits which never
+// reached the cloud (offline pushes) leave rev > base — the signal that this
+// device has diverged. Reading the baseline from REV_KEY itself (the old bug)
+// made rev === base at every launch, so the conflict branch was unreachable and
+// a newer remote silently overwrote un-pushed local progress.
+const BASE_KEY = 'hearth:sync-base';
 const PUSH_DEBOUNCE_MS = 4000;
 
 export interface SyncStartResult {
@@ -33,7 +40,13 @@ export class SyncController {
     private provider: SyncProvider,
     private now: () => number = () => Date.now(),
   ) {
-    this.baselineRev = readRev();
+    this.baselineRev = readBase();
+  }
+
+  /** Mark the local save as in-sync with the cloud at `rev` (persisted). */
+  private setBaseline(rev: number): void {
+    this.baselineRev = rev;
+    writeBase(rev);
   }
 
   private localEnvelope(): SyncEnvelope | null {
@@ -53,24 +66,27 @@ export class SyncController {
     const winner = resolveSync(local, remote);
 
     if (winner === 'remote' && remote) {
-      // Local edits since last sync? Then this is a real conflict.
+      // Local edits that never reached the cloud since our last sync? Then
+      // adopting the remote would silently wipe them — surface a conflict.
       const localAdvanced = local ? local.rev > this.baselineRev : false;
       if (localAdvanced) return { outcome: 'conflict', remote };
       const state = importSave(remote.save);
       if (state) {
         writeRev(remote.rev);
-        this.baselineRev = remote.rev;
+        this.setBaseline(remote.rev);
         this.wirePush();
         return { outcome: 'adopted', remote };
       }
     }
 
     if (winner === 'local' && local) {
-      await this.provider.push(local);
+      const ok = await this.provider.push(local);
+      if (ok) this.setBaseline(local.rev); // only in-sync once the cloud confirmed
       this.wirePush();
       return { outcome: 'pushed' };
     }
 
+    if (winner === 'same' && local) this.setBaseline(local.rev);
     this.wirePush();
     return remote ? { outcome: 'noop', remote } : { outcome: 'noop' };
   }
@@ -80,7 +96,7 @@ export class SyncController {
     const state = importSave(remote.save);
     if (!state) return false;
     writeRev(remote.rev);
-    this.baselineRev = remote.rev;
+    this.setBaseline(remote.rev);
     return true;
   }
 
@@ -95,8 +111,9 @@ export class SyncController {
     if (!env) return false;
     const rev = Math.max(env.rev, remote?.rev ?? 0) + 1;
     writeRev(rev);
-    this.baselineRev = rev;
-    return this.provider.push({ ...env, rev });
+    const ok = await this.provider.push({ ...env, rev });
+    if (ok) this.setBaseline(rev); // only in-sync once the cloud confirmed
+    return ok;
   }
 
   /** After reconciliation, every meaningful change schedules a debounced push. */
@@ -117,22 +134,38 @@ export class SyncController {
     if (!save) return;
     const rev = readRev() + 1;
     writeRev(rev);
-    this.baselineRev = rev;
-    await this.provider.push({ rev, updatedAt: this.now(), save });
+    const ok = await this.provider.push({ rev, updatedAt: this.now(), save });
+    if (ok) this.setBaseline(rev); // a failed push leaves rev > base = "diverged"
   }
 }
 
 function readRev(): number {
+  return readNum(REV_KEY);
+}
+
+function writeRev(rev: number): void {
+  writeNum(REV_KEY, rev);
+}
+
+function readBase(): number {
+  return readNum(BASE_KEY);
+}
+
+function writeBase(rev: number): void {
+  writeNum(BASE_KEY, rev);
+}
+
+function readNum(key: string): number {
   try {
-    return Number(localStorage.getItem(REV_KEY) ?? 0) || 0;
+    return Number(localStorage.getItem(key) ?? 0) || 0;
   } catch {
     return 0;
   }
 }
 
-function writeRev(rev: number): void {
+function writeNum(key: string, n: number): void {
   try {
-    localStorage.setItem(REV_KEY, String(rev));
+    localStorage.setItem(key, String(n));
   } catch {
     /* best-effort */
   }

@@ -13,6 +13,7 @@ import type { SyncEnvelope } from '../src/platform/sync-provider';
 
 const T0 = new Date('2026-07-07T13:00:00').getTime();
 const REV_KEY = 'hearth:sync-rev';
+const BASE_KEY = 'hearth:sync-base';
 const SAVE_KEY = 'hearth:save';
 
 // vitest node env has no localStorage: provide a minimal in-memory shim.
@@ -79,6 +80,44 @@ describe('SyncController.start() — the reconcile decision matrix', () => {
     const res = await c.start();
     expect(res.outcome).toBe('adopted');
     expect(coinsOf(exportSave())).toBe(coinsOf(remoteSave));
+  });
+
+  it('conflict is reachable at real launch: rev > persisted baseline, no post-construction mutation (regression)', async () => {
+    // Reproduces the actual launch flow the old code got wrong: a device that
+    // synced at rev 5, then made local edits (rev → 7) whose pushes never
+    // reached the cloud, relaunches to find a newer remote. baselineRev is read
+    // from the persisted BASE_KEY at construction — NOT bumped by the test after
+    // construction — so localAdvanced (7 > 5) is genuinely true.
+    const localSave = makeSave(0);
+    const remoteSave = makeSave(500);
+    store.set(SAVE_KEY, localSave);
+    store.set(REV_KEY, '7'); // local advanced to rev 7
+    store.set(BASE_KEY, '5'); // ...but last CONFIRMED cloud sync was rev 5
+    const provider = new MemorySyncProvider(env(10, 300, remoteSave));
+    const g = new Game(T0);
+    const c = new SyncController(g, provider, () => T0); // baseline = readBase() = 5
+    const res = await c.start(); // no artificial rev mutation here
+    expect(res.outcome).toBe('conflict');
+    expect(res.remote?.rev).toBe(10);
+    expect(coinsOf(exportSave())).toBe(coinsOf(localSave)); // village untouched
+  });
+
+  it('a confirmed push advances the persisted baseline so a later equal remote is not a false conflict', async () => {
+    // After pushNow succeeds, base === rev, so the next launch against the same
+    // (now-remote) rev must NOT read as a conflict.
+    makeSave(0);
+    store.set(REV_KEY, '3');
+    const provider = new MemorySyncProvider();
+    const g = new Game(T0);
+    const c = new SyncController(g, provider, () => T0);
+    await c.pushNow(); // rev → 4, push ok → base 4
+    expect(store.get(BASE_KEY)).toBe('4');
+    // relaunch: remote is exactly what we pushed (rev 4), local unchanged (rev 4)
+    const remote = await provider.pull();
+    const c2 = new SyncController(g, provider, () => T0); // baseline = 4
+    const res = await c2.start();
+    expect(res.outcome).not.toBe('conflict');
+    expect(remote?.rev).toBe(4);
   });
 
   it('remote newer + local ADVANCED since baseline → conflict, local untouched (the pillar case)', async () => {
