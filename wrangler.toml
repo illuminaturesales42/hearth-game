@@ -2,8 +2,14 @@
 # The permanent funnel URL (roadmap Phase 0, step #1) — replaces the fragile
 # `cloudflared` quick tunnels that die on PC sleep.
 #
+# NOTE: *.pages.dev subdomains are GLOBALLY first-come. The bare name "hearth"
+# is already taken by an unrelated account (hearth.pages.dev serves someone
+# else's parked/affiliate page — it was never ours), so the project name must
+# be distinctive. `pnpm deploy` prints the real URL; if this name is also taken,
+# change it here and redeploy.
+#
 # One-time human setup and the deploy commands live in DEPLOY.md.
-name = "hearth"
+name = "hearth-emberhollow"
 compatibility_date = "2026-07-08"
 pages_build_output_dir = "dist"
 

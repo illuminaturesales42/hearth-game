@@ -1,9 +1,16 @@
 # Deploying Hearth — the permanent public URL
 
 Hearth's web build is a static PWA. We publish it to **Cloudflare Pages** for a
-permanent, always-fresh funnel URL (`hearth.pages.dev`) — this replaces the
-`cloudflared` quick tunnels, which get a random address each launch and die
-whenever the PC sleeps.
+permanent, always-fresh funnel URL (e.g. `hearth-emberhollow.pages.dev`) — this
+replaces the `cloudflared` quick tunnels, which get a random address each launch
+and die whenever the PC sleeps.
+
+> ⚠️ **`hearth.pages.dev` is NOT ours.** Cloudflare `*.pages.dev` subdomains are
+> globally first-come, and the bare name `hearth` was already taken by an
+> unrelated account (it serves a parked/affiliate page). The project is named
+> `hearth-emberhollow` in [`wrangler.toml`](wrangler.toml); the real URL is
+> whatever `pnpm deploy` prints. If that name is taken too, change it and
+> redeploy. Never hand testers `hearth.pages.dev`.
 
 Everything below is already wired: `wrangler` is a dev dependency,
 [`wrangler.toml`](wrangler.toml) names the project and points at `dist`, the
@@ -20,12 +27,13 @@ every push to `main`. Only the **one-time account setup** below is human-only.
 ```bash
 cd "F:/Mastermind launch/hearth"
 pnpm exec wrangler login      # opens a browser; approve once
-pnpm deploy                   # builds, then creates the 'hearth' project and publishes
+pnpm deploy                   # builds, creates the 'hearth-emberhollow' project, publishes
 ```
 
-The first `pnpm deploy` creates the Pages project and prints your live URL
-(e.g. `https://hearth.pages.dev`). That URL is permanent — hand it to testers.
-Re-run `pnpm deploy` any time to publish the latest build.
+The first `pnpm deploy` creates the Pages project and **prints your live URL**
+(e.g. `https://hearth-emberhollow.pages.dev`). Use the URL it prints — that one
+is yours and permanent. Hand testers that URL with `?tester` appended. Re-run
+`pnpm deploy` any time to publish the latest build.
 
 ### Path B — auto-deploy on every push to `main` (set-and-forget)
 
