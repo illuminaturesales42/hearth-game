@@ -7,7 +7,7 @@ A cozy merge-adventure where real-life actions power your village. Restore Ember
 ```bash
 pnpm install
 pnpm dev        # http://localhost:5173
-pnpm test       # vitest core-logic suite (95 tests)
+pnpm test       # vitest core-logic suite (342 tests)
 pnpm build      # typecheck + production build + PWA (service worker, manifest)
 pnpm preview    # serve the production build locally
 ```
@@ -16,9 +16,9 @@ Dev console helpers: `hearthReset()` wipes the save · `hearthHealthSim(12500, 8
 
 ## What's in the MVP
 
-- **Create** — the merge board: 4 chains (Timberline, Harvest, Hearthfire, Keepsakes), painted item art, auto-merge + auto-deliver toggle.
+- **Create** — the merge board: 20 chains (Timberline, Harvest, Hearthfire, Keepsakes + resource and Builder's-Yard chains), painted item art, auto-merge + auto-deliver toggle.
 - **Home** — the living town: painted homestead stages that grow across the story, real time-of-day light, daily quests, current challenge, locations.
-- **Story** — Chapters 1–2 (24 orders): *The Letter* and *Shadows in the Sand*, with per-chapter cliffhangers and a Journal that assembles the mystery as you play.
+- **Story** — 6 chapters (72 orders), from *The Letter* and *Shadows in the Sand* through *Spring Tides*, with per-chapter cliffhangers, an endless generated-order mode after the story, and a Journal that assembles the mystery as you play.
 - **Hearth Energy** — earned from real life: steps, stairs, sleep (tiered), water, photos (sunrise/sunset gated by the actual sun), squats/stretch/breaths, guided meditations, cold plunge & sauna logging, stargazing (real moon phase), a kind word to a stranger (+selfie bonus), and the gratitude journal with flashbacks.
 - **Chronicle** — each night the village writes your day into prose. Never numbers.
 - **Streaks** — sunrise New Day claim, streak-scaled daily bonus, chest every 3 active days, journal multiplier. Missing a day is never punished.

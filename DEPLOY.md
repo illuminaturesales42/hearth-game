@@ -65,13 +65,14 @@ anonymous device key, so there is no separate API deploy, domain, or CORS
 setup to maintain. Inspect data with
 `pnpm exec wrangler d1 execute hearth-saves --remote --command "SELECT device_key, rev, updated_at, length(save) FROM saves"`.
 
-## Before soft launch (not now)
+## Service worker
 
-The service worker is currently **self-destroying** (`selfDestroying: true` in
-[`vite.config.ts`](vite.config.ts)) so testers always get a fresh build with no
-cache fights during rapid iteration. Flip it to the normal offline-first PWA
-(`registerType: 'autoUpdate'` without `selfDestroying`) before the soft launch,
-so the installed app works offline. Tracked in the roadmap (Phase C prep).
+The service worker is the normal offline-first PWA: `registerType: 'prompt'`
+with `selfDestroying: false` in [`vite.config.ts`](vite.config.ts). The shell
+is precached; art is served `StaleWhileRevalidate`. Normal players get a gentle
+"refresh for the new version" banner; testers (opted in via `?tester`) auto-
+apply updates. (This section previously described a self-destroying worker —
+that was retired in the July audit-fix pass.)
 
 ## Custom domain (optional, later)
 
