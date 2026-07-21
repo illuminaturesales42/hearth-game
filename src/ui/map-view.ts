@@ -25,7 +25,7 @@ import {
 } from '../data/town-layout';
 import { computeMood, earnedFlourishes, meditatedToday, moodCaption, seasonForMonth } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
-import { stemLevels } from '../core/stem-levels';
+import { stemLevels, type StemLevels } from '../core/stem-levels';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
 import { phaseForTime, type SunTimes } from '../core/time-of-day';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
@@ -85,6 +85,8 @@ export class MapView {
   private raf = 0;
   /** rAF timestamp of the last drawn frame (for the ~30fps ambient cap). */
   private lastDrawT = -1000;
+  /** Last storm-flash cycle we rolled thunder for (one clap per flash). */
+  private lastThunderCycle = -1;
   private visible = false;
   private mediaReduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   /** Reduced-motion is honoured from BOTH the OS media query AND the in-app
@@ -313,7 +315,7 @@ export class MapView {
   }
 
   /** last stem levels sent, so ramps only fire when something actually changed */
-  private lastStems: { calmPad: number; rain: number; chatter: number } | null = null;
+  private lastStems: StemLevels | null = null;
   private stemsCheckedAt = 0;
 
   /**
@@ -324,13 +326,27 @@ export class MapView {
   private updateStems(): void {
     if (!this.visible) return;
     this.stemsCheckedAt = Date.now();
-    const levels = stemLevels(this.mood());
+    const { weights } = phaseForTime(Date.now(), this.sunTimesFromWeather());
+    const levels = stemLevels(this.mood(), weights);
     const last = this.lastStems;
-    if (last && last.calmPad === levels.calmPad && last.rain === levels.rain && last.chatter === levels.chatter) return;
+    const same =
+      last &&
+      last.calmPad === levels.calmPad &&
+      last.rain === levels.rain &&
+      last.chatter === levels.chatter &&
+      last.wind === levels.wind &&
+      last.surf === levels.surf &&
+      last.birds === levels.birds &&
+      last.crickets === levels.crickets;
+    if (same) return;
     this.lastStems = levels;
     feedback.setStem('calmPad', levels.calmPad);
     feedback.setStem('rain', levels.rain);
     feedback.setStem('chatter', levels.chatter);
+    feedback.setStem('wind', levels.wind);
+    feedback.setStem('surf', levels.surf);
+    feedback.setStem('birds', levels.birds);
+    feedback.setStem('crickets', levels.crickets);
   }
 
   /**
@@ -2142,6 +2158,13 @@ export class MapView {
       const period = 10_000; // ~10s between flashes
       const local = t % period;
       const dur = 340;
+      // One thunder roll per flash, phase-locked: fire as the period rolls over
+      // (feedback.thunder delays the sound so it trails the light, like distance).
+      const cycle = Math.floor(t / period);
+      if (cycle !== this.lastThunderCycle) {
+        this.lastThunderCycle = cycle;
+        feedback.thunder();
+      }
       if (local < dur) {
         const x = local / dur; // 0..1 through the flash
         const k = Math.max(0, Math.sin(x * Math.PI)) * (x < 0.4 ? 1 : 0.55); // main + after-flicker
