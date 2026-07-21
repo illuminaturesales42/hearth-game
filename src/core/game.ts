@@ -812,11 +812,16 @@ export class Game {
    * Grants energy, advances streak, and opens a chest every few active days.
    */
   completeAction(actionId: string, now = Date.now()): void {
+    // Write yesterday's Chronicle BEFORE recordAction rolls actions.day. If an
+    // action is the first call after midnight, skipping this lost the day's
+    // entry (beginDay would later see actions.day already == today).
+    this.beginDay(now);
     this.applyRecord(recordAction(this.state.actions, actionId, now), actionId);
   }
 
   /** Log a meditation the player did outside a guided session. Once per day, capped. */
   logMeditation(minutes: number, now = Date.now()): void {
+    this.beginDay(now); // close yesterday's Chronicle before actions.day rolls
     const energy = loggedMinutesToEnergy(minutes);
     this.applyRecord(recordAction(this.state.actions, LOG_MEDITATION.id, now, energy), LOG_MEDITATION.id);
   }
@@ -825,6 +830,7 @@ export class Game {
   logRecovery(activityId: string, minutes: number, now = Date.now()): void {
     const activity = findRecovery(activityId);
     if (!activity) return;
+    this.beginDay(now); // close yesterday's Chronicle before actions.day rolls
     this.applyRecord(recordAction(this.state.actions, activityId, now, recoveryEnergy(activity, minutes)), activityId);
   }
 
