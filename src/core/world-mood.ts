@@ -18,6 +18,18 @@ export interface WeatherNow {
   /** mm/h currently falling */
   precipMm: number;
   fetchedAt: number;
+  /** Real local day/night from Open-Meteo `is_day` (solar elevation). */
+  isDay?: boolean;
+  /** Today's local sunrise/sunset as real instants (epoch ms). */
+  sunriseMs?: number;
+  sunsetMs?: number;
+}
+
+/** Extra live signals attached to a reading, all optional (best-effort fetch). */
+export interface WeatherExtra {
+  isDay?: boolean;
+  sunriseMs?: number;
+  sunsetMs?: number;
 }
 
 /** Map a WMO weather code (Open-Meteo `weather_code`) to a render category. */
@@ -27,6 +39,7 @@ export function weatherFromWmo(
   windKph: number,
   precipMm: number,
   fetchedAt: number,
+  extra?: WeatherExtra,
 ): WeatherNow {
   let kind: WeatherKind = 'clear';
   if (code >= 95) kind = 'storm';
@@ -35,13 +48,17 @@ export function weatherFromWmo(
   else if (code === 45 || code === 48) kind = 'fog';
   else if (code === 3) kind = 'overcast';
   else if (code === 1 || code === 2) kind = 'clouds';
-  return {
+  const now: WeatherNow = {
     kind,
     cloudCover: clamp01(cloudCoverPct / 100),
     windKph: Math.max(0, windKph),
     precipMm: Math.max(0, precipMm),
     fetchedAt,
   };
+  if (extra?.isDay !== undefined) now.isDay = extra.isDay;
+  if (extra?.sunriseMs !== undefined) now.sunriseMs = extra.sunriseMs;
+  if (extra?.sunsetMs !== undefined) now.sunsetMs = extra.sunsetMs;
+  return now;
 }
 
 export interface WorldMood {

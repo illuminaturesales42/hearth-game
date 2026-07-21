@@ -27,7 +27,7 @@ import { computeMood, earnedFlourishes, meditatedToday, moodCaption, seasonForMo
 import type { WeatherNow, WorldMood } from '../core/world-mood';
 import { stemLevels } from '../core/stem-levels';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
-import { phaseForHour, type TimeOfDay } from '../core/time-of-day';
+import { phaseForTime, type SunTimes } from '../core/time-of-day';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
 import { currentWeather } from './weather';
 import { artUrl, portraitFor, tileMarkup } from './art';
@@ -239,6 +239,15 @@ export class MapView {
   }
 
   /** How the world feels right now: real weather + the player's day. */
+  /** The player's real sun times from the latest reading, or null (→ clock fallback). */
+  private sunTimesFromWeather(): SunTimes | null {
+    const w = this.weather;
+    if (w && typeof w.sunriseMs === 'number' && typeof w.sunsetMs === 'number') {
+      return { sunriseMs: w.sunriseMs, sunsetMs: w.sunsetMs };
+    }
+    return null;
+  }
+
   private mood(): WorldMood {
     const s = this.game.snapshot;
     return computeMood({
@@ -1013,8 +1022,10 @@ export class MapView {
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, W, H * 0.45);
     }
-    // sun or moon
-    const night = hour >= 21 || hour < 5;
+    // sun or moon — real solar night: dark when it's actually dark where the
+    // player is (Open-Meteo is_day, else our solar-time model, else the clock).
+    const tod = phaseForTime(Date.now(), this.sunTimesFromWeather());
+    const night = this.weather?.isDay === false ? true : this.weather?.isDay === true ? false : tod.weights.night > 0.5;
     // The painted plate is a top-down island with NO sky, and the corner
     // time-of-day badge now shows the sun/moon — so the star field and the
     // celestial disc only run for the procedural fallback (no plate). Otherwise
@@ -1573,8 +1584,8 @@ export class MapView {
           ctx.restore();
         }
       }
-      const dusk = hour >= 17 && hour < 21;
-      const dawn = hour >= 5 && hour < 7;
+      const dusk = tod.weights.dusk > 0.25;
+      const dawn = tod.weights.dawn > 0.25;
       const dim = night || dusk || dawn;
       // cosy warmth spills from the windows of restored homes once the light
       // fails — the single biggest "someone lives here" cue.
@@ -2002,52 +2013,65 @@ export class MapView {
    * existing per-lamp pools (prop_lamp) add local lantern light on top at night.
    */
   private applyTimeLight(ctx: CanvasRenderingContext2D, W: number, H: number, t: number): void {
-    const phase: TimeOfDay = phaseForHour(new Date().getHours()).phase;
+    // Blend the four lighting washes by the player's REAL solar position, so the
+    // island glows gold at their true sunset and darkens to night when it is
+    // actually dark where they are — with smooth crossfades, never hard bands.
+    // (Falls back to fixed clock bands when the sun times aren't known yet.)
+    const { weights } = phaseForTime(Date.now(), this.sunTimesFromWeather());
     ctx.save();
-    if (phase === 'sunrise') {
-      // Morning: cool, soft, slightly hazy, with a gentle warm key from the
-      // upper-left — clearly cooler and dimmer than neutral midday.
-      const g = ctx.createLinearGradient(0, 0, W, H);
-      g.addColorStop(0, 'rgba(255, 222, 172, 0.14)'); // soft warm key, top-left
-      g.addColorStop(1, 'rgba(140, 170, 220, 0.22)'); // cool dawn shadow, bottom-right
-      ctx.globalCompositeOperation = 'soft-light';
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
-      // A faint cool haze that dims + cools the whole island a touch.
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.fillStyle = 'rgba(198, 210, 236, 0.12)';
-      ctx.fillRect(0, 0, W, H);
-    } else if (phase === 'midday') {
-      // Brightest, near-neutral daylight with a clean warm lift.
-      ctx.globalCompositeOperation = 'soft-light';
-      ctx.fillStyle = 'rgba(255, 250, 232, 0.12)';
-      ctx.fillRect(0, 0, W, H);
-    } else if (phase === 'sunset') {
-      // Golden hour: strong amber wash, warm key from the lower-left (west).
-      const g = ctx.createLinearGradient(0, H, W, 0);
-      g.addColorStop(0, 'rgba(255, 146, 66, 0.34)'); // amber, sun side
-      g.addColorStop(1, 'rgba(214, 107, 107, 0.12)'); // dusky rose, shadow side
-      ctx.globalCompositeOperation = 'soft-light';
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
-    } else {
-      // Night: deep-blue darken + cool (multiply), then a warm hearth lift at
-      // the town centre so the village still glows (Lantern Light).
-      const g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, 'rgba(26, 34, 74, 0.60)'); // night blue (palette)
-      g.addColorStop(1, 'rgba(12, 18, 44, 0.72)');
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
-      ctx.globalCompositeOperation = 'screen';
-      const warm = 0.1 + (this.reduce ? 0 : 0.02 * Math.sin(t / 1400));
-      const hearth = ctx.createRadialGradient(W * 0.5, H * 0.44, 10, W * 0.5, H * 0.44, W * 0.55);
-      hearth.addColorStop(0, `rgba(255, 184, 96, ${warm.toFixed(3)})`);
-      hearth.addColorStop(1, 'rgba(255, 184, 96, 0)');
-      ctx.fillStyle = hearth;
-      ctx.fillRect(0, 0, W, H);
-    }
+    // Order matters for the composited crossfade: darken first, then warm/cool.
+    if (weights.night > 0.001) this.washNight(ctx, W, H, t, weights.night);
+    if (weights.dawn > 0.001) this.washDawn(ctx, W, H, weights.dawn);
+    if (weights.day > 0.001) this.washDay(ctx, W, H, weights.day);
+    if (weights.dusk > 0.001) this.washDusk(ctx, W, H, weights.dusk);
     ctx.restore();
+  }
+
+  /** Morning: cool, soft, hazy, warm key upper-left. `k` = blend weight (0..1). */
+  private washDawn(ctx: CanvasRenderingContext2D, W: number, H: number, k: number): void {
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, `rgba(255, 222, 172, ${(0.14 * k).toFixed(3)})`); // warm key, top-left
+    g.addColorStop(1, `rgba(140, 170, 220, ${(0.22 * k).toFixed(3)})`); // cool dawn shadow
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = `rgba(198, 210, 236, ${(0.12 * k).toFixed(3)})`; // faint cool haze
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  /** Brightest, near-neutral daylight with a clean warm lift. */
+  private washDay(ctx: CanvasRenderingContext2D, W: number, H: number, k: number): void {
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = `rgba(255, 250, 232, ${(0.12 * k).toFixed(3)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  /** Golden hour: amber wash, warm key from the lower-left (west). */
+  private washDusk(ctx: CanvasRenderingContext2D, W: number, H: number, k: number): void {
+    const g = ctx.createLinearGradient(0, H, W, 0);
+    g.addColorStop(0, `rgba(255, 146, 66, ${(0.34 * k).toFixed(3)})`); // amber, sun side
+    g.addColorStop(1, `rgba(214, 107, 107, ${(0.12 * k).toFixed(3)})`); // dusky rose, shadow
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  /** Night: deep-blue darken, then a warm hearth lift at the town centre. */
+  private washNight(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, k: number): void {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, `rgba(26, 34, 74, ${(0.6 * k).toFixed(3)})`); // night blue (palette)
+    g.addColorStop(1, `rgba(12, 18, 44, ${(0.72 * k).toFixed(3)})`);
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'screen';
+    const warm = (0.1 + (this.reduce ? 0 : 0.02 * Math.sin(t / 1400))) * k;
+    const hearth = ctx.createRadialGradient(W * 0.5, H * 0.44, 10, W * 0.5, H * 0.44, W * 0.55);
+    hearth.addColorStop(0, `rgba(255, 184, 96, ${warm.toFixed(3)})`);
+    hearth.addColorStop(1, 'rgba(255, 184, 96, 0)');
+    ctx.fillStyle = hearth;
+    ctx.fillRect(0, 0, W, H);
   }
 
   private applyColourGrade(ctx: CanvasRenderingContext2D, W: number, H: number, mood: WorldMood): void {

@@ -7,7 +7,8 @@
  * Art-gated: until the badge art is sliced, artUrl() returns null and the badge
  * simply stays hidden — the map is unaffected.
  */
-import { phaseForHour, type TimeOfDay } from '../core/time-of-day';
+import { phaseForTime, PHASE_META, type TimeOfDay } from '../core/time-of-day';
+import { latestSunTimes } from './weather';
 import { artUrl } from './art';
 
 let current: TimeOfDay | null = null;
@@ -16,7 +17,9 @@ let timer: number | undefined;
 function paint(): void {
   const badge = document.getElementById('time-badge');
   if (!badge) return;
-  const p = phaseForHour(new Date().getHours());
+  // Same real solar clock (sunrise/sunset) the map's lighting reads, so the
+  // badge and the whole scene always show the same time of day.
+  const p = PHASE_META[phaseForTime(Date.now(), latestSunTimes()).phase];
   if (p.phase === current) return; // only touch the DOM when the phase actually turns
   const url = artUrl(p.art);
   if (!url) {
