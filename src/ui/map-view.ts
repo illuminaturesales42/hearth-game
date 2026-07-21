@@ -26,6 +26,7 @@ import {
 import { computeMood, earnedFlourishes, meditatedToday, moodCaption, seasonForMonth } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
 import { stemLevels, type StemLevels } from '../core/stem-levels';
+import { illumination, isWaxing, phaseName } from '../data/moon';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
 import { phaseForTime, type SunTimes } from '../core/time-of-day';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
@@ -242,6 +243,80 @@ export class MapView {
     g.fillRect(0, 0, c.width, c.height);
     this.ruinCache.set(art, c);
     return c;
+  }
+
+  /**
+   * The night sky over the bay on the painted plate: a soft starfield (dimmed by
+   * real cloud cover) and the REAL current moon, drawn with its true phase — a
+   * full moon over Emberhollow tonight because there's a full moon tonight.
+   * Reduced-motion holds the stars steady; the moon is always drawn.
+   */
+  private drawCelestial(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, mood: WorldMood): void {
+    const clear = 1 - mood.cloudCover * 0.75; // stars/moon fade behind cloud
+    if (clear <= 0.05) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(240, 244, 255, 1)';
+    for (let i = 0; i < 70; i++) {
+      const sx = (((Math.sin(i * 12.9898) * 43758.5) % 1) + 1) % 1;
+      const sy = (((Math.sin(i * 78.233) * 12543.7) % 1) + 1) % 1;
+      const x = sx * W;
+      const y = sy * H * 0.24 + H * 0.01;
+      const big = i % 9 === 0;
+      const tw = this.reduce ? 0.6 : 0.28 + 0.55 * Math.abs(Math.sin(t / 900 + i * 1.3));
+      ctx.globalAlpha = tw * 0.8 * clear;
+      ctx.fillRect(x, y, big ? 1.7 : 1, big ? 1.7 : 1);
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+    // Upper-left sky — clear of the corner time badge (a DOM element top-right).
+    const now = Date.now();
+    this.drawMoonPhase(ctx, W * 0.22, H * 0.1, 11, illumination(now), isWaxing(now), clear);
+  }
+
+  /**
+   * A phase-accurate moon: earthshine dark disc + a lit region bounded by the
+   * sunlit limb (a semicircle) and the terminator (a half-ellipse whose width
+   * tracks the illuminated fraction). Crescent when <half lit, gibbous when >half.
+   */
+  private drawMoonPhase(
+    ctx: CanvasRenderingContext2D,
+    cx: number,
+    cy: number,
+    r: number,
+    f: number,
+    waxing: boolean,
+    clear: number,
+  ): void {
+    ctx.save();
+    const halo = ctx.createRadialGradient(cx, cy, r * 0.6, cx, cy, r * 3.4);
+    halo.addColorStop(0, `rgba(222, 230, 255, ${(clear * (0.1 + 0.16 * f)).toFixed(3)})`);
+    halo.addColorStop(1, 'rgba(222, 230, 255, 0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 3.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = clear;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(74, 82, 116, 0.5)'; // earthshine so a new moon isn't a hole
+    ctx.fill();
+    // Lit region drawn in a canonical orientation (lit on the LEFT), then
+    // mirrored for a waxing moon so it's lit on the right (northern convention).
+    ctx.save();
+    ctx.translate(cx, cy);
+    if (waxing) ctx.scale(-1, 1);
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.beginPath();
+    ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, false); // sunlit limb (a semicircle)
+    const tw = r * (2 * f - 1); // >0 gibbous (bulges out), <0 crescent (curves in)
+    ctx.ellipse(0, 0, Math.abs(tw), r, 0, Math.PI / 2, -Math.PI / 2, tw >= 0); // terminator
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(236, 240, 252, 0.97)';
+    ctx.fill();
+    ctx.restore();
+    ctx.restore();
   }
 
   /** How the world feels right now: real weather + the player's day. */
@@ -1079,6 +1154,7 @@ export class MapView {
     // celestial disc only run for the procedural fallback (no plate). Otherwise
     // a stray white disc floated over the sea and a rectangular sky-glow washed
     // the top of the map.
+    if (night && plate) this.drawCelestial(ctx, W, H, t, mood);
     if (night && !plate) {
       const twinkle = 1 - mood.cloudCover * 0.7;
       for (let i = 0; i < 42; i++) {
@@ -2146,13 +2222,23 @@ export class MapView {
 
   /** Night: deep-blue darken, then a warm hearth lift at the town centre. */
   private washNight(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, k: number): void {
+    // Real moonlight: a full moon lifts the night a touch (less dark, faint
+    // silver), a new moon leaves it darkest — the sky is brighter when the moon
+    // really is full tonight.
+    const moon = illumination(Date.now()); // 0 new .. 1 full
+    const darkenScale = 1 - 0.18 * moon; // full moon → up to 18% less darkening
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, `rgba(26, 34, 74, ${(0.6 * k).toFixed(3)})`); // night blue (palette)
-    g.addColorStop(1, `rgba(12, 18, 44, ${(0.72 * k).toFixed(3)})`);
+    g.addColorStop(0, `rgba(26, 34, 74, ${(0.6 * k * darkenScale).toFixed(3)})`); // night blue (palette)
+    g.addColorStop(1, `rgba(12, 18, 44, ${(0.72 * k * darkenScale).toFixed(3)})`);
     ctx.globalCompositeOperation = 'multiply';
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
     ctx.globalCompositeOperation = 'screen';
+    if (moon > 0.5) {
+      // a cool silver wash on bright-moon nights
+      ctx.fillStyle = `rgba(150, 165, 205, ${(0.06 * (moon - 0.5) * 2 * k).toFixed(3)})`;
+      ctx.fillRect(0, 0, W, H);
+    }
     const warm = (0.1 + (this.reduce ? 0 : 0.02 * Math.sin(t / 1400))) * k;
     const hearth = ctx.createRadialGradient(W * 0.5, H * 0.44, 10, W * 0.5, H * 0.44, W * 0.55);
     hearth.addColorStop(0, `rgba(255, 184, 96, ${warm.toFixed(3)})`);
@@ -2765,6 +2851,8 @@ export class MapView {
       const time = new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       parts.push(`${label} ${time}`);
     }
+    // On a real night, name the moon phase — a full moon over the bay is a beat.
+    if (w.isDay === false) parts.push(phaseName(Date.now()).toLowerCase());
     return parts.join(' · ');
   }
 
