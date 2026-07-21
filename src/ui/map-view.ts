@@ -27,6 +27,7 @@ import { computeMood, earnedFlourishes, meditatedToday, moodCaption, seasonForMo
 import type { WeatherNow, WorldMood } from '../core/world-mood';
 import { stemLevels } from '../core/stem-levels';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
+import { phaseForHour, type TimeOfDay } from '../core/time-of-day';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
 import { currentWeather } from './weather';
 import { artUrl, portraitFor, tileMarkup } from './art';
@@ -824,6 +825,7 @@ export class MapView {
       // a warm wash after sleep + meditation, cooler when the mind is restless —
       // the cheapest way to make the *entire* town feel like it answered your day.
       this.applyColourGrade(ctx, W, H, mood);
+      this.applyTimeLight(ctx, W, H, t);
       this.updateBar(prog, stage, mood);
       return;
     }
@@ -1990,6 +1992,64 @@ export class MapView {
    * never cooler or darker (pillar: reflect, never punish). Static, so reduced-
    * motion is unaffected. Drawn outside the camera transform to cover the viewport.
    */
+  /**
+   * Time-of-day island lighting over the painted plate, matching the Style-Lock
+   * lighting reference (Morning / Golden Hour / Night + Lantern Light). Driven by
+   * the SAME phaseForHour() the corner time badge reads, so the whole island's
+   * ambience and the medallion always agree. The painted plate is a bright,
+   * top-down daytime island; these washes recolour it for each phase (a warm key
+   * with a cool opposite shadow gives a sense of low-sun direction), and the
+   * existing per-lamp pools (prop_lamp) add local lantern light on top at night.
+   */
+  private applyTimeLight(ctx: CanvasRenderingContext2D, W: number, H: number, t: number): void {
+    const phase: TimeOfDay = phaseForHour(new Date().getHours()).phase;
+    ctx.save();
+    if (phase === 'sunrise') {
+      // Morning: cool, soft, slightly hazy, with a gentle warm key from the
+      // upper-left — clearly cooler and dimmer than neutral midday.
+      const g = ctx.createLinearGradient(0, 0, W, H);
+      g.addColorStop(0, 'rgba(255, 222, 172, 0.14)'); // soft warm key, top-left
+      g.addColorStop(1, 'rgba(140, 170, 220, 0.22)'); // cool dawn shadow, bottom-right
+      ctx.globalCompositeOperation = 'soft-light';
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      // A faint cool haze that dims + cools the whole island a touch.
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = 'rgba(198, 210, 236, 0.12)';
+      ctx.fillRect(0, 0, W, H);
+    } else if (phase === 'midday') {
+      // Brightest, near-neutral daylight with a clean warm lift.
+      ctx.globalCompositeOperation = 'soft-light';
+      ctx.fillStyle = 'rgba(255, 250, 232, 0.12)';
+      ctx.fillRect(0, 0, W, H);
+    } else if (phase === 'sunset') {
+      // Golden hour: strong amber wash, warm key from the lower-left (west).
+      const g = ctx.createLinearGradient(0, H, W, 0);
+      g.addColorStop(0, 'rgba(255, 146, 66, 0.34)'); // amber, sun side
+      g.addColorStop(1, 'rgba(214, 107, 107, 0.12)'); // dusky rose, shadow side
+      ctx.globalCompositeOperation = 'soft-light';
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+    } else {
+      // Night: deep-blue darken + cool (multiply), then a warm hearth lift at
+      // the town centre so the village still glows (Lantern Light).
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, 'rgba(26, 34, 74, 0.60)'); // night blue (palette)
+      g.addColorStop(1, 'rgba(12, 18, 44, 0.72)');
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'screen';
+      const warm = 0.1 + (this.reduce ? 0 : 0.02 * Math.sin(t / 1400));
+      const hearth = ctx.createRadialGradient(W * 0.5, H * 0.44, 10, W * 0.5, H * 0.44, W * 0.55);
+      hearth.addColorStop(0, `rgba(255, 184, 96, ${warm.toFixed(3)})`);
+      hearth.addColorStop(1, 'rgba(255, 184, 96, 0)');
+      ctx.fillStyle = hearth;
+      ctx.fillRect(0, 0, W, H);
+    }
+    ctx.restore();
+  }
+
   private applyColourGrade(ctx: CanvasRenderingContext2D, W: number, H: number, mood: WorldMood): void {
     const warmth = Math.max(0, mood.glow - 0.25); // 0 until a restful day earns it
     if (warmth <= 0.001) return;
