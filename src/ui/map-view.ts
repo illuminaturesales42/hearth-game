@@ -847,6 +847,7 @@ export class MapView {
       // the cheapest way to make the *entire* town feel like it answered your day.
       this.applyColourGrade(ctx, W, H, mood);
       this.applyTimeLight(ctx, W, H, t);
+      if (!this.reduce) this.applyStormFx(ctx, W, H, t, mood);
       this.updateBar(prog, stage, mood);
       return;
     }
@@ -1958,12 +1959,26 @@ export class MapView {
 
     // --- weather falls over everything ---
     if (mood.weather === 'fog') {
+      // A mid-height veil, plus low coastal banks that drift with the real wind
+      // and hug the shore — sea fog rolling in, not a flat grey stripe.
       const fog = ctx.createLinearGradient(0, H * 0.3, 0, H * 0.62);
       fog.addColorStop(0, 'rgba(205, 214, 228, 0)');
-      fog.addColorStop(0.5, 'rgba(205, 214, 228, 0.30)');
+      fog.addColorStop(0.5, 'rgba(205, 214, 228, 0.3)');
       fog.addColorStop(1, 'rgba(205, 214, 228, 0)');
       ctx.fillStyle = fog;
       ctx.fillRect(0, H * 0.28, W, H * 0.36);
+      if (!this.reduce) {
+        const windX = this.windX();
+        const drift = ((t * 0.006 * windX) % (W * 0.5)) + W * 0.5;
+        ctx.fillStyle = 'rgba(214, 222, 234, 0.16)';
+        for (let i = 0; i < 4; i++) {
+          const bx = (((i * W) / 3 + drift) % (W * 1.4)) - W * 0.2;
+          const by = H * (0.62 + (i % 2) * 0.06);
+          ctx.beginPath();
+          ctx.ellipse(bx, by, W * 0.34, H * 0.05, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
     }
     if (mood.precip > 0 && !this.reduce) {
       const snow = mood.weather === 'snow';
@@ -2093,6 +2108,45 @@ export class MapView {
     hearth.addColorStop(1, 'rgba(255, 184, 96, 0)');
     ctx.fillStyle = hearth;
     ctx.fillRect(0, 0, W, H);
+  }
+
+  /**
+   * Storm atmosphere over the whole viewport (outside the camera): a gentle,
+   * DISTANT lightning glow — a soft blue-white bloom that swells and fades, with
+   * a small after-flicker — never a harsh strike (cozy-but-legible). Plus a
+   * faint wet sheen while rain falls. Deterministic from `t` so it doesn't
+   * flicker frame-to-frame; caller gates on reduced-motion.
+   */
+  private applyStormFx(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, mood: WorldMood): void {
+    ctx.save();
+    if (mood.weather === 'storm') {
+      const period = 10_000; // ~10s between flashes
+      const local = t % period;
+      const dur = 340;
+      if (local < dur) {
+        const x = local / dur; // 0..1 through the flash
+        const k = Math.max(0, Math.sin(x * Math.PI)) * (x < 0.4 ? 1 : 0.55); // main + after-flicker
+        ctx.globalCompositeOperation = 'lighter';
+        const g = ctx.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, `rgba(214, 226, 255, ${(0.26 * k).toFixed(3)})`); // brightest at the sky
+        g.addColorStop(0.55, `rgba(200, 214, 246, ${(0.12 * k).toFixed(3)})`);
+        g.addColorStop(1, 'rgba(200, 214, 246, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+      }
+    }
+    // Wet sheen: a faint cool specular lift on the lower island/sea while rain
+    // falls, so the ground reads as glistening-wet, not just dotted with lines.
+    if ((mood.weather === 'rain' || mood.weather === 'storm') && mood.precip > 0.05) {
+      ctx.globalCompositeOperation = 'soft-light';
+      const sheen = ctx.createLinearGradient(0, H * 0.5, 0, H);
+      const a = Math.min(0.1, 0.04 + mood.precip * 0.08);
+      sheen.addColorStop(0, 'rgba(190, 208, 236, 0)');
+      sheen.addColorStop(1, `rgba(190, 208, 236, ${a.toFixed(3)})`);
+      ctx.fillStyle = sheen;
+      ctx.fillRect(0, 0, W, H);
+    }
+    ctx.restore();
   }
 
   private applyColourGrade(ctx: CanvasRenderingContext2D, W: number, H: number, mood: WorldMood): void {
