@@ -80,6 +80,9 @@ const vibrate = (n: number | number[]): void => {
 
 export class MinigameUI {
   private id: string | null = null;
+  /** True once the current run's rewards have been banked, so a double-fired
+   *  end-timer/button can't bank the same run twice. Reset on each new play. */
+  private banked = false;
   private timers: number[] = [];
   private rafs: number[] = [];
   private strips: (() => void)[] = [];
@@ -272,6 +275,7 @@ export class MinigameUI {
     }
     this.clearTimers();
     this.id = id;
+    this.banked = false; // a fresh run may bank exactly once
     const result = el('mg-result');
     if (result) result.hidden = true;
     const stage = el('mg-stage');
@@ -306,7 +310,8 @@ export class MinigameUI {
   }
 
   private finish(reward: MgReward, wish?: { who: string; text: string }, score?: number): void {
-    if (!this.id) return;
+    if (!this.id || this.banked) return; // ignore a double-fired finish
+    this.banked = true;
     const res = this.game.finishMinigame(this.id, reward, wish, score);
     feedback.chime(res.isBest ? 720 : 560);
     this.showResult(reward, wish, res.isBest, res.discovered);

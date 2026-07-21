@@ -2,7 +2,7 @@
  * Game orchestrator: owns GameState, exposes actions, notifies subscribers.
  * UI layers subscribe; core stays DOM-free.
  */
-import type { GameState, Item } from './types';
+import type { GameState, Item, StatsState } from './types';
 import {
   chainDef,
   createBoard,
@@ -160,6 +160,9 @@ export type GameEvent =
 
 type Listener = (ev: GameEvent) => void;
 
+/** Duel wins per day that pay out. Further wins still count for streak/stats. */
+const DUEL_DAILY_REWARD_CAP = 3;
+
 export class Game {
   private state: GameState;
   private listeners: Listener[] = [];
@@ -210,6 +213,7 @@ export class Game {
         dayMerges: 0,
         dayDelivers: 0,
         dayActions: 0,
+        dayDuelWins: 0,
       },
       achievements: [],
       questsClaimed: [],
@@ -302,7 +306,7 @@ export class Game {
     const res = takeGift(this.state.social, giftId);
     const index = empties[0]!;
     const item: Item = { chain: gift.chain, level: gift.level, uid: this.state.nextUid };
-    this.undoBoard = null;
+    this.undoSnapshot = null;
     this.state = {
       ...this.state,
       social: res.state,
@@ -454,7 +458,7 @@ export class Game {
     const chain = pickSpawnChain(Math.random, table);
     const index = empties[Math.floor(Math.random() * empties.length)]!;
     const item: Item = { chain, level: 0, uid: this.state.nextUid };
-    this.undoBoard = null;
+    this.undoSnapshot = null;
     this.state = {
       ...this.state,
       energy: spend(this.state.energy, ENERGY.spawnCost),
@@ -519,7 +523,7 @@ export class Game {
       }
       return c;
     });
-    this.undoBoard = null;
+    this.undoSnapshot = null;
     this.state = {
       ...this.state,
       board: { ...this.state.board, cells },
@@ -535,14 +539,25 @@ export class Game {
     const it = itemAt(this.state.board, index);
     if (!it || it.locked) return 0;
     const coins = sellValue(it.chain, it.level);
-    this.undoBoard = null;
+    this.undoSnapshot = null;
     this.state = { ...this.state, coins: this.state.coins + coins, board: withEmpty(this.state.board, index) };
     this.emit({ type: 'sold', coins });
     return coins;
   }
 
-  /** Session-only snapshot for single-step merge undo (never saved). */
-  private undoBoard: GameState['board'] | null = null;
+  /**
+   * Session-only snapshot for single-step merge undo (never saved). Captures
+   * every field a merge mutates — not just the board — so undo also rolls back
+   * xp, merge stats, and maxTier. Restoring only the board let a drop→undo loop
+   * farm currency, daily quests, achievements, and collection mastery for free.
+   */
+  private undoSnapshot: {
+    board: GameState['board'];
+    nextUid: number;
+    xp: number;
+    stats: StatsState;
+    maxTier: Record<string, number>;
+  } | null = null;
 
   drop(from: number, to: number): void {
     this.beginDay(Date.now());
@@ -552,7 +567,19 @@ export class Game {
       this.emit({ type: 'reject', index: to, reason: 'invalid' });
       return;
     }
-    this.undoBoard = res.merged ? before : null;
+    // Snapshot the pre-merge values a merge is about to change. state updates
+    // below are immutable (spread), so holding references here is safe.
+    this.undoSnapshot = res.merged
+      ? {
+          board: before,
+          nextUid: this.state.nextUid,
+          xp: this.state.xp,
+          stats: this.state.stats,
+          // undefined and {} are equivalent everywhere maxTier is read; normalise
+          // so the snapshot type stays a plain Record (exactOptionalPropertyTypes).
+          maxTier: this.state.maxTier ?? {},
+        }
+      : null;
     const tierPatch =
       res.merged && res.result
         ? {
@@ -577,28 +604,30 @@ export class Game {
   }
 
   canUndoMerge(): boolean {
-    return this.undoBoard !== null;
+    return this.undoSnapshot !== null;
   }
 
   /** Take back the last merge (one step; cleared by any other board change). */
   undoLastMerge(): void {
-    if (!this.undoBoard) return;
-    this.state = { ...this.state, board: this.undoBoard };
-    this.undoBoard = null;
+    if (!this.undoSnapshot) return;
+    // Roll back board AND the merge's rewards (xp/stats/maxTier), so undo can't
+    // be looped to farm stat-gated quests, achievements, or collections.
+    this.state = { ...this.state, ...this.undoSnapshot };
+    this.undoSnapshot = null;
     this.emit({ type: 'state' });
   }
 
   /** Remove an item from the board (confirmed in the UI). No refunds, no drama. */
   trashItem(index: number): void {
     if (!itemAt(this.state.board, index)) return;
-    this.undoBoard = null;
+    this.undoSnapshot = null;
     this.state = { ...this.state, board: withEmpty(this.state.board, index) };
     this.emit({ type: 'state' });
   }
 
   /** Compact + group the board so it reads tidy. */
   tidy(): void {
-    this.undoBoard = null;
+    this.undoSnapshot = null;
     this.state = { ...this.state, board: tidyBoard(this.state.board) };
     this.emit({ type: 'state' });
   }
@@ -613,7 +642,7 @@ export class Game {
   clearMatching(chain: ChainId, maxLvl: number): number {
     const res = trashMatching(this.state.board, chain, maxLvl);
     if (res.cleared === 0) return 0;
-    this.undoBoard = null;
+    this.undoSnapshot = null;
     this.state = { ...this.state, board: res.board };
     this.emit({ type: 'state' });
     return res.cleared;
@@ -634,7 +663,7 @@ export class Game {
       return;
     }
     this.bumpStat({ dayDelivers: this.state.stats.dayDelivers + 1 });
-    this.undoBoard = null; // undoing across a delivery would duplicate items
+    this.undoSnapshot = null; // undoing across a delivery would duplicate items
     this.state = {
       ...this.state,
       board: withEmpty(this.state.board, idx),
@@ -1083,17 +1112,24 @@ export class Game {
   finishDuel(playerWon: boolean, spoils: readonly { chain: ChainId; level: number }[], score: number): void {
     this.beginDay(Date.now());
     if (playerWon) {
-      this.bumpStat({ duelWins: this.state.stats.duelWins + 1 });
+      // Duels have no entry cost and an instant rematch, so without a cap they
+      // are an unbounded coin/item printer. Beyond DUEL_DAILY_REWARD_CAP wins a
+      // day, a win still counts for stats/streak but pays no coins and banks no
+      // spoils — the mechanic stays fun, the faucet stops.
+      const dayWins = this.state.stats.dayDuelWins ?? 0;
+      const rewarded = dayWins < DUEL_DAILY_REWARD_CAP;
+      this.bumpStat({ duelWins: this.state.stats.duelWins + 1, dayDuelWins: dayWins + 1 });
       const streak = this.state.duelStreak + 1;
       const mult = duelMultiplier(streak);
-      const coins = Math.round(score * mult);
+      const coins = rewarded ? Math.round(score * mult) : 0;
+      const banked = rewarded ? spoils : [];
       this.state = {
         ...this.state,
-        repository: addToRepository(this.state.repository, spoils),
+        repository: addToRepository(this.state.repository, banked),
         duelStreak: streak,
         coins: this.state.coins + coins,
       };
-      this.emit({ type: 'duelEnd', won: true, streak, multiplier: mult, coins, itemCount: spoils.length });
+      this.emit({ type: 'duelEnd', won: true, streak, multiplier: mult, coins, itemCount: banked.length });
     } else {
       this.state = { ...this.state, duelStreak: 0 };
       this.emit({ type: 'duelEnd', won: false, streak: 0, multiplier: 1, coins: 0, itemCount: 0 });
@@ -1120,7 +1156,7 @@ export class Game {
       return;
     }
     this.bumpStat({ dayDelivers: this.state.stats.dayDelivers + 1 });
-    this.undoBoard = null; // deliveries close the undo window, wherever they come from
+    this.undoSnapshot = null; // deliveries close the undo window, wherever they come from
     const repository = this.state.repository
       .map((r, i) => (i === idx ? { ...r, count: r.count - 1 } : r))
       .filter((r) => r.count > 0);
@@ -1465,6 +1501,7 @@ export class Game {
 
   reset(now = Date.now()): void {
     this.state = Game.freshState(now);
+    this.undoSnapshot = null; // else undo could resurrect the pre-reset board
     this.emit({ type: 'state' });
   }
 }

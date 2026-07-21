@@ -203,6 +203,9 @@ export interface StatsState {
   dayMerges: number;
   dayDelivers: number;
   dayActions: number;
+  /** Rewarded duel wins today (caps the duel coin/spoil faucet). Optional so
+   *  older saves load without a migration; absent reads as 0. */
+  dayDuelWins?: number;
 }
 
 export interface FlagsState {

@@ -39,6 +39,10 @@ export class SocialScreen {
     const joined = s.friends.filter((f) => f.status === 'joined');
     const pending = s.friends.filter((f) => f.status === 'pending');
     const reqs = this.game.activeRequests();
+    // The join is a client-side simulation that grants energy; until the real
+    // backend exists, expose the "They joined" shortcut (a free-energy faucet)
+    // to testers only, so live players can't mint energy from fake friends.
+    const canSimJoin = this.game.isTesterUnlimited;
 
     el.innerHTML =
       `<h2 class="screen-title">Your Village</h2>` +
@@ -106,7 +110,8 @@ export class SocialScreen {
           (f) =>
             `<div class="friend pending"><div class="friend-face av-${f.avatar}" aria-hidden="true"></div>` +
             `<div class="friend-body"><b>${esc(f.name)}</b><span>Invited · waiting</span></div>` +
-            `<button class="earn-btn ghost" data-joined="${f.id}">They joined</button></div>`,
+            (canSimJoin ? `<button class="earn-btn ghost" data-joined="${f.id}">They joined</button>` : '') +
+            `</div>`,
         )
         .join('') +
       `</div>` +
@@ -147,7 +152,11 @@ export class SocialScreen {
         const { code, name } = this.game.inviteFriend();
         const link = `https://hearth.game/join/${code}`;
         void navigator.clipboard?.writeText(link).catch(() => undefined);
-        toast(`Invite link copied — ${name} is on the way. Tap "They joined" to simulate.`);
+        toast(
+          this.game.isTesterUnlimited
+            ? `Invite link copied — ${name} is on the way. Tap "They joined" to simulate.`
+            : `Invite link copied — share Emberhollow with ${name}.`,
+        );
       };
     el.querySelectorAll<HTMLButtonElement>('[data-joined]').forEach((b) => {
       b.onclick = () => this.game.markFriendJoined(b.dataset.joined ?? '');
