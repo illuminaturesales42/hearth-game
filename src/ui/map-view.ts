@@ -83,6 +83,8 @@ export class MapView {
   private canvas: HTMLCanvasElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
   private raf = 0;
+  /** rAF timestamp of the last drawn frame (for the ~30fps ambient cap). */
+  private lastDrawT = -1000;
   private visible = false;
   private mediaReduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   /** Reduced-motion is honoured from BOTH the OS media query AND the in-app
@@ -798,10 +800,19 @@ export class MapView {
     // would start each time — the old handle gets overwritten and can never be
     // cancelled, compounding a full-canvas redraw per orphaned loop per frame.
     if (this.raf) return;
+    // Cap the ambient redraw at ~30fps. Every animation is a smooth function of
+    // `t` (drifting clouds, water, flames, particles, the storm flash), so
+    // halving the redraw rate on a 60Hz display is imperceptible while cutting
+    // the per-frame cost — the full-scene composite + all the atmosphere washes
+    // — roughly in half. (Battery + thermal on the screen players idle on.)
+    const MIN_FRAME_MS = 32;
     const step = (t: number) => {
-      this.draw(t);
-      // weather drifts on its own clock — re-key the ambience every few seconds
-      if (Date.now() - this.stemsCheckedAt > 5000) this.updateStems();
+      if (t - this.lastDrawT >= MIN_FRAME_MS) {
+        this.lastDrawT = t;
+        this.draw(t);
+        // weather drifts on its own clock — re-key the ambience every few seconds
+        if (Date.now() - this.stemsCheckedAt > 5000) this.updateStems();
+      }
       this.raf = requestAnimationFrame(step);
     };
     this.raf = requestAnimationFrame(step);
