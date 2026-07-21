@@ -147,6 +147,8 @@ export class MapView {
         img.src = url;
       }
     }
+    // The player set/changed their town in Settings — refetch their sky now.
+    document.addEventListener('hearth:location-changed', () => this.forceWeatherRefresh());
     game.subscribe((ev) => {
       const refresh =
         ev.type === 'delivered' ||
@@ -282,6 +284,12 @@ export class MapView {
       this.weather = w;
       if (this.visible && this.reduce) this.draw(0);
     });
+  }
+
+  /** Refetch weather right now (the player changed location in Settings). */
+  private forceWeatherRefresh(): void {
+    this.weatherAskedAt = 0;
+    this.refreshWeather();
   }
 
   setVisible(v: boolean): void {

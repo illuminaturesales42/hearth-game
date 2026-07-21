@@ -10,6 +10,7 @@ import { recentEvents } from '../analytics';
 import { feedback } from './feedback';
 import { toast } from './toast';
 import { pickNotificationProvider, DAILY_NOTIF_BODY, DEFAULT_NOTIF_HOUR } from '../platform/notification-provider';
+import { requestGeolocation, setLocationByCity, latestLocationLabel } from './weather';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 
@@ -44,6 +45,8 @@ export class SettingsUI {
     el<HTMLButtonElement>('set-import')?.addEventListener('click', () => this.import());
     el<HTMLButtonElement>('set-diag')?.addEventListener('click', () => this.diagnostics());
     el<HTMLButtonElement>('set-reset')?.addEventListener('click', () => this.reset());
+    el<HTMLButtonElement>('set-loc-gps')?.addEventListener('click', () => void this.useMyLocation());
+    el<HTMLButtonElement>('set-loc-city-btn')?.addEventListener('click', () => void this.useCity());
 
     game.subscribe((ev) => {
       if (ev.type === 'settings') this.apply();
@@ -93,6 +96,7 @@ export class SettingsUI {
     if (notifNote) notifNote.hidden = !p.notifyDaily;
     const v = el('set-version');
     if (v) v.textContent = `Hearth MVP · save v${CURRENT_VERSION} · health data never leaves your device`;
+    this.paintLocation();
   }
 
   /**
@@ -122,6 +126,49 @@ export class SettingsUI {
     } else {
       await provider.cancelAll();
       this.game.setPrefs({ notifyDaily: false });
+    }
+  }
+
+  /** Reflect the current location choice + refresh the status line. */
+  private paintLocation(): void {
+    const status = el('set-loc-status');
+    if (!status) return;
+    const label = latestLocationLabel();
+    status.textContent = label
+      ? `Following ${label}. The island mirrors its sky.`
+      : 'Not set — the island keeps a gentle default sky.';
+  }
+
+  /** Nudge the map to refetch weather for a just-changed location. */
+  private notifyLocationChanged(): void {
+    document.dispatchEvent(new CustomEvent('hearth:location-changed'));
+    this.paintLocation();
+  }
+
+  private async useMyLocation(): Promise<void> {
+    toast('Asking your device for its location…');
+    const ok = await requestGeolocation();
+    toast(
+      ok ? 'Location shared — your sky is on its way.' : 'Couldn’t get your location. You can set your town instead.',
+    );
+    if (ok) this.notifyLocationChanged();
+  }
+
+  private async useCity(): Promise<void> {
+    const input = el<HTMLInputElement>('set-loc-city');
+    const name = input?.value.trim() ?? '';
+    if (!name) {
+      toast('Type your town first.');
+      return;
+    }
+    toast('Finding your town…');
+    const label = await setLocationByCity(name);
+    if (label) {
+      if (input) input.value = '';
+      toast(`Set to ${label}.`);
+      this.notifyLocationChanged();
+    } else {
+      toast('Couldn’t find that town. Try a nearby city.');
     }
   }
 
