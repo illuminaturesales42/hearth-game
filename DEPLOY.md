@@ -1,16 +1,14 @@
 # Deploying Hearth — the permanent public URL
 
-Hearth's web build is a static PWA. We publish it to **Cloudflare Pages** for a
-permanent, always-fresh funnel URL (e.g. `hearth-emberhollow.pages.dev`) — this
-replaces the `cloudflared` quick tunnels, which get a random address each launch
-and die whenever the PC sleeps.
+Hearth's web build is a static PWA published to **Cloudflare Pages**. The live
+funnel URL is **https://hearth-5q8.pages.dev** (hand testers that + `?tester`).
 
-> ⚠️ **`hearth.pages.dev` is NOT ours.** Cloudflare `*.pages.dev` subdomains are
-> globally first-come, and the bare name `hearth` was already taken by an
-> unrelated account (it serves a parked/affiliate page). The project is named
-> `hearth-emberhollow` in [`wrangler.toml`](wrangler.toml); the real URL is
-> whatever `pnpm deploy` prints. If that name is taken too, change it and
-> redeploy. Never hand testers `hearth.pages.dev`.
+> ⚠️ **Use `hearth-5q8.pages.dev`, never `hearth.pages.dev`.** Cloudflare
+> `*.pages.dev` names are globally first-come; the bare `hearth` was already
+> taken by an unrelated account (it serves a parked/affiliate page), so ours
+> got the `-5q8` suffix. The project is named `hearth-5q8` in
+> [`wrangler.toml`](wrangler.toml) — keep it that way so `pnpm deploy` updates
+> the existing site instead of minting a new URL.
 
 Everything below is already wired: `wrangler` is a dev dependency,
 [`wrangler.toml`](wrangler.toml) names the project and points at `dist`, the
@@ -27,13 +25,12 @@ every push to `main`. Only the **one-time account setup** below is human-only.
 ```bash
 cd "F:/Mastermind launch/hearth"
 pnpm exec wrangler login      # opens a browser; approve once
-pnpm deploy                   # builds, creates the 'hearth-emberhollow' project, publishes
+pnpm deploy                   # builds + publishes to the 'hearth-5q8' project
 ```
 
-The first `pnpm deploy` creates the Pages project and **prints your live URL**
-(e.g. `https://hearth-emberhollow.pages.dev`). Use the URL it prints — that one
-is yours and permanent. Hand testers that URL with `?tester` appended. Re-run
-`pnpm deploy` any time to publish the latest build.
+`pnpm deploy` republishes to **https://hearth-5q8.pages.dev** — the same URL
+testers already have, now with the latest build. Re-run any time to publish.
+Testers open it with `?tester` appended.
 
 ### Path B — auto-deploy on every push to `main` (set-and-forget)
 
