@@ -10,10 +10,10 @@ import { initNetStatus } from './ui/net-status';
 import { initTimeBadge } from './ui/time-badge';
 import { pickNotificationProvider, DAILY_NOTIF_BODY, DEFAULT_NOTIF_HOUR } from './platform/notification-provider';
 import { recentEvents, setSink, track } from './analytics';
-import { createNetworkSink } from './platform/analytics-sink';
+import { createNetworkSink, stableAnonId } from './platform/analytics-sink';
 import type { HealthSnapshot } from './health/health-provider';
 import { pickHealthProvider } from './platform/providers';
-import { HttpSyncProvider, LocalMirrorSyncProvider } from './platform/sync-provider';
+import { HttpSyncProvider, LocalMirrorSyncProvider, deviceKey } from './platform/sync-provider';
 import { SyncController } from './platform/sync-controller';
 import { Metrics, exposeMetricsConsole } from './platform/metrics';
 import { computeMood, meditatedToday } from './core/world-mood';
@@ -128,7 +128,9 @@ setInterval(() => {
 // an endpoint, or in dev, everything stays in the local in-memory buffer.
 const analyticsEndpoint = (import.meta.env.VITE_ANALYTICS_ENDPOINT as string | undefined)?.trim();
 if (import.meta.env.PROD && analyticsEndpoint) {
-  const { sink, flush } = createNetworkSink(analyticsEndpoint);
+  // A stable pseudonymous id (hashed device key, never the key itself) lets the
+  // backend compute cohort retention across sessions — the soft-launch gates.
+  const { sink, flush } = createNetworkSink(analyticsEndpoint, { distinctId: stableAnonId(deviceKey()) });
   setSink(sink);
   // A closing/backgrounded tab still reports its last events.
   window.addEventListener('pagehide', flush);
