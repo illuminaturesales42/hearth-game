@@ -244,4 +244,10 @@ describe('seasonForMonth (northern hemisphere)', () => {
     expect(seasonForMonth(12)).toBe('winter'); // == Jan
     expect(seasonForMonth(-1)).toBe('winter'); // == Dec
   });
+  it('flips below the equator (southern hemisphere)', () => {
+    expect(seasonForMonth(6, true)).toBe('winter'); // July in Sydney
+    expect(seasonForMonth(0, true)).toBe('summer'); // January in Sydney
+    expect(seasonForMonth(3, true)).toBe('autumn'); // April: spring→autumn
+    expect(seasonForMonth(9, true)).toBe('spring'); // October: autumn→spring
+  });
 });

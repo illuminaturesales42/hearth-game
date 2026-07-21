@@ -2442,7 +2442,7 @@ export class MapView {
    * in. Caller already guards reduced motion.
    */
   private drawSeason(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, night: boolean): void {
-    const season = seasonForMonth(new Date().getMonth());
+    const season = seasonForMonth(new Date().getMonth(), this.weather?.southern ?? false);
     // Summer's twinkle is the night fireflies already drawn — keep day light.
     const n = season === 'winter' ? 30 : season === 'summer' ? 12 : 18;
     const fallMs = season === 'winter' ? 11000 : season === 'autumn' ? 7500 : 13000;

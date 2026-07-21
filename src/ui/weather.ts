@@ -100,6 +100,7 @@ export async function currentWeather(): Promise<WeatherNow | null> {
     if (typeof c.wind_direction_10m === 'number') extra.windDir = c.wind_direction_10m;
     if (typeof c.temperature_2m === 'number') extra.tempC = c.temperature_2m;
     if (typeof c.apparent_temperature === 'number') extra.feelsLikeC = c.apparent_temperature;
+    extra.southern = coords.lat < 0; // hemisphere bit only — flips the seasons
     const now = weatherFromWmo(
       c.weather_code,
       c.cloud_cover ?? 0,
@@ -127,4 +128,9 @@ export function latestSunTimes(): SunTimes | null {
     return { sunriseMs: w.sunriseMs, sunsetMs: w.sunsetMs };
   }
   return null;
+}
+
+/** Whether the player is in the southern hemisphere (from the cached reading). */
+export function latestSouthern(): boolean {
+  return readJson<WeatherNow>(WEATHER_KEY)?.southern === true;
 }

@@ -28,6 +28,8 @@ export interface WeatherNow {
   /** Current temperature °C, and the "feels like" apparent temperature °C. */
   tempC?: number;
   feelsLikeC?: number;
+  /** Southern hemisphere (latitude < 0) — flips the seasons. */
+  southern?: boolean;
 }
 
 /** Extra live signals attached to a reading, all optional (best-effort fetch). */
@@ -38,6 +40,7 @@ export interface WeatherExtra {
   windDir?: number;
   tempC?: number;
   feelsLikeC?: number;
+  southern?: boolean;
 }
 
 /** Map a WMO weather code (Open-Meteo `weather_code`) to a render category. */
@@ -69,6 +72,7 @@ export function weatherFromWmo(
   if (extra?.windDir !== undefined) now.windDir = extra.windDir;
   if (extra?.tempC !== undefined) now.tempC = extra.tempC;
   if (extra?.feelsLikeC !== undefined) now.feelsLikeC = extra.feelsLikeC;
+  if (extra?.southern !== undefined) now.southern = extra.southern;
   return now;
 }
 
@@ -278,12 +282,21 @@ export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
 /** The player's real-world (northern-hemisphere) season for a 0-indexed month.
  *  Pure — the map reads it from the live date to tint the town's ambience so the
  *  world echoes the season the player is actually living in. */
-export function seasonForMonth(month: number): Season {
+const OPPOSITE: Record<Season, Season> = { winter: 'summer', summer: 'winter', spring: 'autumn', autumn: 'spring' };
+
+export function seasonForMonth(month: number, southern = false): Season {
   const m = ((Math.trunc(month) % 12) + 12) % 12;
-  if (m === 11 || m <= 1) return 'winter'; // Dec, Jan, Feb
-  if (m <= 4) return 'spring'; // Mar, Apr, May
-  if (m <= 7) return 'summer'; // Jun, Jul, Aug
-  return 'autumn'; // Sep, Oct, Nov
+  let s: Season;
+  if (m === 11 || m <= 1)
+    s = 'winter'; // Dec, Jan, Feb
+  else if (m <= 4)
+    s = 'spring'; // Mar, Apr, May
+  else if (m <= 7)
+    s = 'summer'; // Jun, Jul, Aug
+  else s = 'autumn'; // Sep, Oct, Nov
+  // Below the equator the seasons are flipped — a July player in Sydney should
+  // see winter snow, not summer pollen.
+  return southern ? OPPOSITE[s] : s;
 }
 
 function clamp01(v: number): number {

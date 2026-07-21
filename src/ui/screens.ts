@@ -11,6 +11,7 @@ import { BOARD_SKINS } from '../data/shop';
 import { BUILDING_INFO, DECOR_CATALOG, TOWN_BUILDINGS } from '../data/town-layout';
 import { composeWeek } from '../core/chronicle';
 import { seasonForMonth, type Season } from '../core/world-mood';
+import { latestSouthern } from './weather';
 import { chainDef } from '../core/board';
 import { artUrl, portraitFor, tileMarkup } from './art';
 import { esc } from './esc';
@@ -348,7 +349,7 @@ export class Screens {
       `</div>` +
       `<h3 class="screen-h3">In Emberhollow</h3>` +
       `<div class="event-list">` +
-      `<div class="event"><b>This season</b><span>${SEASON_NOTE[seasonForMonth(new Date().getMonth())]}</span></div>` +
+      `<div class="event"><b>This season</b><span>${SEASON_NOTE[seasonForMonth(new Date().getMonth(), latestSouthern())]}</span></div>` +
       EVENTS.map((e) => `<div class="event"><b>${e.name}</b><span>${e.timing}</span></div>`).join('') +
       `</div>` +
       `<p class="set-note">Energy is never for sale — that never changes.</p>`;
