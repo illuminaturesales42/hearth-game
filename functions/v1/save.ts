@@ -46,7 +46,7 @@ interface Ctx {
 }
 
 const KEY_RE = /^[A-Za-z0-9_-]{16,80}$/;
-const MAX_SAVE_BYTES = 300_000; // export JSON is ~10-40KB today; generous cap
+const MAX_SAVE_BYTES = 131_072; // export JSON is a few KB today; 128KB is ample headroom
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -114,14 +114,27 @@ export async function onRequestPut(ctx: Ctx): Promise<Response> {
   const incoming = parseEnvelope(body);
   if (!incoming) return json(400, { error: 'not a sync envelope' });
 
+  // Fast path: report the common stale case with the current envelope so the
+  // client can reconcile. (The read is advisory — the write below is the gate.)
   const stored = await readEnvelope(ctx.env.DB, key);
   if (!acceptsWrite(stored, incoming)) return json(409, stored);
 
-  await ctx.env.DB.prepare(
+  // The gate is the write itself: `WHERE excluded.rev > saves.rev` makes the
+  // rev check atomic, so two concurrent PUTs can't both pass a prior read and
+  // let the later (lower-rev) one clobber the newer save. RETURNING is null
+  // when the guard rejects the update — i.e. we lost the race.
+  const applied = await ctx.env.DB.prepare(
     'INSERT INTO saves (device_key, rev, updated_at, save) VALUES (?, ?, ?, ?) ' +
-      'ON CONFLICT(device_key) DO UPDATE SET rev = excluded.rev, updated_at = excluded.updated_at, save = excluded.save',
+      'ON CONFLICT(device_key) DO UPDATE SET rev = excluded.rev, updated_at = excluded.updated_at, save = excluded.save ' +
+      'WHERE excluded.rev > saves.rev ' +
+      'RETURNING rev',
   )
     .bind(key, incoming.rev, incoming.updatedAt, incoming.save)
-    .run();
+    .first<{ rev: number }>();
+
+  if (!applied) {
+    const current = await readEnvelope(ctx.env.DB, key); // a racing write won
+    return json(409, current);
+  }
   return json(200, { ok: true, rev: incoming.rev });
 }
