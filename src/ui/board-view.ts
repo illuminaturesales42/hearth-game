@@ -23,6 +23,8 @@ export class BoardView {
   private selected = -1;
   /** true once a pointer press has crossed the drag threshold */
   private dragging = false;
+  /** roving-tabindex cell for keyboard play (only this cell is Tab-reachable) */
+  private focusIndex = 0;
 
   constructor(
     private game: Game,
@@ -39,6 +41,7 @@ export class BoardView {
       })();
     this.buildCells();
     this.bindPointer();
+    this.bindKeyboard();
     game.subscribe((ev) => {
       if (ev.type === 'state') this.render();
       if (ev.type === 'spawn') this.popCell(ev.index);
@@ -61,8 +64,87 @@ export class BoardView {
       cell.className = 'cell';
       cell.dataset.index = String(i);
       cell.setAttribute('role', 'gridcell');
+      cell.tabIndex = i === this.focusIndex ? 0 : -1; // roving tabindex
       this.root.appendChild(cell);
     }
+  }
+
+  /**
+   * Keyboard play: arrow keys rove focus, Enter/Space selects then merges
+   * (reusing the tap-to-merge model), and 'i' opens the item card — the same
+   * three things pointer users get, so the board isn't mouse-only.
+   */
+  private bindKeyboard(): void {
+    this.root.addEventListener('keydown', (e) => {
+      const { cols, rows } = this.game.snapshot.board;
+      // Derive the current cell from the actually-focused element, not a stored
+      // index — focus can arrive via Tab, a pointer tap, or .focus(), and a
+      // stale field would rove from the wrong cell.
+      const focused = (e.target as HTMLElement | null)?.dataset?.index;
+      const i = focused != null ? Number(focused) : this.focusIndex;
+      if (!Number.isInteger(i) || i < 0 || i >= cols * rows) return;
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      let next = i;
+      switch (e.key) {
+        case 'ArrowRight':
+          if (col < cols - 1) next = i + 1;
+          break;
+        case 'ArrowLeft':
+          if (col > 0) next = i - 1;
+          break;
+        case 'ArrowDown':
+          if (row < rows - 1) next = i + cols;
+          break;
+        case 'ArrowUp':
+          if (row > 0) next = i - cols;
+          break;
+        case 'Home':
+          next = row * cols;
+          break;
+        case 'End':
+          next = row * cols + cols - 1;
+          break;
+        case 'Enter':
+        case ' ':
+          e.preventDefault();
+          this.activateCell(i);
+          return;
+        case 'i':
+        case 'I':
+          if (this.game.itemAt(i)) this.showItemInfo(i);
+          return;
+        default:
+          return; // let every other key through
+      }
+      e.preventDefault();
+      if (next !== i) this.focusCell(next);
+    });
+  }
+
+  /** Move the roving focus to a cell (updates tabindex + DOM focus). */
+  private focusCell(index: number): void {
+    this.focusIndex = index;
+    Array.from(this.root.children).forEach((c, i) => {
+      (c as HTMLElement).tabIndex = i === index ? 0 : -1;
+    });
+    (this.root.children[index] as HTMLElement | undefined)?.focus();
+  }
+
+  /** Enter/Space on a cell: play the producer, or select/merge an item. */
+  private activateCell(index: number): void {
+    const cell = this.game.snapshot.board.cells[index];
+    if (!cell) return;
+    if (cell.kind === 'producer') {
+      this.clearSelection();
+      this.game.tapProducer();
+      return;
+    }
+    if (cell.kind === 'item') {
+      this.handleTap(index); // first Enter selects, a matching second Enter merges
+      return;
+    }
+    this.clearSelection(); // Enter on empty cancels a pending selection
   }
 
   render(): void {

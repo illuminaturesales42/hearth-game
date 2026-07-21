@@ -624,6 +624,12 @@ body {
   font-size: clamp(22px, 7vw, 32px);
   position: relative;
 }
+/* Keyboard focus ring for roving-tabindex board navigation. */
+.cell:focus-visible {
+  outline: 3px solid var(--gold, #ffd27a);
+  outline-offset: -2px;
+  z-index: 5;
+}
 /* aligned turf checker: real painted squares cut from the Core/MVP.png board */
 .cell.turf-l {
   background: #98923c url('/art/turf_light.png') center / cover;
