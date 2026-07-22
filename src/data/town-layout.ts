@@ -46,35 +46,28 @@ export interface TownPiece {
 export const BUILDING_PLATE_SCALE = 1.04;
 
 export const TOWN_BUILDINGS: readonly TownPiece[] = [
-  // 2026-07 environment pass v2: every building is SEATED in a painted plot-ring
-  // on the plate — the ring centres were measured off the art, and each anchor's
-  // baseline is planted just forward of its ring centre so the house sits IN its
-  // clearing (not floating on the dirt paths between plots, the old fault). The
-  // plate's rings are packed tighter than a full-size sprite, so buildings are
-  // sized to their rings (~0.13) with the town hall the landmark exception.
-  // Focal hierarchy: ① town hall on the big central plot, ② the lighthouse alone
-  // against open sea, ③ the harbour cove. Ring letters map to tools/compose_map_mock.
-  //
-  // The notice board stands on the path at the market's mouth; its baseline sits
-  // below the market's so it always draws on top of the awning.
-  { art: 'prop_sign', x: 0.55, y: 0.67, w: 0.042, unlockAt: 1 },
-  { art: 'town_cottage', x: 0.29, y: 0.34, w: 0.13, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 }, // ring B (west forest)
-  { art: 'town_bakery', x: 0.255, y: 0.49, w: 0.125, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 }, // ring C
-  { art: 'prop_well', x: 0.44, y: 0.45, w: 0.086, unlockAt: 6 }, // plaza path junction
-  { art: 'town_market', x: 0.485, y: 0.66, w: 0.13, unlockAt: 8, ruinVariant: 7 }, // ring I (head of the harbour road)
-  { art: 'town_garden', x: 0.75, y: 0.5, w: 0.13, unlockAt: 10, ruinVariant: 4 }, // ring G
-  { art: 'town_townhall', x: 0.565, y: 0.37, w: 0.145, unlockAt: 12, ruinVariant: 3 }, // ring D (big central plot — the landmark)
-  { art: 'town_workshop', x: 0.45, y: 0.8, w: 0.125, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 }, // ring J
-  { art: 'town_farm', x: 0.675, y: 0.3, w: 0.13, unlockAt: 16, ruinVariant: 5 }, // ring F (NE meadow)
-  // Joss's hut is a stilted pier: it sits inside the cove with its deck over the
-  // bay water, connected to land only at the house body (back).
-  { art: 'town_fisherhut', x: 0.795, y: 0.68, w: 0.14, unlockAt: 18, ruinVariant: 6, water: true },
-  { art: 'town_sawmill', x: 0.46, y: 0.205, w: 0.135, unlockAt: 20, ruinVariant: 1 }, // ring A (north forest — timber)
-  { art: 'town_blacksmith', x: 0.365, y: 0.58, w: 0.125, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 }, // ring E
-  // the dock pier's base meets the cove's north-west sand arc so its deck runs
-  // out over the bay water, not the grass
-  { art: 'town_dock', x: 0.655, y: 0.645, w: 0.12, unlockAt: 22, ruinVariant: 5, water: true },
-  { art: 'town_library', x: 0.315, y: 0.685, w: 0.13, unlockAt: 23, ruinVariant: 3 }, // ring H
+  { art: 'prop_sign', x: 0.51, y: 0.47, w: 0.042, unlockAt: 1 },
+  // 2026-07 re-lay (user-directed): cottage→old market plot, bakery→old cottage
+  // plot, farm→old bakery plot, library→old farm plot (sprite flipped so the
+  // door faces right/into town), market→old library plot, townhall↔workshop.
+  { art: 'town_cottage', x: 0.535, y: 0.375, w: 0.148, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
+  { art: 'town_bakery', x: 0.36, y: 0.425, w: 0.138, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
+  { art: 'prop_well', x: 0.45, y: 0.49, w: 0.092, unlockAt: 6 },
+  { art: 'town_market', x: 0.54, y: 0.59, w: 0.138, unlockAt: 8, ruinVariant: 7 },
+  { art: 'town_garden', x: 0.775, y: 0.5, w: 0.148, unlockAt: 10, ruinVariant: 4 },
+  { art: 'town_townhall', x: 0.2, y: 0.345, w: 0.148, unlockAt: 12, ruinVariant: 3 },
+  { art: 'town_workshop', x: 0.25, y: 0.825, w: 0.138, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
+  { art: 'town_farm', x: 0.715, y: 0.31, w: 0.148, unlockAt: 16, ruinVariant: 5 },
+  // Joss's hut is a stilted pier: it sits on the SE point with its deck over the
+  // bay water, connected to land only at the house body (back). Anchor is
+  // intentionally over water so the sprite's own water blends with the plate.
+  { art: 'town_fisherhut', x: 0.82, y: 0.705, w: 0.148, unlockAt: 18, ruinVariant: 6, water: true },
+  { art: 'town_sawmill', x: 0.43, y: 0.245, w: 0.148, unlockAt: 20, ruinVariant: 1 },
+  { art: 'town_blacksmith', x: 0.36, y: 0.71, w: 0.143, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
+  // the dock pier sits up at the bay's north-west shore so its own water meets
+  // the plate's bay, not the grass
+  { art: 'town_dock', x: 0.665, y: 0.685, w: 0.126, unlockAt: 22, ruinVariant: 5, water: true },
+  { art: 'town_library', x: 0.225, y: 0.59, w: 0.148, unlockAt: 23, ruinVariant: 3 },
 ] as const;
 
 /**
@@ -136,12 +129,9 @@ export const VILLAGER_MEETS: Record<string, number> = {
 };
 
 /** Boats moored and returning as the harbour comes back to life. */
-// Moorings follow the harbours: the rowboat shelters inside the cove by the
-// pier, the fishing boat works off the south-beach jetty, and the little sail
-// keeps to the open west sea for the wide-shot silhouette.
 export const TOWN_BOATS: readonly { art: string; x: number; y: number; w: number; stage: number }[] = [
-  { art: 'boat_row', x: 0.73, y: 0.705, w: 0.09, stage: 2 },
-  { art: 'boat_fishing_s', x: 0.575, y: 0.97, w: 0.12, stage: 3 },
+  { art: 'boat_row', x: 0.92, y: 0.93, w: 0.09, stage: 2 },
+  { art: 'boat_fishing_s', x: 0.68, y: 0.965, w: 0.12, stage: 3 },
   { art: 'boat_sail_s', x: 0.08, y: 0.96, w: 0.1, stage: 4 },
 ] as const;
 
@@ -166,8 +156,8 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   // ── lamplight + benches around the town square (well & notice board)
   { art: 'prop_lamp', x: 0.415, y: 0.52, w: 0.026, unlockAt: 0, stage: 2 },
   { art: 'prop_lamp', x: 0.47, y: 0.64, w: 0.026, unlockAt: 0, stage: 2 },
-  // one lamp lights the harbour road down to the dock
-  { art: 'prop_lamp', x: 0.6, y: 0.655, w: 0.026, unlockAt: 0, stage: 3 },
+  { art: 'prop_lamp', x: 0.55, y: 0.665, w: 0.026, unlockAt: 0, stage: 3 },
+  { art: 'prop_lamp', x: 0.47, y: 0.68, w: 0.026, unlockAt: 0, stage: 3 },
   { art: 'prop_bench', x: 0.43, y: 0.61, w: 0.052, unlockAt: 0, stage: 3 },
   { art: 'prop_bench', x: 0.52, y: 0.7, w: 0.052, unlockAt: 0, stage: 4 },
   // ── wildflower beds + flowering bushes brighten the open middle
@@ -177,13 +167,13 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   { art: 'tree_flowerbush', x: 0.45, y: 0.55, w: 0.05, unlockAt: 0, stage: 3 },
   { art: 'tree_flowerbush', x: 0.42, y: 0.5, w: 0.048, unlockAt: 0, stage: 3 },
   { art: 'tree_flowerbush', x: 0.72, y: 0.64, w: 0.048, unlockAt: 0, stage: 4 },
-  // ── fences frame the farm (ring F) and the garden (ring G) once they're tended
-  { art: 'fence_wood', x: 0.62, y: 0.335, w: 0.1, unlockAt: 16, stage: 0 },
-  { art: 'fence_wood', x: 0.7, y: 0.54, w: 0.095, unlockAt: 10, stage: 0 },
-  // ── working clutter on the dock's landward side + the square
-  { art: 'prop_barrel', x: 0.612, y: 0.628, w: 0.034, unlockAt: 0, stage: 4 },
-  { art: 'prop_crate', x: 0.633, y: 0.617, w: 0.034, unlockAt: 0, stage: 4 },
-  { art: 'prop_barrel', x: 0.42, y: 0.55, w: 0.032, unlockAt: 0, stage: 4 },
+  // ── fences frame the farm and the garden once they're tended
+  { art: 'fence_wood', x: 0.135, y: 0.655, w: 0.1, unlockAt: 16, stage: 0 },
+  { art: 'fence_wood', x: 0.7, y: 0.555, w: 0.095, unlockAt: 10, stage: 0 },
+  // ── working clutter by the dock + the square
+  { art: 'prop_barrel', x: 0.53, y: 0.78, w: 0.034, unlockAt: 0, stage: 4 },
+  { art: 'prop_crate', x: 0.55, y: 0.792, w: 0.034, unlockAt: 0, stage: 4 },
+  { art: 'prop_barrel', x: 0.44, y: 0.64, w: 0.032, unlockAt: 0, stage: 4 },
   // ── Storm wreckage: the island washed up broken but alive. Scattered on the
   //    open ground early, cleared away as Emberhollow is rebuilt (untilStage).
   { art: 'debris_a', x: 0.47, y: 0.56, w: 0.055, unlockAt: 0, stage: 0, untilStage: 1 },
@@ -226,12 +216,11 @@ export const TOWN_TERRAIN: readonly TownPiece[] = [
   { art: 'terrain_flowers2', x: 0.845, y: 0.63, w: 0.06, unlockAt: 0 },
   // (the old scattered cobble patches are gone — the map now draws worn dirt
   // lanes that grow with the town; see the routes table in map-view.ts)
-  // A small fishing jetty runs off the SOUTH BEACH sand, where the fishing boat
-  // moors — it used to sit on the rocky SE shore, planks on stone. (The old
-  // dock_straight + dock_end pair stays retired: the cove already holds the
-  // town_dock working pier, and a third structure would crowd it; a properly
-  // painted pier set is briefed in the environment-pass art brief.)
-  { art: 'dock_small', x: 0.505, y: 0.945, w: 0.065, unlockAt: 0, water: true },
+  // A small jetty grounds on the south-east beach. (The old dock_straight +
+  // dock_end pair was removed — on the painted plate it floated as a stray raft
+  // of planks out in open water, disconnected from any shore; the town_dock
+  // building is the real working pier.)
+  { art: 'dock_small', x: 0.7, y: 0.875, w: 0.065, unlockAt: 0 },
 ] as const;
 
 /** Decorations the player can buy and place — coins buy beauty, never power. */
@@ -272,30 +261,23 @@ export function anchorOf(art: string): { x: number; y: number; w: number } | nul
 }
 
 /**
- * Named scene anchors that aren't tied to a single sprite. Everything the map
- * draws at a "place" reads from here or from anchorOf() — never from literals
- * buried in map-view (those drifted every time the layout moved).
+ * Named scene anchors that aren't tied to a single sprite. Effects that draw at
+ * a "place" read from here (or anchorOf) so they track the composition.
  */
 
-/** The civic plaza — path convergence where the well, sign and market gather.
- *  Centres the night hearth-lift and the sleep-warmth glow. */
-export const PLAZA = { x: 0.46, y: 0.5 } as const;
+/** The civic plaza — the well/market heart, for the night hearth-lift + glow. */
+export const PLAZA = { x: 0.5, y: 0.52 } as const;
 
-/** The lighthouse is painted-in specially (4-state ladder), not a layout piece —
- *  but its anchor is still data. Pulled slightly in from the frame edge so the
- *  beam and halo aren't clipped at narrow aspect ratios. */
-export const LIGHTHOUSE_ANCHOR = { x: 0.925, y: 0.59, w: 0.15 } as const;
+/** The painted-in lighthouse (4-state ladder) on the eastern rock point. */
+export const LIGHTHOUSE_ANCHOR = { x: 0.94, y: 0.59, w: 0.15 } as const;
 
-/** Sky-space effects (viewport fractions, not ground positions). */
+/** Sky-space effects (viewport fractions). */
 export const SKY_ANCHORS = {
-  /** god-rays fan from the sun's painted corner */
   godRays: { x: 0.78, y: 0.14 },
-  /** the stargaze reaction's little constellation over the bay */
   stargaze: { x: 0.8, y: 0.16 },
 } as const;
 
-/** Open-ground bands for weather-memory scatter (clear of buildings so puddles
- *  and drifts never sit on a roof). */
+/** Open-ground bands for weather-memory scatter (clear of the buildings). */
 export const GROUND_BANDS = {
   snowDrifts: { x0: 0.08, x1: 0.94, y0: 0.72, y1: 0.8 },
   puddles: { x0: 0.18, x1: 0.6, y0: 0.66, y1: 0.8 },
