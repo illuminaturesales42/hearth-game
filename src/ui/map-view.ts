@@ -1008,7 +1008,14 @@ export class MapView {
         const speed = meditated ? 2600 : 1600;
         const base = sleptWell ? 0.09 : 0.05;
         const pulse = base + 0.03 * Math.sin(t / speed);
-        const glow = ctx.createRadialGradient(PLAZA.x * W, PLAZA.y * H - H * 0.1, 10, PLAZA.x * W, PLAZA.y * H - H * 0.1, W * 0.6);
+        const glow = ctx.createRadialGradient(
+          PLAZA.x * W,
+          PLAZA.y * H - H * 0.1,
+          10,
+          PLAZA.x * W,
+          PLAZA.y * H - H * 0.1,
+          W * 0.6,
+        );
         glow.addColorStop(0, `rgba(255, 200, 120, ${pulse.toFixed(3)})`);
         glow.addColorStop(1, 'rgba(255, 200, 120, 0)');
         ctx.fillStyle = glow;
@@ -1755,7 +1762,10 @@ export class MapView {
       // ONE BY ONE across the real dusk→night window (a per-home offset), not all
       // at once, and a little morning warmth lingers at dawn.
       if (BUILDING_INFO[p.art] && !this.reduce) {
-        const evening = Math.min(1, tod.weights.dusk * 0.7 + tod.weights.night); // 0 day → 1 deep night
+        // A real-world walk brings the town home to its windows: villagersOut
+        // advances the evening curve, so more homes glow sooner (figure-free
+        // life — the walk reaction after the people pass).
+        const evening = Math.min(1, (tod.weights.dusk * 0.7 + tod.weights.night) * (1 + mood.villagersOut * 0.35)); // 0 day → 1 deep night
         const off = (((Math.sin(p.x * 127.1 + p.y * 311.7) * 43758.5453) % 1) + 1) % 1; // stable 0..1 per home
         const lit = evening > off * 0.55 ? (evening - off * 0.55) / (1 - off * 0.55) : 0; // ramps once past its hour
         const glow = Math.max(lit, tod.weights.dawn * 0.45); // homes still cosy at first light
@@ -1792,6 +1802,19 @@ export class MapView {
         ctx.fillStyle = head;
         ctx.fillRect(lx - w, ly - h * 0.82 - w, w * 2, w * 2);
       }
+      // A walked day opens the market: a warm ember glow under the awning by
+      // daylight — trade and bustle without a single drawn figure. Static, so it
+      // grounds the reaction under reduced-motion too.
+      if (p.art === 'town_market' && !p.ruined && mood.villagersOut > 0 && !night) {
+        const mx = p.x * W;
+        const my = p.y * H - h * 0.32;
+        const a = 0.1 + mood.villagersOut * 0.1;
+        const awn = ctx.createRadialGradient(mx, my, 2, mx, my, w * 0.55);
+        awn.addColorStop(0, `rgba(244, 166, 59, ${a.toFixed(3)})`);
+        awn.addColorStop(1, 'rgba(244, 166, 59, 0)');
+        ctx.fillStyle = awn;
+        ctx.fillRect(mx - w * 0.6, my - h * 0.4, w * 1.2, h * 0.8);
+      }
       // a fully-upgraded (Beloved) building gets a soft golden aura of pride;
       // the L2/L3 detail now lives in the painted sprite itself
       if (!p.ruined && p.unlockAt > 0 && BUILDING_INFO[p.art] && this.game.upgradeTier(p.art) >= 2 && !this.reduce) {
@@ -1804,13 +1827,15 @@ export class MapView {
         ctx.fillStyle = aura;
         ctx.fillRect(cx - w * 0.75, cy - h * 0.6, w * 1.5, h * 1.2);
       }
-      // cosy chimney smoke once the village is warm again
+      // cosy chimney smoke once the village is warm again — busier hearths (a
+      // richer, longer plume) on the days the player really walked
       if (p.smoke && stage >= 3 && !this.reduce) {
         const sx = p.x * W + p.smoke.dx * w;
         const sy = p.y * H - h + p.smoke.dy * h * 0.2;
-        for (let i = 0; i < 3; i++) {
+        const puffs = 3 + Math.round(mood.villagersOut * 2);
+        for (let i = 0; i < puffs; i++) {
           const puffY = sy - i * 7 - ((t / 260 + i * 3) % 8);
-          ctx.fillStyle = `rgba(232, 225, 210, ${0.22 - i * 0.06})`;
+          ctx.fillStyle = `rgba(232, 225, 210, ${Math.max(0.04, 0.22 + mood.villagersOut * 0.05 - i * 0.06).toFixed(3)})`;
           ctx.beginPath();
           // the real wind carries the smoke sideways
           ctx.arc(
@@ -1830,7 +1855,8 @@ export class MapView {
       const gull = this.sprite('animal_gull');
       if (gull && !this.reduce) {
         const gustiness = 1 + mood.wind * 1.4;
-        const flock = 2 + (stage >= 3 ? 1 : 0);
+        // a walked day brings one more bird to the harbour — life, not figures
+        const flock = 2 + (stage >= 3 ? 1 : 0) + (mood.villagersOut > 0 ? 1 : 0);
         for (let g = 0; g < flock; g++) {
           const gx = W * (0.5 + 0.34 * Math.sin((t * gustiness) / 2600 + g * 2.1));
           const gy = H * (0.14 + 0.06 * Math.cos((t * gustiness) / 2100 + g * 1.7) + g * 0.03);
