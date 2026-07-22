@@ -1081,6 +1081,8 @@ export class MapView {
       // the cheapest way to make the *entire* town feel like it answered your day.
       this.applyColourGrade(ctx, W, H, mood);
       this.applyTimeLight(ctx, W, H, t);
+      const rainbow = this.rainbowStrength(mood);
+      if (rainbow > 0) this.drawRainbow(ctx, W, H, rainbow);
       if (!this.reduce) this.applyStormFx(ctx, W, H, t, mood);
       this.updateBar(prog, stage, mood);
       return;
@@ -2785,6 +2787,43 @@ export class MapView {
         ctx.restore();
       }
     }
+  }
+
+  /**
+   * A rainbow when the rain eases and the sun returns (wet ground, no downpour,
+   * daylight): the little gift the sky gives after a shower. Drawn in viewport
+   * space (it's sky, not ground) — 0 when the conditions aren't met.
+   */
+  private rainbowStrength(mood: WorldMood): number {
+    const easing = mood.weather !== 'storm' && mood.weather !== 'snow' && mood.weather !== 'fog';
+    if (mood.wetness <= 0.4 || mood.precip >= 0.18 || !easing) return 0;
+    const { weights } = phaseForTime(Date.now(), this.sunTimesFromWeather());
+    const daylight = weights.day + 0.6 * (weights.dawn + weights.dusk);
+    const s = Math.min(1, (mood.wetness - 0.4) / 0.35) * Math.min(1, daylight);
+    return s > 0.08 ? s : 0;
+  }
+
+  /** A soft seven-band arc bowing over the bay. Static (reduced-motion safe). */
+  private drawRainbow(ctx: CanvasRenderingContext2D, W: number, H: number, strength: number): void {
+    // Rainbows sit opposite the sun; nudge the arc's centre toward the sun's side
+    // so it bows away from the real light. Anchored low so the crown reaches the
+    // sky over the bay in the upper third of the scene.
+    const sun = this.sunKey();
+    const cx = W * (0.5 + (sun ? sun.dx * 0.16 : 0));
+    const cy = H * 0.94;
+    const baseR = H * 0.66; // crown sits around the upper quarter
+    const bands = ['#e0736b', '#e8a765', '#e9d06a', '#8fc47f', '#79a8d8', '#8f88d6', '#b07fc9'];
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineWidth = Math.max(2, H * 0.009);
+    bands.forEach((col, i) => {
+      ctx.globalAlpha = 0.3 * strength;
+      ctx.strokeStyle = col;
+      ctx.beginPath();
+      ctx.arc(cx, cy, baseR + i * ctx.lineWidth, Math.PI * 1.14, Math.PI * 1.86);
+      ctx.stroke();
+    });
+    ctx.restore();
   }
 
   /**
