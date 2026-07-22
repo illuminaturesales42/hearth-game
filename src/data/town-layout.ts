@@ -46,27 +46,33 @@ export interface TownPiece {
 export const BUILDING_PLATE_SCALE = 1.04;
 
 export const TOWN_BUILDINGS: readonly TownPiece[] = [
-  { art: 'prop_sign', x: 0.51, y: 0.47, w: 0.042, unlockAt: 1 },
-  // 2026-07 re-lay (user-directed): cottage→old market plot, bakery→old cottage
-  // plot, farm→old bakery plot, library→old farm plot (sprite flipped so the
-  // door faces right/into town), market→old library plot, townhall↔workshop.
-  { art: 'town_cottage', x: 0.535, y: 0.375, w: 0.148, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
+  // The notice board stands at the market's entrance, on the path in front of
+  // the stall. Its baseline is BELOW the market's so it draws on top and can
+  // never be swallowed by the awning (the fate of every spot behind it).
+  { art: 'prop_sign', x: 0.56, y: 0.665, w: 0.05, unlockAt: 1 },
+  // 2026-07 environment pass: composition follows the plate's focal hierarchy —
+  // ① the town hall is the landmark and takes the centre-north plot, terminating
+  // the plaza's path axis; ② the lighthouse stands alone against open sea;
+  // ③ the harbour cove gathers the working waterfront. The first-restored
+  // cottage moves to the quiet west-forest plot (humble beginnings, its smoke
+  // reading against the trees), and every anchor centres its plot ring.
+  { art: 'town_cottage', x: 0.2, y: 0.345, w: 0.148, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
   { art: 'town_bakery', x: 0.36, y: 0.425, w: 0.138, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
-  { art: 'prop_well', x: 0.45, y: 0.49, w: 0.092, unlockAt: 6 },
+  { art: 'prop_well', x: 0.465, y: 0.5, w: 0.092, unlockAt: 6 },
   { art: 'town_market', x: 0.54, y: 0.59, w: 0.138, unlockAt: 8, ruinVariant: 7 },
-  { art: 'town_garden', x: 0.775, y: 0.5, w: 0.148, unlockAt: 10, ruinVariant: 4 },
-  { art: 'town_townhall', x: 0.2, y: 0.345, w: 0.148, unlockAt: 12, ruinVariant: 3 },
-  { art: 'town_workshop', x: 0.25, y: 0.825, w: 0.138, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
-  { art: 'town_farm', x: 0.715, y: 0.31, w: 0.148, unlockAt: 16, ruinVariant: 5 },
-  // Joss's hut is a stilted pier: it sits on the SE point with its deck over the
+  { art: 'town_garden', x: 0.735, y: 0.465, w: 0.148, unlockAt: 10, ruinVariant: 4 },
+  { art: 'town_townhall', x: 0.52, y: 0.33, w: 0.158, unlockAt: 12, ruinVariant: 3 },
+  { art: 'town_workshop', x: 0.23, y: 0.76, w: 0.138, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
+  { art: 'town_farm', x: 0.67, y: 0.29, w: 0.148, unlockAt: 16, ruinVariant: 5 },
+  // Joss's hut is a stilted pier: it sits inside the cove with its deck over the
   // bay water, connected to land only at the house body (back). Anchor is
   // intentionally over water so the sprite's own water blends with the plate.
-  { art: 'town_fisherhut', x: 0.82, y: 0.705, w: 0.148, unlockAt: 18, ruinVariant: 6, water: true },
-  { art: 'town_sawmill', x: 0.43, y: 0.245, w: 0.148, unlockAt: 20, ruinVariant: 1 },
+  { art: 'town_fisherhut', x: 0.795, y: 0.68, w: 0.148, unlockAt: 18, ruinVariant: 6, water: true },
+  { art: 'town_sawmill', x: 0.455, y: 0.225, w: 0.148, unlockAt: 20, ruinVariant: 1 },
   { art: 'town_blacksmith', x: 0.36, y: 0.71, w: 0.143, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
-  // the dock pier sits up at the bay's north-west shore so its own water meets
-  // the plate's bay, not the grass
-  { art: 'town_dock', x: 0.665, y: 0.685, w: 0.126, unlockAt: 22, ruinVariant: 5, water: true },
+  // the dock pier's base meets the cove's north-west sand arc so its deck runs
+  // out over the bay water, not the grass
+  { art: 'town_dock', x: 0.655, y: 0.645, w: 0.126, unlockAt: 22, ruinVariant: 5, water: true },
   { art: 'town_library', x: 0.225, y: 0.59, w: 0.148, unlockAt: 23, ruinVariant: 3 },
 ] as const;
 
@@ -156,8 +162,8 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   // ── lamplight + benches around the town square (well & notice board)
   { art: 'prop_lamp', x: 0.415, y: 0.52, w: 0.026, unlockAt: 0, stage: 2 },
   { art: 'prop_lamp', x: 0.47, y: 0.64, w: 0.026, unlockAt: 0, stage: 2 },
-  { art: 'prop_lamp', x: 0.55, y: 0.665, w: 0.026, unlockAt: 0, stage: 3 },
-  { art: 'prop_lamp', x: 0.47, y: 0.68, w: 0.026, unlockAt: 0, stage: 3 },
+  // one lamp lights the harbour road down to the dock
+  { art: 'prop_lamp', x: 0.6, y: 0.655, w: 0.026, unlockAt: 0, stage: 3 },
   { art: 'prop_bench', x: 0.43, y: 0.61, w: 0.052, unlockAt: 0, stage: 3 },
   { art: 'prop_bench', x: 0.52, y: 0.7, w: 0.052, unlockAt: 0, stage: 4 },
   // ── wildflower beds + flowering bushes brighten the open middle
@@ -168,11 +174,11 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
   { art: 'tree_flowerbush', x: 0.42, y: 0.5, w: 0.048, unlockAt: 0, stage: 3 },
   { art: 'tree_flowerbush', x: 0.72, y: 0.64, w: 0.048, unlockAt: 0, stage: 4 },
   // ── fences frame the farm and the garden once they're tended
-  { art: 'fence_wood', x: 0.135, y: 0.655, w: 0.1, unlockAt: 16, stage: 0 },
-  { art: 'fence_wood', x: 0.7, y: 0.555, w: 0.095, unlockAt: 10, stage: 0 },
-  // ── working clutter by the dock + the square
-  { art: 'prop_barrel', x: 0.53, y: 0.78, w: 0.034, unlockAt: 0, stage: 4 },
-  { art: 'prop_crate', x: 0.55, y: 0.792, w: 0.034, unlockAt: 0, stage: 4 },
+  { art: 'fence_wood', x: 0.605, y: 0.3, w: 0.1, unlockAt: 16, stage: 0 },
+  { art: 'fence_wood', x: 0.685, y: 0.485, w: 0.095, unlockAt: 10, stage: 0 },
+  // ── working clutter on the dock's landward side + the square
+  { art: 'prop_barrel', x: 0.612, y: 0.628, w: 0.034, unlockAt: 0, stage: 4 },
+  { art: 'prop_crate', x: 0.633, y: 0.617, w: 0.034, unlockAt: 0, stage: 4 },
   { art: 'prop_barrel', x: 0.44, y: 0.64, w: 0.032, unlockAt: 0, stage: 4 },
   // ── Storm wreckage: the island washed up broken but alive. Scattered on the
   //    open ground early, cleared away as Emberhollow is rebuilt (untilStage).
