@@ -21,6 +21,9 @@ export interface TownPiece {
   /** For transient dressing (storm debris, dead trees): the last homestead
    *  stage at which this piece still shows. Omit for permanent pieces. */
   untilStage?: number;
+  /** This piece stands in/over water (pier, moored hull): the renderer gives it
+   *  a water reflection instead of an earth-coloured contact pad. */
+  water?: true;
 }
 
 /**
@@ -30,8 +33,18 @@ export interface TownPiece {
  * PLOT_MASK_map_island_plate.png), NOT the idealized mask island — the final
  * plate carved a bay into the south-east, so anchors are validated on the actual
  * painted land and spaced so no two building sprites collide at the plate's
- * 1.16× draw scale (the lighthouse and Joss's hut used to overlap).
+ * draw scale (see BUILDING_PLATE_SCALE — the lighthouse and Joss's hut used to
+ * overlap). tests/town-layout.test.ts enforces the no-collision rule.
  */
+
+/**
+ * Buildings on the painted plate draw slightly larger than their raw `w` so they
+ * fill the plate's plot rings and cast a grounding footprint. This is the single
+ * source of truth for that factor (map-view reads it) — anchors above are spaced
+ * for it, and the layout-sanity test uses it to prove no two buildings collide.
+ */
+export const BUILDING_PLATE_SCALE = 1.04;
+
 export const TOWN_BUILDINGS: readonly TownPiece[] = [
   { art: 'prop_sign', x: 0.51, y: 0.47, w: 0.042, unlockAt: 1 },
   // 2026-07 re-lay (user-directed): cottage→old market plot, bakery→old cottage
@@ -48,12 +61,12 @@ export const TOWN_BUILDINGS: readonly TownPiece[] = [
   // Joss's hut is a stilted pier: it sits on the SE point with its deck over the
   // bay water, connected to land only at the house body (back). Anchor is
   // intentionally over water so the sprite's own water blends with the plate.
-  { art: 'town_fisherhut', x: 0.82, y: 0.705, w: 0.148, unlockAt: 18, ruinVariant: 6 },
+  { art: 'town_fisherhut', x: 0.82, y: 0.705, w: 0.148, unlockAt: 18, ruinVariant: 6, water: true },
   { art: 'town_sawmill', x: 0.43, y: 0.245, w: 0.148, unlockAt: 20, ruinVariant: 1 },
   { art: 'town_blacksmith', x: 0.36, y: 0.71, w: 0.143, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
   // the dock pier sits up at the bay's north-west shore so its own water meets
   // the plate's bay, not the grass
-  { art: 'town_dock', x: 0.665, y: 0.685, w: 0.126, unlockAt: 22, ruinVariant: 5 },
+  { art: 'town_dock', x: 0.665, y: 0.685, w: 0.126, unlockAt: 22, ruinVariant: 5, water: true },
   { art: 'town_library', x: 0.225, y: 0.59, w: 0.148, unlockAt: 23, ruinVariant: 3 },
 ] as const;
 
@@ -232,3 +245,17 @@ export const DECOR_CATALOG: readonly DecorDef[] = [
   { art: 'prop_tidepool', name: 'Tide pool', cost: 40, w: 0.07 },
   { art: 'prop_shorerock', name: 'Shore rocks', cost: 20, w: 0.05 },
 ] as const;
+
+/**
+ * The live position of a laid-out piece by art id (buildings first, then terrain,
+ * then nature dressing). This is the single lookup the map's effects use so a
+ * glow/wash/sparkle always tracks the building it belongs to — move a piece here
+ * and its effects follow, instead of drifting off a hardcoded literal.
+ */
+export function anchorOf(art: string): { x: number; y: number; w: number } | null {
+  const p =
+    TOWN_BUILDINGS.find((b) => b.art === art) ??
+    TOWN_TERRAIN.find((b) => b.art === art) ??
+    TOWN_NATURE.find((b) => b.art === art);
+  return p ? { x: p.x, y: p.y, w: p.w } : null;
+}

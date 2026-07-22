@@ -16,6 +16,7 @@ import { orderAt } from '../data/endless';
 import { questsForDay } from '../data/daily-quests';
 import {
   BUILDING_INFO,
+  BUILDING_PLATE_SCALE,
   DECOR_CATALOG,
   TOWN_BOATS,
   TOWN_BUILDINGS,
@@ -1587,7 +1588,7 @@ export class MapView {
       if (!img) continue;
       // buildings read bigger against the detailed painted plate so the town
       // stands out from the landscape; props/nature keep their scale.
-      const w = p.w * W * (plate && BUILDING_INFO[p.art] ? 1.04 : 1);
+      const w = p.w * W * (plate && BUILDING_INFO[p.art] ? BUILDING_PLATE_SCALE : 1);
       const h = w * (img.naturalHeight / img.naturalWidth);
       if (p.decorId !== undefined) {
         this.decorHit.push({ x0: p.x * W - w / 2, y0: p.y * H - h, x1: p.x * W + w / 2, y1: p.y * H, id: p.decorId });
@@ -1633,7 +1634,7 @@ export class MapView {
         }
         const rimg = ruinArt ? this.sprite(ruinArt) : undefined;
         if (rimg) {
-          const rw = p.w * W * (plate && BUILDING_INFO[p.art] ? 1.04 : 1);
+          const rw = p.w * W * (plate && BUILDING_INFO[p.art] ? BUILDING_PLATE_SCALE : 1);
           const rh = rw * (rimg.naturalHeight / rimg.naturalWidth);
           ctx.save();
           ctx.globalAlpha = p.unlockAt === nextUnlock ? 0.97 : 0.85; // distant ruins recede a touch
