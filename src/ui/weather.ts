@@ -6,8 +6,9 @@
  * except the weather query itself.
  */
 import { weatherFromWmo } from '../core/world-mood';
-import type { WeatherExtra, WeatherNow } from '../core/world-mood';
+import type { WeatherExtra, WeatherKind, WeatherNow } from '../core/world-mood';
 import type { SunTimes } from '../core/time-of-day';
+import { phaseName } from '../data/moon';
 
 const WEATHER_KEY = 'hearth:weather';
 const COORDS_KEY = 'hearth:coords';
@@ -139,6 +140,32 @@ export function latestLocationLabel(): string | null {
   const c = readJson<StoredCoords>(COORDS_KEY);
   if (!c) return null;
   return c.label ?? 'Your location';
+}
+
+const WEATHER_WORD: Record<WeatherKind, string> = {
+  clear: 'clear skies',
+  clouds: 'light cloud',
+  overcast: 'grey skies',
+  fog: 'sea fog',
+  rain: 'rain',
+  storm: 'a storm',
+  snow: 'snow',
+};
+
+/**
+ * A short, legible "your sky right now" stamp for the shared town card:
+ * town · weather · temperature · (moon phase at night). Empty when no reading.
+ */
+export function skyStamp(): string {
+  const w = readJson<WeatherNow>(WEATHER_KEY);
+  if (!w) return '';
+  const parts: string[] = [];
+  const loc = latestLocationLabel();
+  if (loc && loc !== 'Your location') parts.push(loc);
+  parts.push(WEATHER_WORD[w.kind]);
+  if (typeof w.tempC === 'number') parts.push(`${Math.round(w.tempC)}°`);
+  if (w.isDay === false) parts.push(phaseName(Date.now()).toLowerCase());
+  return parts.join(' · ');
 }
 
 /**
