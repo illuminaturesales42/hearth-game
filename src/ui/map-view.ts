@@ -407,6 +407,14 @@ export class MapView {
     }
   }
 
+  /**
+   * Warm light sources collected during the town pass (lit windows, lamp heads,
+   * doorway pools). The night grade multiplies the whole land down — so these
+   * are RE-EMITTED after grading with `lighter`, letting the village's lights
+   * genuinely blaze against the dark instead of being crushed by it.
+   */
+  private glowSpots: { x: number; y: number; r: number; a: number }[] = [];
+
   /** last stem levels sent, so ramps only fire when something actually changed */
   private lastStems: StemLevels | null = null;
   private stemsCheckedAt = 0;
@@ -1006,6 +1014,28 @@ export class MapView {
       // the cheapest way to make the *entire* town feel like it answered your day.
       this.applyColourGrade(ctx, W, H, mood);
       this.applyTimeLight(ctx, W, H, t, mood);
+      // The village's lights answer the dark: re-emit collected window/lamp
+      // glows OVER the night grade so they blaze instead of being multiplied
+      // away — the deeper the night, the brighter they cut.
+      const nightW = phaseForTime(Date.now(), this.sunTimesFromWeather()).weights.night;
+      if (nightW > 0.05 && this.glowSpots.length) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (const s of this.glowSpots) {
+          const a = s.a * nightW;
+          if (a < 0.01) continue;
+          // spots were collected inside the camera transform — map to viewport
+          const px = s.x * this.cam.zoom + this.cam.panX;
+          const py = s.y * this.cam.zoom + this.cam.panY;
+          const pr = s.r * this.cam.zoom;
+          const g = ctx.createRadialGradient(px, py, 0, px, py, pr);
+          g.addColorStop(0, `rgba(255, 196, 116, ${a.toFixed(3)})`);
+          g.addColorStop(1, 'rgba(255, 196, 116, 0)');
+          ctx.fillStyle = g;
+          ctx.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+        }
+        ctx.restore();
+      }
       const rainbow = this.rainbowStrength(mood);
       if (rainbow > 0) this.drawRainbow(ctx, W, H, rainbow);
       if (!this.reduce) this.applyStormFx(ctx, W, H, t, mood);
@@ -1592,6 +1622,7 @@ export class MapView {
     // took stands as dark ruins, and each delivered order restores one
     // building to colour and life ---
     this.hitboxes = [];
+    this.glowSpots.length = 0;
     this.decorHit = [];
     interface ScenePiece {
       art: string;
@@ -1819,12 +1850,33 @@ export class MapView {
         if (glow > 0.02) {
           const cx = p.x * W;
           const cy = p.y * H - h * 0.4;
-          const k = glow * 0.5 * (0.93 + 0.07 * Math.sin(t / 820 + p.x * 40)); // gentle candle-flicker
+          // deep night makes lit homes BLAZE against the dark — the contrast the
+          // navy grade paid for
+          const blaze = 1 + tod.weights.night * 0.55;
+          const k = glow * 0.5 * blaze * (0.93 + 0.07 * Math.sin(t / 820 + p.x * 40)); // gentle candle-flicker
           const warm = ctx.createRadialGradient(cx, cy, 1, cx, cy, w * 0.6);
           warm.addColorStop(0, `rgba(255, 198, 120, ${k.toFixed(3)})`);
           warm.addColorStop(1, 'rgba(255, 190, 110, 0)');
           ctx.fillStyle = warm;
           ctx.fillRect(cx - w * 0.7, cy - h * 0.55, w * 1.4, h * 1.05);
+          this.glowSpots.push({ x: cx, y: cy, r: w * 0.55, a: k * 0.5 });
+          // and the light lands: a warm pool spills from the doorway onto the
+          // ground in front of the home (visible only once truly lit at night)
+          const spill = lit * tod.weights.night;
+          if (spill > 0.15) {
+            this.glowSpots.push({ x: cx, y: p.y * H + h * 0.02, r: w * 0.4, a: spill * 0.16 });
+            ctx.save();
+            ctx.translate(cx, p.y * H + h * 0.03);
+            ctx.scale(1, 0.34);
+            const doorPool = ctx.createRadialGradient(0, 0, 1, 0, 0, w * 0.52);
+            doorPool.addColorStop(0, `rgba(255, 200, 120, ${(0.2 * spill).toFixed(3)})`);
+            doorPool.addColorStop(1, 'rgba(255, 200, 120, 0)');
+            ctx.fillStyle = doorPool;
+            ctx.beginPath();
+            ctx.arc(0, 0, w * 0.52, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
         }
       }
       // street lamps cast a warm pool on the ground + a glowing head at dusk/night
@@ -1848,6 +1900,8 @@ export class MapView {
         head.addColorStop(1, 'rgba(255, 226, 150, 0)');
         ctx.fillStyle = head;
         ctx.fillRect(lx - w, ly - h * 0.82 - w, w * 2, w * 2);
+        this.glowSpots.push({ x: lx, y: ly - h * 0.82, r: w * 1.1, a: 0.32 * lampFlick });
+        this.glowSpots.push({ x: lx, y: ly, r: w * 2.1, a: 0.14 });
       }
       // A walked day opens the market: a warm ember glow under the awning by
       // daylight — trade and bustle without a single drawn figure. Static, so it
@@ -3024,6 +3078,41 @@ export class MapView {
     stage: number,
   ): void {
     this.drawSeason(ctx, W, H, t, night);
+    // Dawn owns the mist: low white banks clinging to the coast that burn off
+    // as the sun climbs, and dew glinting in the meadows at first light.
+    const dawnW = phaseForTime(Date.now(), this.sunTimesFromWeather()).weights.dawn;
+    if (dawnW > 0.05) {
+      ctx.save();
+      const banks: [number, number, number][] = [
+        [0.16, 0.8, 0.2],
+        [0.52, 0.87, 0.26],
+        [0.8, 0.72, 0.17],
+      ];
+      for (let i = 0; i < banks.length; i++) {
+        const [bx0, by0, bw] = banks[i]!;
+        const driftX = this.reduce ? 0 : Math.sin(t / (9000 + i * 2600)) * W * 0.015;
+        const mg = ctx.createRadialGradient(bx0 * W + driftX, by0 * H, 2, bx0 * W + driftX, by0 * H, bw * W);
+        mg.addColorStop(0, `rgba(228, 236, 248, ${(0.2 * dawnW).toFixed(3)})`);
+        mg.addColorStop(1, 'rgba(228, 236, 248, 0)');
+        ctx.fillStyle = mg;
+        ctx.save();
+        ctx.translate(bx0 * W + driftX, by0 * H);
+        ctx.scale(1, 0.24);
+        ctx.beginPath();
+        ctx.arc(0, 0, bw * W, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+      // dew catching first light across the meadow band
+      const dews = this.reduce ? 5 : 10;
+      for (let i = 0; i < dews; i++) {
+        const dx = W * (0.2 + ((i * 0.083) % 0.6));
+        const dy = H * (0.42 + ((i * 0.047) % 0.3));
+        const tw = this.reduce ? 0.6 : 0.3 + 0.7 * Math.abs(Math.sin(t / 560 + i * 2.3));
+        drawSparkle(ctx, dx, dy, 1.4, 0.55 * dawnW * tw);
+      }
+      ctx.restore();
+    }
     // God-rays fanning from the low sun on clear-ish days.
     if (!night && mood.cloudCover < 0.55) {
       const sx = SKY_ANCHORS.godRays.x * W;
