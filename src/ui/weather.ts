@@ -9,8 +9,11 @@ import { weatherFromWmo } from '../core/world-mood';
 import type { WeatherExtra, WeatherKind, WeatherNow } from '../core/world-mood';
 import type { SunTimes } from '../core/time-of-day';
 import { phaseName } from '../data/moon';
+import { appendSample, deriveAccumulation } from '../core/weather-history';
+import type { Accumulation, WeatherSample } from '../core/weather-history';
 
 const WEATHER_KEY = 'hearth:weather';
+const WEATHER_LOG_KEY = 'hearth:weather-log';
 const COORDS_KEY = 'hearth:coords';
 const DENIED_KEY = 'hearth:loc-denied';
 const WEATHER_TTL = 30 * 60 * 1000;
@@ -223,10 +226,33 @@ export async function currentWeather(): Promise<WeatherNow | null> {
       extra,
     );
     writeJson(WEATHER_KEY, now);
+    logReading(now);
     return now;
   } catch {
     return cached;
   }
+}
+
+/**
+ * Fold each fresh reading into the day-spanning log so the ground can *remember*
+ * weather — puddles that linger after rain, snow that settles over a cold day.
+ * Best-effort and self-pruning; a corrupt log just resets.
+ */
+function logReading(w: WeatherNow): void {
+  const sample: WeatherSample = { at: w.fetchedAt, kind: w.kind, precipMm: w.precipMm };
+  if (typeof w.tempC === 'number') sample.tempC = w.tempC;
+  const log = readJson<WeatherSample[]>(WEATHER_LOG_KEY) ?? [];
+  writeJson(WEATHER_LOG_KEY, appendSample(Array.isArray(log) ? log : [], sample, w.fetchedAt));
+}
+
+/**
+ * Weather's memory right now: wet ground + lying snow derived from the reading
+ * log. Zeroed when there's no history (a first-ever dry world). Pure read.
+ */
+export function latestAccumulation(now: number = Date.now()): Accumulation {
+  const log = readJson<WeatherSample[]>(WEATHER_LOG_KEY);
+  if (!Array.isArray(log) || log.length === 0) return { wetness: 0, snowDepth: 0 };
+  return deriveAccumulation(log, now);
 }
 
 /**

@@ -106,6 +106,14 @@ export interface WorldMood {
   seaMist: number; // cold plunge → a cool mist drifts over the water (0..1)
   saunaWarm: boolean; // sauna → warmer chimney smoke curls up
   stargazed: boolean; // stargaze after dark → a constellation lights the bay (night only)
+  /**
+   * Weather's memory (from the day-keyed reading log — see core/weather-history):
+   * wet ground that lingers after rain, snow that settled over a cold spell, and
+   * a frost bite that the map paints as a dawn sheen. All 0..1, all additive.
+   */
+  wetness: number; // 0..1 puddles / wet sheen left by recent rain
+  snowDepth: number; // 0..1 snow lying on roofs and ground
+  frost: number; // 0..1 cold bite (near/below freezing) → dawn frost sheen
 }
 
 /** Whole days between two YYYY-MM-DD local day keys (b - a, ≥0 when b later). */
@@ -150,6 +158,8 @@ export interface MoodInputs {
   walkedToday?: boolean;
   /** current daily streak length — long streaks bring festival decor */
   streak?: number;
+  /** derived weather memory (core/weather-history) — wet ground + lying snow */
+  accumulation?: { wetness: number; snowDepth: number } | null;
 }
 
 export function computeMood(inp: MoodInputs): WorldMood {
@@ -200,6 +210,12 @@ export function computeMood(inp: MoodInputs): WorldMood {
   // Stargaze → a constellation lights the bay (the map shows it only after dark).
   const stargazed = tally(counts, STAR_IDS) > 0;
 
+  // Weather's memory: puddles/snow carried in from the reading log, plus a frost
+  // bite derived straight from the current temperature (1 near −4°C, 0 by +2°C).
+  const wetness = clamp01(inp.accumulation?.wetness ?? 0);
+  const snowDepth = clamp01(inp.accumulation?.snowDepth ?? 0);
+  const frost = w && typeof w.tempC === 'number' ? clamp01((2 - w.tempC) / 6) : 0;
+
   return {
     weather: kind,
     cloudCover,
@@ -218,6 +234,9 @@ export function computeMood(inp: MoodInputs): WorldMood {
     seaMist,
     saunaWarm,
     stargazed,
+    wetness,
+    snowDepth,
+    frost,
   };
 }
 

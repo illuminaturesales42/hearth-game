@@ -31,7 +31,7 @@ import { constellationFor, activeMeteorShower, type Constellation } from '../dat
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
 import { phaseForTime, type SunTimes } from '../core/time-of-day';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
-import { currentWeather } from './weather';
+import { currentWeather, latestAccumulation } from './weather';
 import { artUrl, portraitFor, tileMarkup } from './art';
 import { esc } from './esc';
 import { ALMANAC_PAGES, ALMANAC_SECTIONS, almanacProgress } from '../core/almanac';
@@ -440,7 +440,21 @@ export class MapView {
       counts: s.actions.counts,
       walkedToday: (s.healthLedger?.stepsGranted ?? 0) > 0,
       streak: s.actions.streak,
+      accumulation: this.accumulation(),
     });
+  }
+
+  private accumCache: { at: number; value: ReturnType<typeof latestAccumulation> } | null = null;
+  /**
+   * Weather's memory changes on an hourly / slow-decay clock, so it's wasteful to
+   * re-read the log and re-fold it every frame — recompute at most once a minute.
+   */
+  private accumulation(): ReturnType<typeof latestAccumulation> {
+    const now = Date.now();
+    if (!this.accumCache || now - this.accumCache.at > 60_000) {
+      this.accumCache = { at: now, value: latestAccumulation(now) };
+    }
+    return this.accumCache.value;
   }
 
   private refreshWeather(): void {
@@ -449,6 +463,7 @@ export class MapView {
     void currentWeather().then((w) => {
       if (!w) return;
       this.weather = w;
+      this.accumCache = null; // a fresh reading just extended the log
       if (this.visible && this.reduce) this.draw(0);
     });
   }
@@ -2598,18 +2613,103 @@ export class MapView {
         ctx.stroke();
         ctx.restore();
       }
-      // puddles glinting on the plaza
-      const puddles = this.reduce ? 2 : 3;
-      for (let i = 0; i < puddles; i++) {
-        const px = W * (0.4 + i * 0.11);
-        const py = H * (0.7 + (i % 2) * 0.03);
-        const k = this.reduce ? 0.5 : 0.35 + 0.35 * Math.abs(Math.sin(t / 600 + i));
-        ctx.save();
-        ctx.globalAlpha = 0.4 * k;
-        ctx.fillStyle = 'rgba(180, 210, 230, 0.6)';
+    }
+    // Weather's *memory*: puddles that linger after the rain, snow that settled
+    // over a cold day, a frost sheen at a freezing dawn. All from the reading log
+    // (core/weather-history) — the "it rained here earlier" that makes it real.
+    this.drawAccumulation(ctx, W, H, t, mood);
+  }
+
+  /**
+   * Ground traces the weather leaves behind — driven by the derived depths on the
+   * mood (wetness / snowDepth / frost), not the instantaneous reading, so they
+   * persist and fade on their own clock: puddles keep glinting after the shower
+   * passes, snow deepens through a cold day then thaws, frost silvers a hard dawn.
+   */
+  private drawAccumulation(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, mood: WorldMood): void {
+    // --- lying snow: a blanket over the rooftops and ground, deeper as it snows on ---
+    if (mood.snowDepth > 0.02) {
+      const d = mood.snowDepth;
+      ctx.save();
+      // A pale settle spanning the town — faint over the rooftops, banking thick
+      // toward the ground. Reads as "snow lying across the whole island".
+      const bandTop = H * 0.36;
+      const g = ctx.createLinearGradient(0, bandTop, 0, H * 0.86);
+      g.addColorStop(0, 'rgba(236, 244, 252, 0)');
+      g.addColorStop(0.55, `rgba(240, 247, 253, ${(0.28 * d).toFixed(3)})`);
+      g.addColorStop(1, `rgba(244, 249, 254, ${(0.62 * d).toFixed(3)})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, bandTop, W, H * 0.5);
+      // Rounded drifts catching along the paths.
+      ctx.fillStyle = `rgba(246, 250, 255, ${(0.4 + 0.4 * d).toFixed(3)})`;
+      const drifts = this.reduce ? 4 : 7;
+      for (let i = 0; i < drifts; i++) {
+        const dx = W * (0.08 + (i / drifts) * 0.86);
+        const dy = H * (0.74 + 0.05 * (i % 2));
         ctx.beginPath();
-        ctx.ellipse(px, py, W * 0.02, H * 0.008, 0, 0, Math.PI * 2);
+        ctx.ellipse(dx, dy, W * (0.055 + 0.035 * d), H * (0.014 + 0.022 * d), 0, Math.PI, Math.PI * 2);
         ctx.fill();
+      }
+      // The whole scene lifts brighter and cooler under snow cover.
+      ctx.globalAlpha = 0.16 * d;
+      ctx.fillStyle = 'rgba(228, 239, 250, 1)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
+    // --- wet ground: a sheen + puddles that outlast the rain that made them ---
+    if (mood.wetness > 0.06 && mood.snowDepth < 0.35) {
+      const wet = mood.wetness;
+      ctx.save();
+      // A reflective sheen washed across the paths.
+      ctx.globalAlpha = 0.16 * wet;
+      const sheen = ctx.createLinearGradient(0, H * 0.6, 0, H * 0.85);
+      sheen.addColorStop(0, 'rgba(150, 185, 210, 0)');
+      sheen.addColorStop(1, 'rgba(175, 205, 228, 0.9)');
+      ctx.fillStyle = sheen;
+      ctx.fillRect(0, H * 0.6, W, H * 0.26);
+      // Puddles: more of them, and glossier, the wetter it is.
+      const puddles = Math.round((this.reduce ? 3 : 4) + wet * 4);
+      for (let i = 0; i < puddles; i++) {
+        const px = W * (0.18 + ((i * 0.13) % 0.68));
+        const py = H * (0.68 + (i % 3) * 0.05);
+        const shimmer = this.reduce ? 0.6 : 0.4 + 0.35 * Math.abs(Math.sin(t / 620 + i * 1.3));
+        const r = W * (0.02 + 0.016 * wet);
+        ctx.globalAlpha = 0.5 * wet * shimmer;
+        // A cool sky-lit pool with a brighter reflection strip across it.
+        ctx.fillStyle = 'rgba(185, 214, 233, 0.7)';
+        ctx.beginPath();
+        ctx.ellipse(px, py, r, H * 0.009, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.55 * wet * shimmer;
+        ctx.fillStyle = 'rgba(238, 247, 253, 0.85)';
+        ctx.beginPath();
+        ctx.ellipse(px, py, r * 0.55, H * 0.003, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // --- frost: a silver sheen on a freezing dawn (fades as the sun climbs) ---
+    if (mood.frost > 0.15 && mood.snowDepth < 0.5) {
+      const { weights } = phaseForTime(Date.now(), this.sunTimesFromWeather());
+      const dawnLit = Math.max(weights.dawn, weights.night * 0.4); // strongest at first light
+      const f = mood.frost * dawnLit;
+      if (f > 0.05) {
+        ctx.save();
+        ctx.globalAlpha = 0.22 * f;
+        ctx.fillStyle = 'rgba(216, 234, 247, 1)';
+        ctx.fillRect(0, H * 0.5, W, H * 0.4);
+        // A scatter of cold glints on the rimed ground.
+        if (!this.reduce) {
+          const glints = 18;
+          for (let i = 0; i < glints; i++) {
+            const gx = W * (0.08 + ((i * 0.113) % 0.84));
+            const gy = H * (0.62 + ((i * 0.041) % 0.26));
+            const tw = 0.4 + 0.6 * Math.abs(Math.sin(t / 500 + i * 2.1));
+            drawSparkle(ctx, gx, gy, 1.9, f * tw);
+          }
+        }
         ctx.restore();
       }
     }
