@@ -275,6 +275,14 @@ export function latestSouthern(): boolean {
   return readJson<WeatherNow>(WEATHER_KEY)?.southern === true;
 }
 
+/** The cached coordinates, if the player has shared or set a location. Synchronous
+ *  read for callers (map lighting) that need the sun's real azimuth each frame. */
+export function latestCoords(): { lat: number; lng: number } | null {
+  const c = readJson<StoredCoords>(COORDS_KEY);
+  if (c && typeof c.lat === 'number' && typeof c.lng === 'number') return { lat: c.lat, lng: c.lng };
+  return null;
+}
+
 // ---------- "pick your sky" — the opt-out for grey-climate players ----------
 // Real-weather sync is the magic, but a player stuck under a fortnight of drizzle
 // deserves a way out (the Animal Crossing time-travel lesson). A chosen mood keeps

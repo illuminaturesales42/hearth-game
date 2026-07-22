@@ -31,7 +31,18 @@ import { constellationFor, activeMeteorShower, type Constellation } from '../dat
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
 import { phaseForTime, type SunTimes } from '../core/time-of-day';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
-import { currentWeather, latestAccumulation, effectiveWeather, presetAccumulation, getSkyPref } from './weather';
+import {
+  currentWeather,
+  latestAccumulation,
+  effectiveWeather,
+  presetAccumulation,
+  getSkyPref,
+  latestCoords,
+} from './weather';
+import { sunPosition } from '../core/sun';
+
+/** The sun's screen-side key for the lighting washes, or null with no location. */
+type SunKey = { dx: number; dy: number; lowness: number } | null;
 import { artUrl, portraitFor, tileMarkup } from './art';
 import { esc } from './esc';
 import { ALMANAC_PAGES, ALMANAC_SECTIONS, almanacProgress } from '../core/almanac';
@@ -2294,19 +2305,53 @@ export class MapView {
     // actually dark where they are — with smooth crossfades, never hard bands.
     // (Falls back to fixed clock bands when the sun times aren't known yet.)
     const { weights } = phaseForTime(Date.now(), this.sunTimesFromWeather());
+    // Where the sun really is: its screen-side (warm key from there, cool shadow
+    // opposite) and how low it sits (low sun → longer, more directional light).
+    const sun = this.sunKey();
     ctx.save();
     // Order matters for the composited crossfade: darken first, then warm/cool.
     if (weights.night > 0.001) this.washNight(ctx, W, H, t, weights.night);
-    if (weights.dawn > 0.001) this.washDawn(ctx, W, H, weights.dawn);
+    if (weights.dawn > 0.001) this.washDawn(ctx, W, H, weights.dawn, sun);
     if (weights.day > 0.001) this.washDay(ctx, W, H, weights.day);
-    if (weights.dusk > 0.001) this.washDusk(ctx, W, H, weights.dusk);
+    if (weights.dusk > 0.001) this.washDusk(ctx, W, H, weights.dusk, sun);
+    // A warm rim of light hugging the sun-facing edge when the sun is low — the
+    // "backlight" beat that makes golden hour feel like it comes from somewhere.
+    if ((weights.dawn > 0.001 || weights.dusk > 0.001) && sun) {
+      this.washRimLight(ctx, W, H, sun, Math.max(weights.dawn, weights.dusk));
+    }
     ctx.restore();
   }
 
-  /** Morning: cool, soft, hazy, warm key upper-left. `k` = blend weight (0..1). */
-  private washDawn(ctx: CanvasRenderingContext2D, W: number, H: number, k: number): void {
-    const g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, `rgba(255, 222, 172, ${(0.14 * k).toFixed(3)})`); // warm key, top-left
+  /**
+   * The sun's real bearing translated to the painted scene: a unit vector toward
+   * where the light comes FROM (east = right, west = left, south = toward the
+   * viewer) and `lowness` 0..1 that peaks when the sun is on the horizon. Null
+   * when we have no location — callers then fall back to the authored directions.
+   */
+  private sunKey(): { dx: number; dy: number; lowness: number } | null {
+    const coords = latestCoords();
+    if (!coords) return null;
+    const { azimuth, altitude } = sunPosition(Date.now(), coords);
+    // SunCalc azimuth: 0 = south, +π/2 = west, −π/2 = east. Screen: west is left.
+    const dx = -Math.sin(azimuth);
+    const dy = Math.cos(azimuth); // south → +y (down, toward the viewer)
+    const lowness = Math.max(0, Math.min(1, 1 - Math.sin(Math.max(0, altitude)) / 0.5));
+    return { dx, dy, lowness };
+  }
+
+  /** A corner point on the viewport in the direction (dx,dy) from centre. */
+  private static edgePoint(W: number, H: number, dx: number, dy: number, sign: number): [number, number] {
+    return [W * (0.5 + sign * dx * 0.5), H * (0.5 + sign * dy * 0.5)];
+  }
+
+  /** Morning: cool, soft, hazy — warm key from the real sun, cool shadow opposite. */
+  private washDawn(ctx: CanvasRenderingContext2D, W: number, H: number, k: number, sun: SunKey): void {
+    const [kx, ky, sx, sy] = sun
+      ? [...MapView.edgePoint(W, H, sun.dx, sun.dy, 1), ...MapView.edgePoint(W, H, sun.dx, sun.dy, -1)]
+      : [0, 0, W, H]; // fallback: authored top-left key
+    const contrast = sun ? 0.14 + 0.1 * sun.lowness : 0.14;
+    const g = ctx.createLinearGradient(kx, ky, sx, sy);
+    g.addColorStop(0, `rgba(255, 222, 172, ${(contrast * k).toFixed(3)})`); // warm key
     g.addColorStop(1, `rgba(140, 170, 220, ${(0.22 * k).toFixed(3)})`); // cool dawn shadow
     ctx.globalCompositeOperation = 'soft-light';
     ctx.fillStyle = g;
@@ -2323,13 +2368,30 @@ export class MapView {
     ctx.fillRect(0, 0, W, H);
   }
 
-  /** Golden hour: amber wash, warm key from the lower-left (west). */
-  private washDusk(ctx: CanvasRenderingContext2D, W: number, H: number, k: number): void {
-    const g = ctx.createLinearGradient(0, H, W, 0);
-    g.addColorStop(0, `rgba(255, 146, 66, ${(0.34 * k).toFixed(3)})`); // amber, sun side
+  /** Golden hour: amber wash, warm key from the real sun's side (its true azimuth). */
+  private washDusk(ctx: CanvasRenderingContext2D, W: number, H: number, k: number, sun: SunKey): void {
+    const [kx, ky, sx, sy] = sun
+      ? [...MapView.edgePoint(W, H, sun.dx, sun.dy, 1), ...MapView.edgePoint(W, H, sun.dx, sun.dy, -1)]
+      : [0, H, W, 0]; // fallback: authored lower-left (west) key
+    const amber = sun ? 0.3 + 0.12 * sun.lowness : 0.34;
+    const g = ctx.createLinearGradient(kx, ky, sx, sy);
+    g.addColorStop(0, `rgba(255, 146, 66, ${(amber * k).toFixed(3)})`); // amber, sun side
     g.addColorStop(1, `rgba(214, 107, 107, ${(0.12 * k).toFixed(3)})`); // dusky rose, shadow
     ctx.globalCompositeOperation = 'soft-light';
     ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  /** A warm backlight rim on the sun-facing edge, strongest with a low sun. */
+  private washRimLight(ctx: CanvasRenderingContext2D, W: number, H: number, sun: NonNullable<SunKey>, k: number): void {
+    const [kx, ky] = MapView.edgePoint(W, H, sun.dx, sun.dy, 1);
+    const r = ctx.createRadialGradient(kx, ky, 0, kx, ky, Math.max(W, H) * 0.7);
+    const a = 0.16 * k * sun.lowness;
+    if (a < 0.004) return;
+    r.addColorStop(0, `rgba(255, 214, 150, ${a.toFixed(3)})`);
+    r.addColorStop(1, 'rgba(255, 214, 150, 0)');
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = r;
     ctx.fillRect(0, 0, W, H);
   }
 

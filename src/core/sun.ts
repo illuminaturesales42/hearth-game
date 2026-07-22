@@ -56,6 +56,37 @@ export function sunTimes(now: number, coords: Coords): { sunrise: number; sunset
   return { sunrise: fromJulian(jRise), sunset: fromJulian(jSet) };
 }
 
+const siderealTime = (d: number, lw: number) => rad * (280.16 + 360.9856235 * d) - lw;
+const rightAscension = (l: number) => Math.atan2(Math.sin(l) * Math.cos(obliquity), Math.cos(l));
+
+export interface SunPosition {
+  /** Altitude above the horizon, radians (negative below the horizon). */
+  altitude: number;
+  /** Azimuth in radians, measured from due south turning clockwise toward west
+   *  (SunCalc convention): 0 = south, +π/2 = west, −π/2 = east, ±π = north. */
+  azimuth: number;
+}
+
+/**
+ * The sun's real position in the sky at `now` for the player's location — the
+ * ingredient the island's light uses to cast its warm key from where the sun
+ * actually is and to lengthen the shadows as the sun sinks. Pure + testable.
+ */
+export function sunPosition(now: number, coords: Coords): SunPosition {
+  const lw = rad * -coords.lng;
+  const phi = rad * coords.lat;
+  const d = toDays(now);
+  const m = solarMeanAnomaly(d);
+  const l = eclipticLongitude(m);
+  const dec = declination(l);
+  const ra = rightAscension(l);
+  const h = siderealTime(d, lw) - ra;
+  return {
+    azimuth: Math.atan2(Math.sin(h), Math.cos(h) * Math.sin(phi) - Math.tan(dec) * Math.cos(phi)),
+    altitude: Math.asin(Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(h)),
+  };
+}
+
 export type SunKind = 'sunrise' | 'sunset';
 
 /**
