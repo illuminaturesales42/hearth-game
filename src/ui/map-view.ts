@@ -27,6 +27,7 @@ import { computeMood, earnedFlourishes, meditatedToday, moodCaption, seasonForMo
 import type { WeatherNow, WorldMood } from '../core/world-mood';
 import { stemLevels, type StemLevels } from '../core/stem-levels';
 import { illumination, isWaxing, phaseName } from '../data/moon';
+import { constellationFor, activeMeteorShower, type Constellation } from '../data/constellations';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
 import { phaseForTime, type SunTimes } from '../core/time-of-day';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
@@ -271,6 +272,93 @@ export class MapView {
     // Upper-left sky — clear of the corner time badge (a DOM element top-right).
     const now = Date.now();
     this.drawMoonPhase(ctx, W * 0.22, H * 0.1, 11, illumination(now), isWaxing(now), clear);
+    // The season's constellation (hemisphere-aware), upper-centre sky.
+    this.drawConstellation(
+      ctx,
+      W,
+      H,
+      constellationFor(new Date(now).getMonth(), this.weather?.southern ?? false),
+      clear,
+    );
+    // Shooting stars on the nights a real meteor shower peaks.
+    if (!this.reduce) {
+      const shower = activeMeteorShower(now);
+      if (shower) this.drawMeteors(ctx, W, H, t, shower.intensity, clear);
+    }
+  }
+
+  /** The season's constellation as faint joined stars in a small upper-sky box. */
+  private drawConstellation(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    c: Constellation,
+    clear: number,
+  ): void {
+    const bx = W * 0.44;
+    const by = H * 0.02;
+    const bw = W * 0.26;
+    const bh = H * 0.13;
+    const px = (s: { x: number; y: number }) => bx + s.x * bw;
+    const py = (s: { x: number; y: number }) => by + s.y * bh;
+    ctx.save();
+    ctx.strokeStyle = `rgba(196, 212, 255, ${(0.24 * clear).toFixed(3)})`;
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    for (const [a, b] of c.lines) {
+      const sa = c.stars[a]!;
+      const sb = c.stars[b]!;
+      ctx.moveTo(px(sa), py(sa));
+      ctx.lineTo(px(sb), py(sb));
+    }
+    ctx.stroke();
+    ctx.fillStyle = `rgba(236, 242, 255, ${(0.9 * clear).toFixed(3)})`;
+    for (const s of c.stars) {
+      ctx.beginPath();
+      ctx.arc(px(s), py(s), 1.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /** Gentle shooting stars during an active shower — soft, occasional, cozy. */
+  private drawMeteors(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    t: number,
+    intensity: number,
+    clear: number,
+  ): void {
+    const period = 2600 - intensity * 1100; // more frequent nearer the peak
+    const idx = Math.floor(t / period);
+    ctx.save();
+    for (let k = 0; k < 2; k++) {
+      const i = idx - k;
+      const age = t - i * period;
+      if (age < 0 || age > 750) continue; // streak lifetime
+      const u = age / 750; // 0..1 across its fall
+      const rx = (((Math.sin(i * 91.7) * 9999) % 1) + 1) % 1;
+      const ry = (((Math.sin(i * 13.13) * 9999) % 1) + 1) % 1;
+      const startX = 0.08 * W + rx * 0.8 * W;
+      const startY = 0.02 * H + ry * 0.12 * H;
+      const travel = 42 + rx * 26;
+      const hx = startX + Math.cos(0.7) * travel * u;
+      const hy = startY + Math.sin(0.7) * travel * u;
+      const tailX = hx - Math.cos(0.7) * 16;
+      const tailY = hy - Math.sin(0.7) * 16;
+      const a = Math.sin(u * Math.PI) * 0.85 * clear; // fade in and out
+      const grad = ctx.createLinearGradient(hx, hy, tailX, tailY);
+      grad.addColorStop(0, `rgba(255, 252, 235, ${a.toFixed(3)})`);
+      grad.addColorStop(1, 'rgba(255, 252, 235, 0)');
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(hx, hy);
+      ctx.lineTo(tailX, tailY);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   /**
