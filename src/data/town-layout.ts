@@ -96,98 +96,24 @@ export const BUILDING_INFO: Record<string, string> = {
   prop_lighthouse: 'The Lighthouse',
 };
 
-/** Villagers walk the town once their part of the story has been told. */
-export interface TownWalker {
-  art: string;
-  unlockAt: number;
-  /** Waypoints ambled between (ping-pong), normalized coords. */
-  path: readonly { x: number; y: number }[];
-  /** Seconds for a full one-way walk. */
-  period: number;
-}
-
-// Each villager keeps to their own corner — a short round near their home or
-// workplace, pausing at the ends (the ping-pong dwells there). A place feels
-// lived-in when people belong somewhere, not when they wander mid-map.
-export const TOWN_WALKERS: readonly TownWalker[] = [
-  {
-    art: 'npc_bran',
-    unlockAt: 4,
-    period: 24,
-    path: [
-      { x: 0.62, y: 0.42 },
-      { x: 0.7, y: 0.44 },
-      { x: 0.65, y: 0.41 },
-    ],
-  }, // Bran tends the bakery step
-  {
-    art: 'npc_wren',
-    unlockAt: 8,
-    period: 28,
-    path: [
-      { x: 0.46, y: 0.52 },
-      { x: 0.54, y: 0.5 },
-      { x: 0.5, y: 0.53 },
-    ],
-  }, // Wren by the notice board
-  {
-    art: 'npc_sorin',
-    unlockAt: 9,
-    period: 32,
-    path: [
-      { x: 0.78, y: 0.64 },
-      { x: 0.83, y: 0.63 },
-    ],
-  }, // Sorin near his hut
-  {
-    art: 'npc_marta',
-    unlockAt: 12,
-    period: 30,
-    path: [
-      { x: 0.3, y: 0.49 },
-      { x: 0.37, y: 0.47 },
-      { x: 0.32, y: 0.5 },
-    ],
-  }, // Marta at the old cottage
-  {
-    art: 'npc_child',
-    unlockAt: 16,
-    period: 14,
-    path: [
-      { x: 0.43, y: 0.62 },
-      { x: 0.53, y: 0.6 },
-      { x: 0.49, y: 0.64 },
-      { x: 0.42, y: 0.61 },
-    ],
-  }, // the child romps by the well
-  {
-    art: 'npc_joss',
-    unlockAt: 18,
-    period: 26,
-    path: [
-      { x: 0.59, y: 0.68 },
-      { x: 0.65, y: 0.67 },
-    ],
-  }, // Joss works the docks
-  {
-    art: 'npc_woman',
-    unlockAt: 20,
-    period: 28,
-    path: [
-      { x: 0.18, y: 0.65 },
-      { x: 0.24, y: 0.63 },
-    ],
-  }, // by the farm
-  {
-    art: 'npc_man',
-    unlockAt: 22,
-    period: 26,
-    path: [
-      { x: 0.31, y: 0.76 },
-      { x: 0.4, y: 0.75 },
-    ],
-  }, // by the forge
-] as const;
+/**
+ * When each villager becomes worth meeting (delivered-order gate). Formerly the
+ * `unlockAt` on each map walker; the walking figures were retired in the
+ * environment pass (they read as sprites pasted on the painted plate), but the
+ * story-gating they carried lives on here as the single source of truth for
+ * discovery nudges (see core/discovery.ts). Keys are villager ids (`npc_<id>` →
+ * `<id>`). Do not change these numbers — they gate existing players' nudges.
+ */
+export const VILLAGER_MEETS: Record<string, number> = {
+  bran: 4,
+  wren: 8,
+  sorin: 9,
+  marta: 12,
+  child: 16,
+  joss: 18,
+  woman: 20,
+  man: 22,
+};
 
 /** Boats moored and returning as the harbour comes back to life. */
 export const TOWN_BOATS: readonly { art: string; x: number; y: number; w: number; stage: number }[] = [

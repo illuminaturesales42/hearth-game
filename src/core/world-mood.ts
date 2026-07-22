@@ -283,8 +283,8 @@ export function moodCaption(m: WorldMood): string {
 export function earnedFlourishes(m: WorldMood): string[] {
   const out: string[] = [];
   if (m.calm) out.push('The seas settled as you breathed.');
-  if (m.villagersOut >= 0.9) out.push('The lanes filled with folk after your walks.');
-  else if (m.villagersOut > 0) out.push('A neighbour took the air after your walk.');
+  if (m.villagersOut >= 0.9) out.push('Windows glowed and chimneys smoked, the town wide awake after your walks.');
+  else if (m.villagersOut > 0) out.push('A window warmed and a chimney stirred after your walk.');
   if (m.wellSparkle) out.push('The wells sparkled — you drank with them.');
   if (m.bloom >= 0.6) out.push('Flowers bloomed along the shore.');
   else if (m.gardenLush >= 0.4) out.push('The gardens greened where you stretched.');

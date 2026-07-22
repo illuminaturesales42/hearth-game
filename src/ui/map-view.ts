@@ -21,7 +21,6 @@ import {
   TOWN_BUILDINGS,
   TOWN_NATURE,
   TOWN_TERRAIN,
-  TOWN_WALKERS,
 } from '../data/town-layout';
 import { computeMood, earnedFlourishes, meditatedToday, moodCaption, seasonForMonth } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
@@ -48,7 +47,7 @@ import { esc } from './esc';
 import { ALMANAC_PAGES, ALMANAC_SECTIONS, almanacProgress } from '../core/almanac';
 import { VILLAGER_DEFS } from '../data/villagers';
 import { bondFor, greetingFor, hearts, HEARTS_MAX } from '../core/relationships';
-import { drawButterfly, drawFlower, drawSparkle, drawStroller } from './paint-flourishes';
+import { drawButterfly, drawFlower, drawSparkle } from './paint-flourishes';
 import { toast } from './toast';
 import { feedback } from './feedback';
 import { minigameCta } from './minigame-cta';
@@ -1915,146 +1914,7 @@ export class MapView {
       }
     }
 
-    // --- villagers amble their rounds once their stories are told ---
-    // The village reads the sky: most folk head home after dark and shelter from
-    // a storm (the streets empty), while a lively real-world walk (villagersOut =
-    // your steps) brings more of them out. A deterministic subset, so it's steady.
-    const wkNight = night ? 0.4 : 1;
-    const wkWeather = mood.weather === 'storm' ? 0.12 : mood.weather === 'rain' ? 0.55 : 1;
-    const wkPresence = Math.min(1, (0.55 + mood.villagersOut * 0.55) * wkNight * wkWeather);
-    let wkIdx = -1;
-    for (const wk of TOWN_WALKERS) {
-      wkIdx++;
-      if (delivered < wk.unlockAt) continue;
-      if ((wkIdx + 0.5) / TOWN_WALKERS.length > wkPresence) continue; // gone home / sheltering
-      const img = this.sprite(wk.art);
-      if (!img || wk.path.length < 2) continue;
-      // ping-pong along the waypoint list, phase-offset by art id hash
-      const total = wk.path.length - 1;
-      const phase = this.reduce ? 0.5 : ((t / 1000 + wk.art.length * 3.7) / wk.period) % 2;
-      const u = phase < 1 ? phase : 2 - phase; // 0..1..0
-      const seg = Math.min(total - 1, Math.floor(u * total));
-      const local = u * total - seg;
-      const a = wk.path[seg]!;
-      const b = wk.path[seg + 1]!;
-      const x = (a.x + (b.x - a.x) * local) * W;
-      const y = (a.y + (b.y - a.y) * local) * H;
-      // map-scale people: ~a quarter of a cottage's height, like the reference
-      const w = 0.027 * W;
-      const h = w * (img.naturalHeight / img.naturalWidth);
-      const facingLeft = b.x < a.x !== phase >= 1;
-      // a soft shadow so villagers stand on the ground, not float above it
-      if (!this.reduce) {
-        ctx.fillStyle = 'rgba(20, 26, 16, 0.22)';
-        ctx.beginPath();
-        ctx.ellipse(x, y - 1, w * 0.4, w * 0.14, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.save();
-      if (facingLeft) {
-        ctx.translate(x, 0);
-        ctx.scale(-1, 1);
-        ctx.drawImage(img, -w / 2, y - h, w, h);
-      } else {
-        ctx.drawImage(img, x - w / 2, y - h, w, h);
-      }
-      ctx.restore();
-    }
-
-    // --- the village dog trots its rounds near the heart of town ---
-    {
-      const dog = this.sprite('animal_dog');
-      if (dog && delivered >= 6) {
-        const path = [
-          [0.34, 0.63],
-          [0.46, 0.665],
-          [0.4, 0.705],
-          [0.3, 0.67],
-        ] as const;
-        const total = path.length - 1;
-        const phase = this.reduce ? 0.3 : (t / 1000 / 12) % 2;
-        const u = phase < 1 ? phase : 2 - phase;
-        const seg = Math.min(total - 1, Math.floor(u * total));
-        const local = u * total - seg;
-        const a = path[seg]!;
-        const b = path[seg + 1]!;
-        const dx = (a[0] + (b[0] - a[0]) * local) * W;
-        const dy = (a[1] + (b[1] - a[1]) * local) * H;
-        const dw = 0.03 * W;
-        const dh = dw * (dog.naturalHeight / dog.naturalWidth);
-        const left = b[0] < a[0] !== phase >= 1;
-        if (!this.reduce) {
-          ctx.fillStyle = 'rgba(20, 26, 16, 0.22)';
-          ctx.beginPath();
-          ctx.ellipse(dx, dy - 1, dw * 0.42, dw * 0.14, 0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.save();
-        if (left) {
-          ctx.translate(dx, 0);
-          ctx.scale(-1, 1);
-          ctx.drawImage(dog, -dw / 2, dy - dh, dw, dh);
-        } else {
-          ctx.drawImage(dog, dx - dw / 2, dy - dh, dw, dh);
-        }
-        ctx.restore();
-      }
-    }
-
-    // --- laundry sways between the homes once the village warms (Codex: "the
-    // world quietly lives... laundry sways") — cloth catching the sea breeze ---
-    if (stage >= 2 && !this.reduce) {
-      const lines: [number, number, number, number][] = [
-        [0.2, 0.5, 0.3, 0.5], // by the cottage
-        [0.06, 0.61, 0.15, 0.6], // by the farm
-      ];
-      const cloths = ['#f0e6d2', '#a8c8e0', '#e6a8b8', '#bcd0a0'];
-      for (const [x1n, y1n, x2n, y2n] of lines) {
-        const x1 = x1n * W;
-        const y1 = y1n * H;
-        const x2 = x2n * W;
-        const y2 = y2n * H;
-        const sag = (x2 - x1) * 0.12;
-        ctx.strokeStyle = 'rgba(60, 48, 32, 0.5)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.quadraticCurveTo((x1 + x2) / 2, (y1 + y2) / 2 + sag, x2, y2);
-        ctx.stroke();
-        const n = 3;
-        for (let i = 0; i < n; i++) {
-          const f = (i + 1) / (n + 1);
-          const hx = x1 + (x2 - x1) * f;
-          const hy = y1 + (y2 - y1) * f + sag * (1 - (2 * f - 1) * (2 * f - 1));
-          const cw = (x2 - x1) * 0.16;
-          const ch = cw * 1.5;
-          const sway = Math.sin(t / 700 + i * 1.3 + x1) * (0.12 + mood.wind * 0.25);
-          ctx.save();
-          ctx.translate(hx, hy);
-          ctx.rotate(sway);
-          ctx.fillStyle = cloths[i % cloths.length]!;
-          ctx.fillRect(-cw / 2, 0, cw, ch);
-          ctx.fillStyle = 'rgba(60, 48, 32, 0.7)';
-          ctx.fillRect(-1, -1, 2, 3);
-          ctx.restore();
-        }
-      }
-    }
-
-    // --- small lives: gulls always wheel over the harbour; the cat later ---
-    if (stage >= 3) {
-      const cat = this.sprite('animal_cat');
-      if (cat) {
-        const w = 0.032 * W;
-        ctx.drawImage(
-          cat,
-          W * 0.545,
-          H * 0.665 - w * (cat.naturalHeight / cat.naturalWidth),
-          w,
-          w * (cat.naturalHeight / cat.naturalWidth),
-        );
-      }
-    }
+    // --- gulls wheel over the harbour: distant scenery birds, not figures ---
     {
       const gull = this.sprite('animal_gull');
       if (gull && !this.reduce) {
@@ -2619,21 +2479,6 @@ export class MapView {
       }
     }
 
-    // A walk → the roads are busier: a couple of painted townsfolk take a turn
-    // along the shore path (silhouettes, so no unmet villager is spoiled).
-    if (mood.villagersOut > 0) {
-      const extra = mood.villagersOut >= 0.9 ? 2 : 1;
-      const cloaks = ['#8a5a3c', '#5a6e88', '#7a4a5e'];
-      for (let i = 0; i < extra; i++) {
-        const span = 0.18 + i * 0.02;
-        const base = 0.24 + i * 0.34;
-        const sweep = this.reduce ? 0.5 : (Math.sin(t / (4200 + i * 900)) + 1) / 2;
-        const x = W * (base + span * sweep);
-        const y = H * (0.72 + i * 0.055);
-        drawStroller(ctx, x, y, H * 0.05, cloaks[i % cloaks.length]!);
-      }
-    }
-
     // A flourishing, watered garden draws butterflies by day.
     if (mood.butterflies && !night && !this.reduce) {
       const cols = ['#f2c14e', '#e6739a', '#a06be0'];
@@ -2689,31 +2534,6 @@ export class MapView {
       ctx.restore();
     }
 
-    // Real rain outside → the town stays cosy, never gloomy: a villager or two
-    // takes a turn under an umbrella, and puddles catch the light on the paths.
-    if (mood.precip > 0) {
-      const brollies = mood.precip >= 0.4 ? 2 : 1;
-      const cloaks = ['#5a6e88', '#7a4a5e'];
-      for (let i = 0; i < brollies; i++) {
-        const sweep = this.reduce ? 0.4 : (Math.sin(t / (5200 + i * 1100)) + 1) / 2;
-        const x = W * (0.3 + i * 0.3 + 0.12 * sweep);
-        const y = H * (0.74 + i * 0.05);
-        drawStroller(ctx, x, y, H * 0.05, cloaks[i % cloaks.length]!);
-        // a simple umbrella dome over them
-        ctx.save();
-        ctx.fillStyle = i === 0 ? '#c0563f' : '#3f6f6a';
-        ctx.beginPath();
-        ctx.ellipse(x, y - H * 0.058, H * 0.03, H * 0.017, 0, Math.PI, 0);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(40,30,24,0.6)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x, y - H * 0.058);
-        ctx.lineTo(x, y - H * 0.02);
-        ctx.stroke();
-        ctx.restore();
-      }
-    }
     // Weather's *memory*: puddles that linger after the rain, snow that settled
     // over a cold day, a frost sheen at a freezing dawn. All from the reading log
     // (core/weather-history) — the "it rained here earlier" that makes it real.

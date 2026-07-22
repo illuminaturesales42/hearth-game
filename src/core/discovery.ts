@@ -13,7 +13,7 @@ import type { GameState } from './types';
 import { MINIGAMES } from '../data/minigames';
 import { ACTIONS } from '../data/actions';
 import { VILLAGERS } from '../data/world';
-import { TOWN_WALKERS, returnsAt } from '../data/town-layout';
+import { VILLAGER_MEETS, returnsAt } from '../data/town-layout';
 import { almanacProgress } from './almanac';
 import { composeWeek } from './chronicle';
 
@@ -23,11 +23,8 @@ export type NudgeId = string;
 /** At most this many glows live at once — an invitation, never a checklist. */
 export const PENDING_CAP = 3;
 
-/** Which villager becomes worth meeting at which delivered-order (from their
- *  walker's unlock). `npc_<id>` → `<id>`. */
-const VILLAGER_UNLOCK: Record<string, number> = Object.fromEntries(
-  TOWN_WALKERS.filter((w) => w.art.startsWith('npc_')).map((w) => [w.art.slice(4), w.unlockAt]),
-);
+/** Which villager becomes worth meeting at which delivered-order. */
+const VILLAGER_UNLOCK: Record<string, number> = VILLAGER_MEETS;
 
 /** The bottom-nav screen a nudge lives under (for the nav-item glow dots). */
 export function screenOfNudge(id: NudgeId): 'home' | 'villagers' | 'journal' | null {
