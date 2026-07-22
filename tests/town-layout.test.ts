@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   TOWN_BUILDINGS,
   TOWN_TERRAIN,
+  TOWN_BOATS,
   BUILDING_INFO,
   BUILDING_PLATE_SCALE,
   VILLAGER_MEETS,
@@ -36,7 +37,7 @@ describe('TOWN_BUILDINGS — everything stays on the painted canvas', () => {
         const a = big[i]!;
         const b = big[j]!;
         if (Math.abs(a.y - b.y) >= 0.07) continue; // different depth rows never collide
-        const minGap = ((a.w + b.w) * BUILDING_PLATE_SCALE) / 2 * 0.82; // allow a little visual tuck
+        const minGap = (((a.w + b.w) * BUILDING_PLATE_SCALE) / 2) * 0.82; // allow a little visual tuck
         expect(Math.abs(a.x - b.x), `${a.art} vs ${b.art} too close`).toBeGreaterThanOrEqual(minGap);
       }
     }
@@ -44,13 +45,26 @@ describe('TOWN_BUILDINGS — everything stays on the painted canvas', () => {
 });
 
 describe('water pieces sit in water, land pieces on land', () => {
-  // The cove the plate carved into the south-east (turquoise + sand arc).
+  // The plate's real waters: the SE cove (turquoise + sand arc), the shallows
+  // off the south beach, and the open sea beyond the island's rim.
   const COVE = { x0: 0.6, x1: 0.86, y0: 0.56, y1: 0.78 };
   const inCove = (x: number, y: number) => x >= COVE.x0 && x <= COVE.x1 && y >= COVE.y0 && y <= COVE.y1;
+  const inWater = (x: number, y: number) =>
+    inCove(x, y) ||
+    (x >= 0.3 && x <= 0.62 && y >= 0.86) || // south-beach shallows
+    x < 0.14 ||
+    x > 0.88 ||
+    y > 0.92; // open sea past the island's rim
 
-  it('any piece flagged water:true is anchored inside the cove water', () => {
-    for (const b of TOWN_BUILDINGS) {
-      if (b.water) expect(inCove(b.x, b.y), `${b.art} should be in the cove`).toBe(true);
+  it('any piece flagged water:true is anchored in real water (cove/shallows/sea)', () => {
+    for (const b of [...TOWN_BUILDINGS, ...TOWN_TERRAIN]) {
+      if (b.water) expect(inWater(b.x, b.y), `${b.art} should be in water`).toBe(true);
+    }
+  });
+
+  it('every boat floats in real water', () => {
+    for (const b of TOWN_BOATS) {
+      expect(inWater(b.x, b.y), `${b.art} should float in water`).toBe(true);
     }
   });
 

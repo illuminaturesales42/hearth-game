@@ -921,6 +921,37 @@ export class MapView {
     ctx.drawImage(strip, fi * cw, 0, cw, ch, cx - w / 2, groundY - h, w, h);
   }
 
+  /**
+   * Grounding for anything that stands in or on the bay (stilted pier, moored
+   * hull): a flattened darkened-water reflection where an earth pad would break
+   * the illusion, plus one slow ripple ring spreading from the footprint. Under
+   * reduced-motion the ring holds mid-spread (static grounding still happens).
+   */
+  private drawWaterGrounding(ctx: CanvasRenderingContext2D, bx: number, by: number, w: number, t: number): void {
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.scale(1, 0.3);
+    // the hull/deck's dark mirror in the water
+    const refl = ctx.createRadialGradient(0, 0, 2, 0, 0, w * 0.58);
+    refl.addColorStop(0, 'rgba(12, 38, 52, 0.26)');
+    refl.addColorStop(0.65, 'rgba(12, 38, 52, 0.13)');
+    refl.addColorStop(1, 'rgba(12, 38, 52, 0)');
+    ctx.fillStyle = refl;
+    ctx.beginPath();
+    ctx.arc(0, 0, w * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    // one quiet ripple lapping the FRONT of the footprint only (a full ring
+    // reads as a selection bubble around the roof-line), staggered per-site so
+    // neighbours don't pulse in sync
+    const phase = this.reduce ? 0.5 : ((t + bx * 13) % 3600) / 3600;
+    ctx.strokeStyle = `rgba(214, 240, 248, ${(0.14 * (1 - phase)).toFixed(3)})`;
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.arc(0, 0, w * (0.3 + 0.34 * phase), Math.PI * 0.12, Math.PI * 0.88);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   private draw(t: number): void {
     const ctx = this.ctx;
     const cv = this.canvas;
@@ -1515,6 +1546,8 @@ export class MapView {
       const h = w * (img.naturalHeight / img.naturalWidth);
       const bob = this.reduce ? 0 : Math.sin(t / (900 - mood.sea * 350) + b.x * 20) * (1.2 + mood.sea * 3.6);
       const tilt = this.reduce ? 0 : Math.sin(t / 1100 + b.x * 31) * mood.sea * 0.06;
+      // hulls sit ON the water: a darkened reflection grounds them (they had none)
+      this.drawWaterGrounding(ctx, b.x * W, b.y * H + bob - h * 0.04, w * 0.9, t);
       ctx.save();
       ctx.translate(b.x * W, b.y * H + bob);
       ctx.rotate(tilt);
@@ -1537,6 +1570,7 @@ export class MapView {
       decorId?: number;
       ruined?: boolean;
       ruinVariant?: number;
+      water?: true;
     }
     const decor: ScenePiece[] = this.game.snapshot.decor.map((d) => ({
       art: d.art,
@@ -1659,35 +1693,41 @@ export class MapView {
           alpha = Math.min(1, age * 2);
         } else this.appeared.delete(p.art);
       }
-      // Ground the building into the meadow: a soft warm earth "pad" blends its
-      // footprint into the painted terrain (so it doesn't look pasted on), then a
-      // darker contact shadow sits it down. The pad is static (drawn even under
-      // reduced-motion, where it does the visual grounding); the shadow layers on.
+      // Ground the building into its terrain. On land: a soft warm earth "pad"
+      // blends the footprint into the painted meadow, then a darker contact
+      // shadow sits it down. Over water (pier, stilted hut): an earth blob would
+      // break the illusion — instead a darkened water reflection + a slow ripple
+      // ring, so stilts and decks read as truly standing in the bay. Both are
+      // static-safe (the grounding draws even under reduced-motion).
       if (BUILDING_INFO[p.art]) {
         const bx = p.x * W;
         const by = p.y * H - h * 0.02;
-        // warm groomed-earth pad — wide + whisper-subtle so it only softens the
-        // seam between building and painted ground, never reads as a dirt blob
-        const pad = ctx.createRadialGradient(bx, by, 2, bx, by, w * 0.66);
-        pad.addColorStop(0, 'rgba(150, 128, 78, 0.14)');
-        pad.addColorStop(0.6, 'rgba(150, 128, 78, 0.07)');
-        pad.addColorStop(1, 'rgba(150, 128, 78, 0)');
-        ctx.save();
-        ctx.translate(bx, by);
-        ctx.scale(1, 0.32);
-        ctx.fillStyle = pad;
-        ctx.beginPath();
-        ctx.arc(0, 0, w * 0.68, 0, Math.PI * 2);
-        ctx.fill();
-        // darker contact shadow, tighter under the base
-        const sh = ctx.createRadialGradient(0, 0, 2, 0, 0, w * 0.5);
-        sh.addColorStop(0, 'rgba(18, 24, 14, 0.32)');
-        sh.addColorStop(1, 'rgba(18, 24, 14, 0)');
-        ctx.fillStyle = sh;
-        ctx.beginPath();
-        ctx.arc(0, 0, w * 0.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        if (p.water) {
+          this.drawWaterGrounding(ctx, bx, by, w, t);
+        } else {
+          // warm groomed-earth pad — wide + whisper-subtle so it only softens the
+          // seam between building and painted ground, never reads as a dirt blob
+          const pad = ctx.createRadialGradient(bx, by, 2, bx, by, w * 0.66);
+          pad.addColorStop(0, 'rgba(150, 128, 78, 0.14)');
+          pad.addColorStop(0.6, 'rgba(150, 128, 78, 0.07)');
+          pad.addColorStop(1, 'rgba(150, 128, 78, 0)');
+          ctx.save();
+          ctx.translate(bx, by);
+          ctx.scale(1, 0.32);
+          ctx.fillStyle = pad;
+          ctx.beginPath();
+          ctx.arc(0, 0, w * 0.68, 0, Math.PI * 2);
+          ctx.fill();
+          // darker contact shadow, tighter under the base
+          const sh = ctx.createRadialGradient(0, 0, 2, 0, 0, w * 0.5);
+          sh.addColorStop(0, 'rgba(18, 24, 14, 0.32)');
+          sh.addColorStop(1, 'rgba(18, 24, 14, 0)');
+          ctx.fillStyle = sh;
+          ctx.beginPath();
+          ctx.arc(0, 0, w * 0.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
       }
       ctx.globalAlpha = alpha;
       ctx.drawImage(img, p.x * W - (w * scale) / 2, p.y * H - h * scale, w * scale, h * scale);

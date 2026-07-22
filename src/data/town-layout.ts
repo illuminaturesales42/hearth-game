@@ -135,9 +135,12 @@ export const VILLAGER_MEETS: Record<string, number> = {
 };
 
 /** Boats moored and returning as the harbour comes back to life. */
+// Moorings follow the harbours: the rowboat shelters inside the cove by the
+// pier, the fishing boat works off the south-beach jetty, and the little sail
+// keeps to the open west sea for the wide-shot silhouette.
 export const TOWN_BOATS: readonly { art: string; x: number; y: number; w: number; stage: number }[] = [
-  { art: 'boat_row', x: 0.92, y: 0.93, w: 0.09, stage: 2 },
-  { art: 'boat_fishing_s', x: 0.68, y: 0.965, w: 0.12, stage: 3 },
+  { art: 'boat_row', x: 0.73, y: 0.705, w: 0.09, stage: 2 },
+  { art: 'boat_fishing_s', x: 0.575, y: 0.97, w: 0.12, stage: 3 },
   { art: 'boat_sail_s', x: 0.08, y: 0.96, w: 0.1, stage: 4 },
 ] as const;
 
@@ -222,11 +225,12 @@ export const TOWN_TERRAIN: readonly TownPiece[] = [
   { art: 'terrain_flowers2', x: 0.845, y: 0.63, w: 0.06, unlockAt: 0 },
   // (the old scattered cobble patches are gone — the map now draws worn dirt
   // lanes that grow with the town; see the routes table in map-view.ts)
-  // A small jetty grounds on the south-east beach. (The old dock_straight +
-  // dock_end pair was removed — on the painted plate it floated as a stray raft
-  // of planks out in open water, disconnected from any shore; the town_dock
-  // building is the real working pier.)
-  { art: 'dock_small', x: 0.7, y: 0.875, w: 0.065, unlockAt: 0 },
+  // A small fishing jetty runs off the SOUTH BEACH sand, where the fishing boat
+  // moors — it used to sit on the rocky SE shore, planks on stone. (The old
+  // dock_straight + dock_end pair stays retired: the cove already holds the
+  // town_dock working pier, and a third structure would crowd it; a properly
+  // painted pier set is briefed in the environment-pass art brief.)
+  { art: 'dock_small', x: 0.505, y: 0.945, w: 0.065, unlockAt: 0, water: true },
 ] as const;
 
 /** Decorations the player can buy and place — coins buy beauty, never power. */
