@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { constellationFor, activeMeteorShower, METEOR_SHOWERS } from '../src/data/constellations';
+import { constellationFor, activeMeteorShower, dawnSkyBeat, METEOR_SHOWERS } from '../src/data/constellations';
 
 describe('constellationFor — seasonal + hemisphere aware', () => {
   it('northern seasons map to their icons', () => {
@@ -54,5 +54,30 @@ describe('activeMeteorShower — shooting stars on the real peak nights', () => 
       expect(s.day).toBeGreaterThanOrEqual(1);
       expect(s.day).toBeLessThanOrEqual(31);
     }
+  });
+});
+
+describe('dawnSkyBeat — the "look up" line for the dawn moment', () => {
+  const at = (month: number, day: number, hour = 6) => new Date(2026, month, day, hour, 0, 0).getTime();
+
+  it('announces a meteor shower on its peak night (most special)', () => {
+    const now = at(7, 12); // Perseids peak, morning
+    const sunset = new Date(2026, 7, 12, 20, 30).getTime();
+    expect(dawnSkyBeat(now, sunset)).toMatch(/Perseids/);
+  });
+
+  it("otherwise names the player's golden hour from their real sunset", () => {
+    const now = at(5, 15, 7); // June, no shower, morning
+    const sunset = new Date(2026, 5, 15, 20, 45).getTime();
+    const beat = dawnSkyBeat(now, sunset);
+    expect(beat).toMatch(/golden hour/);
+    expect(beat).toMatch(/tonight/);
+  });
+
+  it('is empty when sunset has passed and nothing celestial is on', () => {
+    const now = at(5, 15, 22); // late evening, past sunset
+    const sunset = new Date(2026, 5, 15, 20, 45).getTime();
+    expect(dawnSkyBeat(now, sunset)).toBe('');
+    expect(dawnSkyBeat(now, null)).toBe('');
   });
 });

@@ -2655,17 +2655,30 @@ export class MapView {
       ctx.restore();
     }
 
-    // Soft cloud shadows sliding across the island ground.
-    if (!night) {
-      const nsh = Math.max(1, Math.round(mood.cloudCover * 3));
-      ctx.fillStyle = 'rgba(20, 30, 20, 0.05)';
+    // Soft parallax cloud shadows drifting across the island in the REAL wind
+    // direction — a whole layer of dappled light moving the way the wind blows.
+    if (!night && mood.cloudCover > 0.05) {
+      const windX = this.windX();
+      const nsh = Math.max(1, Math.round(mood.cloudCover * 4));
+      const speed = 0.5 + mood.wind * 1.8;
+      const a = 0.045 + mood.cloudCover * 0.07;
       for (let i = 0; i < nsh; i++) {
-        const drift = (t / (40000 / (0.5 + mood.wind * 1.4))) % 1.4;
-        const sx = (((i * 0.4 + drift) % 1.4) - 0.2) * W;
-        const sy = H * (0.55 + (i % 2) * 0.14);
+        const drift = (t / (52000 / speed)) * windX + i * 0.37;
+        const sx = ((((drift % 1.7) + 1.7) % 1.7) - 0.35) * W;
+        const sy = H * (0.48 + (i % 3) * 0.13);
+        const rw = W * (0.17 + (i % 2) * 0.06);
+        const rh = H * 0.06;
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.scale(1, rh / rw);
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rw);
+        g.addColorStop(0, `rgba(18, 28, 20, ${a.toFixed(3)})`);
+        g.addColorStop(1, 'rgba(18, 28, 20, 0)');
+        ctx.fillStyle = g;
         ctx.beginPath();
-        ctx.ellipse(sx, sy, W * 0.14, H * 0.05, 0, 0, Math.PI * 2);
+        ctx.arc(0, 0, rw, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
       }
     }
 

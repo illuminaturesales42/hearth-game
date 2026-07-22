@@ -143,6 +143,24 @@ export function constellationFor(month: number, southern: boolean): Constellatio
   return CASSIOPEIA; // autumn
 }
 
+import { illumination } from './moon';
+
+/**
+ * The night's "look up" beat for the dawn moment (most special first): a meteor
+ * shower peaking, a full moon rising, or the player's own golden hour. '' when
+ * there's nothing notable. Pure — sunsetMs is passed in (epoch ms, or null).
+ */
+export function dawnSkyBeat(now: number, sunsetMs: number | null): string {
+  const shower = activeMeteorShower(now);
+  if (shower && shower.intensity > 0.4) return `Look up tonight — ${shower.name} are falling.`;
+  if (illumination(now) > 0.96) return 'A full moon rises over the bay tonight.';
+  if (sunsetMs != null && now < sunsetMs) {
+    const time = new Date(sunsetMs).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    return `Your golden hour is around ${time} tonight.`;
+  }
+  return '';
+}
+
 export interface MeteorShower {
   name: string;
   /** peak date (month 0..11, day of month) */
