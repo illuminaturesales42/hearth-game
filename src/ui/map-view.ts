@@ -314,6 +314,75 @@ export class MapView {
     ctx.restore();
   }
 
+  /**
+   * The night's living layer, drawn ABOVE the night grade (everything drawn
+   * inside the town pass gets multiplied into the dark — lights and life must
+   * be re-asserted on top): stars, fireflies over the meadow, a lantern speck
+   * on each moored boat, and the lighthouse beam's shimmer on the sea.
+   * Positions are scene-space and camera-mapped; reduced-motion holds still.
+   */
+  private nightAmbience(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    t: number,
+    k: number,
+    mood: WorldMood,
+    stage: number,
+  ): void {
+    const { zoom, panX, panY } = this.cam;
+    const mapX = (x: number): number => x * zoom + panX;
+    const mapY = (y: number): number => y * zoom + panY;
+    ctx.save();
+    ctx.globalAlpha = k;
+    this.drawStarfield(ctx, W, H, t, mood);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'lighter';
+    // fireflies wander the meadow — warm living specks against the blue dark
+    if (!this.reduce && mood.weather !== 'rain' && mood.weather !== 'storm' && mood.weather !== 'snow') {
+      const n = 12;
+      for (let i = 0; i < n; i++) {
+        const fx = W * (0.14 + 0.7 * ((i / n + Math.sin(t / 3200 + i * 1.7) * 0.06 + 1) % 1));
+        const fy = H * (0.46 + 0.3 * (0.5 + Math.cos(t / 2600 + i * 2.3) * 0.5));
+        const tw = 0.35 + 0.65 * Math.abs(Math.sin(t / 700 + i * 2.1));
+        const px = mapX(fx);
+        const py = mapY(fy);
+        const g = ctx.createRadialGradient(px, py, 0, px, py, 3 * zoom);
+        g.addColorStop(0, `rgba(215, 240, 150, ${(0.6 * tw * k).toFixed(3)})`);
+        g.addColorStop(1, 'rgba(215, 240, 150, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(px - 4 * zoom, py - 4 * zoom, 8 * zoom, 8 * zoom);
+      }
+    }
+    // a warm lantern speck at each moored boat's stern — the harbour keeps watch
+    for (const b of TOWN_BOATS) {
+      if (stage < b.stage) continue;
+      const px = mapX((b.x + b.w * 0.24) * W);
+      const py = mapY(b.y * H - b.w * W * 0.24);
+      const g = ctx.createRadialGradient(px, py, 0, px, py, 3.4 * zoom);
+      g.addColorStop(0, `rgba(255, 208, 120, ${(0.75 * k).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(255, 208, 120, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(px - 4 * zoom, py - 4 * zoom, 8 * zoom, 8 * zoom);
+    }
+    // the lit beacon lays a shimmering streak on the sea below the rock
+    if (this.game.snapshot.orderIndex >= 9) {
+      const lx = mapX(LIGHTHOUSE_ANCHOR.x * W);
+      const ly = mapY((LIGHTHOUSE_ANCHOR.y + 0.13) * H);
+      const shimmer = this.reduce ? 0.7 : 0.55 + 0.45 * Math.abs(Math.sin(t / 1100));
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.scale(0.32, 1);
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, H * 0.16 * zoom);
+      g.addColorStop(0, `rgba(255, 226, 150, ${(0.3 * k * shimmer).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(255, 226, 150, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(-H * 0.2 * zoom, -H * 0.2 * zoom, H * 0.4 * zoom, H * 0.4 * zoom);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   /** How the world feels right now: real weather + the player's day. */
   /**
    * Signed horizontal wind (−1 = blowing left/west … +1 = right/east) from the
@@ -1036,6 +1105,7 @@ export class MapView {
         }
         ctx.restore();
       }
+      if (nightW > 0.05) this.nightAmbience(ctx, W, H, t, nightW, mood, stage);
       const rainbow = this.rainbowStrength(mood);
       if (rainbow > 0) this.drawRainbow(ctx, W, H, rainbow);
       if (!this.reduce) this.applyStormFx(ctx, W, H, t, mood);
@@ -1242,7 +1312,7 @@ export class MapView {
     // celestial disc only run for the procedural fallback (no plate). Otherwise
     // a stray white disc floated over the sea and a rectangular sky-glow washed
     // the top of the map.
-    if (night && plate) this.drawStarfield(ctx, W, H, t, mood);
+    // (starfield now draws in nightAmbience, ABOVE the night grade)
     if (night && !plate) {
       const twinkle = 1 - mood.cloudCover * 0.7;
       for (let i = 0; i < 42; i++) {
@@ -1850,32 +1920,28 @@ export class MapView {
         if (glow > 0.02) {
           const cx = p.x * W;
           const cy = p.y * H - h * 0.4;
-          // deep night makes lit homes BLAZE against the dark — the contrast the
-          // navy grade paid for
-          const blaze = 1 + tod.weights.night * 0.55;
-          const k = glow * 0.5 * blaze * (0.93 + 0.07 * Math.sin(t / 820 + p.x * 40)); // gentle candle-flicker
-          const warm = ctx.createRadialGradient(cx, cy, 1, cx, cy, w * 0.6);
-          warm.addColorStop(0, `rgba(255, 198, 120, ${k.toFixed(3)})`);
-          warm.addColorStop(1, 'rgba(255, 190, 110, 0)');
-          ctx.fillStyle = warm;
-          ctx.fillRect(cx - w * 0.7, cy - h * 0.55, w * 1.4, h * 1.05);
-          this.glowSpots.push({ x: cx, y: cy, r: w * 0.55, a: k * 0.5 });
-          // and the light lands: a warm pool spills from the doorway onto the
-          // ground in front of the home (visible only once truly lit at night)
+          // JEWEL lights, not haze: a tight hot core over the windows with a
+          // modest falloff — small, bright, focused (big soft blobs stacked
+          // into the smokey-swamp look)
+          const flick = 0.93 + 0.07 * Math.sin(t / 820 + p.x * 40); // gentle candle-flicker
+          const k = glow * 0.55 * flick;
+          const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 0.2);
+          core.addColorStop(0, `rgba(255, 205, 110, ${Math.min(0.85, k * 1.6).toFixed(3)})`);
+          core.addColorStop(1, 'rgba(255, 190, 90, 0)');
+          ctx.fillStyle = core;
+          ctx.fillRect(cx - w * 0.25, cy - w * 0.25, w * 0.5, w * 0.5);
+          const halo = ctx.createRadialGradient(cx, cy, w * 0.08, cx, cy, w * 0.4);
+          halo.addColorStop(0, `rgba(255, 190, 100, ${(k * 0.4).toFixed(3)})`);
+          halo.addColorStop(1, 'rgba(255, 190, 100, 0)');
+          ctx.fillStyle = halo;
+          ctx.fillRect(cx - w * 0.45, cy - w * 0.45, w * 0.9, w * 0.9);
+          // collected for the post-grade re-emit: hot core + modest halo
+          this.glowSpots.push({ x: cx, y: cy, r: w * 0.16, a: k * 0.95 });
+          this.glowSpots.push({ x: cx, y: cy, r: w * 0.38, a: k * 0.3 });
+          // and the light lands: a compact pool at the doorway (night only)
           const spill = lit * tod.weights.night;
           if (spill > 0.15) {
-            this.glowSpots.push({ x: cx, y: p.y * H + h * 0.02, r: w * 0.4, a: spill * 0.16 });
-            ctx.save();
-            ctx.translate(cx, p.y * H + h * 0.03);
-            ctx.scale(1, 0.34);
-            const doorPool = ctx.createRadialGradient(0, 0, 1, 0, 0, w * 0.52);
-            doorPool.addColorStop(0, `rgba(255, 200, 120, ${(0.2 * spill).toFixed(3)})`);
-            doorPool.addColorStop(1, 'rgba(255, 200, 120, 0)');
-            ctx.fillStyle = doorPool;
-            ctx.beginPath();
-            ctx.arc(0, 0, w * 0.52, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
+            this.glowSpots.push({ x: cx, y: p.y * H + h * 0.02, r: w * 0.28, a: spill * 0.22 });
           }
         }
       }
@@ -1900,8 +1966,10 @@ export class MapView {
         head.addColorStop(1, 'rgba(255, 226, 150, 0)');
         ctx.fillStyle = head;
         ctx.fillRect(lx - w, ly - h * 0.82 - w, w * 2, w * 2);
-        this.glowSpots.push({ x: lx, y: ly - h * 0.82, r: w * 1.1, a: 0.32 * lampFlick });
-        this.glowSpots.push({ x: lx, y: ly, r: w * 2.1, a: 0.14 });
+        // jewel re-emit: hot glass core, soft small halo, tight ground pool
+        this.glowSpots.push({ x: lx, y: ly - h * 0.82, r: w * 0.45, a: 0.7 * lampFlick });
+        this.glowSpots.push({ x: lx, y: ly - h * 0.82, r: w * 1.0, a: 0.22 * lampFlick });
+        this.glowSpots.push({ x: lx, y: ly, r: w * 1.5, a: 0.12 });
       }
       // A walked day opens the market: a warm ember glow under the awning by
       // daylight — trade and bustle without a single drawn figure. Static, so it
@@ -1934,9 +2002,11 @@ export class MapView {
         const sx = p.x * W + p.smoke.dx * w;
         const sy = p.y * H - h + p.smoke.dy * h * 0.2;
         const puffs = 3 + Math.round(mood.villagersOut * 2);
+        // moonlit smoke reads silver-blue, daylight smoke warm cream
+        const smokeTint = night ? '190, 205, 230' : '232, 225, 210';
         for (let i = 0; i < puffs; i++) {
           const puffY = sy - i * 7 - ((t / 260 + i * 3) % 8);
-          ctx.fillStyle = `rgba(232, 225, 210, ${Math.max(0.04, 0.22 + mood.villagersOut * 0.05 - i * 0.06).toFixed(3)})`;
+          ctx.fillStyle = `rgba(${smokeTint}, ${Math.max(0.04, 0.22 + mood.villagersOut * 0.05 - i * 0.06).toFixed(3)})`;
           ctx.beginPath();
           // the real wind carries the smoke sideways
           ctx.arc(
@@ -2015,6 +2085,12 @@ export class MapView {
         if (lit) {
           // the beacon fire itself, burning in the lantern room
           this.drawFlame(ctx, 'fx_flame_beacon', lx, oy + lh * 0.09, lw * 0.5, t);
+          // at night the crown light OWNS the skyline: re-emitted above the
+          // grade as a hot jewel + halo (the grade would otherwise crush it)
+          if (night) {
+            this.glowSpots.push({ x: lx, y: oy, r: lw * 0.4, a: 0.85 });
+            this.glowSpots.push({ x: lx, y: oy, r: lw * 1.1, a: 0.3 });
+          }
           // warm lantern-room bloom
           const g = ctx.createRadialGradient(lx, oy, 2, lx, oy, lw * 0.55);
           // the beacon burns, not just glows — a gentle fire flicker on the bloom
@@ -2302,12 +2378,14 @@ export class MapView {
     if (w.night > 0.001) {
       const k = w.night;
       const moon = illumination(Date.now());
-      this.maskedGrade(ctx, W, H, sea, 'saturation', (s) => {
-        s.fillStyle = `rgba(128, 128, 128, ${(0.4 * k).toFixed(3)})`;
+      // ink-blue water: hue swings toward deep night blue, then darkens HARD —
+      // colour kept (moonlit sea is blue, never grey)
+      this.maskedGrade(ctx, W, H, sea, 'color', (s) => {
+        s.fillStyle = `rgba(46, 74, 150, ${(0.35 * k).toFixed(3)})`;
         s.fillRect(0, 0, W, H);
       });
       this.maskedGrade(ctx, W, H, sea, 'multiply', (s) => {
-        s.fillStyle = `rgba(38, 52, 96, ${(0.72 * k).toFixed(3)})`;
+        s.fillStyle = `rgba(28, 40, 84, ${(0.85 * k).toFixed(3)})`;
         s.fillRect(0, 0, W, H);
       });
       // a silver moon-path on the bay, honest to tonight's real moon
@@ -2405,46 +2483,46 @@ export class MapView {
     if (w.night > 0.001) {
       const k = w.night;
       const moon = illumination(Date.now());
-      const darkenScale = 1 - 0.18 * moon; // a full moon lifts the night
-      // moonlight is colourless: desaturate FIRST, then deepen navy
+      const darkenScale = 1 - 0.15 * moon; // a full moon lifts the night
+      // Moonlight is BLUE, not grey (the swamp lesson): keep most of the
+      // village's colour, swing hues cool, then darken hard so the warm lights
+      // have real dark to burn against.
       this.maskedGrade(ctx, W, H, land, 'saturation', (s) => {
-        s.fillStyle = `rgba(128, 128, 128, ${(0.5 * k).toFixed(3)})`;
+        s.fillStyle = `rgba(128, 128, 128, ${(0.12 * k).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, land, 'color', (s) => {
+        s.fillStyle = `rgba(64, 96, 176, ${(0.38 * k).toFixed(3)})`;
         s.fillRect(0, 0, W, H);
       });
       this.maskedGrade(ctx, W, H, land, 'multiply', (s) => {
         const g = s.createLinearGradient(0, 0, 0, H);
-        g.addColorStop(0, `rgba(64, 74, 118, ${(0.62 * k * darkenScale).toFixed(3)})`);
-        g.addColorStop(1, `rgba(42, 50, 92, ${(0.74 * k * darkenScale).toFixed(3)})`);
+        g.addColorStop(0, `rgba(52, 70, 132, ${(0.72 * k * darkenScale).toFixed(3)})`);
+        g.addColorStop(1, `rgba(34, 46, 100, ${(0.8 * k * darkenScale).toFixed(3)})`);
         s.fillStyle = g;
         s.fillRect(0, 0, W, H);
       });
-      if (moon > 0.5) {
-        this.maskedGrade(ctx, W, H, land, 'screen', (s) => {
-          s.fillStyle = `rgba(150, 165, 205, ${(0.07 * (moon - 0.5) * 2 * k).toFixed(3)})`;
-          s.fillRect(0, 0, W, H);
-        });
-      }
-      // vignette: the edges of the world sink into the dark
+      // directional MOONLIGHT key from the moon's sky side (upper-right, where
+      // the moon-path anchors) — night gets a key light, like dusk has the sun
+      this.maskedGrade(ctx, W, H, land, 'screen', (s) => {
+        const g = s.createLinearGradient(W * 0.72, 0, W * 0.2, H);
+        g.addColorStop(0, `rgba(140, 168, 225, ${(0.1 * k * (0.35 + 0.65 * moon)).toFixed(3)})`);
+        g.addColorStop(0.55, 'rgba(140, 168, 225, 0)');
+        s.fillStyle = g;
+        s.fillRect(0, 0, W, H);
+      });
+      // vignette: deep BLUE dark at the edges (grey murk was the swamp)
       ctx.save();
       ctx.globalCompositeOperation = 'multiply';
-      const v = ctx.createRadialGradient(W * 0.5, H * 0.48, H * 0.45, W * 0.5, H * 0.48, H * 1.05);
+      const v = ctx.createRadialGradient(W * 0.5, H * 0.48, H * 0.55, W * 0.5, H * 0.48, H * 1.15);
       v.addColorStop(0, 'rgba(255,255,255,0)');
-      v.addColorStop(1, `rgba(120, 128, 168, ${(0.5 * k).toFixed(3)})`);
+      v.addColorStop(1, `rgba(70, 84, 150, ${(0.45 * k).toFixed(3)})`);
       ctx.fillStyle = v;
       ctx.fillRect(0, 0, W, H);
       ctx.restore();
-      // the hearth's warmth answers the dark from the town's heart
-      const warm = (0.11 + (this.reduce ? 0 : 0.02 * Math.sin(t / 1400))) * k;
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      const hx = PLAZA.x * W;
-      const hy = PLAZA.y * H - H * 0.08;
-      const hearth = ctx.createRadialGradient(hx, hy, 10, hx, hy, W * 0.5);
-      hearth.addColorStop(0, `rgba(255, 184, 96, ${warm.toFixed(3)})`);
-      hearth.addColorStop(1, 'rgba(255, 184, 96, 0)');
-      ctx.fillStyle = hearth;
-      ctx.fillRect(0, 0, W, H);
-      ctx.restore();
+      // (the old plaza-wide hearth glow is gone — it read as smoke; the plaza's
+      // warmth now comes from the actual lamps and windows re-emitted above the
+      // grade, each a tight bright jewel)
     }
   }
 
@@ -3164,26 +3242,9 @@ export class MapView {
       }
     }
 
-    if (night) {
-      // Fireflies wander the meadow, twinkling warm.
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const n = 14;
-      for (let i = 0; i < n; i++) {
-        const fx = W * (0.12 + 0.76 * ((i / n + Math.sin(t / 3200 + i * 1.7) * 0.06 + 1) % 1));
-        const fy = H * (0.5 + 0.34 * (0.5 + Math.cos(t / 2600 + i * 2.3) * 0.5));
-        const tw = 0.35 + 0.65 * Math.abs(Math.sin(t / 700 + i * 2.1));
-        const r = 3.2;
-        const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, r);
-        g.addColorStop(0, `rgba(200, 240, 150, ${(0.55 * tw).toFixed(3)})`);
-        g.addColorStop(1, 'rgba(200, 240, 150, 0)');
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(fx, fy, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    } else {
+    if (!night) {
+      // (Fireflies moved to nightAmbience — drawn ABOVE the night grade so they
+      // glow instead of being multiplied into the dark.)
       // Pollen / dust motes and the odd leaf drift on the breeze by day.
       const drift = 0.4 + mood.wind * 2.2;
       ctx.fillStyle = 'rgba(255, 245, 210, 0.5)';
