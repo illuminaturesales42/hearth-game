@@ -1281,7 +1281,21 @@ export class MapView {
     // stars, weather, foam, boats, buildings, people, effects) on top, so the
     // plate reads as a single painting yet still breathes with the time of day.
     const plate = this.sprite('map_island_plate');
+    // real solar time-of-day — needed by the plate crossfade + everything below
+    const tod = phaseForTime(Date.now(), this.sunTimesFromWeather());
     if (plate) ctx.drawImage(plate, 0, 0, W, H);
+    // Night-art seam: when a painted moonlit plate exists (generated on the art
+    // machine — see the environment-pass art brief), crossfade the whole ground
+    // to it as the player's real night falls. Dormant until the art lands.
+    if (plate) {
+      const nightPlate = this.sprite('map_island_plate_night');
+      if (nightPlate && tod.weights.night > 0.02) {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, tod.weights.night);
+        ctx.drawImage(nightPlate, 0, 0, W, H);
+        ctx.restore();
+      }
+    }
 
     // --- sky by real time of day ---
     const hour = new Date().getHours();
@@ -1305,7 +1319,6 @@ export class MapView {
     }
     // sun or moon — real solar night: dark when it's actually dark where the
     // player is (Open-Meteo is_day, else our solar-time model, else the clock).
-    const tod = phaseForTime(Date.now(), this.sunTimesFromWeather());
     const night = this.weather?.isDay === false ? true : this.weather?.isDay === true ? false : tod.weights.night > 0.5;
     // The painted plate is a top-down island with NO sky, and the corner
     // time-of-day badge now shows the sun/moon — so the star field and the
@@ -1891,6 +1904,16 @@ export class MapView {
       }
       ctx.globalAlpha = alpha;
       ctx.drawImage(img, p.x * W - (w * scale) / 2, p.y * H - h * scale, w * scale, h * scale);
+      // Night-art seam: a painted `<art>_night` variant (moonlit walls, warmly
+      // lit windows — see the art brief) crossfades over the day sprite as real
+      // night falls. Dormant per-building until its art lands.
+      if (!p.ruined && BUILDING_INFO[p.art] && tod.weights.night > 0.05) {
+        const nightImg = this.sprite(`${artId}_night`);
+        if (nightImg) {
+          ctx.globalAlpha = alpha * Math.min(1, tod.weights.night);
+          ctx.drawImage(nightImg, p.x * W - (w * scale) / 2, p.y * H - h * scale, w * scale, h * scale);
+        }
+      }
       ctx.globalAlpha = 1;
       // a brief flame flourish as a building first rises — Emberhollow rekindled
       if (born !== undefined && !this.reduce) {
@@ -2258,10 +2281,13 @@ export class MapView {
     const m = this.masks(W, H);
     // heavy cloud mutes direct-sun theatrics (paths, glare) — honest weather
     const clear = 1 - (mood?.cloudCover ?? 0.2) * 0.85;
+    // when a painted night plate is carrying the mood, the procedural night
+    // grade steps back so code stops fighting art
+    const nightScale = this.sprite('map_island_plate_night') ? 0.35 : 1;
     ctx.save();
     if (m) {
-      this.gradeSea(ctx, W, H, t, weights, sun, m.sea, clear);
-      this.gradeLand(ctx, W, H, t, weights, sun, m.land);
+      this.gradeSea(ctx, W, H, t, weights, sun, m.sea, clear, nightScale);
+      this.gradeLand(ctx, W, H, t, weights, sun, m.land, nightScale);
     } else {
       // Order matters for the composited crossfade: darken first, then warm/cool.
       if (weights.night > 0.001) this.washNight(ctx, W, H, t, weights.night);
@@ -2295,6 +2321,7 @@ export class MapView {
     sun: SunKey,
     sea: HTMLCanvasElement,
     clear: number,
+    nightScale = 1,
   ): void {
     const [kx, ky] = sun ? MapView.edgePoint(W, H, sun.dx, sun.dy, 1) : [0, H * 0.7];
     // an elongated glare lying ALONG the water from the sun's edge toward centre
@@ -2376,7 +2403,7 @@ export class MapView {
       sunPath('rgba(255, 168, 78, A)', 0.62 * k * clear, W * 0.62);
     }
     if (w.night > 0.001) {
-      const k = w.night;
+      const k = w.night * nightScale;
       const moon = illumination(Date.now());
       // ink-blue water: hue swings toward deep night blue, then darkens HARD —
       // colour kept (moonlit sea is blue, never grey)
@@ -2420,6 +2447,7 @@ export class MapView {
     w: PhaseWeights,
     sun: SunKey,
     land: HTMLCanvasElement,
+    nightScale = 1,
   ): void {
     const [kx, ky, sx, sy] = sun
       ? [...MapView.edgePoint(W, H, sun.dx, sun.dy, 1), ...MapView.edgePoint(W, H, sun.dx, sun.dy, -1)]
@@ -2481,7 +2509,7 @@ export class MapView {
       });
     }
     if (w.night > 0.001) {
-      const k = w.night;
+      const k = w.night * nightScale;
       const moon = illumination(Date.now());
       const darkenScale = 1 - 0.15 * moon; // a full moon lifts the night
       // Moonlight is BLUE, not grey (the swamp lesson): keep most of the
