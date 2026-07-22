@@ -83,14 +83,22 @@ function dominant(w: PhaseWeights): TimeOfDay {
  * Falls back to the fixed clock bands when sun times are unknown (no location).
  */
 export function phaseForTime(nowMs: number, sun: SunTimes | null): { phase: TimeOfDay; weights: PhaseWeights } {
-  if (!sun || !(sun.sunsetMs > sun.sunriseMs)) {
+  // A (yesterday's-sunset, today's-sunrise) pair arrives inverted — that's still
+  // a meaningful "we are inside this night" signal, so model it rather than
+  // falling back to clock bands.
+  const wrappedNight = sun && sun.sunsetMs < sun.sunriseMs && nowMs >= sun.sunsetMs && nowMs <= sun.sunriseMs;
+  if (!sun || (!wrappedNight && !(sun.sunsetMs > sun.sunriseMs))) {
     const phase = phaseForHour(new Date(nowMs).getHours()).phase;
     return { phase, weights: oneHot(phase) };
   }
   const { sunriseMs, sunsetMs } = sun;
   let alt: number;
   let rising: boolean;
-  if (nowMs >= sunriseMs && nowMs <= sunsetMs) {
+  if (wrappedNight) {
+    const v = clamp01((nowMs - sunsetMs) / (sunriseMs - sunsetMs)); // 0..1 across this night
+    alt = -Math.sin(Math.PI * v);
+    rising = v > 0.5;
+  } else if (nowMs >= sunriseMs && nowMs <= sunsetMs) {
     const u = (nowMs - sunriseMs) / (sunsetMs - sunriseMs); // 0..1 across daytime
     alt = Math.sin(Math.PI * u);
     rising = u < 0.5;

@@ -61,8 +61,17 @@ describe('phaseForTime — real solar time of day', () => {
 
   it('rejects a malformed sun window (sunset not after sunrise) and falls back', () => {
     const bad: SunTimes = { sunriseMs: T + 10 * H, sunsetMs: T };
-    const noon = new Date(2026, 0, 1, 13, 0, 0).getTime();
+    const noon = new Date(2026, 0, 1, 13, 0, 0).getTime(); // far outside the pair
     expect(phaseForTime(noon, bad).phase).toBe('midday'); // used clock fallback
+  });
+
+  it("an inverted (yesterday's sunset, next sunrise) pair still reads as this night", () => {
+    // sunset 3h ago, sunrise 6h ahead — we are 1/3 through a 9h night
+    const pair: SunTimes = { sunsetMs: T - 3 * H, sunriseMs: T + 6 * H };
+    const { phase, weights } = phaseForTime(T, pair);
+    expect(phase).toBe('night');
+    expect(weights.night).toBeGreaterThan(0.8);
+    expect(weights.day).toBe(0);
   });
 });
 

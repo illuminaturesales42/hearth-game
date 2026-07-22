@@ -485,6 +485,9 @@ export class MapView {
       if (!w) return;
       this.weather = w;
       this.accumCache = null; // a fresh reading just extended the log
+      // Real sun times just landed — let the time badge (and anyone else
+      // reading the solar clock) repaint immediately.
+      document.dispatchEvent(new CustomEvent('hearth:sky-updated'));
       if (this.visible && this.reduce) this.draw(0);
     });
   }
@@ -2351,15 +2354,23 @@ export class MapView {
     const [kx, ky, sx, sy] = sun
       ? [...MapView.edgePoint(W, H, sun.dx, sun.dy, 1), ...MapView.edgePoint(W, H, sun.dx, sun.dy, -1)]
       : [0, 0, W, H]; // fallback: authored top-left key
-    const contrast = sun ? 0.14 + 0.1 * sun.lowness : 0.14;
+    const contrast = sun ? 0.22 + 0.12 * sun.lowness : 0.24;
     const g = ctx.createLinearGradient(kx, ky, sx, sy);
-    g.addColorStop(0, `rgba(255, 222, 172, ${(contrast * k).toFixed(3)})`); // warm key
-    g.addColorStop(1, `rgba(140, 170, 220, ${(0.22 * k).toFixed(3)})`); // cool dawn shadow
+    g.addColorStop(0, `rgba(255, 214, 170, ${(contrast * k).toFixed(3)})`); // rose-gold key
+    g.addColorStop(1, `rgba(140, 170, 220, ${(0.3 * k).toFixed(3)})`); // cool dawn shadow
     ctx.globalCompositeOperation = 'soft-light';
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
+    // The felt part: a cool pastel morning haze over the whole scene (multiply
+    // reads far stronger than soft-light), plus a faint milky lift low down.
     ctx.globalCompositeOperation = 'multiply';
-    ctx.fillStyle = `rgba(198, 210, 236, ${(0.12 * k).toFixed(3)})`; // faint cool haze
+    ctx.fillStyle = `rgba(196, 210, 238, ${(0.3 * k).toFixed(3)})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'screen';
+    const mist = ctx.createLinearGradient(0, H * 0.45, 0, H);
+    mist.addColorStop(0, 'rgba(215, 225, 245, 0)');
+    mist.addColorStop(1, `rgba(215, 225, 245, ${(0.16 * k).toFixed(3)})`);
+    ctx.fillStyle = mist;
     ctx.fillRect(0, 0, W, H);
   }
 
@@ -2375,12 +2386,27 @@ export class MapView {
     const [kx, ky, sx, sy] = sun
       ? [...MapView.edgePoint(W, H, sun.dx, sun.dy, 1), ...MapView.edgePoint(W, H, sun.dx, sun.dy, -1)]
       : [0, H, W, 0]; // fallback: authored lower-left (west) key
-    const amber = sun ? 0.3 + 0.12 * sun.lowness : 0.34;
+    const amber = sun ? 0.34 + 0.14 * sun.lowness : 0.38;
     const g = ctx.createLinearGradient(kx, ky, sx, sy);
     g.addColorStop(0, `rgba(255, 146, 66, ${(amber * k).toFixed(3)})`); // amber, sun side
-    g.addColorStop(1, `rgba(214, 107, 107, ${(0.12 * k).toFixed(3)})`); // dusky rose, shadow
+    g.addColorStop(1, `rgba(214, 107, 107, ${(0.16 * k).toFixed(3)})`); // dusky rose, shadow
     ctx.globalCompositeOperation = 'soft-light';
     ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    // The felt part: bathe the whole frame in golden-hour amber (multiply carries
+    // it) with the glow strongest from the sun's side.
+    ctx.globalCompositeOperation = 'multiply';
+    const gold = ctx.createLinearGradient(kx, ky, sx, sy);
+    gold.addColorStop(0, `rgba(255, 196, 120, ${(0.34 * k).toFixed(3)})`);
+    gold.addColorStop(1, `rgba(235, 168, 120, ${(0.22 * k).toFixed(3)})`);
+    ctx.fillStyle = gold;
+    ctx.fillRect(0, 0, W, H);
+    // and a warm bloom right at the sun's edge
+    ctx.globalCompositeOperation = 'screen';
+    const bloom = ctx.createRadialGradient(kx, ky, 0, kx, ky, Math.max(W, H) * 0.55);
+    bloom.addColorStop(0, `rgba(255, 190, 110, ${(0.2 * k).toFixed(3)})`);
+    bloom.addColorStop(1, 'rgba(255, 190, 110, 0)');
+    ctx.fillStyle = bloom;
     ctx.fillRect(0, 0, W, H);
   }
 

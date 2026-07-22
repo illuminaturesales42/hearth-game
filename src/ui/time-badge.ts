@@ -45,4 +45,9 @@ export function initTimeBadge(): void {
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) paint();
   });
+  // The first paint may predate the weather fetch (clock-band fallback); repaint
+  // the moment real sun times land or the player changes town, so the medallion
+  // snaps to the true solar phase instead of waiting out the minute timer.
+  document.addEventListener('hearth:sky-updated', paint);
+  document.addEventListener('hearth:location-changed', paint);
 }
