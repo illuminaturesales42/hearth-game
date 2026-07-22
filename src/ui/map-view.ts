@@ -33,7 +33,7 @@ import type { WeatherNow, WorldMood } from '../core/world-mood';
 import { stemLevels, type StemLevels } from '../core/stem-levels';
 import { illumination, phaseName } from '../data/moon';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
-import { phaseForTime, type SunTimes } from '../core/time-of-day';
+import { phaseForTime, type PhaseWeights, type SunTimes } from '../core/time-of-day';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
 import {
   currentWeather,
@@ -984,7 +984,7 @@ export class MapView {
       // a warm wash after sleep + meditation, cooler when the mind is restless —
       // the cheapest way to make the *entire* town feel like it answered your day.
       this.applyColourGrade(ctx, W, H, mood);
-      this.applyTimeLight(ctx, W, H, t);
+      this.applyTimeLight(ctx, W, H, t, mood);
       const rainbow = this.rainbowStrength(mood);
       if (rainbow > 0) this.drawRainbow(ctx, W, H, rainbow);
       if (!this.reduce) this.applyStormFx(ctx, W, H, t, mood);
@@ -2068,26 +2068,404 @@ export class MapView {
    * with a cool opposite shadow gives a sense of low-sun direction), and the
    * existing per-lamp pools (prop_lamp) add local lantern light on top at night.
    */
-  private applyTimeLight(ctx: CanvasRenderingContext2D, W: number, H: number, t: number): void {
-    // Blend the four lighting washes by the player's REAL solar position, so the
-    // island glows gold at their true sunset and darkens to night when it is
-    // actually dark where they are — with smooth crossfades, never hard bands.
-    // (Falls back to fixed clock bands when the sun times aren't known yet.)
+  private applyTimeLight(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, mood?: WorldMood): void {
+    // Blend the lighting by the player's REAL solar position, so the island
+    // glows gold at their true sunset and darkens to night when it is actually
+    // dark where they are — with smooth crossfades, never hard bands.
+    // The depth pass grades LAND and SEA separately (each phase lives in its
+    // water: dawn rose, noon cyan sparkle, a molten dusk sun-path, a night
+    // moon-path on ink). Falls back to the whole-frame washes when the plate
+    // mask isn't available (procedural fallback island).
     const { weights } = phaseForTime(Date.now(), this.sunTimesFromWeather());
-    // Where the sun really is: its screen-side (warm key from there, cool shadow
-    // opposite) and how low it sits (low sun → longer, more directional light).
     const sun = this.sunKey();
+    const m = this.masks(W, H);
+    // heavy cloud mutes direct-sun theatrics (paths, glare) — honest weather
+    const clear = 1 - (mood?.cloudCover ?? 0.2) * 0.85;
     ctx.save();
-    // Order matters for the composited crossfade: darken first, then warm/cool.
-    if (weights.night > 0.001) this.washNight(ctx, W, H, t, weights.night);
-    if (weights.dawn > 0.001) this.washDawn(ctx, W, H, weights.dawn, sun);
-    if (weights.day > 0.001) this.washDay(ctx, W, H, weights.day);
-    if (weights.dusk > 0.001) this.washDusk(ctx, W, H, weights.dusk, sun);
+    if (m) {
+      this.gradeSea(ctx, W, H, t, weights, sun, m.sea, clear);
+      this.gradeLand(ctx, W, H, t, weights, sun, m.land);
+    } else {
+      // Order matters for the composited crossfade: darken first, then warm/cool.
+      if (weights.night > 0.001) this.washNight(ctx, W, H, t, weights.night);
+      if (weights.dawn > 0.001) this.washDawn(ctx, W, H, weights.dawn, sun);
+      if (weights.day > 0.001) this.washDay(ctx, W, H, weights.day);
+      if (weights.dusk > 0.001) this.washDusk(ctx, W, H, weights.dusk, sun);
+    }
     // A warm rim of light hugging the sun-facing edge when the sun is low — the
     // "backlight" beat that makes golden hour feel like it comes from somewhere.
     if ((weights.dawn > 0.001 || weights.dusk > 0.001) && sun) {
-      this.washRimLight(ctx, W, H, sun, Math.max(weights.dawn, weights.dusk));
+      this.washRimLight(ctx, W, H, sun, Math.max(weights.dawn, weights.dusk) * clear);
     }
+    ctx.restore();
+  }
+
+  /**
+   * The water carries the sky. Each phase grades the sea region alone:
+   * dawn — rose-gold from the sun's side over pastel water;
+   * day — a vivid clean turquoise (saturation-true, not a tint);
+   * dusk — deepened blue-violet with a MOLTEN SUN-PATH lying along the water
+   *        from the real sun's edge (the golden-hour money shot);
+   * night — ink navy, desaturated, with a silver moon-path scaled by the real
+   *         moon's illumination tonight.
+   */
+  private gradeSea(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    t: number,
+    w: PhaseWeights,
+    sun: SunKey,
+    sea: HTMLCanvasElement,
+    clear: number,
+  ): void {
+    const [kx, ky] = sun ? MapView.edgePoint(W, H, sun.dx, sun.dy, 1) : [0, H * 0.7];
+    // an elongated glare lying ALONG the water from the sun's edge toward centre
+    const sunPath = (colour: string, alpha: number, len: number): void => {
+      if (alpha < 0.01) return;
+      this.maskedGrade(ctx, W, H, sea, 'lighter', (s) => {
+        s.save();
+        s.translate(kx, ky);
+        s.rotate(Math.atan2(H * 0.55 - ky, W * 0.5 - kx));
+        s.scale(1, 0.2); // squash into a path hugging the water
+        const g = s.createRadialGradient(0, 0, 0, 0, 0, len);
+        g.addColorStop(0, colour.replace('A)', `${alpha.toFixed(3)})`));
+        g.addColorStop(1, colour.replace('A)', '0)'));
+        s.fillStyle = g;
+        s.fillRect(-len, -len * 3, len * 2.2, len * 6);
+        s.restore();
+      });
+    };
+
+    if (w.dawn > 0.001) {
+      const k = w.dawn;
+      // pastel rose spilling across the water from the sun's side
+      this.maskedGrade(ctx, W, H, sea, 'screen', (s) => {
+        const g = s.createLinearGradient(kx, ky, W - kx, H - ky);
+        g.addColorStop(0, `rgba(255, 172, 138, ${(0.34 * k * clear).toFixed(3)})`);
+        g.addColorStop(0.6, `rgba(255, 195, 170, ${(0.1 * k * clear).toFixed(3)})`);
+        g.addColorStop(1, 'rgba(255, 195, 170, 0)');
+        s.fillStyle = g;
+        s.fillRect(0, 0, W, H);
+      });
+      // and a soft pastel lift — dawn water is milkier, less saturated
+      this.maskedGrade(ctx, W, H, sea, 'saturation', (s) => {
+        s.fillStyle = `rgba(128, 128, 128, ${(0.28 * k).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+      sunPath('rgba(255, 190, 150, A)', 0.3 * k * clear, W * 0.5);
+    }
+    if (w.day > 0.001) {
+      const k = w.day;
+      // true saturation push toward vivid clean turquoise (not a paint-over)
+      this.maskedGrade(ctx, W, H, sea, 'color', (s) => {
+        s.fillStyle = `rgba(38, 178, 200, ${(0.2 * k).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, sea, 'screen', (s) => {
+        s.fillStyle = `rgba(140, 225, 235, ${(0.07 * k * clear).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+      // noon sparkle field: deterministic glint scatter over open water
+      if (clear > 0.4) {
+        this.maskedGrade(ctx, W, H, sea, 'lighter', (s) => {
+          s.fillStyle = `rgba(235, 250, 255, ${(0.5 * k * clear).toFixed(3)})`;
+          for (let i = 0; i < 46; i++) {
+            const px = ((Math.sin(i * 12.9898) * 43758.5453) % 1) * 0.5 + 0.5;
+            const py = ((Math.sin(i * 78.233) * 12578.1459) % 1) * 0.5 + 0.5;
+            const tw = this.reduce ? 0.7 : 0.4 + 0.6 * Math.abs(Math.sin(t / 640 + i * 1.7));
+            const r = (0.5 + (i % 3) * 0.35) * tw;
+            s.fillRect(px * W - r, py * H - r * 0.4, r * 2, r * 0.8);
+          }
+        });
+      }
+    }
+    if (w.dusk > 0.001) {
+      const k = w.dusk;
+      // the sea leaves daytime cyan behind: hue toward dusk blue-violet…
+      this.maskedGrade(ctx, W, H, sea, 'color', (s) => {
+        s.fillStyle = `rgba(84, 92, 168, ${(0.34 * k).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+      // …and deepens
+      this.maskedGrade(ctx, W, H, sea, 'multiply', (s) => {
+        const g = s.createLinearGradient(kx, ky, W - kx, H - ky);
+        g.addColorStop(0, `rgba(235, 190, 160, ${(0.25 * k).toFixed(3)})`);
+        g.addColorStop(1, `rgba(140, 135, 185, ${(0.4 * k).toFixed(3)})`);
+        s.fillStyle = g;
+        s.fillRect(0, 0, W, H);
+      });
+      // the molten sun-path — golden hour's signature on the water
+      sunPath('rgba(255, 168, 78, A)', 0.62 * k * clear, W * 0.62);
+    }
+    if (w.night > 0.001) {
+      const k = w.night;
+      const moon = illumination(Date.now());
+      this.maskedGrade(ctx, W, H, sea, 'saturation', (s) => {
+        s.fillStyle = `rgba(128, 128, 128, ${(0.4 * k).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, sea, 'multiply', (s) => {
+        s.fillStyle = `rgba(38, 52, 96, ${(0.72 * k).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+      // a silver moon-path on the bay, honest to tonight's real moon
+      if (moon > 0.15) {
+        this.maskedGrade(ctx, W, H, sea, 'lighter', (s) => {
+          s.save();
+          s.translate(W * 0.62, H * 0.08);
+          s.rotate(Math.PI / 2.6);
+          s.scale(1, 0.16);
+          const g = s.createRadialGradient(0, 0, 0, 0, 0, W * 0.55);
+          g.addColorStop(0, `rgba(196, 212, 238, ${(0.3 * k * moon * clear).toFixed(3)})`);
+          g.addColorStop(1, 'rgba(196, 212, 238, 0)');
+          s.fillStyle = g;
+          s.fillRect(-W, -W, W * 2, W * 2);
+          s.restore();
+        });
+      }
+    }
+  }
+
+  /**
+   * The land grades with REAL colour ops, not tints: dawn is pastel and cool,
+   * noon is saturated and clean, dusk hue-warms toward amber with the key from
+   * the real sun's side, night truly desaturates to moonlit grey-blue then
+   * deepens navy with a vignette. The window/lamp glows blaze on top.
+   */
+  private gradeLand(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    t: number,
+    w: PhaseWeights,
+    sun: SunKey,
+    land: HTMLCanvasElement,
+  ): void {
+    const [kx, ky, sx, sy] = sun
+      ? [...MapView.edgePoint(W, H, sun.dx, sun.dy, 1), ...MapView.edgePoint(W, H, sun.dx, sun.dy, -1)]
+      : [0, H, W, 0];
+
+    if (w.dawn > 0.001) {
+      const k = w.dawn;
+      this.maskedGrade(ctx, W, H, land, 'saturation', (s) => {
+        s.fillStyle = `rgba(128, 128, 128, ${(0.3 * k).toFixed(3)})`; // pastel morning
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, land, 'multiply', (s) => {
+        s.fillStyle = `rgba(206, 214, 240, ${(0.32 * k).toFixed(3)})`; // cool blue hour
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, land, 'screen', (s) => {
+        const g = s.createLinearGradient(kx, ky, sx, sy);
+        g.addColorStop(0, `rgba(255, 194, 160, ${(0.22 * k).toFixed(3)})`); // rose key
+        g.addColorStop(0.55, 'rgba(255, 194, 160, 0)');
+        s.fillStyle = g;
+        s.fillRect(0, 0, W, H);
+      });
+    }
+    if (w.day > 0.001) {
+      const k = w.day;
+      // noon identity is CLARITY: a genuine saturation lift and a clean warm kiss
+      this.maskedGrade(ctx, W, H, land, 'saturation', (s) => {
+        s.fillStyle = `rgba(255, 0, 0, ${(0.1 * k).toFixed(3)})`; // fully-saturated source = sat boost
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, land, 'soft-light', (s) => {
+        s.fillStyle = `rgba(255, 250, 232, ${(0.12 * k).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+    }
+    if (w.dusk > 0.001) {
+      const k = w.dusk;
+      // hue genuinely swings amber (color op), key from the real sun's side
+      this.maskedGrade(ctx, W, H, land, 'color', (s) => {
+        const g = s.createLinearGradient(kx, ky, sx, sy);
+        g.addColorStop(0, `rgba(232, 148, 72, ${(0.34 * k).toFixed(3)})`);
+        g.addColorStop(1, `rgba(180, 120, 130, ${(0.22 * k).toFixed(3)})`);
+        s.fillStyle = g;
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, land, 'multiply', (s) => {
+        const g = s.createLinearGradient(kx, ky, sx, sy);
+        g.addColorStop(0, `rgba(255, 206, 140, ${(0.3 * k).toFixed(3)})`);
+        g.addColorStop(1, `rgba(190, 150, 160, ${(0.34 * k).toFixed(3)})`);
+        s.fillStyle = g;
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, land, 'screen', (s) => {
+        const bloom = s.createRadialGradient(kx, ky, 0, kx, ky, Math.max(W, H) * 0.5);
+        bloom.addColorStop(0, `rgba(255, 184, 100, ${(0.22 * k).toFixed(3)})`);
+        bloom.addColorStop(1, 'rgba(255, 184, 100, 0)');
+        s.fillStyle = bloom;
+        s.fillRect(0, 0, W, H);
+      });
+    }
+    if (w.night > 0.001) {
+      const k = w.night;
+      const moon = illumination(Date.now());
+      const darkenScale = 1 - 0.18 * moon; // a full moon lifts the night
+      // moonlight is colourless: desaturate FIRST, then deepen navy
+      this.maskedGrade(ctx, W, H, land, 'saturation', (s) => {
+        s.fillStyle = `rgba(128, 128, 128, ${(0.5 * k).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, land, 'multiply', (s) => {
+        const g = s.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, `rgba(64, 74, 118, ${(0.62 * k * darkenScale).toFixed(3)})`);
+        g.addColorStop(1, `rgba(42, 50, 92, ${(0.74 * k * darkenScale).toFixed(3)})`);
+        s.fillStyle = g;
+        s.fillRect(0, 0, W, H);
+      });
+      if (moon > 0.5) {
+        this.maskedGrade(ctx, W, H, land, 'screen', (s) => {
+          s.fillStyle = `rgba(150, 165, 205, ${(0.07 * (moon - 0.5) * 2 * k).toFixed(3)})`;
+          s.fillRect(0, 0, W, H);
+        });
+      }
+      // vignette: the edges of the world sink into the dark
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      const v = ctx.createRadialGradient(W * 0.5, H * 0.48, H * 0.45, W * 0.5, H * 0.48, H * 1.05);
+      v.addColorStop(0, 'rgba(255,255,255,0)');
+      v.addColorStop(1, `rgba(120, 128, 168, ${(0.5 * k).toFixed(3)})`);
+      ctx.fillStyle = v;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+      // the hearth's warmth answers the dark from the town's heart
+      const warm = (0.11 + (this.reduce ? 0 : 0.02 * Math.sin(t / 1400))) * k;
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      const hx = PLAZA.x * W;
+      const hy = PLAZA.y * H - H * 0.08;
+      const hearth = ctx.createRadialGradient(hx, hy, 10, hx, hy, W * 0.5);
+      hearth.addColorStop(0, `rgba(255, 184, 96, ${warm.toFixed(3)})`);
+      hearth.addColorStop(1, 'rgba(255, 184, 96, 0)');
+      ctx.fillStyle = hearth;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Region masks: the depth pass grades LAND and SEA separately (a real dusk
+  // lives in its water — a molten sun-path — while the land warms differently).
+  // The sea mask is classified from the painted plate itself: teal/blue-dominant
+  // pixels are water. Built once per canvas size, feathered, cached.
+  // ---------------------------------------------------------------------------
+  private maskCache: { W: number; H: number; sea: HTMLCanvasElement; land: HTMLCanvasElement } | null = null;
+  private gradeScratch: HTMLCanvasElement | null = null;
+
+  private masks(W: number, H: number): { sea: HTMLCanvasElement; land: HTMLCanvasElement } | null {
+    if (this.maskCache && this.maskCache.W === W && this.maskCache.H === H) return this.maskCache;
+    const plate = this.sprite('map_island_plate');
+    if (!plate || !plate.naturalWidth) return null;
+    // classify at low res (fast + naturally smooths speckle), then blur-upscale
+    const mw = 128;
+    const mh = Math.max(16, Math.round((mw * H) / W));
+    const cls = document.createElement('canvas');
+    cls.width = mw;
+    cls.height = mh;
+    const cctx = cls.getContext('2d', { willReadFrequently: true });
+    if (!cctx) return null;
+    cctx.drawImage(plate, 0, 0, mw, mh);
+    let frac = 0;
+    try {
+      const img = cctx.getImageData(0, 0, mw, mh);
+      const d = img.data;
+      let seaCount = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i]!;
+        const g = d[i + 1]!;
+        const b = d[i + 2]!;
+        // water on the plate is teal→deep blue: blue beats red clearly, and is
+        // bright enough not to be a rock shadow
+        const sea = b > r * 1.12 && b > 70 && b + g > r * 1.9;
+        if (sea) {
+          seaCount++;
+          d[i] = 255;
+          d[i + 1] = 255;
+          d[i + 2] = 255;
+          d[i + 3] = 255;
+        } else {
+          d[i + 3] = 0;
+        }
+      }
+      frac = seaCount / (mw * mh);
+      cctx.putImageData(img, 0, 0);
+    } catch {
+      return null; // canvas tainted or unavailable — grade falls back to washes
+    }
+    if (frac < 0.15 || frac > 0.75) {
+      // classification clearly failed on this plate — fall back to the authored
+      // coastline ring as a rough sea region
+      cctx.clearRect(0, 0, mw, mh);
+      cctx.fillStyle = '#fff';
+      cctx.fillRect(0, 0, mw, mh);
+      cctx.globalCompositeOperation = 'destination-out';
+      cctx.beginPath();
+      COASTLINE.forEach(([px, py], i) => {
+        if (i === 0) cctx.moveTo(px * mw, py * mh);
+        else cctx.lineTo(px * mw, py * mh);
+      });
+      cctx.closePath();
+      cctx.fill();
+      cctx.globalCompositeOperation = 'source-over';
+    }
+    const sea = document.createElement('canvas');
+    sea.width = W;
+    sea.height = H;
+    const sctx = sea.getContext('2d');
+    if (!sctx) return null;
+    sctx.filter = 'blur(3px)';
+    sctx.drawImage(cls, 0, 0, W, H);
+    sctx.filter = 'none';
+    const land = document.createElement('canvas');
+    land.width = W;
+    land.height = H;
+    const lctx = land.getContext('2d');
+    if (!lctx) return null;
+    lctx.fillStyle = '#fff';
+    lctx.fillRect(0, 0, W, H);
+    lctx.globalCompositeOperation = 'destination-out';
+    lctx.drawImage(sea, 0, 0);
+    lctx.globalCompositeOperation = 'source-over';
+    this.maskCache = { W, H, sea, land };
+    return this.maskCache;
+  }
+
+  /**
+   * Apply one grading layer to the frame through a region mask: build the tint
+   * in a scratch canvas, keep only the masked region, then composite onto the
+   * frame with the requested blend op. Because transparent scratch pixels leave
+   * the frame untouched under every op, this works for multiply / saturation /
+   * color / screen / lighter alike — true region-clipped colour grading.
+   */
+  private maskedGrade(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    mask: HTMLCanvasElement,
+    op: GlobalCompositeOperation,
+    build: (s: CanvasRenderingContext2D) => void,
+  ): void {
+    if (!this.gradeScratch || this.gradeScratch.width !== W || this.gradeScratch.height !== H) {
+      this.gradeScratch = document.createElement('canvas');
+      this.gradeScratch.width = W;
+      this.gradeScratch.height = H;
+    }
+    const s = this.gradeScratch.getContext('2d');
+    if (!s) return;
+    s.save();
+    s.globalCompositeOperation = 'source-over';
+    s.clearRect(0, 0, W, H);
+    build(s);
+    s.globalCompositeOperation = 'destination-in';
+    s.drawImage(mask, 0, 0);
+    s.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = op;
+    ctx.drawImage(this.gradeScratch, 0, 0);
     ctx.restore();
   }
 
