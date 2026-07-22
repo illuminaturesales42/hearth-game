@@ -106,6 +106,47 @@ entries to `tools/slice_assets.py` and re-run:
   wash; the stargaze feature keeps its own dedicated sky). `data/moon.ts` and
   `data/constellations.ts` remain live for the dawn "look up" line and stargaze.
 
+## Priority 0 — NIGHT ART (the times-of-day ceiling) · added 2026-07-22
+
+The procedural night was rebuilt (blue grade + jewel lights + ambience layer)
+and now reads as a true cozy night — but grading a *daylight* painting can only
+go so far: the plate's baked warm shadows fight every night grade. The code now
+has **dormant crossfade seams** that lift the ceiling the moment painted night
+art lands. Generate in this order:
+
+### 0.1 `map_island_plate_night` (single biggest win)
+Moonlit repaint of `map_island_plate` — **SAME geography pixel-for-pixel**
+(building anchors, layout tests and the sea-mask classifier all depend on it;
+use the day plate as the ControlNet/img2img base at low denoise for structure).
+- Palette: deep night navy `#0f1626`→`#16203a` ground shadows, moonlit grass
+  blue-green, sea near-black teal `#12242e` with silver moon shimmer.
+- Key light: cool silver-blue from the UPPER-RIGHT (matches the code's
+  moonlight key + moon-path).
+- NO lit windows on the plate (buildings composite separately); a faint warm
+  glint allowed only at the lighthouse rock.
+- Water must stay blue-dominant (the runtime sea-mask classifies `b > r`).
+- Wiring: `public/art/map_island_plate_night.png` + manifest id (re-run the
+  slicer or add the id to `ART_IDS`). The map then crossfades the whole ground
+  by the real night weight, and the procedural night grade automatically drops
+  to 35% strength — art carries the mood.
+
+### 0.2 `town_*_night` building variants (per-building, most-seen first)
+`town_cottage_night`, `town_market_night`, `town_bakery_night`,
+`town_townhall_night`, then the remaining ten + `_l2/_l3` versions of the four
+above. Rules per variant:
+- IDENTICAL silhouette + footprint to its day sprite (pipeline: ControlNet
+  lineart from the day sprite, fixed per-category seed + IPAdapter).
+- Moonlit blue walls/roofs; windows warmly LIT from inside (`#f4a63b`→
+  `#ffd27a` family); a soft warm spill onto the ground at the doorway baked in.
+- Transparent PNG, same canvas/padding as the day sprite so anchors hold.
+- Wiring: drop as `public/art/<id>_night.png` + manifest id — each building
+  crossfades individually as its art lands; no code changes needed.
+
+### 0.3 optional: `map_island_plate_dusk` / `map_island_plate_dawn`
+Same geography rules; amber golden-hour key from the west / rose first-light
+key from the east. The plate seam generalises when these exist (ask for the
+two-line code hookup when ready).
+
 ## Mockup deviation (LOCKED)
 
 Any future UI/board mockups showing a **gem/diamond currency are off-law**:
