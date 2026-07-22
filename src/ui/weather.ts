@@ -16,6 +16,7 @@ const WEATHER_KEY = 'hearth:weather';
 const WEATHER_LOG_KEY = 'hearth:weather-log';
 const COORDS_KEY = 'hearth:coords';
 const DENIED_KEY = 'hearth:loc-denied';
+const SKY_PREF_KEY = 'hearth:sky-pref';
 const WEATHER_TTL = 30 * 60 * 1000;
 const COORDS_TTL = 6 * 60 * 60 * 1000;
 
@@ -272,4 +273,60 @@ export function latestSunTimes(): SunTimes | null {
 /** Whether the player is in the southern hemisphere (from the cached reading). */
 export function latestSouthern(): boolean {
   return readJson<WeatherNow>(WEATHER_KEY)?.southern === true;
+}
+
+// ---------- "pick your sky" — the opt-out for grey-climate players ----------
+// Real-weather sync is the magic, but a player stuck under a fortnight of drizzle
+// deserves a way out (the Animal Crossing time-travel lesson). A chosen mood keeps
+// the real *solar clock* (dawn/day/dusk/night still track the player's true
+// sunrise/sunset — that stays honest and lovely) but paints a preferred weather.
+
+export type SkyPref = 'real' | 'clear' | 'rain' | 'snow';
+
+const SKY_PREFS: readonly SkyPref[] = ['real', 'clear', 'rain', 'snow'];
+
+/** The player's sky preference (default: follow the real weather). */
+export function getSkyPref(): SkyPref {
+  try {
+    const v = localStorage.getItem(SKY_PREF_KEY);
+    return SKY_PREFS.includes(v as SkyPref) ? (v as SkyPref) : 'real';
+  } catch {
+    return 'real';
+  }
+}
+
+/** Store the player's sky preference. */
+export function setSkyPref(p: SkyPref): void {
+  try {
+    localStorage.setItem(SKY_PREF_KEY, p);
+  } catch {
+    /* best-effort */
+  }
+}
+
+/**
+ * The weather the island should actually render, honouring "pick your sky". On
+ * 'real' it's the live reading untouched; a chosen mood overrides the weather
+ * fields while inheriting the real sun times, temperature and hemisphere so the
+ * daylight, seasons and clock stay true to where the player is.
+ */
+export function effectiveWeather(real: WeatherNow | null, pref: SkyPref = getSkyPref()): WeatherNow | null {
+  if (pref === 'real') return real;
+  const base: WeatherNow = real
+    ? { ...real }
+    : { kind: 'clear', cloudCover: 0.2, windKph: 6, precipMm: 0, fetchedAt: Date.now() };
+  if (pref === 'clear') return { ...base, kind: 'clear', cloudCover: 0.12, precipMm: 0 };
+  if (pref === 'rain') return { ...base, kind: 'rain', cloudCover: 0.85, precipMm: 1.2 };
+  // snow — force a cold reading so it settles and reads wintry
+  return { ...base, kind: 'snow', cloudCover: 0.9, precipMm: 0.8, tempC: Math.min(base.tempC ?? -1, -1) };
+}
+
+/**
+ * The ground accumulation to render for a chosen mood (real weather uses the
+ * derived history instead). A steady preset shows a settled, believable amount.
+ */
+export function presetAccumulation(pref: SkyPref): Accumulation {
+  if (pref === 'rain') return { wetness: 0.7, snowDepth: 0 };
+  if (pref === 'snow') return { wetness: 0, snowDepth: 0.7 };
+  return { wetness: 0, snowDepth: 0 }; // clear
 }

@@ -10,7 +10,8 @@ import { recentEvents } from '../analytics';
 import { feedback } from './feedback';
 import { toast } from './toast';
 import { pickNotificationProvider, DAILY_NOTIF_BODY, DEFAULT_NOTIF_HOUR } from '../platform/notification-provider';
-import { requestGeolocation, setLocationByCity, latestLocationLabel } from './weather';
+import { requestGeolocation, setLocationByCity, latestLocationLabel, getSkyPref, setSkyPref } from './weather';
+import type { SkyPref } from './weather';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 
@@ -47,6 +48,9 @@ export class SettingsUI {
     el<HTMLButtonElement>('set-reset')?.addEventListener('click', () => this.reset());
     el<HTMLButtonElement>('set-loc-gps')?.addEventListener('click', () => void this.useMyLocation());
     el<HTMLButtonElement>('set-loc-city-btn')?.addEventListener('click', () => void this.useCity());
+    document.querySelectorAll<HTMLButtonElement>('#set-skypref button').forEach((b) => {
+      b.addEventListener('click', () => this.chooseSky(b.dataset.sky as SkyPref));
+    });
 
     game.subscribe((ev) => {
       if (ev.type === 'settings') this.apply();
@@ -132,11 +136,39 @@ export class SettingsUI {
   /** Reflect the current location choice + refresh the status line. */
   private paintLocation(): void {
     const status = el('set-loc-status');
-    if (!status) return;
-    const label = latestLocationLabel();
-    status.textContent = label
-      ? `Following ${label}. The island mirrors its sky.`
-      : 'Not set — the island keeps a gentle default sky.';
+    if (status) {
+      const label = latestLocationLabel();
+      status.textContent = label
+        ? `Following ${label}. The island mirrors its sky.`
+        : 'Not set — the island keeps a gentle default sky.';
+    }
+    this.paintSky();
+  }
+
+  private static readonly SKY_NOTE: Record<SkyPref, string> = {
+    real: 'Following your real sky. Prefer a mood? Choose one — the day’s light still tracks your true sunrise.',
+    clear: 'Clear skies over Emberhollow, whatever it’s doing outside. Your daylight still follows your real sun.',
+    rain: 'A cosy rain settles over the island. Your daylight still follows your real sun.',
+    snow: 'A soft snowfall blankets the island. Your daylight still follows your real sun.',
+  };
+
+  /** Reflect the chosen sky in the segmented control + its note. */
+  private paintSky(): void {
+    const pref = getSkyPref();
+    document.querySelectorAll<HTMLButtonElement>('#set-skypref button').forEach((b) => {
+      b.classList.toggle('on', b.dataset.sky === pref);
+    });
+    const note = el('set-skypref-note');
+    if (note) note.textContent = SettingsUI.SKY_NOTE[pref];
+  }
+
+  /** Switch the island's sky and repaint straight away. */
+  private chooseSky(pref: SkyPref): void {
+    if (!pref) return;
+    setSkyPref(pref);
+    this.paintSky();
+    // Nudge the map to re-render with the new sky at once.
+    document.dispatchEvent(new CustomEvent('hearth:location-changed'));
   }
 
   /** Nudge the map to refetch weather for a just-changed location. */

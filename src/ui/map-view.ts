@@ -31,7 +31,7 @@ import { constellationFor, activeMeteorShower, type Constellation } from '../dat
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
 import { phaseForTime, type SunTimes } from '../core/time-of-day';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
-import { currentWeather, latestAccumulation } from './weather';
+import { currentWeather, latestAccumulation, effectiveWeather, presetAccumulation, getSkyPref } from './weather';
 import { artUrl, portraitFor, tileMarkup } from './art';
 import { esc } from './esc';
 import { ALMANAC_PAGES, ALMANAC_SECTIONS, almanacProgress } from '../core/almanac';
@@ -153,8 +153,13 @@ export class MapView {
         img.src = url;
       }
     }
-    // The player set/changed their town in Settings — refetch their sky now.
-    document.addEventListener('hearth:location-changed', () => this.forceWeatherRefresh());
+    // The player set/changed their town or picked a sky in Settings — refetch and
+    // repaint now (the redraw matters for reduced-motion, which has no rAF loop).
+    document.addEventListener('hearth:location-changed', () => {
+      this.forceWeatherRefresh();
+      this.accumCache = null;
+      if (this.visible && this.reduce) this.draw(0);
+    });
     game.subscribe((ev) => {
       const refresh =
         ev.type === 'delivered' ||
@@ -431,8 +436,13 @@ export class MapView {
 
   private mood(): WorldMood {
     const s = this.game.snapshot;
+    // "Pick your sky": a chosen mood overrides the real weather (opt-out for
+    // grey-climate players) while the solar clock still tracks the real sunrise.
+    const pref = getSkyPref();
+    const weather = effectiveWeather(this.weather, pref);
+    const accumulation = pref === 'real' ? this.accumulation() : presetAccumulation(pref);
     return computeMood({
-      weather: this.weather,
+      weather,
       meditatedToday: meditatedToday(s.actions.counts),
       lastCalmDay: s.wellbeing.lastCalmDay,
       today: s.actions.day,
@@ -440,7 +450,7 @@ export class MapView {
       counts: s.actions.counts,
       walkedToday: (s.healthLedger?.stepsGranted ?? 0) > 0,
       streak: s.actions.streak,
-      accumulation: this.accumulation(),
+      accumulation,
     });
   }
 
