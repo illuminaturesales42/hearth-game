@@ -266,6 +266,27 @@ export class MapView {
     return c;
   }
 
+  /** Soft black cutout of a sprite, cached per art id — the cast-shadow stamp. */
+  private silCache = new Map<string, HTMLCanvasElement>();
+  private silhouette(artId: string, img: HTMLImageElement): HTMLCanvasElement | null {
+    const hit = this.silCache.get(artId);
+    if (hit) return hit;
+    if (!img.naturalWidth) return null;
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    const g = c.getContext('2d');
+    if (!g) return null;
+    g.filter = 'blur(3px)'; // baked feather → soft-edged shadows at draw time
+    g.drawImage(img, 0, 0);
+    g.filter = 'none';
+    g.globalCompositeOperation = 'source-in';
+    g.fillStyle = '#0b1526';
+    g.fillRect(0, 0, c.width, c.height);
+    this.silCache.set(artId, c);
+    return c;
+  }
+
   /**
    * The night sky over the bay: a soft starfield dimmed by real cloud cover.
    * (The phase-accurate moon, constellations and meteor showers were retired
@@ -1611,6 +1632,19 @@ export class MapView {
       .map((b) => b.unlockAt)
       .sort((a, b) => a - b);
     const nextUnlock = upcoming.length ? upcoming[0]! : -1; // the one being rebuilt now → scaffold
+    // Directional cast shadows from the REAL sun: long at dawn/dusk (pointing
+    // away from the sun's true side), short at noon, faint moon-shadows on
+    // bright nights, softened under cloud. The single strongest depth cue.
+    const castSun = this.sunKey();
+    const castLow = castSun?.lowness ?? 0.5;
+    const sunUp = tod.weights.day + tod.weights.dawn + tod.weights.dusk;
+    const castAlpha = Math.min(
+      0.36,
+      (0.18 + 0.18 * castLow) * sunUp * (1 - mood.cloudCover * 0.7) +
+        0.07 * illumination(Date.now()) * tod.weights.night,
+    );
+    const castShear = (castSun ? castSun.dx : -0.5) * (0.4 + castLow * 1.25);
+    const castSquash = 0.26 + castLow * 0.12;
     const pieces: ScenePiece[] = [
       ...TOWN_TERRAIN.filter((t) => !FLAT.has(t.art) && delivered >= t.unlockAt),
       ...TOWN_NATURE.filter(
@@ -1704,6 +1738,19 @@ export class MapView {
           scale = 0.6 + 0.4 * Math.min(1, age * 1.4);
           alpha = Math.min(1, age * 2);
         } else this.appeared.delete(p.art);
+      }
+      // The building throws its shadow along the ground away from the real sun
+      // (drawn before the pad + sprite so the structure stands on top of it).
+      if (castAlpha > 0.02 && !p.water && (BUILDING_INFO[p.art] || artId.startsWith('tree_'))) {
+        const sil = this.silhouette(artId, img);
+        if (sil) {
+          ctx.save();
+          ctx.globalAlpha = castAlpha * (BUILDING_INFO[p.art] ? 1 : 0.7);
+          ctx.translate(p.x * W, p.y * H - h * 0.02);
+          ctx.transform(1, 0, castShear, castSquash, 0, 0);
+          ctx.drawImage(sil, -w / 2, -h, w, h);
+          ctx.restore();
+        }
       }
       // Ground the building into its terrain. On land: a soft warm earth "pad"
       // blends the footprint into the painted meadow, then a darker contact
