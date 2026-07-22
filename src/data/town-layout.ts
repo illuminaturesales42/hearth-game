@@ -269,3 +269,34 @@ export function anchorOf(art: string): { x: number; y: number; w: number } | nul
     TOWN_NATURE.find((b) => b.art === art);
   return p ? { x: p.x, y: p.y, w: p.w } : null;
 }
+
+/**
+ * Named scene anchors that aren't tied to a single sprite. Everything the map
+ * draws at a "place" reads from here or from anchorOf() — never from literals
+ * buried in map-view (those drifted every time the layout moved).
+ */
+
+/** The civic plaza — path convergence where the well, sign and market gather.
+ *  Centres the night hearth-lift and the sleep-warmth glow. */
+export const PLAZA = { x: 0.5, y: 0.52 } as const;
+
+/** The lighthouse is painted-in specially (4-state ladder), not a layout piece —
+ *  but its anchor is still data. Pulled slightly in from the frame edge so the
+ *  beam and halo aren't clipped at narrow aspect ratios. */
+export const LIGHTHOUSE_ANCHOR = { x: 0.925, y: 0.59, w: 0.15 } as const;
+
+/** Sky-space effects (viewport fractions, not ground positions). */
+export const SKY_ANCHORS = {
+  /** god-rays fan from the sun's painted corner */
+  godRays: { x: 0.78, y: 0.14 },
+  /** the stargaze reaction's little constellation over the bay */
+  stargaze: { x: 0.8, y: 0.16 },
+} as const;
+
+/** Open-ground bands for weather-memory scatter (clear of buildings so puddles
+ *  and drifts never sit on a roof). */
+export const GROUND_BANDS = {
+  snowDrifts: { x0: 0.08, x1: 0.94, y0: 0.72, y1: 0.8 },
+  puddles: { x0: 0.18, x1: 0.6, y0: 0.66, y1: 0.8 },
+  bloomShore: { x0: 0.24, x1: 0.62, y0: 0.82, y1: 0.88 },
+} as const;

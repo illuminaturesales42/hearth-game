@@ -18,10 +18,15 @@ import {
   BUILDING_INFO,
   BUILDING_PLATE_SCALE,
   DECOR_CATALOG,
+  GROUND_BANDS,
+  LIGHTHOUSE_ANCHOR,
+  PLAZA,
+  SKY_ANCHORS,
   TOWN_BOATS,
   TOWN_BUILDINGS,
   TOWN_NATURE,
   TOWN_TERRAIN,
+  anchorOf,
 } from '../data/town-layout';
 import { computeMood, earnedFlourishes, meditatedToday, moodCaption, seasonForMonth } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
@@ -1003,7 +1008,7 @@ export class MapView {
         const speed = meditated ? 2600 : 1600;
         const base = sleptWell ? 0.09 : 0.05;
         const pulse = base + 0.03 * Math.sin(t / speed);
-        const glow = ctx.createRadialGradient(W * 0.5, H * 0.42, 10, W * 0.5, H * 0.42, W * 0.6);
+        const glow = ctx.createRadialGradient(PLAZA.x * W, PLAZA.y * H - H * 0.1, 10, PLAZA.x * W, PLAZA.y * H - H * 0.1, W * 0.6);
         glow.addColorStop(0, `rgba(255, 200, 120, ${pulse.toFixed(3)})`);
         glow.addColorStop(1, 'rgba(255, 200, 120, 0)');
         ctx.fillStyle = glow;
@@ -1194,8 +1199,8 @@ export class MapView {
       ctx.globalAlpha = 1;
     }
     if (!plate) {
-      const sunX = W * 0.78;
-      const sunY = H * 0.14;
+      const sunX = SKY_ANCHORS.godRays.x * W;
+      const sunY = SKY_ANCHORS.godRays.y * H;
       if (night) {
         // a pale moon
         ctx.fillStyle = 'rgba(230,235,250,0.9)';
@@ -1860,12 +1865,12 @@ export class MapView {
       // Off the east point, standing in the sea clear of the fisher hut — its
       // own rock base sits over open water, not up on the green land plate.
       // Sprites are mirrored on disk so the keeper's door faces the land.
-      const lx = W * 0.94;
-      const baseY = H * 0.59;
+      const lx = LIGHTHOUSE_ANCHOR.x * W;
+      const baseY = LIGHTHOUSE_ANCHOR.y * H;
       if (img) {
         // the new painted lighthouse is a tall portrait sprite with its own rock
         // base, so it's narrower than the old near-square art (0.23 dwarfed the map).
-        const lw = W * 0.15;
+        const lw = LIGHTHOUSE_ANCHOR.w * W;
         const lh = lw * (img.naturalHeight / img.naturalWidth);
         ctx.drawImage(img, lx - lw / 2, baseY - lh, lw, lh);
         // Tappable once the beacon is lit — opens The Lighthouse card (Beacon Drop).
@@ -2176,7 +2181,9 @@ export class MapView {
       ctx.fillRect(0, 0, W, H);
     }
     const warm = (0.1 + (this.reduce ? 0 : 0.02 * Math.sin(t / 1400))) * k;
-    const hearth = ctx.createRadialGradient(W * 0.5, H * 0.44, 10, W * 0.5, H * 0.44, W * 0.55);
+    const hx = PLAZA.x * W;
+    const hy = PLAZA.y * H - H * 0.08;
+    const hearth = ctx.createRadialGradient(hx, hy, 10, hx, hy, W * 0.55);
     hearth.addColorStop(0, `rgba(255, 184, 96, ${warm.toFixed(3)})`);
     hearth.addColorStop(1, 'rgba(255, 184, 96, 0)');
     ctx.fillStyle = hearth;
@@ -2299,9 +2306,10 @@ export class MapView {
 
     // Water + stretch → the gardens green up: a soft vitality over the meadow
     // and a few flowers by the garden plot once it's been restored.
-    if (mood.gardenLush > 0) {
-      const gx = W * 0.63; // the garden's live map position (town-layout)
-      const gy = H * 0.57;
+    const garden = anchorOf('town_garden');
+    if (mood.gardenLush > 0 && garden) {
+      const gx = garden.x * W; // tracks the garden wherever the layout puts it
+      const gy = (garden.y + 0.05) * H;
       const gr = W * 0.16;
       const g = ctx.createRadialGradient(gx, gy - gr * 0.25, gr * 0.15, gx, gy - gr * 0.25, gr);
       g.addColorStop(0, `rgba(126, 196, 106, ${(0.08 + mood.gardenLush * 0.14).toFixed(3)})`);
@@ -2315,21 +2323,22 @@ export class MapView {
       const n = 3 + Math.round(mood.bloom * 7);
       for (let i = 0; i < n; i++) {
         const f = i / Math.max(1, n - 1);
-        // scatter organically along the shore, not in a tidy fence line
+        // scatter organically along the shore band, not in a tidy fence line
+        const band = GROUND_BANDS.bloomShore;
         const jitterX = Math.sin(i * 12.9898) * 0.025;
-        const jitterY = (Math.sin(i * 78.233) * 0.5 + 0.5) * 0.05;
-        const x = W * (0.24 + f * 0.52 + jitterX);
-        const y = H * (0.83 + jitterY);
+        const jitterY = (Math.sin(i * 78.233) * 0.5 + 0.5) * (band.y1 - band.y0);
+        const x = W * (band.x0 + f * (band.x1 - band.x0) + jitterX);
+        const y = H * (band.y0 + jitterY);
         const size = 2.4 + mood.bloom * 1.4 + (i % 3) * 0.5;
         drawFlower(ctx, x, y, size, FLOWER_COLOURS[i % FLOWER_COLOURS.length]!);
       }
       // a small cluster nestles by the garden plot when it exists
-      if (delivered >= 10) {
+      if (delivered >= 10 && garden) {
         for (let i = 0; i < 3; i++) {
           drawFlower(
             ctx,
-            W * (0.6 + i * 0.03),
-            H * (0.55 + (i % 2) * 0.015),
+            (garden.x - 0.075 + i * 0.03) * W,
+            (garden.y + 0.03 + (i % 2) * 0.015) * H,
             2.6,
             FLOWER_COLOURS[(i + 2) % FLOWER_COLOURS.length]!,
           );
@@ -2338,9 +2347,10 @@ export class MapView {
     }
 
     // Drink water → the well sparkles and its plaza feels fresh.
-    if (mood.wellSparkle && delivered >= 6) {
-      const wx = W * 0.5; // the well's live map position (town-layout)
-      const wy = H * 0.6 - H * 0.05;
+    const well = anchorOf('prop_well');
+    if (mood.wellSparkle && delivered >= 6 && well) {
+      const wx = well.x * W; // tracks the well wherever the layout puts it
+      const wy = (well.y - 0.05) * H;
       const count = this.reduce ? 3 : 6;
       for (let i = 0; i < count; i++) {
         const seed = i * 1.7;
@@ -2378,8 +2388,8 @@ export class MapView {
 
     // Stargaze after dark → a small constellation lights over the bay.
     if (mood.stargazed && night) {
-      const cx = W * 0.8;
-      const cy = H * 0.16;
+      const cx = SKY_ANCHORS.stargaze.x * W;
+      const cy = SKY_ANCHORS.stargaze.y * H;
       const stars = [
         [0, 0],
         [0.05, -0.03],
@@ -2436,9 +2446,10 @@ export class MapView {
       // Rounded drifts catching along the paths.
       ctx.fillStyle = `rgba(246, 250, 255, ${(0.4 + 0.4 * d).toFixed(3)})`;
       const drifts = this.reduce ? 4 : 7;
+      const db = GROUND_BANDS.snowDrifts;
       for (let i = 0; i < drifts; i++) {
-        const dx = W * (0.08 + (i / drifts) * 0.86);
-        const dy = H * (0.74 + 0.05 * (i % 2));
+        const dx = W * (db.x0 + (i / drifts) * (db.x1 - db.x0));
+        const dy = H * (db.y0 + (db.y1 - db.y0) * (i % 2));
         ctx.beginPath();
         ctx.ellipse(dx, dy, W * (0.055 + 0.035 * d), H * (0.014 + 0.022 * d), 0, Math.PI, Math.PI * 2);
         ctx.fill();
@@ -2464,8 +2475,9 @@ export class MapView {
       // Puddles: more of them, and glossier, the wetter it is.
       const puddles = Math.round((this.reduce ? 3 : 4) + wet * 4);
       for (let i = 0; i < puddles; i++) {
-        const px = W * (0.18 + ((i * 0.13) % 0.68));
-        const py = H * (0.68 + (i % 3) * 0.05);
+        const pb = GROUND_BANDS.puddles;
+        const px = W * (pb.x0 + ((i * 0.13) % (pb.x1 - pb.x0)));
+        const py = H * (pb.y0 + ((i % 3) * (pb.y1 - pb.y0)) / 2);
         const shimmer = this.reduce ? 0.6 : 0.4 + 0.35 * Math.abs(Math.sin(t / 620 + i * 1.3));
         const r = W * (0.02 + 0.016 * wet);
         ctx.globalAlpha = 0.5 * wet * shimmer;
@@ -2563,8 +2575,8 @@ export class MapView {
     this.drawSeason(ctx, W, H, t, night);
     // God-rays fanning from the low sun on clear-ish days.
     if (!night && mood.cloudCover < 0.55) {
-      const sx = W * 0.78;
-      const sy = H * 0.14;
+      const sx = SKY_ANCHORS.godRays.x * W;
+      const sy = SKY_ANCHORS.godRays.y * H;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       for (let i = 0; i < 5; i++) {
