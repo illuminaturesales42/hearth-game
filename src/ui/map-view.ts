@@ -25,8 +25,7 @@ import {
 import { computeMood, earnedFlourishes, meditatedToday, moodCaption, seasonForMonth } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
 import { stemLevels, type StemLevels } from '../core/stem-levels';
-import { illumination, isWaxing, phaseName } from '../data/moon';
-import { constellationFor, activeMeteorShower, type Constellation } from '../data/constellations';
+import { illumination, phaseName } from '../data/moon';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
 import { phaseForTime, type SunTimes } from '../core/time-of-day';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
@@ -262,13 +261,15 @@ export class MapView {
   }
 
   /**
-   * The night sky over the bay on the painted plate: a soft starfield (dimmed by
-   * real cloud cover) and the REAL current moon, drawn with its true phase — a
-   * full moon over Emberhollow tonight because there's a full moon tonight.
-   * Reduced-motion holds the stars steady; the moon is always drawn.
+   * The night sky over the bay: a soft starfield dimmed by real cloud cover.
+   * (The phase-accurate moon, constellations and meteor showers were retired
+   * from the main map in the environment pass — the sky here is atmosphere, not
+   * an astronomy display; the stargaze feature keeps its own dedicated sky, and
+   * real moonlight still lifts the night lighting wash in washNight.)
+   * Reduced-motion holds the stars steady.
    */
-  private drawCelestial(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, mood: WorldMood): void {
-    const clear = 1 - mood.cloudCover * 0.75; // stars/moon fade behind cloud
+  private drawStarfield(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, mood: WorldMood): void {
+    const clear = 1 - mood.cloudCover * 0.75; // stars fade behind cloud
     if (clear <= 0.05) return;
     ctx.save();
     ctx.fillStyle = 'rgba(240, 244, 255, 1)';
@@ -283,142 +284,6 @@ export class MapView {
       ctx.fillRect(x, y, big ? 1.7 : 1, big ? 1.7 : 1);
     }
     ctx.globalAlpha = 1;
-    ctx.restore();
-    // Upper-left sky — clear of the corner time badge (a DOM element top-right).
-    const now = Date.now();
-    this.drawMoonPhase(ctx, W * 0.22, H * 0.1, 11, illumination(now), isWaxing(now), clear);
-    // The season's constellation (hemisphere-aware), upper-centre sky.
-    this.drawConstellation(
-      ctx,
-      W,
-      H,
-      constellationFor(new Date(now).getMonth(), this.weather?.southern ?? false),
-      clear,
-    );
-    // Shooting stars on the nights a real meteor shower peaks.
-    if (!this.reduce) {
-      const shower = activeMeteorShower(now);
-      if (shower) this.drawMeteors(ctx, W, H, t, shower.intensity, clear);
-    }
-  }
-
-  /** The season's constellation as faint joined stars in a small upper-sky box. */
-  private drawConstellation(
-    ctx: CanvasRenderingContext2D,
-    W: number,
-    H: number,
-    c: Constellation,
-    clear: number,
-  ): void {
-    const bx = W * 0.44;
-    const by = H * 0.02;
-    const bw = W * 0.26;
-    const bh = H * 0.13;
-    const px = (s: { x: number; y: number }) => bx + s.x * bw;
-    const py = (s: { x: number; y: number }) => by + s.y * bh;
-    ctx.save();
-    ctx.strokeStyle = `rgba(196, 212, 255, ${(0.24 * clear).toFixed(3)})`;
-    ctx.lineWidth = 0.7;
-    ctx.beginPath();
-    for (const [a, b] of c.lines) {
-      const sa = c.stars[a]!;
-      const sb = c.stars[b]!;
-      ctx.moveTo(px(sa), py(sa));
-      ctx.lineTo(px(sb), py(sb));
-    }
-    ctx.stroke();
-    ctx.fillStyle = `rgba(236, 242, 255, ${(0.9 * clear).toFixed(3)})`;
-    for (const s of c.stars) {
-      ctx.beginPath();
-      ctx.arc(px(s), py(s), 1.3, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  /** Gentle shooting stars during an active shower — soft, occasional, cozy. */
-  private drawMeteors(
-    ctx: CanvasRenderingContext2D,
-    W: number,
-    H: number,
-    t: number,
-    intensity: number,
-    clear: number,
-  ): void {
-    const period = 2600 - intensity * 1100; // more frequent nearer the peak
-    const idx = Math.floor(t / period);
-    ctx.save();
-    for (let k = 0; k < 2; k++) {
-      const i = idx - k;
-      const age = t - i * period;
-      if (age < 0 || age > 750) continue; // streak lifetime
-      const u = age / 750; // 0..1 across its fall
-      const rx = (((Math.sin(i * 91.7) * 9999) % 1) + 1) % 1;
-      const ry = (((Math.sin(i * 13.13) * 9999) % 1) + 1) % 1;
-      const startX = 0.08 * W + rx * 0.8 * W;
-      const startY = 0.02 * H + ry * 0.12 * H;
-      const travel = 42 + rx * 26;
-      const hx = startX + Math.cos(0.7) * travel * u;
-      const hy = startY + Math.sin(0.7) * travel * u;
-      const tailX = hx - Math.cos(0.7) * 16;
-      const tailY = hy - Math.sin(0.7) * 16;
-      const a = Math.sin(u * Math.PI) * 0.85 * clear; // fade in and out
-      const grad = ctx.createLinearGradient(hx, hy, tailX, tailY);
-      grad.addColorStop(0, `rgba(255, 252, 235, ${a.toFixed(3)})`);
-      grad.addColorStop(1, 'rgba(255, 252, 235, 0)');
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.moveTo(hx, hy);
-      ctx.lineTo(tailX, tailY);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  /**
-   * A phase-accurate moon: earthshine dark disc + a lit region bounded by the
-   * sunlit limb (a semicircle) and the terminator (a half-ellipse whose width
-   * tracks the illuminated fraction). Crescent when <half lit, gibbous when >half.
-   */
-  private drawMoonPhase(
-    ctx: CanvasRenderingContext2D,
-    cx: number,
-    cy: number,
-    r: number,
-    f: number,
-    waxing: boolean,
-    clear: number,
-  ): void {
-    ctx.save();
-    const halo = ctx.createRadialGradient(cx, cy, r * 0.6, cx, cy, r * 3.4);
-    halo.addColorStop(0, `rgba(222, 230, 255, ${(clear * (0.1 + 0.16 * f)).toFixed(3)})`);
-    halo.addColorStop(1, 'rgba(222, 230, 255, 0)');
-    ctx.fillStyle = halo;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r * 3.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = clear;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(74, 82, 116, 0.5)'; // earthshine so a new moon isn't a hole
-    ctx.fill();
-    // Lit region drawn in a canonical orientation (lit on the LEFT), then
-    // mirrored for a waxing moon so it's lit on the right (northern convention).
-    ctx.save();
-    ctx.translate(cx, cy);
-    if (waxing) ctx.scale(-1, 1);
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.beginPath();
-    ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, false); // sunlit limb (a semicircle)
-    const tw = r * (2 * f - 1); // >0 gibbous (bulges out), <0 crescent (curves in)
-    ctx.ellipse(0, 0, Math.abs(tw), r, 0, Math.PI / 2, -Math.PI / 2, tw >= 0); // terminator
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(236, 240, 252, 0.97)';
-    ctx.fill();
-    ctx.restore();
     ctx.restore();
   }
 
@@ -1282,7 +1147,7 @@ export class MapView {
     // celestial disc only run for the procedural fallback (no plate). Otherwise
     // a stray white disc floated over the sea and a rectangular sky-glow washed
     // the top of the map.
-    if (night && plate) this.drawCelestial(ctx, W, H, t, mood);
+    if (night && plate) this.drawStarfield(ctx, W, H, t, mood);
     if (night && !plate) {
       const twinkle = 1 - mood.cloudCover * 0.7;
       for (let i = 0; i < 42; i++) {
@@ -1931,43 +1796,10 @@ export class MapView {
       }
     }
 
-    // --- a gathering hearth-fire warms the town square once the plaza returns ---
-    if (delivered >= 6) {
-      const fx = W * 0.46;
-      const fy = H * 0.715;
-      // the gathering fire grows as Emberhollow heals: a spark, then a hearth, then a bonfire
-      const fireArt = delivered >= 16 ? 'fx_flame_large' : delivered >= 10 ? 'fx_flame_medium' : 'fx_flame_small';
-      const fw = W * (delivered >= 16 ? 0.084 : delivered >= 10 ? 0.07 : 0.056);
-      // warm, flattened ground glow pooling under the fire
-      const flicker = this.reduce ? 1 : 0.85 + 0.15 * Math.sin(t / 110);
-      const glow = ctx.createRadialGradient(fx, fy, 2, fx, fy, fw * 1.6);
-      glow.addColorStop(0, `rgba(255, 178, 92, ${0.5 * flicker})`);
-      glow.addColorStop(1, 'rgba(255, 168, 80, 0)');
-      ctx.save();
-      ctx.translate(fx, fy);
-      ctx.scale(1, 0.4);
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(0, 0, fw * 1.6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-      this.drawFlame(ctx, fireArt, fx, fy, fw, t);
-    }
-
-    // --- the forge burns once the blacksmith is raised (a working fire, day + night) ---
-    if (delivered >= 21) {
-      const gx = W * 0.45; // tracks the blacksmith's map position (town-layout)
-      const gy = H * 0.86;
-      const fl = this.reduce ? 1 : 0.78 + 0.22 * Math.abs(Math.sin(t / 95));
-      const r = W * 0.052;
-      const fg = ctx.createRadialGradient(gx, gy, 1, gx, gy, r);
-      fg.addColorStop(0, `rgba(255, 150, 60, ${0.55 * fl})`);
-      fg.addColorStop(1, 'rgba(255, 128, 48, 0)');
-      ctx.fillStyle = fg;
-      ctx.beginPath();
-      ctx.arc(gx, gy, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // The town-square gathering fire and the free-standing forge glow were
+    // retired in the environment pass (they floated as hardcoded flames unmoored
+    // from any building). The forge's warmth still reads through the blacksmith's
+    // window glow and chimney smoke; the lighthouse beacon below keeps its flame.
 
     // --- the painted lighthouse keeps its watch from the eastern rock point ---
     {
