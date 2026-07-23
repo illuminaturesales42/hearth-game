@@ -1761,11 +1761,11 @@ export class MapView {
     const castLow = castSun?.lowness ?? 0.5;
     const sunUp = tod.weights.day + tod.weights.dawn + tod.weights.dusk;
     const castAlpha = Math.min(
-      0.36,
-      (0.18 + 0.18 * castLow) * sunUp * (1 - mood.cloudCover * 0.7) +
-        0.07 * illumination(Date.now()) * tod.weights.night,
+      0.5,
+      (0.26 + 0.24 * castLow) * sunUp * (1 - mood.cloudCover * 0.7) +
+        0.08 * illumination(Date.now()) * tod.weights.night,
     );
-    const castShear = (castSun ? castSun.dx : -0.5) * (0.4 + castLow * 1.25);
+    const castShear = (castSun ? castSun.dx : -0.5) * (0.45 + castLow * 1.5);
     const castSquash = 0.26 + castLow * 0.12;
     const pieces: ScenePiece[] = [
       ...TOWN_TERRAIN.filter((t) => !FLAT.has(t.art) && delivered >= t.unlockAt),
@@ -2691,6 +2691,17 @@ export class MapView {
    * when we have no location — callers then fall back to the authored directions.
    */
   private sunKey(): { dx: number; dy: number; lowness: number } | null {
+    // Inspection override (hearthSky): drive a synthetic sun for the forced
+    // phase so the directional light AND the cast shadows swing with it — a low
+    // eastern sun at dawn, high overhead at noon, low western at dusk. Otherwise
+    // a forced dusk would show amber colour with the real clock's noon shadows.
+    const forced = getPhaseOverride();
+    if (forced) {
+      if (forced === 'sunrise') return { dx: 0.94, dy: 0.18, lowness: 0.9 }; // low, east
+      if (forced === 'midday') return { dx: 0.12, dy: 0.62, lowness: 0.08 }; // high, short shadows
+      if (forced === 'sunset') return { dx: -0.94, dy: 0.18, lowness: 0.9 }; // low, west
+      return { dx: -0.5, dy: 0.3, lowness: 0.55 }; // night — sun down; shadows fade via castAlpha
+    }
     const coords = latestCoords();
     if (!coords) return null;
     const { azimuth, altitude } = sunPosition(Date.now(), coords);

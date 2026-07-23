@@ -367,7 +367,7 @@ if (testerMode) {
     document.querySelector<HTMLButtonElement>('.nav-btn[data-screen="home"]')?.click();
     console.info(
       pick
-        ? `Sky forced to ${mode?.toUpperCase()} (cast-shadow direction stays honest to your real sun). hearthSky('real') to return.`
+        ? `Sky forced to ${mode?.toUpperCase()} — light, shadows and colour all swing to it. hearthSky('real') to return.`
         : 'Sky following your real sun again.',
     );
   };
