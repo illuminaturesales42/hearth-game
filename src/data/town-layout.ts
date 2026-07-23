@@ -93,21 +93,27 @@ export const TOWN_BUILDINGS_V1: readonly TownPiece[] = [
  * down the west and south lanes; beach open along the south.
  */
 export const TOWN_BUILDINGS_V2: readonly TownPiece[] = [
-  { art: 'prop_sign', x: 0.56, y: 0.5, w: 0.042, unlockAt: 1 },
-  { art: 'town_cottage', x: 0.3, y: 0.3, w: 0.13, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
-  { art: 'town_bakery', x: 0.245, y: 0.42, w: 0.125, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
-  { art: 'prop_well', x: 0.6, y: 0.44, w: 0.08, unlockAt: 6 },
-  { art: 'town_market', x: 0.85, y: 0.36, w: 0.115, unlockAt: 8, ruinVariant: 7 },
-  { art: 'town_garden', x: 0.725, y: 0.305, w: 0.135, unlockAt: 10, ruinVariant: 4 },
-  { art: 'town_townhall', x: 0.63, y: 0.19, w: 0.14, unlockAt: 12, ruinVariant: 3 },
-  { art: 'town_workshop', x: 0.3, y: 0.67, w: 0.125, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
-  { art: 'town_farm', x: 0.21, y: 0.22, w: 0.135, unlockAt: 16, ruinVariant: 5 },
-  { art: 'town_fisherhut', x: 0.47, y: 0.66, w: 0.125, unlockAt: 18, ruinVariant: 6 },
-  { art: 'town_sawmill', x: 0.75, y: 0.14, w: 0.13, unlockAt: 20, ruinVariant: 1 },
-  { art: 'town_blacksmith', x: 0.235, y: 0.55, w: 0.125, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
+  // Seated on the painted island's grassy clearings, ringing the central
+  // landmarks the plate already carries (stone monument ~0.58/0.62, obelisk
+  // ~0.42/0.57, painted well ~0.76/0.79) and clear of the north pine forest,
+  // the south beach, and the water margins. Pixel-tuned against the real
+  // midday plate via tools/compose_map_mock.py --layout v2.
+  { art: 'prop_sign', x: 0.52, y: 0.45, w: 0.042, unlockAt: 1 },
+  { art: 'town_cottage', x: 0.44, y: 0.44, w: 0.13, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
+  { art: 'town_bakery', x: 0.29, y: 0.45, w: 0.125, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
+  { art: 'prop_well', x: 0.6, y: 0.49, w: 0.08, unlockAt: 6 },
+  { art: 'town_market', x: 0.73, y: 0.47, w: 0.115, unlockAt: 8, ruinVariant: 7 },
+  { art: 'town_garden', x: 0.72, y: 0.34, w: 0.135, unlockAt: 10, ruinVariant: 4 },
+  { art: 'town_townhall', x: 0.52, y: 0.31, w: 0.14, unlockAt: 12, ruinVariant: 3 },
+  { art: 'town_workshop', x: 0.44, y: 0.72, w: 0.125, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
+  { art: 'town_farm', x: 0.62, y: 0.72, w: 0.135, unlockAt: 16, ruinVariant: 5 },
+  // Joss's hut sits on the south shore, its stilt-deck out over the shallows
+  { art: 'town_fisherhut', x: 0.55, y: 0.82, w: 0.125, unlockAt: 18, ruinVariant: 6, water: true },
+  { art: 'town_sawmill', x: 0.33, y: 0.33, w: 0.13, unlockAt: 20, ruinVariant: 1 },
+  { art: 'town_blacksmith', x: 0.27, y: 0.58, w: 0.125, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
   // the jetty runs from the SE shore out into the bay
-  { art: 'town_dock', x: 0.65, y: 0.73, w: 0.13, unlockAt: 22, ruinVariant: 5, water: true },
-  { art: 'town_library', x: 0.39, y: 0.55, w: 0.13, unlockAt: 23, ruinVariant: 3 },
+  { art: 'town_dock', x: 0.82, y: 0.66, w: 0.13, unlockAt: 22, ruinVariant: 5, water: true },
+  { art: 'town_library', x: 0.3, y: 0.7, w: 0.13, unlockAt: 23, ruinVariant: 3 },
 ] as const;
 
 /** The ACTIVE world (all consumers read this; the gate picks per the art). */
@@ -184,11 +190,12 @@ export const TOWN_BOATS_V1: readonly BoatPiece[] = [
   { art: 'boat_fishing_s', x: 0.68, y: 0.965, w: 0.12, stage: 3 },
   { art: 'boat_sail_s', x: 0.08, y: 0.96, w: 0.1, stage: 4 },
 ] as const;
-/** V2: the bay is SE (off the jetty) with open sea west — ⚑ staged. */
+/** V2: open sea wraps the island — a rowboat by the SE jetty, a fisher off the
+ * SE point, a sail on the western water. All sit in real sea (see inWaterV2). */
 export const TOWN_BOATS_V2: readonly BoatPiece[] = [
-  { art: 'boat_row', x: 0.73, y: 0.79, w: 0.085, stage: 2 },
-  { art: 'boat_fishing_s', x: 0.55, y: 0.86, w: 0.11, stage: 3 },
-  { art: 'boat_sail_s', x: 0.08, y: 0.85, w: 0.1, stage: 4 },
+  { art: 'boat_row', x: 0.9, y: 0.72, w: 0.085, stage: 2 },
+  { art: 'boat_fishing_s', x: 0.88, y: 0.82, w: 0.11, stage: 3 },
+  { art: 'boat_sail_s', x: 0.07, y: 0.8, w: 0.1, stage: 4 },
 ] as const;
 export const TOWN_BOATS: readonly BoatPiece[] = MAP_V2 ? TOWN_BOATS_V2 : TOWN_BOATS_V1;
 
@@ -343,7 +350,7 @@ export function anchorOf(art: string): { x: number; y: number; w: number } | nul
  */
 
 /** The civic plaza — the well/market heart, for the night hearth-lift + glow. */
-export const PLAZA = MAP_V2 ? ({ x: 0.58, y: 0.45 } as const) : ({ x: 0.5, y: 0.52 } as const);
+export const PLAZA = MAP_V2 ? ({ x: 0.55, y: 0.55 } as const) : ({ x: 0.5, y: 0.52 } as const);
 
 /** The painted-in lighthouse (4-state ladder): V1 east point / V2 NE headland. */
 export const LIGHTHOUSE_ANCHOR = MAP_V2
