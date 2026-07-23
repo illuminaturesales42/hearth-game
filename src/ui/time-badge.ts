@@ -1,53 +1,72 @@
 /**
- * The corner time-of-day badge on the Home map. A painted framed vignette
- * (sunrise / midday / sunset / night) that reflects the real clock and refreshes
- * itself as the hours turn — the same phase that drives the map's own lighting
- * (see core/time-of-day + map-view), so the badge and the scene stay in step.
+ * The corner time-of-day badge on the Home map. Four painted framed vignettes
+ * (sunrise / midday / sunset / night) stacked as layers, their opacities driven
+ * by the SAME continuous phase weights that grade the map — so the medallion
+ * blends smoothly through the day (dawn melting into midday into dusk into
+ * night) instead of snapping, and always matches the scene's light.
  *
- * Art-gated: until the badge art is sliced, artUrl() returns null and the badge
- * simply stays hidden — the map is unaffected.
+ * Art-gated: any layer whose art isn't sliced stays absent; if none resolve the
+ * badge hides. The blend follows a hearthSky() override instantly.
  */
-import { phaseForTime, PHASE_META, type TimeOfDay } from '../core/time-of-day';
+import { phaseForTime, PHASE_META, type PhaseWeights, type TimeOfDay } from '../core/time-of-day';
 import { latestSunTimes } from './weather';
 import { artUrl } from './art';
 
-let current: TimeOfDay | null = null;
 let timer: number | undefined;
+// weight key → phase art, in draw order
+const LAYERS: { key: keyof PhaseWeights; phase: TimeOfDay }[] = [
+  { key: 'night', phase: 'night' },
+  { key: 'day', phase: 'midday' },
+  { key: 'dawn', phase: 'sunrise' },
+  { key: 'dusk', phase: 'sunset' },
+];
+let built = false;
+
+function build(badge: HTMLElement): boolean {
+  let any = false;
+  for (const { phase } of LAYERS) {
+    const url = artUrl(PHASE_META[phase].art);
+    const layer = document.createElement('div');
+    layer.className = 'time-badge__layer';
+    layer.dataset.phase = phase;
+    if (url) {
+      layer.style.backgroundImage = `url(${url})`;
+      any = true;
+    }
+    layer.style.opacity = '0';
+    badge.appendChild(layer);
+  }
+  return any;
+}
 
 function paint(): void {
   const badge = document.getElementById('time-badge');
   if (!badge) return;
-  // Same real solar clock (sunrise/sunset) the map's lighting reads, so the
-  // badge and the whole scene always show the same time of day.
-  const p = PHASE_META[phaseForTime(Date.now(), latestSunTimes()).phase];
-  if (p.phase === current) return; // only touch the DOM when the phase actually turns
-  const url = artUrl(p.art);
-  if (!url) {
-    badge.hidden = true;
-    return;
+  if (!built) {
+    if (!build(badge)) {
+      badge.hidden = true; // no badge art at all
+      return;
+    }
+    built = true;
   }
-  current = p.phase;
-  badge.style.backgroundImage = `url(${url})`;
-  badge.setAttribute('aria-label', `Time of day: ${p.label}`);
-  badge.title = p.label;
+  const { phase, weights } = phaseForTime(Date.now(), latestSunTimes());
   badge.hidden = false;
-  // a gentle cross-fade as the light turns
-  badge.classList.remove('turn');
-  void badge.offsetWidth;
-  badge.classList.add('turn');
+  for (const el of Array.from(badge.children) as HTMLElement[]) {
+    const layer = LAYERS.find((l) => l.phase === el.dataset.phase);
+    if (layer) el.style.opacity = weights[layer.key].toFixed(3);
+  }
+  badge.setAttribute('aria-label', `Time of day: ${PHASE_META[phase].label}`);
+  badge.title = PHASE_META[phase].label;
 }
 
-/** Start the badge: paint now, then re-check every minute (cheap; only redraws
- *  on an actual phase change) and whenever the app returns to the foreground. */
+/** Start the badge: paint now, then re-check every minute (cheap) and on the
+ *  same sky events as the map + UI theme, so the blend stays in step. */
 export function initTimeBadge(): void {
   paint();
   if (timer === undefined) timer = window.setInterval(paint, 60_000);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) paint();
   });
-  // The first paint may predate the weather fetch (clock-band fallback); repaint
-  // the moment real sun times land or the player changes town, so the medallion
-  // snaps to the true solar phase instead of waiting out the minute timer.
   document.addEventListener('hearth:sky-updated', paint);
   document.addEventListener('hearth:location-changed', paint);
 }
