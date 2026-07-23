@@ -104,22 +104,25 @@ export const TOWN_BUILDINGS_V2: readonly TownPiece[] = [
   // Sawmill+Farm across the north ridge, Lighthouse alone on its NE islet;
   // the Garden dome and Well run the centre spine; Fisher Hut + Dock sit on the
   // east/SE water; the south beach and north forest stay clear.
-  { art: 'prop_sign', x: 0.56, y: 0.52, w: 0.042, unlockAt: 1 },
-  { art: 'town_cottage', x: 0.31, y: 0.46, w: 0.13, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
-  { art: 'town_bakery', x: 0.64, y: 0.37, w: 0.125, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
-  { art: 'prop_well', x: 0.61, y: 0.47, w: 0.08, unlockAt: 6 },
-  { art: 'town_market', x: 0.66, y: 0.59, w: 0.115, unlockAt: 8, ruinVariant: 7 },
-  { art: 'town_garden', x: 0.52, y: 0.34, w: 0.135, unlockAt: 10, ruinVariant: 4 },
-  { art: 'town_townhall', x: 0.35, y: 0.34, w: 0.14, unlockAt: 12, ruinVariant: 3 },
-  { art: 'town_workshop', x: 0.52, y: 0.58, w: 0.125, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
-  { art: 'town_farm', x: 0.65, y: 0.25, w: 0.135, unlockAt: 16, ruinVariant: 5 },
+  // y is the sprite's GROUND CONTACT (bottom-center) — the engine draws
+  // drawImage(img, x*W - w/2, y*H - h) — so each y sits the building's base on
+  // its plot rather than floating the whole sprite above it.
+  { art: 'prop_sign', x: 0.56, y: 0.552, w: 0.042, unlockAt: 1 },
+  { art: 'town_cottage', x: 0.31, y: 0.511, w: 0.13, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
+  { art: 'town_bakery', x: 0.64, y: 0.421, w: 0.125, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
+  { art: 'prop_well', x: 0.61, y: 0.508, w: 0.08, unlockAt: 6 },
+  { art: 'town_market', x: 0.66, y: 0.638, w: 0.115, unlockAt: 8, ruinVariant: 7 },
+  { art: 'town_garden', x: 0.52, y: 0.394, w: 0.135, unlockAt: 10, ruinVariant: 4 },
+  { art: 'town_townhall', x: 0.35, y: 0.407, w: 0.14, unlockAt: 12, ruinVariant: 3 },
+  { art: 'town_workshop', x: 0.52, y: 0.628, w: 0.125, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
+  { art: 'town_farm', x: 0.65, y: 0.305, w: 0.135, unlockAt: 16, ruinVariant: 5 },
   // Joss's hut sits on the east shore, its stilt-deck out over the water
-  { art: 'town_fisherhut', x: 0.85, y: 0.48, w: 0.125, unlockAt: 18, ruinVariant: 6, water: true },
-  { art: 'town_sawmill', x: 0.47, y: 0.24, w: 0.13, unlockAt: 20, ruinVariant: 1 },
-  { art: 'town_blacksmith', x: 0.47, y: 0.47, w: 0.125, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
+  { art: 'town_fisherhut', x: 0.85, y: 0.535, w: 0.125, unlockAt: 18, ruinVariant: 6, water: true },
+  { art: 'town_sawmill', x: 0.47, y: 0.291, w: 0.13, unlockAt: 20, ruinVariant: 1 },
+  { art: 'town_blacksmith', x: 0.47, y: 0.525, w: 0.125, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
   // the jetty runs from the SE point out into the bay
-  { art: 'town_dock', x: 0.8, y: 0.64, w: 0.13, unlockAt: 22, ruinVariant: 5, water: true },
-  { art: 'town_library', x: 0.31, y: 0.57, w: 0.13, unlockAt: 23, ruinVariant: 3 },
+  { art: 'town_dock', x: 0.8, y: 0.697, w: 0.13, unlockAt: 22, ruinVariant: 5, water: true },
+  { art: 'town_library', x: 0.31, y: 0.627, w: 0.13, unlockAt: 23, ruinVariant: 3 },
 ] as const;
 
 /** The ACTIVE world (all consumers read this; the gate picks per the art). */

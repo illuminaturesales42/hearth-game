@@ -59,9 +59,13 @@ def _first(*cands):
 
 
 PLATE_SHEET = _first(
+    # the buffered blank (island with full water margin, matches the placement
+    # reference framing) is preferred over the tighter labelled "Final" sheet;
+    # the user's high-res Maps/ exports supersede both when present.
+    SRC / "Map" / "Maps" / "Midday.png",  # (future: individual high-res exports)
+    SRC / "Map" / "Tests" / "Map times of dayBlank.png",
     SRC / "Map times of dayFinal.png",
     SRC / "Map" / "Map times of dayFinal.png",
-    SRC / "Map" / "MaptimesofdayFinal.png",
 )
 BUILDINGS_DIR = _first(
     SRC / "buildings",
