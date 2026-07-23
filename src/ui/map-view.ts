@@ -33,7 +33,7 @@ import type { WeatherNow, WorldMood } from '../core/world-mood';
 import { stemLevels, type StemLevels } from '../core/stem-levels';
 import { illumination, phaseName } from '../data/moon';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
-import { phaseForTime, type PhaseWeights, type SunTimes } from '../core/time-of-day';
+import { getPhaseOverride, phaseForTime, type PhaseWeights, type SunTimes } from '../core/time-of-day';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
 import {
   currentWeather,
@@ -1319,7 +1319,15 @@ export class MapView {
     }
     // sun or moon — real solar night: dark when it's actually dark where the
     // player is (Open-Meteo is_day, else our solar-time model, else the clock).
-    const night = this.weather?.isDay === false ? true : this.weather?.isDay === true ? false : tod.weights.night > 0.5;
+    // A hearthSky() inspection override outranks the real is_day flag, or a
+    // forced night would fight the live weather reading.
+    const night = getPhaseOverride()
+      ? tod.weights.night > 0.5
+      : this.weather?.isDay === false
+        ? true
+        : this.weather?.isDay === true
+          ? false
+          : tod.weights.night > 0.5;
     // The painted plate is a top-down island with NO sky, and the corner
     // time-of-day badge now shows the sun/moon — so the star field and the
     // celestial disc only run for the procedural fallback (no plate). Otherwise

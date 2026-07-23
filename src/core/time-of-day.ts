@@ -56,6 +56,22 @@ export interface PhaseWeights {
 const DAY_MS = 86_400_000;
 const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x);
 
+/**
+ * Visual-inspection override (the `hearthSky()` console helper): forces
+ * phaseForTime — and therefore every consumer (map grading, sea, medallion,
+ * stems, night ambience) — into one phase. Session-only module state; never
+ * persisted, so a reload always returns to the real solar clock.
+ */
+let phaseOverride: TimeOfDay | null = null;
+
+export function setPhaseOverride(p: TimeOfDay | null): void {
+  phaseOverride = p;
+}
+
+export function getPhaseOverride(): TimeOfDay | null {
+  return phaseOverride;
+}
+
 function oneHot(p: TimeOfDay): PhaseWeights {
   return {
     dawn: p === 'sunrise' ? 1 : 0,
@@ -83,6 +99,8 @@ function dominant(w: PhaseWeights): TimeOfDay {
  * Falls back to the fixed clock bands when sun times are unknown (no location).
  */
 export function phaseForTime(nowMs: number, sun: SunTimes | null): { phase: TimeOfDay; weights: PhaseWeights } {
+  // Forced phase (visual inspection via hearthSky()) short-circuits the model.
+  if (phaseOverride) return { phase: phaseOverride, weights: oneHot(phaseOverride) };
   // A (yesterday's-sunset, today's-sunrise) pair arrives inverted — that's still
   // a meaningful "we are inside this night" signal, so model it rather than
   // falling back to clock bands.

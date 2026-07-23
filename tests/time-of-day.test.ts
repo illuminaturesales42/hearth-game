@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { phaseForHour, phaseForTime, type SunTimes } from '../src/core/time-of-day';
+import { afterEach, describe, expect, it } from 'vitest';
+import { getPhaseOverride, phaseForHour, phaseForTime, setPhaseOverride, type SunTimes } from '../src/core/time-of-day';
 
 const H = 3_600_000;
 
@@ -72,6 +72,27 @@ describe('phaseForTime — real solar time of day', () => {
     expect(phase).toBe('night');
     expect(weights.night).toBeGreaterThan(0.8);
     expect(weights.day).toBe(0);
+  });
+});
+
+describe('setPhaseOverride — the hearthSky() inspection override', () => {
+  afterEach(() => setPhaseOverride(null));
+
+  it('forces every consumer into the chosen phase with one-hot weights', () => {
+    setPhaseOverride('night');
+    const atNoon = phaseForTime(T + 7 * H, sun); // real solar noon — overridden anyway
+    expect(atNoon.phase).toBe('night');
+    expect(atNoon.weights).toEqual({ dawn: 0, day: 0, dusk: 0, night: 1 });
+    expect(getPhaseOverride()).toBe('night');
+  });
+
+  it('clearing the override returns to the real solar model', () => {
+    setPhaseOverride('sunset');
+    expect(phaseForTime(T + 7 * H, sun).phase).toBe('sunset');
+    expect(phaseForTime(T + 7 * H, sun).weights.dusk).toBe(1);
+    setPhaseOverride(null);
+    expect(phaseForTime(T + 7 * H, sun).phase).toBe('midday');
+    expect(getPhaseOverride()).toBeNull();
   });
 });
 

@@ -1,5 +1,6 @@
 import { Game } from './core/game';
 import { clearSave } from './core/save';
+import { setPhaseOverride } from './core/time-of-day';
 import { stageFor } from './data/economy';
 import { feedback } from './ui/feedback';
 import { toast } from './ui/toast';
@@ -278,6 +279,7 @@ declare global {
     hearthSeeTown: (orders?: number) => void;
     hearthTestGames: () => void;
     hearthMood: () => unknown;
+    hearthSky: (mode?: string) => void;
   }
 }
 // Tester hooks (hearthSeeTown, hearthReset, …). Always on in dev; in the
@@ -338,6 +340,36 @@ if (testerMode) {
     game.devUnlockMinigames();
     document.querySelector<HTMLButtonElement>('.nav-btn[data-screen="home"]')?.click();
     console.info('Village Life ready — tap the well, lighthouse, blacksmith, fisher hut, garden, or library.');
+  };
+  // Force any time-of-day look for visual inspection: hearthSky('night').
+  // hearthSky('real') (or no argument) returns to the real solar clock; a
+  // reload always returns to real. Weather is inspected separately via
+  // Settings → "Pick your sky" — the two combine.
+  window.hearthSky = (mode?: string) => {
+    const phases = ['dawn', 'midday', 'dusk', 'night'] as const;
+    const named: Record<string, 'sunrise' | 'midday' | 'sunset' | 'night'> = {
+      dawn: 'sunrise',
+      sunrise: 'sunrise',
+      midday: 'midday',
+      day: 'midday',
+      noon: 'midday',
+      dusk: 'sunset',
+      sunset: 'sunset',
+      night: 'night',
+    };
+    const pick = mode ? named[mode.toLowerCase()] : undefined;
+    if (mode && mode !== 'real' && !pick) {
+      console.info(`hearthSky: unknown mode '${mode}'. Use: ${phases.join(' / ')} — or 'real' to follow your sun.`);
+      return;
+    }
+    setPhaseOverride(pick ?? null);
+    document.dispatchEvent(new CustomEvent('hearth:sky-updated'));
+    document.querySelector<HTMLButtonElement>('.nav-btn[data-screen="home"]')?.click();
+    console.info(
+      pick
+        ? `Sky forced to ${mode?.toUpperCase()} (cast-shadow direction stays honest to your real sun). hearthSky('real') to return.`
+        : 'Sky following your real sun again.',
+    );
   };
   window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {
     const snap: HealthSnapshot = {
