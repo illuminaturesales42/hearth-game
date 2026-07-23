@@ -275,6 +275,12 @@ export function latestSouthern(): boolean {
   return readJson<WeatherNow>(WEATHER_KEY)?.southern === true;
 }
 
+/** The last cached weather reading (for the environment controller's cloud
+ *  flattening), or null before any reading has landed. */
+export function latestWeather(): WeatherNow | null {
+  return readJson<WeatherNow>(WEATHER_KEY);
+}
+
 /** The cached coordinates, if the player has shared or set a location. Synchronous
  *  read for callers (map lighting) that need the sun's real azimuth each frame. */
 export function latestCoords(): { lat: number; lng: number } | null {

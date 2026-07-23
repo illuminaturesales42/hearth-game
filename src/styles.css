@@ -38,6 +38,19 @@
   --ink: #3a2817;
   --good: #7fbf6a;
   --danger: #e0885f;
+  /* --env-*: the live time-of-day theme (set by ui/environment-controller).
+     Defaults here EXACTLY match the static values, so with no JS (or in tests,
+     or before the first tick) the UI looks identical. Decorative surfaces only —
+     never text, semantic, currency or focus colours. */
+  --env-bg-0: var(--navy-0);
+  --env-bg-1: var(--navy-1);
+  --env-panel: var(--panel);
+  --env-panel-2: var(--panel-2);
+  --env-btn-hi: #ffd884;
+  --env-ember-hi: var(--ember-hi);
+  --env-frame: rgba(240, 200, 120, 0.55);
+  --env-pill-glow: rgba(244, 166, 59, 0);
+  --env-nav-active: var(--ember);
   --r-panel: 18px;
   --r-card: 14px;
   --r-cell: 12px;
