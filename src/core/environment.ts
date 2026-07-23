@@ -48,6 +48,8 @@ const STOPS: Record<keyof PhaseWeights, Stop> = {
   dawn: { light: [255, 210, 170], ambient: [106, 123, 160], warmth: 0.7 },
   day: { light: [255, 244, 214], ambient: [124, 148, 166], warmth: 0.55 },
   dusk: { light: [242, 160, 82], ambient: [115, 90, 114], warmth: 1 },
+  // deep twilight: the dusk ember cooling toward navy (storyboard's post-sunset frames)
+  evening: { light: [205, 138, 104], ambient: [66, 66, 102], warmth: 0.6 },
   night: { light: [143, 164, 200], ambient: [38, 49, 79], warmth: 0.15 },
 };
 
@@ -59,11 +61,12 @@ function clamp01(v: number): number {
 
 /** Blend the four phase stops' channel by the (normalized) weights. */
 function blendChannel(weights: PhaseWeights, pick: (s: Stop) => number): number {
-  const total = weights.dawn + weights.day + weights.dusk + weights.night || 1;
+  const total = weights.dawn + weights.day + weights.dusk + weights.evening + weights.night || 1;
   return (
     (pick(STOPS.dawn) * weights.dawn +
       pick(STOPS.day) * weights.day +
       pick(STOPS.dusk) * weights.dusk +
+      pick(STOPS.evening) * weights.evening +
       pick(STOPS.night) * weights.night) /
     total
   );

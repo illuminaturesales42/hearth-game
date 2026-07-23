@@ -42,6 +42,18 @@ describe('phaseForTime — real solar time of day', () => {
     expect(dawn1.dawn).toBeLessThan(dawn0.dawn); // dawn wash receding
   });
 
+  it('evening bridges dusk and night — deep twilight after the glow fades', () => {
+    // ~1.1h into a 10h night: past the dusk golden band, before true night
+    const { phase, weights } = phaseForTime(T + 14 * H + 1.1 * H, sun);
+    expect(phase).toBe('evening');
+    expect(weights.evening).toBeGreaterThan(weights.dusk);
+    expect(weights.evening).toBeGreaterThan(weights.night);
+  });
+
+  it('evening never fires on the rising side (morning has no twilight beat)', () => {
+    expect(phaseForTime(T + 0.5 * H, sun).weights.evening).toBe(0);
+  });
+
   it('night falls at the real sunset, not a fixed clock hour', () => {
     // A far-northern winter day: sunset at ~15:30 local. At 16:00 it is night,
     // which a fixed "night = hour>=21" band would get wrong.
@@ -56,7 +68,7 @@ describe('phaseForTime — real solar time of day', () => {
     expect(phaseForTime(noon, null).phase).toBe('midday');
     expect(phaseForTime(midnight, null).phase).toBe('night');
     // fallback weights are one-hot (no blend without a solar model)
-    expect(phaseForTime(noon, null).weights).toEqual({ dawn: 0, day: 1, dusk: 0, night: 0 });
+    expect(phaseForTime(noon, null).weights).toEqual({ dawn: 0, day: 1, dusk: 0, evening: 0, night: 0 });
   });
 
   it('rejects a malformed sun window (sunset not after sunrise) and falls back', () => {
@@ -82,7 +94,7 @@ describe('setPhaseOverride — the hearthSky() inspection override', () => {
     setPhaseOverride('night');
     const atNoon = phaseForTime(T + 7 * H, sun); // real solar noon — overridden anyway
     expect(atNoon.phase).toBe('night');
-    expect(atNoon.weights).toEqual({ dawn: 0, day: 0, dusk: 0, night: 1 });
+    expect(atNoon.weights).toEqual({ dawn: 0, day: 0, dusk: 0, evening: 0, night: 1 });
     expect(getPhaseOverride()).toBe('night');
   });
 
@@ -97,10 +109,11 @@ describe('setPhaseOverride — the hearthSky() inspection override', () => {
 });
 
 describe('phaseForHour — legacy fallback bands', () => {
-  it('maps hours to the four phases', () => {
+  it('maps hours to the five phases', () => {
     expect(phaseForHour(7).phase).toBe('sunrise');
     expect(phaseForHour(13).phase).toBe('midday');
-    expect(phaseForHour(19).phase).toBe('sunset');
+    expect(phaseForHour(18).phase).toBe('sunset');
+    expect(phaseForHour(19).phase).toBe('evening');
     expect(phaseForHour(23).phase).toBe('night');
     expect(phaseForHour(3).phase).toBe('night');
   });

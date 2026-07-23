@@ -349,8 +349,8 @@ if (testerMode) {
   // reload always returns to real. Weather is inspected separately via
   // Settings → "Pick your sky" — the two combine.
   window.hearthSky = (mode?: string) => {
-    const phases = ['dawn', 'midday', 'dusk', 'night'] as const;
-    const named: Record<string, 'sunrise' | 'midday' | 'sunset' | 'night'> = {
+    const phases = ['dawn', 'midday', 'dusk', 'evening', 'night'] as const;
+    const named: Record<string, 'sunrise' | 'midday' | 'sunset' | 'evening' | 'night'> = {
       dawn: 'sunrise',
       sunrise: 'sunrise',
       midday: 'midday',
@@ -358,6 +358,8 @@ if (testerMode) {
       noon: 'midday',
       dusk: 'sunset',
       sunset: 'sunset',
+      evening: 'evening',
+      twilight: 'evening',
       night: 'night',
     };
     const pick = mode ? named[mode.toLowerCase()] : undefined;

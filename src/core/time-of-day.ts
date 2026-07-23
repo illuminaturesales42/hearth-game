@@ -1,10 +1,11 @@
 /**
- * The day's four phases, keyed off the real clock. This is the single source of
+ * The day's five phases, keyed off the real clock. This is the single source of
  * truth for "what time of day is it" — the Home map's sky/lighting (map-view)
  * and the corner time badge (ui/time-badge) both read it, so the little badge
- * and the whole scene always agree.
+ * and the whole scene always agree. `evening` is the deep-twilight beat between
+ * sunset and true night (its own painted plate; buildings blend dusk→night).
  */
-export type TimeOfDay = 'sunrise' | 'midday' | 'sunset' | 'night';
+export type TimeOfDay = 'sunrise' | 'midday' | 'sunset' | 'evening' | 'night';
 
 export interface TimePhase {
   phase: TimeOfDay;
@@ -19,6 +20,8 @@ export const PHASE_META: Record<TimeOfDay, TimePhase> = {
   sunrise: { phase: 'sunrise', art: 'time_badge_sunrise', label: 'Sunrise' },
   midday: { phase: 'midday', art: 'time_badge_midday', label: 'Midday' },
   sunset: { phase: 'sunset', art: 'time_badge_sunset', label: 'Sunset' },
+  // evening reuses the sunset badge art until a bespoke badge is painted
+  evening: { phase: 'evening', art: 'time_badge_sunset', label: 'Evening' },
   night: { phase: 'night', art: 'time_badge_night', label: 'Night' },
 };
 const PHASES = PHASE_META;
@@ -26,12 +29,13 @@ const PHASES = PHASE_META;
 /**
  * The phase for a given hour (0..23). Fallback thresholds used only when we
  * don't yet know the player's real sun times (morning 5–11, midday 11–17, dusk
- * 17–21, else night).
+ * 17–19, evening 19–21, else night).
  */
 export function phaseForHour(hour: number): TimePhase {
   if (hour >= 5 && hour < 11) return PHASES.sunrise;
   if (hour >= 11 && hour < 17) return PHASES.midday;
-  if (hour >= 17 && hour < 21) return PHASES.sunset;
+  if (hour >= 17 && hour < 19) return PHASES.sunset;
+  if (hour >= 19 && hour < 21) return PHASES.evening;
   return PHASES.night;
 }
 
@@ -50,6 +54,8 @@ export interface PhaseWeights {
   dawn: number;
   day: number;
   dusk: number;
+  /** deep twilight between dusk and true night — its own painted plate */
+  evening: number;
   night: number;
 }
 
@@ -77,14 +83,16 @@ function oneHot(p: TimeOfDay): PhaseWeights {
     dawn: p === 'sunrise' ? 1 : 0,
     day: p === 'midday' ? 1 : 0,
     dusk: p === 'sunset' ? 1 : 0,
+    evening: p === 'evening' ? 1 : 0,
     night: p === 'night' ? 1 : 0,
   };
 }
 
 function dominant(w: PhaseWeights): TimeOfDay {
-  const max = Math.max(w.dawn, w.day, w.dusk, w.night);
+  const max = Math.max(w.dawn, w.day, w.dusk, w.evening, w.night);
   if (max === w.night) return 'night';
   if (max === w.day) return 'midday';
+  if (max === w.evening) return 'evening';
   if (max === w.dusk) return 'sunset';
   return 'sunrise';
 }
@@ -132,6 +140,9 @@ export function phaseForTime(nowMs: number, sun: SunTimes | null): { phase: Time
   const low = clamp01(1 - Math.abs(alt) / 0.4); // golden band: strongest at the horizon
   const dawn = rising ? low : 0;
   const dusk = rising ? 0 : low;
-  const weights: PhaseWeights = { dawn, day, dusk, night };
+  // evening: the deep-twilight bump after sunset (falling sun only), peaking
+  // between the dusk glow and true night — deep amber fading to navy
+  const evening = rising ? 0 : clamp01(1 - Math.abs(alt + 0.3) / 0.18);
+  const weights: PhaseWeights = { dawn, day, dusk, evening, night };
   return { phase: dominant(weights), weights };
 }

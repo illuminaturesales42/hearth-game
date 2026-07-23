@@ -53,7 +53,9 @@ function paint(): void {
   badge.hidden = false;
   for (const el of Array.from(badge.children) as HTMLElement[]) {
     const layer = LAYERS.find((l) => l.phase === el.dataset.phase);
-    if (layer) el.style.opacity = weights[layer.key].toFixed(3);
+    // evening has no bespoke badge art yet — it rides the sunset vignette so
+    // the medallion never goes dark in deep twilight
+    if (layer) el.style.opacity = Math.min(1, weights[layer.key] + (layer.key === 'dusk' ? weights.evening : 0)).toFixed(3);
   }
   badge.setAttribute('aria-label', `Time of day: ${PHASE_META[phase].label}`);
   badge.title = PHASE_META[phase].label;

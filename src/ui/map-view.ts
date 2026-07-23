@@ -1295,6 +1295,7 @@ export class MapView {
       const phasePlates: [keyof PhaseWeights, string][] = [
         ['dawn', 'map_island_plate_dawn'],
         ['dusk', 'map_island_plate_dusk'],
+        ['evening', 'map_island_plate_evening'],
         ['night', 'map_island_plate_night'],
       ];
       for (const [wKey, id] of phasePlates) {
@@ -2110,13 +2111,15 @@ export class MapView {
       // a flourishing keeper's lighthouse once the town is well restored.
       const lit = delivered >= 9; // the beacon story beat
       const artId =
-        delivered >= 20
-          ? 'prop_lighthouse_l2'
-          : delivered >= 9
-            ? 'prop_lighthouse'
-            : delivered === 8
-              ? 'prop_lighthouse_wip'
-              : 'prop_lighthouse_ruin';
+        delivered >= RESTORE_ORDERS
+          ? 'prop_lighthouse_l3'
+          : delivered >= 20
+            ? 'prop_lighthouse_l2'
+            : delivered >= 9
+              ? 'prop_lighthouse'
+              : delivered === 8
+                ? 'prop_lighthouse_wip'
+                : 'prop_lighthouse_ruin';
       const img = this.sprite(artId) ?? this.sprite('prop_lighthouse');
       // Off the east point, standing in the sea clear of the fisher hut — its
       // own rock base sits over open water, not up on the green land plate.
@@ -2129,6 +2132,19 @@ export class MapView {
         const lw = LIGHTHOUSE_ANCHOR.w * W;
         const lh = lw * (img.naturalHeight / img.naturalWidth);
         ctx.drawImage(img, lx - lw / 2, baseY - lh, lw, lh);
+        // the lighthouse lives the same day cycle as the town: painted
+        // _dawn/_dusk/_night variants crossfade over the day sprite (same seam
+        // as the buildings — see the phase-overlay loop in the pieces pass)
+        for (const ph of ['dawn', 'dusk', 'night'] as const) {
+          const wgt = tod.weights[ph];
+          if (wgt <= 0.05) continue;
+          const phased = this.sprite(`${artId}_${ph}`);
+          if (!phased) continue;
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, wgt);
+          ctx.drawImage(phased, lx - lw / 2, baseY - lh, lw, lh);
+          ctx.restore();
+        }
         // Tappable once the beacon is lit — opens The Lighthouse card (Beacon Drop).
         this.hitboxes.push({
           x0: lx - lw / 2,
@@ -2139,7 +2155,7 @@ export class MapView {
           unlockAt: lit ? 9 : -9,
         });
         // the lantern room's height differs per state (measured from the art)
-        const lanternFrac = artId === 'prop_lighthouse_l2' ? 0.81 : 0.88;
+        const lanternFrac = artId === 'prop_lighthouse_l2' || artId === 'prop_lighthouse_l3' ? 0.81 : 0.88;
         const oy = baseY - lh * lanternFrac;
         if (lit) {
           // the beacon fire itself, burning in the lantern room

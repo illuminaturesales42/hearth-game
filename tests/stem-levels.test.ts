@@ -46,8 +46,8 @@ describe('stemLevels — ambience derived from mood + real time of day (additive
   });
 
   it('dawn brings birdsong and night brings crickets — hushed by heavy rain', () => {
-    const dawn = { dawn: 1, day: 0, dusk: 0, night: 0 };
-    const night = { dawn: 0, day: 0, dusk: 0, night: 1 };
+    const dawn = { dawn: 1, day: 0, dusk: 0, evening: 0, night: 0 };
+    const night = { dawn: 0, day: 0, dusk: 0, evening: 0, night: 1 };
     expect(stemLevels(mood({ precip: 0 }), dawn).birds).toBe(1);
     expect(stemLevels(mood({ precip: 0 }), night).crickets).toBe(1);
     expect(stemLevels(mood({ weather: 'rain', precip: 1 }), dawn).birds).toBe(0); // downpour hushes the birds

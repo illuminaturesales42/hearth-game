@@ -119,6 +119,8 @@ PHASES = {
     "dawn": {"land_mul": (216, 220, 244), "land_scr": ((255, 196, 165), "e", 0.30), "sea_mul": (232, 218, 226), "sea_scr": ((255, 178, 145), "e", 0.40)},
     "midday": None,
     "dusk": {"land_mul": (247, 208, 160), "land_scr": ((255, 176, 96), "w", 0.34), "sea_mul": (176, 164, 214), "sea_scr": ((255, 170, 80), "w", 0.5)},
+    # deep twilight between dusk and night — ember cooling toward navy
+    "evening": {"land_mul": (172, 158, 190), "land_scr": ((222, 158, 110), "w", 0.2), "sea_mul": (118, 118, 178), "sea_scr": ((236, 186, 130), "w", 0.3)},
     "night": {"land_mul": (108, 124, 178), "land_scr": ((150, 172, 226), "ne", 0.10), "sea_mul": (74, 92, 150), "sea_scr": ((196, 212, 238), "ne", 0.16)},
 }
 
@@ -129,7 +131,7 @@ def tint_piece(img, phase):
     alpha preserved — a preview approximation of the engine's region grade."""
     from PIL import ImageChops
 
-    col = {"dawn": (226, 202, 214), "dusk": (236, 178, 116), "night": (92, 112, 168)}.get(phase)
+    col = {"dawn": (226, 202, 214), "dusk": (236, 178, 116), "evening": (168, 148, 172), "night": (92, 112, 168)}.get(phase)
     if col is None:
         return img
     r, g, b, a = img.split()
@@ -179,10 +181,10 @@ def grade(canvas, phase, glow_spots):
         layer = Image.new("RGB", (W, H), colour)
         out = ImageChops.screen(out, Image.composite(layer, Image.new("RGB", (W, H), (0, 0, 0)), grad))
     # lit windows: warm dots over each built building at dusk/night
-    if phase in ("dusk", "night"):
+    if phase in ("dusk", "evening", "night"):
         glow = Image.new("RGB", (W, H), (0, 0, 0))
         gd = ImageDraw.Draw(glow)
-        k = 1.0 if phase == "night" else 0.45
+        k = 1.0 if phase == "night" else 0.75 if phase == "evening" else 0.45
         for gx, gy, gw in glow_spots:
             r = max(4, int(gw * 0.22))
             for rr, a in ((r, int(150 * k)), (int(r * 2.2), int(50 * k))):
@@ -206,7 +208,7 @@ def compose(out_path, layout, orders, phase):
     terrain = parse_pieces(block("TOWN_TERRAIN" + suffix))
     boats = parse_pieces(block("TOWN_BOATS" + suffix))
     building_ids = {b["art"] for b in buildings}
-    lighthouse = {"v1": (0.94, 0.59, 0.15), "v2": (0.84, 0.20, 0.13)}[layout]
+    lighthouse = {"v1": (0.94, 0.59, 0.15), "v2": (0.84, 0.335, 0.13)}[layout]
     stage = 0 if orders == 0 else (2 if orders < 24 else 4)
 
     plate = load("map_island_plate")

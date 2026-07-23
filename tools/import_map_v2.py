@@ -80,6 +80,7 @@ PLATE_ID = {
     "midday": "map_island_plate",
     "dawn": "map_island_plate_dawn",
     "dusk": "map_island_plate_dusk",
+    "evening": "map_island_plate_evening",
     "night": "map_island_plate_night",
 }
 
@@ -209,6 +210,64 @@ def key_bg(im: Image.Image) -> Image.Image:
     return out
 
 
+def strip_sea(im: Image.Image) -> Image.Image:
+    """Peel the painted sea (and any teal-water streak) off a sprite that ships
+    with its own water — the lighthouse islet and the fisher-hut's stilt bay both
+    bake sea into the source cell. Only *saturated* blue/teal sea is stripped, and
+    foam only where it directly rides that sea, so light stone, the pale path, and
+    the desaturated blue-grey slate roofs are never eaten. Flooded inward from the
+    sprite border and stopped at the first non-sea pixel, so interior warm windows
+    stay. Dropped onto the plate the sprite then reads as a clean rock/stilt base
+    over the plate's real water."""
+    a = np.asarray(im.convert("RGBA")).astype(np.int16)
+    r, g, b, al = a[:, :, 0], a[:, :, 1], a[:, :, 2], a[:, :, 3]
+    op = al >= 12
+    transp = ~op
+    mx = np.maximum(np.maximum(r, g), b)
+    mn = np.minimum(np.minimum(r, g), b)
+    sat = mx - mn
+    cool = np.maximum(g, b)  # blue OR teal
+    # saturated sea: cool-cast, clearly not grey stone/slate (which is low-sat)
+    sea = op & (cool - r > 24) & (cool > 95) & (sat > 45)
+    foam = op & (mn > 178) & (sat < 26)
+    foam_near = foam & ndimage.binary_dilation(sea, iterations=2)
+    bgish = transp | sea | foam_near
+    lbl, _ = ndimage.label(bgish)
+    border = set(lbl[0, :]) | set(lbl[-1, :]) | set(lbl[:, 0]) | set(lbl[:, -1])
+    border.discard(0)
+    bg = np.isin(lbl, list(border)) if border else np.zeros_like(transp)
+    strip = bg & (sea | foam_near)
+    out = np.asarray(im.convert("RGBA")).copy()
+    out[strip, 3] = 0
+    res = Image.fromarray(out, "RGBA")
+    alpha = res.getchannel("A").filter(ImageFilter.GaussianBlur(0.6))
+    res.putalpha(alpha)
+    return despeckle(res, 0.004)
+
+
+def drop_floaters(im: Image.Image) -> Image.Image:
+    """Drop keyed islands that float entirely ABOVE the main sprite body — stray
+    rock/water fragments bled in from the neighbouring sheet cell (the fisher-hut
+    cell catches a teal-water band off the cell above it). Anything overlapping or
+    below the main body's top edge is scene and kept."""
+    a = np.asarray(im)[:, :, 3] > 24
+    lbl, n = ndimage.label(a)
+    if n <= 1:
+        return im
+    sizes = ndimage.sum(a, lbl, range(1, n + 1))
+    main = int(np.argmax(sizes)) + 1
+    main_top = int(np.where(lbl == main)[0].min())
+    keep = {main}
+    for i in range(1, n + 1):
+        ys = np.where(lbl == i)[0]
+        if ys.size and ys.max() >= main_top:  # not strictly above the body
+            keep.add(i)
+    mask = np.isin(lbl, list(keep))
+    rgba = np.asarray(im).copy()
+    rgba[~mask, 3] = 0
+    return Image.fromarray(rgba, "RGBA")
+
+
 def content_bbox(im: Image.Image, thr: int = 10) -> tuple[int, int, int, int] | None:
     a = np.asarray(im)[:, :, 3]
     ys, xs = np.where(a > thr)
@@ -244,7 +303,31 @@ def patch_plate_label(q: Image.Image) -> Image.Image:
     return q
 
 
+# Individual full-frame time-of-day exports (supersede the 2x2 sheet). Each is a
+# complete island painting at the placement-reference framing — used as-is, no
+# quadrant slicing, no baked-in corner label to patch out.
+MAPS_DIR = SRC / "Map" / "Maps"
+PLATE_FRAMES = {
+    "midday": ["Midday.png"],
+    "dawn": ["Dawn.png"],
+    "dusk": ["dusk.png", "Dusk.png"],
+    "evening": ["evening.png", "Evening.png"],
+    "night": ["Night.png"],
+}
+
+
 def import_plates(dry: bool, report: list[str]) -> None:
+    frames = {ph: _first(*[MAPS_DIR / n for n in names]) for ph, names in PLATE_FRAMES.items()}
+    if all(fp.exists() for fp in frames.values()):
+        for phase, fp in frames.items():
+            q = Image.open(fp).convert("RGB")
+            if q.width > PLATE_MAX_W:
+                q = q.resize((PLATE_MAX_W, round(q.height * PLATE_MAX_W / q.width)), Image.LANCZOS)
+            ident = PLATE_ID[phase]
+            report.append(f"plate  {phase:7s} -> {ident}.png  ({q.width}x{q.height})  [{fp.name}]")
+            if not dry:
+                q.save(ART / f"{ident}.png")
+        return
     if not PLATE_SHEET.exists():
         report.append(f"plates: not found at {PLATE_SHEET} — skipped")
         return
@@ -296,6 +379,10 @@ def import_buildings(dry: bool, report: list[str], coverage: dict[str, set[str]]
                     break
                 cell = im.crop((x0, y0, x1, y1))
                 k = despeckle(key_bg(cell))
+                if building in ("lighthouse", "fisherhut", "dock"):
+                    k = strip_sea(k)  # clean the sprite's own baked-in sea
+                if building in ("fisherhut", "dock"):
+                    k = drop_floaters(k)  # remove stray rock/water fragments above the body
                 bb = content_bbox(k)
                 if bb is None:
                     continue

@@ -109,20 +109,22 @@ export const TOWN_BUILDINGS_V2: readonly TownPiece[] = [
   // its plot rather than floating the whole sprite above it.
   { art: 'prop_sign', x: 0.56, y: 0.552, w: 0.042, unlockAt: 1 },
   { art: 'town_cottage', x: 0.31, y: 0.511, w: 0.13, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
-  { art: 'town_bakery', x: 0.64, y: 0.421, w: 0.125, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
-  { art: 'prop_well', x: 0.61, y: 0.508, w: 0.08, unlockAt: 6 },
-  { art: 'town_market', x: 0.66, y: 0.638, w: 0.115, unlockAt: 8, ruinVariant: 7 },
-  { art: 'town_garden', x: 0.52, y: 0.394, w: 0.135, unlockAt: 10, ruinVariant: 4 },
+  { art: 'town_bakery', x: 0.68, y: 0.43, w: 0.125, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
+  // ruinVariant marks the well for placement pre-restore (shows its own painted
+  // prop_well_ruin/_wip storm art); it lives the day cycle via prop_well_dawn/_dusk/_night.
+  { art: 'prop_well', x: 0.615, y: 0.508, w: 0.08, unlockAt: 6, ruinVariant: 4 },
+  { art: 'town_market', x: 0.70, y: 0.615, w: 0.115, unlockAt: 8, ruinVariant: 7 },
+  { art: 'town_garden', x: 0.52, y: 0.42, w: 0.135, unlockAt: 10, ruinVariant: 4 },
   { art: 'town_townhall', x: 0.35, y: 0.407, w: 0.14, unlockAt: 12, ruinVariant: 3 },
-  { art: 'town_workshop', x: 0.52, y: 0.628, w: 0.125, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
+  { art: 'town_workshop', x: 0.53, y: 0.655, w: 0.125, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
   { art: 'town_farm', x: 0.65, y: 0.305, w: 0.135, unlockAt: 16, ruinVariant: 5 },
   // Joss's hut sits on the east shore, its stilt-deck out over the water
-  { art: 'town_fisherhut', x: 0.85, y: 0.535, w: 0.125, unlockAt: 18, ruinVariant: 6, water: true },
+  { art: 'town_fisherhut', x: 0.85, y: 0.56, w: 0.125, unlockAt: 18, ruinVariant: 6, water: true },
   { art: 'town_sawmill', x: 0.47, y: 0.291, w: 0.13, unlockAt: 20, ruinVariant: 1 },
   { art: 'town_blacksmith', x: 0.47, y: 0.525, w: 0.125, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
   // the jetty runs from the SE point out into the bay
-  { art: 'town_dock', x: 0.8, y: 0.697, w: 0.13, unlockAt: 22, ruinVariant: 5, water: true },
-  { art: 'town_library', x: 0.31, y: 0.627, w: 0.13, unlockAt: 23, ruinVariant: 3 },
+  { art: 'town_dock', x: 0.8, y: 0.697, w: 0.152, unlockAt: 22, ruinVariant: 5, water: true },
+  { art: 'town_library', x: 0.39, y: 0.66, w: 0.13, unlockAt: 23, ruinVariant: 3 },
 ] as const;
 
 /** The ACTIVE world (all consumers read this; the gate picks per the art). */
@@ -199,12 +201,10 @@ export const TOWN_BOATS_V1: readonly BoatPiece[] = [
   { art: 'boat_fishing_s', x: 0.68, y: 0.965, w: 0.12, stage: 3 },
   { art: 'boat_sail_s', x: 0.08, y: 0.96, w: 0.1, stage: 4 },
 ] as const;
-/** V2: open sea wraps the island — a rowboat by the SE jetty, a fisher off the
- * SE point, a sail on the western water. All sit in real sea (see inWaterV2). */
+/** V2: the painted plates already carry the working harbour (the dock sprite
+ * ships with its own moored boat), so the free-floating boat props are retired
+ * for the V2 world — they read as clutter on the open sea. */
 export const TOWN_BOATS_V2: readonly BoatPiece[] = [
-  { art: 'boat_row', x: 0.9, y: 0.72, w: 0.085, stage: 2 },
-  { art: 'boat_fishing_s', x: 0.88, y: 0.82, w: 0.11, stage: 3 },
-  { art: 'boat_sail_s', x: 0.07, y: 0.8, w: 0.1, stage: 4 },
 ] as const;
 export const TOWN_BOATS: readonly BoatPiece[] = MAP_V2 ? TOWN_BOATS_V2 : TOWN_BOATS_V1;
 
@@ -325,14 +325,8 @@ export const DECOR_CATALOG: readonly DecorDef[] = [
  * refinement pass against the real imported plate.
  */
 export const TOWN_NATURE_V2: readonly (TownPiece & { stage: number })[] = [
-  { art: 'prop_lamp', x: 0.57, y: 0.47, w: 0.024, unlockAt: 0, stage: 2 },
-  { art: 'prop_lamp', x: 0.5, y: 0.6, w: 0.024, unlockAt: 0, stage: 3 },
-  { art: 'prop_barrel', x: 0.6, y: 0.7, w: 0.03, unlockAt: 0, stage: 4 },
-  { art: 'prop_crate', x: 0.62, y: 0.69, w: 0.03, unlockAt: 0, stage: 4 },
-  // storm dressing still tells the arc's opening (clears as the town heals)
-  { art: 'debris_a', x: 0.45, y: 0.45, w: 0.05, unlockAt: 0, stage: 0, untilStage: 1 },
-  { art: 'debris_c', x: 0.55, y: 0.56, w: 0.045, unlockAt: 0, stage: 0, untilStage: 0 },
-  { art: 'debris_d', x: 0.35, y: 0.5, w: 0.035, unlockAt: 0, stage: 0, untilStage: 1 },
+  // V2 is buildings-only: the painted plates already carry the terrain, paths,
+  // trees, rocks and beach, so the game adds no lamps/props/debris on top.
 ] as const;
 export const TOWN_TERRAIN_V2: readonly TownPiece[] = [] as const;
 
@@ -363,7 +357,7 @@ export const PLAZA = MAP_V2 ? ({ x: 0.57, y: 0.48 } as const) : ({ x: 0.5, y: 0.
 
 /** The painted-in lighthouse (4-state ladder): V1 east point / V2 NE islet. */
 export const LIGHTHOUSE_ANCHOR = MAP_V2
-  ? ({ x: 0.84, y: 0.2, w: 0.13 } as const)
+  ? ({ x: 0.84, y: 0.335, w: 0.13 } as const)
   : ({ x: 0.94, y: 0.59, w: 0.15 } as const);
 
 /** Sky-space effects (viewport fractions). */
