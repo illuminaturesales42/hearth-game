@@ -206,7 +206,7 @@ def compose(out_path, layout, orders, phase):
     terrain = parse_pieces(block("TOWN_TERRAIN" + suffix))
     boats = parse_pieces(block("TOWN_BOATS" + suffix))
     building_ids = {b["art"] for b in buildings}
-    lighthouse = {"v1": (0.94, 0.59, 0.15), "v2": (0.90, 0.22, 0.13)}[layout]
+    lighthouse = {"v1": (0.94, 0.59, 0.15), "v2": (0.84, 0.20, 0.13)}[layout]
     stage = 0 if orders == 0 else (2 if orders < 24 else 4)
 
     plate = load("map_island_plate")

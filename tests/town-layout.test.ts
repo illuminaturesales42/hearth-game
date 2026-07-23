@@ -34,6 +34,7 @@ const inWaterV1 = (x: number, y: number): boolean =>
   x > 0.88 ||
   y > 0.92;
 const inWaterV2 = (x: number, y: number): boolean =>
+  (x >= 0.78 && y >= 0.42) || // east + SE shore (fisher hut, dock)
   (x >= 0.55 && y >= 0.62) || // SE bay off the jetty
   x < 0.1 ||
   x > 0.93 ||
