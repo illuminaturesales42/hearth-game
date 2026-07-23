@@ -334,7 +334,8 @@ export class MapView {
     stage: number,
   ): void {
     const { zoom, panX, panY } = this.cam;
-    const mapX = (x: number): number => x * zoom + panX;
+    // fold in the island's left shift so these night specks track the scene
+    const mapX = (x: number): number => (x - this.mapShiftX) * zoom + panX;
     const mapY = (y: number): number => y * zoom + panY;
     ctx.save();
     ctx.globalAlpha = k;
@@ -955,6 +956,12 @@ export class MapView {
     return this.canvas?.clientWidth || 360;
   }
   private static readonly LOGICAL_H = 315;
+  /** Nudge the whole island a little left of centre so the right-side forest
+   *  doesn't crowd the frame — more open water on the right. Applied as an extra
+   *  translate on the scene AND folded into screenToWorld so taps stay true. */
+  private get mapShiftX(): number {
+    return this.logicalW * 0.03;
+  }
 
   /** Keep the viewport inside the scaled scene; fit-zoom is always centred. */
   private clampCam(): void {
@@ -963,7 +970,8 @@ export class MapView {
 
   /** Viewport CSS px → logical scene coords (undoes the camera transform). */
   private screenToWorld(x: number, y: number): { x: number; y: number } {
-    return screenToWorld(this.cam, x, y);
+    const p = screenToWorld(this.cam, x, y);
+    return { x: p.x + this.mapShiftX, y: p.y };
   }
 
   /** Zoom to `z`, keeping the world point under `centre` (viewport px) fixed. */
@@ -1081,6 +1089,9 @@ export class MapView {
     ctx.save();
     ctx.translate(this.cam.panX, this.cam.panY);
     ctx.scale(this.cam.zoom, this.cam.zoom);
+    // shift the whole island a touch left (the right strip is filled with sea by
+    // the plate draw); folded into screenToWorld so hit-testing stays aligned
+    ctx.translate(-this.mapShiftX, 0);
 
     // Composed living town (building sprites unlock with the story).
     if (artUrl('town_townhall')) {
@@ -1102,8 +1113,9 @@ export class MapView {
         for (const s of this.glowSpots) {
           const a = s.a * nightW;
           if (a < 0.01) continue;
-          // spots were collected inside the camera transform — map to viewport
-          const px = s.x * this.cam.zoom + this.cam.panX;
+          // spots were collected inside the camera transform (incl. the island
+          // shift) — map to viewport the same way
+          const px = (s.x - this.mapShiftX) * this.cam.zoom + this.cam.panX;
           const py = s.y * this.cam.zoom + this.cam.panY;
           const pr = s.r * this.cam.zoom;
           const g = ctx.createRadialGradient(px, py, 0, px, py, pr);
@@ -1301,7 +1313,16 @@ export class MapView {
     const effNight = Math.min(1, tod.weights.night + wEve * 0.45);
     const phaseW = (ph: 'dawn' | 'dusk' | 'night'): number =>
       ph === 'dusk' ? effDusk : ph === 'night' ? effNight : tod.weights.dawn;
-    if (plate) ctx.drawImage(plate, 0, 0, W, H);
+    // The island is drawn a touch left of centre (see mapShiftX). That exposes a
+    // thin strip on the right — fill it with the plate's OWN sea edge (2px right
+    // column stretched), so it stays sea at every time of day with no seam.
+    const edgeX = W * 0.03;
+    const seaEdge = (img: HTMLImageElement): void =>
+      void ctx.drawImage(img, img.naturalWidth - 2, 0, 2, img.naturalHeight, W, 0, edgeX + 2, H);
+    if (plate) {
+      ctx.drawImage(plate, 0, 0, W, H);
+      seaEdge(plate);
+    }
     // Painted time-of-day plates (Map V2): when the art machine has generated a
     // phase's plate, crossfade the whole ground to it by that phase's live
     // weight — dawn melts to midday melts to dusk melts to night, hand-painted
@@ -1322,6 +1343,7 @@ export class MapView {
         ctx.save();
         ctx.globalAlpha = Math.min(1, w);
         ctx.drawImage(img, 0, 0, W, H);
+        seaEdge(img);
         ctx.restore();
       }
     }

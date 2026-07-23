@@ -414,6 +414,10 @@ def import_buildings(dry: bool, report: list[str], coverage: dict[str, set[str]]
         im = Image.open(path).convert("RGB")
         want = ROW_PHASES.get(stem.lower().replace(" ", ""), DEFAULT_PHASES)
         rows, cols = sprite_grid(im, len(want))
+        # foreground profile of the whole sheet — used to rescue a narrow tall
+        # element (silo dome, spire, chimney) that pokes ABOVE its detected row
+        # band and would otherwise be sliced flat off the top.
+        fg_sheet = ~bg_mask(np.asarray(im).astype(np.int16))
         phases = want[: len(rows)]
         states = STATE_ORDER[: len(cols)]
         report.append(f"  {path.name:20s} {building:10s} grid {len(cols)}col x {len(rows)}row -> phases {phases}")
@@ -427,7 +431,23 @@ def import_buildings(dry: bool, report: list[str], coverage: dict[str, set[str]]
             for ri, (y0, y1) in enumerate(rows):
                 if ri >= len(phases):
                     break
-                cell = im.crop((x0, y0, x1, y1))
+                # rescue tall content above the band: scan up within this column
+                # while foreground continues, stopping at the first clear strip
+                # (the gutter, or the gap under the header) or the row above.
+                y_floor = (rows[ri - 1][1] + 2) if ri > 0 else 3
+                col_prof = fg_sheet[:, x0:x1].sum(1)
+                thr = max(2, int((x1 - x0) * 0.012))
+                cap = y0 - int((y1 - y0) * 0.55)  # never extend more than ~half a row
+                ny0, yy, gap = y0, y0, 0
+                while yy > max(y_floor, cap):
+                    yy -= 1
+                    if col_prof[yy] > thr:
+                        ny0, gap = yy, 0
+                    else:
+                        gap += 1
+                        if gap >= 4:
+                            break
+                cell = im.crop((x0, ny0, x1, y1))
                 k = despeckle(key_bg(cell))
                 k = lift_trapped_bg(k)  # sky seen through arches/scaffolds/gaps
                 if building in ("lighthouse", "fisherhut", "dock"):

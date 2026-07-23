@@ -115,7 +115,7 @@ export const TOWN_BUILDINGS_V2: readonly TownPiece[] = [
   // prop_well_ruin/_wip storm art); it lives the day cycle via prop_well_dawn/_dusk/_night.
   { art: 'prop_well', x: 0.615, y: 0.508, w: 0.08, unlockAt: 6, ruinVariant: 4 },
   { art: 'town_market', x: 0.70, y: 0.615, w: 0.115, unlockAt: 8, ruinVariant: 7 },
-  { art: 'town_garden', x: 0.52, y: 0.42, w: 0.135, unlockAt: 10, ruinVariant: 4 },
+  { art: 'town_garden', x: 0.55, y: 0.42, w: 0.135, unlockAt: 10, ruinVariant: 4 },
   { art: 'town_townhall', x: 0.35, y: 0.407, w: 0.14, unlockAt: 12, ruinVariant: 3 },
   { art: 'town_workshop', x: 0.53, y: 0.655, w: 0.125, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
   { art: 'town_farm', x: 0.65, y: 0.305, w: 0.135, unlockAt: 16, ruinVariant: 5 },
