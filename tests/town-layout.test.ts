@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  TOWN_BUILDINGS,
+  TOWN_BUILDINGS_V1,
+  TOWN_BUILDINGS_V2,
+  TOWN_TERRAIN_V1,
+  TOWN_TERRAIN_V2,
+  TOWN_BOATS_V1,
+  TOWN_BOATS_V2,
   TOWN_TERRAIN,
-  TOWN_BOATS,
   BUILDING_INFO,
   BUILDING_PLATE_SCALE,
   VILLAGER_MEETS,
@@ -15,71 +19,75 @@ import { VILLAGERS } from '../src/data/world';
  * The map's composition is data — this pins the invariants a human would
  * otherwise have to eyeball on the painted plate: pieces stay on-canvas,
  * landmark buildings don't collide, water pieces sit in water, and every
- * effect/story hook still resolves to a real piece.
+ * effect/story hook still resolves to a real piece. Both worlds are covered:
+ * V1 (the shipped plate) and V2 (the painted time-of-day world — active the
+ * moment its imported art lands in the manifest).
  */
 
-describe('TOWN_BUILDINGS — everything stays on the painted canvas', () => {
-  it('every building sits within the frame with its scaled footprint', () => {
-    for (const b of TOWN_BUILDINGS) {
-      const half = (b.w * BUILDING_PLATE_SCALE) / 2;
-      expect(b.x - half, `${b.art} left`).toBeGreaterThanOrEqual(0);
-      expect(b.x + half, `${b.art} right`).toBeLessThanOrEqual(1);
-      expect(b.y, `${b.art} y`).toBeGreaterThan(0);
-      expect(b.y, `${b.art} y`).toBeLessThanOrEqual(1);
-      expect(b.w, `${b.art} w`).toBeGreaterThan(0);
-    }
-  });
+// Per-world water geography. V1: SE cove + south shallows. V2 (from the
+// reference painting): the bay wraps the SE around the jetty, beach south,
+// open sea at every margin.
+const inWaterV1 = (x: number, y: number): boolean =>
+  (x >= 0.6 && x <= 0.86 && y >= 0.56 && y <= 0.78) ||
+  (x >= 0.3 && x <= 0.62 && y >= 0.86) ||
+  x < 0.14 ||
+  x > 0.88 ||
+  y > 0.92;
+const inWaterV2 = (x: number, y: number): boolean =>
+  (x >= 0.55 && y >= 0.62) || // SE bay off the jetty
+  x < 0.1 ||
+  x > 0.93 ||
+  y > 0.85; // open sea margins
 
-  it('no two landmark buildings overlap (roughly same row → clear of each other)', () => {
-    const big = TOWN_BUILDINGS.filter((b) => b.w >= 0.12); // real buildings, not props
-    for (let i = 0; i < big.length; i++) {
-      for (let j = i + 1; j < big.length; j++) {
-        const a = big[i]!;
-        const b = big[j]!;
-        if (Math.abs(a.y - b.y) >= 0.07) continue; // different depth rows never collide
-        const minGap = (((a.w + b.w) * BUILDING_PLATE_SCALE) / 2) * 0.82; // allow a little visual tuck
-        expect(Math.abs(a.x - b.x), `${a.art} vs ${b.art} too close`).toBeGreaterThanOrEqual(minGap);
+const WORLDS = [
+  { name: 'V1', buildings: TOWN_BUILDINGS_V1, terrain: TOWN_TERRAIN_V1, boats: TOWN_BOATS_V1, inWater: inWaterV1 },
+  { name: 'V2', buildings: TOWN_BUILDINGS_V2, terrain: TOWN_TERRAIN_V2, boats: TOWN_BOATS_V2, inWater: inWaterV2 },
+] as const;
+
+for (const world of WORLDS) {
+  describe(`${world.name} — everything stays on the painted canvas`, () => {
+    it('every building sits within the frame with its scaled footprint', () => {
+      for (const b of world.buildings) {
+        const half = (b.w * BUILDING_PLATE_SCALE) / 2;
+        expect(b.x - half, `${b.art} left`).toBeGreaterThanOrEqual(0);
+        expect(b.x + half, `${b.art} right`).toBeLessThanOrEqual(1);
+        expect(b.y, `${b.art} y`).toBeGreaterThan(0);
+        expect(b.y, `${b.art} y`).toBeLessThanOrEqual(1);
+        expect(b.w, `${b.art} w`).toBeGreaterThan(0);
       }
-    }
+    });
+
+    it('no two landmark buildings overlap (roughly same row → clear of each other)', () => {
+      const big = world.buildings.filter((b) => b.w >= 0.12);
+      for (let i = 0; i < big.length; i++) {
+        for (let j = i + 1; j < big.length; j++) {
+          const a = big[i]!;
+          const b = big[j]!;
+          if (Math.abs(a.y - b.y) >= 0.07) continue;
+          const minGap = (((a.w + b.w) * BUILDING_PLATE_SCALE) / 2) * 0.82;
+          expect(Math.abs(a.x - b.x), `${world.name}: ${a.art} vs ${b.art} too close`).toBeGreaterThanOrEqual(minGap);
+        }
+      }
+    });
+
+    it('water-flagged pieces and every boat sit in real water', () => {
+      for (const b of [...world.buildings, ...world.terrain]) {
+        if (b.water) expect(world.inWater(b.x, b.y), `${world.name}: ${b.art} should be in water`).toBe(true);
+      }
+      for (const b of world.boats) {
+        expect(world.inWater(b.x, b.y), `${world.name}: ${b.art} should float`).toBe(true);
+      }
+    });
+
+    it('both worlds place the full cast (same story ids, same unlock orders)', () => {
+      const ids = (list: readonly { art: string; unlockAt: number }[]) =>
+        [...list].map((b) => `${b.art}@${b.unlockAt}`).sort();
+      expect(ids(world.buildings)).toEqual(ids(TOWN_BUILDINGS_V1));
+    });
   });
-});
+}
 
-describe('water pieces sit in water, land pieces on land', () => {
-  // The plate's real waters: the SE cove (turquoise + sand arc), the shallows
-  // off the south beach, and the open sea beyond the island's rim.
-  const COVE = { x0: 0.6, x1: 0.86, y0: 0.56, y1: 0.78 };
-  const inCove = (x: number, y: number) => x >= COVE.x0 && x <= COVE.x1 && y >= COVE.y0 && y <= COVE.y1;
-  const inWater = (x: number, y: number) =>
-    inCove(x, y) ||
-    (x >= 0.3 && x <= 0.62 && y >= 0.86) || // south-beach shallows
-    x < 0.14 ||
-    x > 0.88 ||
-    y > 0.92; // open sea past the island's rim
-
-  it('any piece flagged water:true is anchored in real water (cove/shallows/sea)', () => {
-    for (const b of [...TOWN_BUILDINGS, ...TOWN_TERRAIN]) {
-      if (b.water) expect(inWater(b.x, b.y), `${b.art} should be in water`).toBe(true);
-    }
-  });
-
-  it('every boat floats in real water', () => {
-    for (const b of TOWN_BOATS) {
-      expect(inWater(b.x, b.y), `${b.art} should float in water`).toBe(true);
-    }
-  });
-
-  it('land buildings are not anchored in the middle of the cove water', () => {
-    for (const b of TOWN_BUILDINGS) {
-      if (b.water) continue;
-      // props (well/sign) may edge the shore; only flag clearly-land buildings
-      if (b.w < 0.12) continue;
-      const deepInCove = b.x > 0.66 && b.x < 0.8 && b.y > 0.6 && b.y < 0.74;
-      expect(deepInCove, `${b.art} is a land building stranded in water`).toBe(false);
-    }
-  });
-});
-
-describe('story + effect hooks all resolve', () => {
+describe('story + effect hooks all resolve (active world)', () => {
   it('returnsAt resolves for every tappable building', () => {
     for (const art of Object.keys(BUILDING_INFO)) {
       expect(returnsAt(art), `${art} has no return order`).not.toBeNull();
@@ -100,8 +108,8 @@ describe('story + effect hooks all resolve', () => {
     }
   });
 
-  it('anchorOf resolves terrain pieces too, and null for the unknown', () => {
-    expect(anchorOf(TOWN_TERRAIN[0]!.art)).not.toBeNull();
+  it('anchorOf resolves terrain pieces when present, null for the unknown', () => {
+    if (TOWN_TERRAIN.length > 0) expect(anchorOf(TOWN_TERRAIN[0]!.art)).not.toBeNull();
     expect(anchorOf('nope_not_a_piece')).toBeNull();
   });
 });

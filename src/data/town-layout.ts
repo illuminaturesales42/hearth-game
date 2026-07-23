@@ -5,6 +5,7 @@
  * from the production docs. Positions are normalized (0..1) with y as the
  * ground anchor; draw order is by y (painter's algorithm).
  */
+import { artUrl } from '../art-manifest';
 
 export interface TownPiece {
   art: string; // sliced sprite id
@@ -45,7 +46,18 @@ export interface TownPiece {
  */
 export const BUILDING_PLATE_SCALE = 1.04;
 
-export const TOWN_BUILDINGS: readonly TownPiece[] = [
+/**
+ * MAP V2 GATE. The new painted world (four time-of-day plates + full building
+ * sets — see docs/map-v2-naming.md) ships with its own geography and therefore
+ * its own anchors. The dawn plate only exists in the V2 art drop, so its
+ * presence in the manifest flips the whole layout: commit the imported art and
+ * the game switches; roll the art back and the old world returns. No code
+ * changes needed on the art machine.
+ */
+export const MAP_V2 = artUrl('map_island_plate_dawn') !== null;
+
+/** The original (V1) placement — user-specified; kept verbatim while V1 art ships. */
+export const TOWN_BUILDINGS_V1: readonly TownPiece[] = [
   { art: 'prop_sign', x: 0.51, y: 0.47, w: 0.042, unlockAt: 1 },
   // 2026-07 re-lay (user-directed): cottage→old market plot, bakery→old cottage
   // plot, farm→old bakery plot, library→old farm plot (sprite flipped so the
@@ -69,6 +81,37 @@ export const TOWN_BUILDINGS: readonly TownPiece[] = [
   { art: 'town_dock', x: 0.665, y: 0.685, w: 0.126, unlockAt: 22, ruinVariant: 5, water: true },
   { art: 'town_library', x: 0.225, y: 0.59, w: 0.148, unlockAt: 23, ruinVariant: 3 },
 ] as const;
+
+/**
+ * V2 placement — measured from the "Map times of dayFinal" reference painting
+ * (⚑ staged: every anchor gets pixel-tuned against the real imported plate via
+ * tools/compose_map_mock.py before the art commit ships to testers).
+ * Composition per the reference: lighthouse alone on the NE headland; the
+ * windmill(sawmill) on the north ridge; the church(townhall) crowning the
+ * upper lanes; the greenhouse(garden) dome at the centre; the well at the
+ * crossroads; the jetty(dock) running SE into the bay; cottages and workshops
+ * down the west and south lanes; beach open along the south.
+ */
+export const TOWN_BUILDINGS_V2: readonly TownPiece[] = [
+  { art: 'prop_sign', x: 0.56, y: 0.5, w: 0.042, unlockAt: 1 },
+  { art: 'town_cottage', x: 0.3, y: 0.3, w: 0.13, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
+  { art: 'town_bakery', x: 0.245, y: 0.42, w: 0.125, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
+  { art: 'prop_well', x: 0.6, y: 0.44, w: 0.08, unlockAt: 6 },
+  { art: 'town_market', x: 0.85, y: 0.36, w: 0.115, unlockAt: 8, ruinVariant: 7 },
+  { art: 'town_garden', x: 0.725, y: 0.305, w: 0.135, unlockAt: 10, ruinVariant: 4 },
+  { art: 'town_townhall', x: 0.63, y: 0.19, w: 0.14, unlockAt: 12, ruinVariant: 3 },
+  { art: 'town_workshop', x: 0.3, y: 0.67, w: 0.125, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
+  { art: 'town_farm', x: 0.21, y: 0.22, w: 0.135, unlockAt: 16, ruinVariant: 5 },
+  { art: 'town_fisherhut', x: 0.47, y: 0.66, w: 0.125, unlockAt: 18, ruinVariant: 6 },
+  { art: 'town_sawmill', x: 0.75, y: 0.14, w: 0.13, unlockAt: 20, ruinVariant: 1 },
+  { art: 'town_blacksmith', x: 0.235, y: 0.55, w: 0.125, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
+  // the jetty runs from the SE shore out into the bay
+  { art: 'town_dock', x: 0.65, y: 0.73, w: 0.13, unlockAt: 22, ruinVariant: 5, water: true },
+  { art: 'town_library', x: 0.39, y: 0.55, w: 0.13, unlockAt: 23, ruinVariant: 3 },
+] as const;
+
+/** The ACTIVE world (all consumers read this; the gate picks per the art). */
+export const TOWN_BUILDINGS: readonly TownPiece[] = MAP_V2 ? TOWN_BUILDINGS_V2 : TOWN_BUILDINGS_V1;
 
 /**
  * Buildings that live outside TOWN_BUILDINGS (painted directly onto the scene,
@@ -129,18 +172,32 @@ export const VILLAGER_MEETS: Record<string, number> = {
 };
 
 /** Boats moored and returning as the harbour comes back to life. */
-export const TOWN_BOATS: readonly { art: string; x: number; y: number; w: number; stage: number }[] = [
+interface BoatPiece {
+  art: string;
+  x: number;
+  y: number;
+  w: number;
+  stage: number;
+}
+export const TOWN_BOATS_V1: readonly BoatPiece[] = [
   { art: 'boat_row', x: 0.92, y: 0.93, w: 0.09, stage: 2 },
   { art: 'boat_fishing_s', x: 0.68, y: 0.965, w: 0.12, stage: 3 },
   { art: 'boat_sail_s', x: 0.08, y: 0.96, w: 0.1, stage: 4 },
 ] as const;
+/** V2: the bay is SE (off the jetty) with open sea west — ⚑ staged. */
+export const TOWN_BOATS_V2: readonly BoatPiece[] = [
+  { art: 'boat_row', x: 0.73, y: 0.79, w: 0.085, stage: 2 },
+  { art: 'boat_fishing_s', x: 0.55, y: 0.86, w: 0.11, stage: 3 },
+  { art: 'boat_sail_s', x: 0.08, y: 0.85, w: 0.1, stage: 4 },
+] as const;
+export const TOWN_BOATS: readonly BoatPiece[] = MAP_V2 ? TOWN_BOATS_V2 : TOWN_BOATS_V1;
 
 /**
  * Nature and street furniture fill in as the town heals (by homestead stage).
  * Every anchor is validated against the painted plate: on land (except coastal
  * pieces), and clear of building sprite columns so nothing hides behind a roof.
  */
-export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
+export const TOWN_NATURE_V1: readonly (TownPiece & { stage: number })[] = [
   // ── permanent coastline + the open east headland the lighthouse path crosses
   { art: 'prop_rock', x: 0.055, y: 0.47, w: 0.045, unlockAt: 0, stage: 0 },
   { art: 'prop_rock', x: 0.885, y: 0.47, w: 0.04, unlockAt: 0, stage: 0 },
@@ -193,7 +250,7 @@ export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = [
  * buildings"). Always present — the storm bent the trees and scattered the
  * rocks, but the land was never lost. Stone paths knit in with rebuilding.
  */
-export const TOWN_TERRAIN: readonly TownPiece[] = [
+export const TOWN_TERRAIN_V1: readonly TownPiece[] = [
   // rocky coast ring
   { art: 'terrain_rocks', x: 0.05, y: 0.52, w: 0.09, unlockAt: 0 },
   { art: 'terrain_rocks', x: 0.92, y: 0.638, w: 0.085, unlockAt: 0 },
@@ -247,6 +304,26 @@ export const DECOR_CATALOG: readonly DecorDef[] = [
 ] as const;
 
 /**
+ * V2 dressing is deliberately minimal — the painted plates carry the terrain,
+ * paths, trees and beach; the game only adds working props. ⚑ tuned in the
+ * refinement pass against the real imported plate.
+ */
+export const TOWN_NATURE_V2: readonly (TownPiece & { stage: number })[] = [
+  { art: 'prop_lamp', x: 0.57, y: 0.47, w: 0.024, unlockAt: 0, stage: 2 },
+  { art: 'prop_lamp', x: 0.5, y: 0.6, w: 0.024, unlockAt: 0, stage: 3 },
+  { art: 'prop_barrel', x: 0.6, y: 0.7, w: 0.03, unlockAt: 0, stage: 4 },
+  { art: 'prop_crate', x: 0.62, y: 0.69, w: 0.03, unlockAt: 0, stage: 4 },
+  // storm dressing still tells the arc's opening (clears as the town heals)
+  { art: 'debris_a', x: 0.45, y: 0.45, w: 0.05, unlockAt: 0, stage: 0, untilStage: 1 },
+  { art: 'debris_c', x: 0.55, y: 0.56, w: 0.045, unlockAt: 0, stage: 0, untilStage: 0 },
+  { art: 'debris_d', x: 0.35, y: 0.5, w: 0.035, unlockAt: 0, stage: 0, untilStage: 1 },
+] as const;
+export const TOWN_TERRAIN_V2: readonly TownPiece[] = [] as const;
+
+export const TOWN_NATURE: readonly (TownPiece & { stage: number })[] = MAP_V2 ? TOWN_NATURE_V2 : TOWN_NATURE_V1;
+export const TOWN_TERRAIN: readonly TownPiece[] = MAP_V2 ? TOWN_TERRAIN_V2 : TOWN_TERRAIN_V1;
+
+/**
  * The live position of a laid-out piece by art id (buildings first, then terrain,
  * then nature dressing). This is the single lookup the map's effects use so a
  * glow/wash/sparkle always tracks the building it belongs to — move a piece here
@@ -266,10 +343,12 @@ export function anchorOf(art: string): { x: number; y: number; w: number } | nul
  */
 
 /** The civic plaza — the well/market heart, for the night hearth-lift + glow. */
-export const PLAZA = { x: 0.5, y: 0.52 } as const;
+export const PLAZA = MAP_V2 ? ({ x: 0.58, y: 0.45 } as const) : ({ x: 0.5, y: 0.52 } as const);
 
-/** The painted-in lighthouse (4-state ladder) on the eastern rock point. */
-export const LIGHTHOUSE_ANCHOR = { x: 0.94, y: 0.59, w: 0.15 } as const;
+/** The painted-in lighthouse (4-state ladder): V1 east point / V2 NE headland. */
+export const LIGHTHOUSE_ANCHOR = MAP_V2
+  ? ({ x: 0.9, y: 0.22, w: 0.13 } as const)
+  : ({ x: 0.94, y: 0.59, w: 0.15 } as const);
 
 /** Sky-space effects (viewport fractions). */
 export const SKY_ANCHORS = {
