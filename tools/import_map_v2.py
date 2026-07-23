@@ -268,6 +268,22 @@ def drop_floaters(im: Image.Image) -> Image.Image:
     return Image.fromarray(rgba, "RGBA")
 
 
+def defringe(im: Image.Image) -> Image.Image:
+    """Drop the pale anti-aliased halo the near-white key leaves along edges:
+    semi-transparent pixels whose colour is close to the (near-white) source
+    background read as a light rim once composited. Interior lit windows / white
+    awnings are fully opaque, so they're untouched."""
+    a = np.asarray(im.convert("RGBA")).copy()
+    al = a[:, :, 3]
+    rgb = a[:, :, :3].astype(np.int16)
+    mx = rgb.max(2)
+    mn = rgb.min(2)
+    semi = (al > 8) & (al < 245)
+    nearwhite = (mx > 196) & (mx - mn < 32)
+    a[semi & nearwhite, 3] = 0
+    return Image.fromarray(a, "RGBA")
+
+
 def content_bbox(im: Image.Image, thr: int = 10) -> tuple[int, int, int, int] | None:
     a = np.asarray(im)[:, :, 3]
     ys, xs = np.where(a > thr)
@@ -349,6 +365,13 @@ def import_buildings(dry: bool, report: list[str], coverage: dict[str, set[str]]
     if not files:
         report.append(f"buildings: no PNGs under {BUILDINGS_DIR}")
         return
+    # Accumulate keyed cells per (building, state) ACROSS files first, then emit.
+    # This is what registers the split half-sheets: the Library and Lighthouse
+    # ship as two files (A = dawn/midday, B = dusk/night), so their four phases
+    # must share ONE canvas — otherwise the two halves land at different sizes
+    # and the sprite visibly rescales/shifts as the day turns. Non-split buildings
+    # come from a single file and are unaffected.
+    pending: dict[tuple[str, str], list[tuple[str, Image.Image]]] = {}
     for path in files:
         stem = path.stem
         if stem.lower() in SKIP_STEMS:
@@ -367,13 +390,10 @@ def import_buildings(dry: bool, report: list[str], coverage: dict[str, set[str]]
         if len(cols) != 5 or len(rows) != len(phases):
             report.append(f"     !! expected 5 states x {len(phases)} phases, got {len(cols)}x{len(rows)} — check the sheet")
 
-        # per state column: key every phase row, then share one canvas so
-        # the midday base and its _dawn/_dusk/_night overlays register exactly
         for ci, (x0, x1) in enumerate(cols):
             if ci >= len(states):
                 break
             state = states[ci]
-            keyed: list[tuple[str, Image.Image]] = []
             for ri, (y0, y1) in enumerate(rows):
                 if ri >= len(phases):
                     break
@@ -383,23 +403,27 @@ def import_buildings(dry: bool, report: list[str], coverage: dict[str, set[str]]
                     k = strip_sea(k)  # clean the sprite's own baked-in sea
                 if building in ("fisherhut", "dock"):
                     k = drop_floaters(k)  # remove stray rock/water fragments above the body
+                k = defringe(k)  # strip the pale key halo along the edges
                 bb = content_bbox(k)
                 if bb is None:
                     continue
-                keyed.append((phases[ri], k.crop(bb)))
-            if not keyed:
-                continue
-            cw = max(k.width for _, k in keyed)
-            ch = max(k.height for _, k in keyed)
-            pad = int(max(cw, ch) * 0.04)
-            CW, CH = cw + 2 * pad, ch + 2 * pad
-            for ph, k in keyed:
-                canvas = Image.new("RGBA", (CW, CH), (0, 0, 0, 0))
-                canvas.paste(k, ((CW - k.width) // 2, (CH - k.height) // 2), k)
-                ident = CANON[building] + STATE_SUFFIX[state] + PHASE_SUFFIX[ph]
-                coverage.setdefault(building, set()).add(f"{state}/{ph}")
-                if not dry:
-                    canvas.save(ART / f"{ident}.png")
+                pending.setdefault((building, state), []).append((phases[ri], k.crop(bb)))
+
+    # Emit: one shared canvas per (building, state) spanning ALL its phases, each
+    # phase centred on it so the midday base and its _dawn/_dusk/_night overlays
+    # register exactly and the sprite never changes size across the day cycle.
+    for (building, state), keyed in pending.items():
+        cw = max(k.width for _, k in keyed)
+        ch = max(k.height for _, k in keyed)
+        pad = int(max(cw, ch) * 0.04)
+        CW, CH = cw + 2 * pad, ch + 2 * pad
+        for ph, k in keyed:
+            canvas = Image.new("RGBA", (CW, CH), (0, 0, 0, 0))
+            canvas.paste(k, ((CW - k.width) // 2, (CH - k.height) // 2), k)
+            ident = CANON[building] + STATE_SUFFIX[state] + PHASE_SUFFIX[ph]
+            coverage.setdefault(building, set()).add(f"{state}/{ph}")
+            if not dry:
+                canvas.save(ART / f"{ident}.png")
 
 
 def rewrite_manifest() -> None:
