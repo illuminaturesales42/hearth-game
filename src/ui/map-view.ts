@@ -2500,6 +2500,7 @@ export class MapView {
     ctx.save();
     if (m) {
       this.gradeSea(ctx, W, H, t, weights, sun, m.sea, clear, damp);
+      this.drawSeaWaves(ctx, W, H, t, mood, weights, m.sea);
       this.gradeLand(ctx, W, H, t, weights, sun, m.land, damp);
     } else {
       // Order matters for the composited crossfade: darken first, then warm/cool.
@@ -2865,6 +2866,66 @@ export class MapView {
    * the frame untouched under every op, this works for multiply / saturation /
    * color / screen / lighter alike — true region-clipped colour grading.
    */
+  /**
+   * Dynamic waves over the painted sea — drifting swell lines that answer the
+   * real weather (calm ripples → storm swell), clipped to the sea mask so they
+   * never touch land. Amplitude/speed scale with mood.sea, drift follows
+   * mood.wind, and everything cools + fades at night. When the painted wave
+   * strips land (fx_wave_swell_a/_b) they tile over this as an upgrade; until
+   * then the procedural crests carry the motion. Reduced-motion holds one still
+   * frame (no drift).
+   */
+  private drawSeaWaves(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    t: number,
+    mood: WorldMood | undefined,
+    weights: PhaseWeights,
+    seaMask: HTMLCanvasElement,
+  ): void {
+    const sea = mood?.sea ?? 0.2;
+    const windDir = (mood?.wind ?? 0) >= 0 ? 1 : -1;
+    const nightAmt = Math.min(1, weights.night + weights.evening * 0.5 + weights.dusk * 0.2);
+    const drift = this.reduce ? 12000 : t; // fixed phase when still
+    const amp = 1.2 + sea * 5.2; // calm swells ~1px, storm ~6px
+    const pace = 4200 - sea * 2600; // faster when rough
+    const alpha = (0.05 + sea * 0.07) * (1 - nightAmt * 0.55); // subtle; dimmer at night
+    if (alpha < 0.012) return;
+    // crest highlight cools toward silver at night, warm-teal by day
+    const crest = nightAmt > 0.45 ? '150, 178, 224' : '206, 234, 244';
+    const shade = nightAmt > 0.45 ? '30, 46, 86' : '70, 132, 170';
+    this.maskedGrade(ctx, W, H, seaMask, 'source-over', (s) => {
+      s.lineWidth = 1.2;
+      for (let y = -6; y <= H; y += 22) {
+        const ph = y * 0.045;
+        const xoff = windDir * ((drift / 90) % 46);
+        s.beginPath();
+        for (let x = -12; x <= W + 12; x += 12) {
+          const u = x + xoff;
+          const yy =
+            y +
+            Math.sin(u / 46 + drift / pace + ph) * amp +
+            Math.sin(u / 118 - drift / (pace * 1.8) + ph) * amp * 0.5;
+          if (x === -12) s.moveTo(x, yy);
+          else s.lineTo(x, yy);
+        }
+        s.strokeStyle = `rgba(${crest}, ${alpha.toFixed(3)})`;
+        s.stroke();
+        // a faint trough shadow just below each crest gives the swell body
+        s.strokeStyle = `rgba(${shade}, ${(alpha * 0.6).toFixed(3)})`;
+        s.beginPath();
+        for (let x = -12; x <= W + 12; x += 12) {
+          const u = x + xoff;
+          const yy = y + 2 + Math.sin(u / 46 + drift / pace + ph) * amp;
+          if (x === -12) s.moveTo(x, yy);
+          else s.lineTo(x, yy);
+        }
+        s.stroke();
+      }
+    });
+  }
+
   private maskedGrade(
     ctx: CanvasRenderingContext2D,
     W: number,
