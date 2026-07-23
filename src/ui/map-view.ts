@@ -1053,18 +1053,19 @@ export class MapView {
     ctx.scale(1, 0.3);
     // the hull/deck's dark mirror in the water
     const refl = ctx.createRadialGradient(0, 0, 2, 0, 0, w * 0.58);
-    refl.addColorStop(0, 'rgba(12, 38, 52, 0.26)');
-    refl.addColorStop(0.65, 'rgba(12, 38, 52, 0.13)');
+    refl.addColorStop(0, 'rgba(12, 38, 52, 0.22)');
+    refl.addColorStop(0.65, 'rgba(12, 38, 52, 0.11)');
     refl.addColorStop(1, 'rgba(12, 38, 52, 0)');
     ctx.fillStyle = refl;
     ctx.beginPath();
     ctx.arc(0, 0, w * 0.6, 0, Math.PI * 2);
     ctx.fill();
     // one quiet ripple lapping the FRONT of the footprint only (a full ring
-    // reads as a selection bubble around the roof-line), staggered per-site so
+    // reads as a selection bubble around the roof-line — kept faint so it never
+    // haloes the building against the dark sea), staggered per-site so
     // neighbours don't pulse in sync
     const phase = this.reduce ? 0.5 : ((t + bx * 13) % 3600) / 3600;
-    ctx.strokeStyle = `rgba(214, 240, 248, ${(0.14 * (1 - phase)).toFixed(3)})`;
+    ctx.strokeStyle = `rgba(206, 230, 240, ${(0.07 * (1 - phase)).toFixed(3)})`;
     ctx.lineWidth = 1.1;
     ctx.beginPath();
     ctx.arc(0, 0, w * (0.3 + 0.34 * phase), Math.PI * 0.12, Math.PI * 0.88);
@@ -1987,6 +1988,19 @@ export class MapView {
           if (!phased) continue;
           ctx.globalAlpha = alpha * Math.min(1, wgt);
           ctx.drawImage(phased, p.x * W - (w * scale) / 2, p.y * H - h * scale, w * scale, h * scale);
+        }
+        // Settle buildings into the dark: the painted night art runs a touch
+        // hot, so lay a whisper of the building's own shadow back over it at
+        // deep night. The window glows are drawn AFTER this, so lit windows and
+        // lanterns still shine — only the walls dim.
+        if (effNight > 0.06) {
+          const sil = this.silhouette(artId, img);
+          if (sil) {
+            ctx.save();
+            ctx.globalAlpha = alpha * effNight * 0.18;
+            ctx.drawImage(sil, p.x * W - (w * scale) / 2, p.y * H - h * scale, w * scale, h * scale);
+            ctx.restore();
+          }
         }
       }
       ctx.globalAlpha = 1;

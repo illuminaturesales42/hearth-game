@@ -325,8 +325,15 @@ export const DECOR_CATALOG: readonly DecorDef[] = [
  * refinement pass against the real imported plate.
  */
 export const TOWN_NATURE_V2: readonly (TownPiece & { stage: number })[] = [
-  // V2 is buildings-only: the painted plates already carry the terrain, paths,
-  // trees, rocks and beach, so the game adds no lamps/props/debris on top.
+  // The plates carry the terrain/paths/trees; the only dressing the game adds is
+  // STREET LANTERNS at the path junctions — they light the town at dusk/night
+  // (warm ground pool + glowing head + glow re-emit, see map-view prop_lamp),
+  // and read as quiet posts by day. They come on as the town heals (stage).
+  { art: 'prop_lamp', x: 0.57, y: 0.55, w: 0.02, unlockAt: 0, stage: 2 },
+  { art: 'prop_lamp', x: 0.44, y: 0.47, w: 0.02, unlockAt: 0, stage: 2 },
+  { art: 'prop_lamp', x: 0.5, y: 0.6, w: 0.02, unlockAt: 0, stage: 3 },
+  { art: 'prop_lamp', x: 0.64, y: 0.54, w: 0.02, unlockAt: 0, stage: 3 },
+  { art: 'prop_lamp', x: 0.5, y: 0.36, w: 0.02, unlockAt: 0, stage: 4 },
 ] as const;
 export const TOWN_TERRAIN_V2: readonly TownPiece[] = [] as const;
 
