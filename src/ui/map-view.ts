@@ -47,6 +47,9 @@ import { sunPosition } from '../core/sun';
 
 /** The sun's screen-side key for the lighting washes, or null with no location. */
 type SunKey = { dx: number; dy: number; lowness: number } | null;
+
+/** Per-phase damping of the procedural grade (0.35 when a painted plate exists). */
+type PhaseScales = { dawn: number; dusk: number; night: number };
 import { artUrl, portraitFor, tileMarkup } from './art';
 import { esc } from './esc';
 import { ALMANAC_PAGES, ALMANAC_SECTIONS, almanacProgress } from '../core/almanac';
@@ -1284,15 +1287,24 @@ export class MapView {
     // real solar time-of-day — needed by the plate crossfade + everything below
     const tod = phaseForTime(Date.now(), this.sunTimesFromWeather());
     if (plate) ctx.drawImage(plate, 0, 0, W, H);
-    // Night-art seam: when a painted moonlit plate exists (generated on the art
-    // machine — see the environment-pass art brief), crossfade the whole ground
-    // to it as the player's real night falls. Dormant until the art lands.
+    // Painted time-of-day plates (Map V2): when the art machine has generated a
+    // phase's plate, crossfade the whole ground to it by that phase's live
+    // weight — dawn melts to midday melts to dusk melts to night, hand-painted
+    // at every hour. Each seam stays dormant until its art lands.
     if (plate) {
-      const nightPlate = this.sprite('map_island_plate_night');
-      if (nightPlate && tod.weights.night > 0.02) {
+      const phasePlates: [keyof PhaseWeights, string][] = [
+        ['dawn', 'map_island_plate_dawn'],
+        ['dusk', 'map_island_plate_dusk'],
+        ['night', 'map_island_plate_night'],
+      ];
+      for (const [wKey, id] of phasePlates) {
+        const w = tod.weights[wKey];
+        if (w <= 0.02) continue;
+        const img = this.sprite(id);
+        if (!img) continue;
         ctx.save();
-        ctx.globalAlpha = Math.min(1, tod.weights.night);
-        ctx.drawImage(nightPlate, 0, 0, W, H);
+        ctx.globalAlpha = Math.min(1, w);
+        ctx.drawImage(img, 0, 0, W, H);
         ctx.restore();
       }
     }
@@ -1839,8 +1851,19 @@ export class MapView {
           const rw = p.w * W * (plate && BUILDING_INFO[p.art] ? BUILDING_PLATE_SCALE : 1);
           const rh = rw * (rimg.naturalHeight / rimg.naturalWidth);
           ctx.save();
-          ctx.globalAlpha = p.unlockAt === nextUnlock ? 0.97 : 0.85; // distant ruins recede a touch
+          const ra = p.unlockAt === nextUnlock ? 0.97 : 0.85; // distant ruins recede a touch
+          ctx.globalAlpha = ra;
           ctx.drawImage(rimg, p.x * W - rw / 2, p.y * H - rh, rw, rh);
+          // ruins live in the day cycle too: painted _dawn/_dusk/_night ruin
+          // variants crossfade over, same seam as built states
+          for (const ph of ['dawn', 'dusk', 'night'] as const) {
+            const wgt = tod.weights[ph];
+            if (wgt <= 0.05 || !ruinArt) continue;
+            const phased = this.sprite(`${ruinArt}_${ph}`);
+            if (!phased) continue;
+            ctx.globalAlpha = ra * Math.min(1, wgt);
+            ctx.drawImage(phased, p.x * W - rw / 2, p.y * H - rh, rw, rh);
+          }
           ctx.restore();
           continue;
         }
@@ -1912,14 +1935,19 @@ export class MapView {
       }
       ctx.globalAlpha = alpha;
       ctx.drawImage(img, p.x * W - (w * scale) / 2, p.y * H - h * scale, w * scale, h * scale);
-      // Night-art seam: a painted `<art>_night` variant (moonlit walls, warmly
-      // lit windows — see the art brief) crossfades over the day sprite as real
-      // night falls. Dormant per-building until its art lands.
-      if (!p.ruined && BUILDING_INFO[p.art] && tod.weights.night > 0.05) {
-        const nightImg = this.sprite(`${artId}_night`);
-        if (nightImg) {
-          ctx.globalAlpha = alpha * Math.min(1, tod.weights.night);
-          ctx.drawImage(nightImg, p.x * W - (w * scale) / 2, p.y * H - h * scale, w * scale, h * scale);
+      // Time-of-day art seam: painted `<art>_dawn/_dusk/_night` variants (lit
+      // windows at night, warm-keyed at dusk — see docs/map-v2-naming.md)
+      // crossfade over the day sprite by the live phase weights. Works for any
+      // state on the ladder (ruin/wip/l1/l2/l3 all resolve through artId).
+      // Dormant per-building per-phase until each variant's art lands.
+      if (BUILDING_INFO[p.art]) {
+        for (const ph of ['dawn', 'dusk', 'night'] as const) {
+          const wgt = tod.weights[ph];
+          if (wgt <= 0.05) continue;
+          const phased = this.sprite(`${artId}_${ph}`);
+          if (!phased) continue;
+          ctx.globalAlpha = alpha * Math.min(1, wgt);
+          ctx.drawImage(phased, p.x * W - (w * scale) / 2, p.y * H - h * scale, w * scale, h * scale);
         }
       }
       ctx.globalAlpha = 1;
@@ -2289,13 +2317,17 @@ export class MapView {
     const m = this.masks(W, H);
     // heavy cloud mutes direct-sun theatrics (paths, glare) — honest weather
     const clear = 1 - (mood?.cloudCover ?? 0.2) * 0.85;
-    // when a painted night plate is carrying the mood, the procedural night
+    // when a painted phase plate is carrying the mood, that phase's procedural
     // grade steps back so code stops fighting art
-    const nightScale = this.sprite('map_island_plate_night') ? 0.35 : 1;
+    const damp: PhaseScales = {
+      dawn: this.sprite('map_island_plate_dawn') ? 0.35 : 1,
+      dusk: this.sprite('map_island_plate_dusk') ? 0.35 : 1,
+      night: this.sprite('map_island_plate_night') ? 0.35 : 1,
+    };
     ctx.save();
     if (m) {
-      this.gradeSea(ctx, W, H, t, weights, sun, m.sea, clear, nightScale);
-      this.gradeLand(ctx, W, H, t, weights, sun, m.land, nightScale);
+      this.gradeSea(ctx, W, H, t, weights, sun, m.sea, clear, damp);
+      this.gradeLand(ctx, W, H, t, weights, sun, m.land, damp);
     } else {
       // Order matters for the composited crossfade: darken first, then warm/cool.
       if (weights.night > 0.001) this.washNight(ctx, W, H, t, weights.night);
@@ -2329,7 +2361,7 @@ export class MapView {
     sun: SunKey,
     sea: HTMLCanvasElement,
     clear: number,
-    nightScale = 1,
+    damp: PhaseScales = { dawn: 1, dusk: 1, night: 1 },
   ): void {
     const [kx, ky] = sun ? MapView.edgePoint(W, H, sun.dx, sun.dy, 1) : [0, H * 0.7];
     // an elongated glare lying ALONG the water from the sun's edge toward centre
@@ -2350,7 +2382,7 @@ export class MapView {
     };
 
     if (w.dawn > 0.001) {
-      const k = w.dawn;
+      const k = w.dawn * damp.dawn;
       // pastel rose spilling across the water from the sun's side
       this.maskedGrade(ctx, W, H, sea, 'screen', (s) => {
         const g = s.createLinearGradient(kx, ky, W - kx, H - ky);
@@ -2393,7 +2425,7 @@ export class MapView {
       }
     }
     if (w.dusk > 0.001) {
-      const k = w.dusk;
+      const k = w.dusk * damp.dusk;
       // the sea leaves daytime cyan behind: hue toward dusk blue-violet…
       this.maskedGrade(ctx, W, H, sea, 'color', (s) => {
         s.fillStyle = `rgba(84, 92, 168, ${(0.34 * k).toFixed(3)})`;
@@ -2411,7 +2443,7 @@ export class MapView {
       sunPath('rgba(255, 168, 78, A)', 0.62 * k * clear, W * 0.62);
     }
     if (w.night > 0.001) {
-      const k = w.night * nightScale;
+      const k = w.night * damp.night;
       const moon = illumination(Date.now());
       // ink-blue water: hue swings toward deep night blue, then darkens HARD —
       // colour kept (moonlit sea is blue, never grey)
@@ -2455,14 +2487,14 @@ export class MapView {
     w: PhaseWeights,
     sun: SunKey,
     land: HTMLCanvasElement,
-    nightScale = 1,
+    damp: PhaseScales = { dawn: 1, dusk: 1, night: 1 },
   ): void {
     const [kx, ky, sx, sy] = sun
       ? [...MapView.edgePoint(W, H, sun.dx, sun.dy, 1), ...MapView.edgePoint(W, H, sun.dx, sun.dy, -1)]
       : [0, H, W, 0];
 
     if (w.dawn > 0.001) {
-      const k = w.dawn;
+      const k = w.dawn * damp.dawn;
       this.maskedGrade(ctx, W, H, land, 'saturation', (s) => {
         s.fillStyle = `rgba(128, 128, 128, ${(0.3 * k).toFixed(3)})`; // pastel morning
         s.fillRect(0, 0, W, H);
@@ -2492,7 +2524,7 @@ export class MapView {
       });
     }
     if (w.dusk > 0.001) {
-      const k = w.dusk;
+      const k = w.dusk * damp.dusk;
       // hue genuinely swings amber (color op), key from the real sun's side
       this.maskedGrade(ctx, W, H, land, 'color', (s) => {
         const g = s.createLinearGradient(kx, ky, sx, sy);
@@ -2517,7 +2549,7 @@ export class MapView {
       });
     }
     if (w.night > 0.001) {
-      const k = w.night * nightScale;
+      const k = w.night * damp.night;
       const moon = illumination(Date.now());
       const darkenScale = 1 - 0.15 * moon; // a full moon lifts the night
       // Moonlight is BLUE, not grey (the swamp lesson): keep most of the
