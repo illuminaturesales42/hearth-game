@@ -763,6 +763,12 @@ export class MapView {
         : order
           ? order.resolution
           : 'It has always stood here, waiting.';
+      // The Notice Board folds into the Town Hall — its painted board stands at
+      // the steps, the first letter still pinned to it.
+      if (!locked && art === 'town_townhall') {
+        story.textContent +=
+          ' The old notice board still stands at its steps — a letter addressed to nobody, postmarked seventeen years ago, pinned dead centre.';
+      }
     }
     const meta = document.getElementById('bldg-meta');
     if (meta)

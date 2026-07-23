@@ -58,7 +58,6 @@ export const MAP_V2 = artUrl('map_island_plate_dawn') !== null;
 
 /** The original (V1) placement — user-specified; kept verbatim while V1 art ships. */
 export const TOWN_BUILDINGS_V1: readonly TownPiece[] = [
-  { art: 'prop_sign', x: 0.51, y: 0.47, w: 0.042, unlockAt: 1 },
   // 2026-07 re-lay (user-directed): cottage→old market plot, bakery→old cottage
   // plot, farm→old bakery plot, library→old farm plot (sprite flipped so the
   // door faces right/into town), market→old library plot, townhall↔workshop.
@@ -107,7 +106,9 @@ export const TOWN_BUILDINGS_V2: readonly TownPiece[] = [
   // y is the sprite's GROUND CONTACT (bottom-center) — the engine draws
   // drawImage(img, x*W - w/2, y*H - h) — so each y sits the building's base on
   // its plot rather than floating the whole sprite above it.
-  { art: 'prop_sign', x: 0.56, y: 0.552, w: 0.042, unlockAt: 1 },
+  // The Notice Board (order-1 story beat "The Letter") has no standalone painted
+  // asset — it lives on the Town Hall, which carries a painted notice board at its
+  // steps. The beat survives via the order chain (economy.ts) + Journal (world.ts).
   { art: 'town_cottage', x: 0.31, y: 0.511, w: 0.13, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
   { art: 'town_bakery', x: 0.68, y: 0.43, w: 0.125, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
   // ruinVariant marks the well for placement pre-restore (shows its own painted
@@ -152,7 +153,6 @@ export function returnsAt(art: string): number | null {
 
 /** Friendly names + story links for tappable buildings. */
 export const BUILDING_INFO: Record<string, string> = {
-  prop_sign: 'The Notice Board',
   town_cottage: 'The Old Cottage',
   town_bakery: 'Bran’s Bakery',
   prop_well: 'The Village Well',
