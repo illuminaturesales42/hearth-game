@@ -123,6 +123,23 @@ PHASES = {
 }
 
 
+def tint_piece(img, phase):
+    """Wash a phase-less sprite (boat, lighthouse, dressing) so it doesn't read
+    as daytime when composited on a real dawn/dusk/night plate. Multiply-only,
+    alpha preserved — a preview approximation of the engine's region grade."""
+    from PIL import ImageChops
+
+    col = {"dawn": (226, 202, 214), "dusk": (236, 178, 116), "night": (92, 112, 168)}.get(phase)
+    if col is None:
+        return img
+    r, g, b, a = img.split()
+    rgb = ImageChops.multiply(Image.merge("RGB", (r, g, b)), Image.new("RGB", img.size, col))
+    if phase == "night":
+        rgb = ImageChops.multiply(rgb, Image.new("RGB", img.size, (150, 158, 188)))
+    r2, g2, b2 = rgb.split()
+    return Image.merge("RGBA", (r2, g2, b2, a))
+
+
 def side_gradient(colour, side, peak):
     g = Image.new("L", (W, H), 0)
     d = ImageDraw.Draw(g)
@@ -194,11 +211,15 @@ def compose(out_path, layout, orders, phase):
 
     plate = load("map_island_plate")
     canvas = plate.resize((W, H), Image.LANCZOS).convert("RGBA") if plate else Image.new("RGBA", (W, H), (20, 40, 60, 255))
-    # painted phase plate, full-strength, when it exists
+    # painted phase plate, full-strength, when it exists. When it does, the real
+    # per-phase building sprites (lit windows at night, warm rims at dawn/dusk)
+    # carry the look, so the crude procedural grade is skipped entirely.
+    real_phase = False
     if phase != "midday":
         pp = load(f"map_island_plate_{phase}")
         if pp:
             canvas = pp.resize((W, H), Image.LANCZOS).convert("RGBA")
+            real_phase = True
 
     upcoming = sorted(b["unlockAt"] for b in buildings if b["unlockAt"] > orders)
     next_unlock = upcoming[0] if upcoming else -1
@@ -223,20 +244,28 @@ def compose(out_path, layout, orders, phase):
     pieces.append(({"art": lh_art, "x": lx, "y": ly, "w": lw, "unlockAt": 9, "water": True, "until": None, "ruinVariant": None}, lh_art))
 
     for p, art in sorted(pieces, key=lambda q: q[0]["y"]):
-        img = load(art)
+        draw_art, varianted = art, False
+        if real_phase and has(f"{art}_{phase}"):
+            draw_art, varianted = f"{art}_{phase}", True
+        img = load(draw_art) or load(art)
         if not img:
             continue
         scl = PLATE_SCALE if (p["art"] in building_ids or art.startswith("prop_lighthouse")) else 1.0
         w_px = p["w"] * W * scl
         h_px = w_px * (img.height / img.width)
         img2 = img.resize((max(1, int(w_px)), max(1, int(h_px))), Image.LANCZOS)
+        # pieces without a painted phase variant (boats, lighthouse, dressing)
+        # get a matching wash so they don't read as daytime on a dusk/night plate
+        if real_phase and not varianted:
+            img2 = tint_piece(img2, phase)
         px = int(p["x"] * W - w_px / 2)
         py = int(p["y"] * H - h_px)
         canvas.alpha_composite(img2, (px, py))
-        if (p["art"] in building_ids and p["unlockAt"] <= orders and not art.endswith(("_ruin", "_wip"))) or art in ("prop_lighthouse", "prop_lighthouse_l2"):
+        if not real_phase and ((p["art"] in building_ids and p["unlockAt"] <= orders and not art.endswith(("_ruin", "_wip"))) or art in ("prop_lighthouse", "prop_lighthouse_l2")):
             glow_spots.append((p["x"] * W, p["y"] * H - h_px * 0.45, w_px))
 
-    canvas = grade(canvas, phase, glow_spots)
+    if not real_phase:
+        canvas = grade(canvas, phase, glow_spots)
     canvas.convert("RGB").save(out_path)
     print(f"{out_path}  layout={layout} orders={orders} phase={phase} ({len(pieces)} pieces)")
 

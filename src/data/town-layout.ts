@@ -98,22 +98,22 @@ export const TOWN_BUILDINGS_V2: readonly TownPiece[] = [
   // ~0.42/0.57, painted well ~0.76/0.79) and clear of the north pine forest,
   // the south beach, and the water margins. Pixel-tuned against the real
   // midday plate via tools/compose_map_mock.py --layout v2.
-  { art: 'prop_sign', x: 0.52, y: 0.45, w: 0.042, unlockAt: 1 },
-  { art: 'town_cottage', x: 0.44, y: 0.44, w: 0.13, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
-  { art: 'town_bakery', x: 0.29, y: 0.45, w: 0.125, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
-  { art: 'prop_well', x: 0.6, y: 0.49, w: 0.08, unlockAt: 6 },
-  { art: 'town_market', x: 0.73, y: 0.47, w: 0.115, unlockAt: 8, ruinVariant: 7 },
-  { art: 'town_garden', x: 0.72, y: 0.34, w: 0.135, unlockAt: 10, ruinVariant: 4 },
-  { art: 'town_townhall', x: 0.52, y: 0.31, w: 0.14, unlockAt: 12, ruinVariant: 3 },
-  { art: 'town_workshop', x: 0.44, y: 0.72, w: 0.125, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
-  { art: 'town_farm', x: 0.62, y: 0.72, w: 0.135, unlockAt: 16, ruinVariant: 5 },
-  // Joss's hut sits on the south shore, its stilt-deck out over the shallows
-  { art: 'town_fisherhut', x: 0.55, y: 0.82, w: 0.125, unlockAt: 18, ruinVariant: 6, water: true },
-  { art: 'town_sawmill', x: 0.33, y: 0.33, w: 0.13, unlockAt: 20, ruinVariant: 1 },
-  { art: 'town_blacksmith', x: 0.27, y: 0.58, w: 0.125, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
+  { art: 'prop_sign', x: 0.5, y: 0.46, w: 0.042, unlockAt: 1 },
+  { art: 'town_cottage', x: 0.35, y: 0.58, w: 0.13, unlockAt: 2, smoke: { dx: 0.18, dy: -0.72 }, ruinVariant: 0 },
+  { art: 'town_bakery', x: 0.27, y: 0.45, w: 0.125, unlockAt: 4, smoke: { dx: -0.2, dy: -0.78 }, ruinVariant: 2 },
+  { art: 'prop_well', x: 0.48, y: 0.52, w: 0.08, unlockAt: 6 },
+  { art: 'town_market', x: 0.6, y: 0.4, w: 0.115, unlockAt: 8, ruinVariant: 7 },
+  { art: 'town_garden', x: 0.41, y: 0.44, w: 0.135, unlockAt: 10, ruinVariant: 4 },
+  { art: 'town_townhall', x: 0.3, y: 0.35, w: 0.14, unlockAt: 12, ruinVariant: 3 },
+  { art: 'town_workshop', x: 0.46, y: 0.66, w: 0.125, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
+  { art: 'town_farm', x: 0.62, y: 0.66, w: 0.135, unlockAt: 16, ruinVariant: 5 },
+  // Joss's hut sits on the SE water beside the jetty, stilt-deck over the bay
+  { art: 'town_fisherhut', x: 0.8, y: 0.64, w: 0.125, unlockAt: 18, ruinVariant: 6, water: true },
+  { art: 'town_sawmill', x: 0.47, y: 0.27, w: 0.13, unlockAt: 20, ruinVariant: 1 },
+  { art: 'town_blacksmith', x: 0.23, y: 0.56, w: 0.125, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
   // the jetty runs from the SE shore out into the bay
-  { art: 'town_dock', x: 0.82, y: 0.66, w: 0.13, unlockAt: 22, ruinVariant: 5, water: true },
-  { art: 'town_library', x: 0.3, y: 0.7, w: 0.13, unlockAt: 23, ruinVariant: 3 },
+  { art: 'town_dock', x: 0.82, y: 0.73, w: 0.13, unlockAt: 22, ruinVariant: 5, water: true },
+  { art: 'town_library', x: 0.24, y: 0.68, w: 0.13, unlockAt: 23, ruinVariant: 3 },
 ] as const;
 
 /** The ACTIVE world (all consumers read this; the gate picks per the art). */
