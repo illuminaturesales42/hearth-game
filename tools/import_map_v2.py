@@ -268,6 +268,34 @@ def drop_floaters(im: Image.Image) -> Image.Image:
     return Image.fromarray(rgba, "RGBA")
 
 
+def lift_trapped_bg(im: Image.Image) -> Image.Image:
+    """Remove sheet-background sky the border flood couldn't reach — the near-pure
+    white pockets seen THROUGH an arch, an open roof, a scaffold or a fence gap,
+    which should show the map beneath them. Strict neutral-white only (min channel
+    >= 238, near-zero saturation), measured to sit well clear of the sprites' own
+    warm/cream whites (awnings, lit windows, painted trim all read min <= 236,
+    saturation 10-18), and only sizable pockets — so small white glints survive."""
+    arr = np.asarray(im.convert("RGBA"))
+    al = arr[:, :, 3]
+    rgb = arr[:, :, :3].astype(np.int16)
+    mn = rgb.min(2)
+    mx = rgb.max(2)
+    trapped = (al > 12) & (mn >= 238) & (mx - mn <= 8)
+    if not trapped.any():
+        return im
+    lbl, n = ndimage.label(trapped)
+    sizes = ndimage.sum(trapped, lbl, range(1, n + 1))
+    kill_ids = [i + 1 for i, s in enumerate(sizes) if s >= 40]
+    if not kill_ids:
+        return im
+    kill = np.isin(lbl, kill_ids)
+    out = arr.copy()
+    out[kill, 3] = 0
+    res = Image.fromarray(out, "RGBA")
+    res.putalpha(res.getchannel("A").filter(ImageFilter.GaussianBlur(0.6)))
+    return res
+
+
 def defringe(im: Image.Image) -> Image.Image:
     """Drop the pale anti-aliased halo the near-white key leaves along edges:
     semi-transparent pixels whose colour is close to the (near-white) source
@@ -399,6 +427,7 @@ def import_buildings(dry: bool, report: list[str], coverage: dict[str, set[str]]
                     break
                 cell = im.crop((x0, y0, x1, y1))
                 k = despeckle(key_bg(cell))
+                k = lift_trapped_bg(k)  # sky seen through arches/scaffolds/gaps
                 if building in ("lighthouse", "fisherhut", "dock"):
                     k = strip_sea(k)  # clean the sprite's own baked-in sea
                 if building in ("fisherhut", "dock"):
