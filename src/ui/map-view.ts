@@ -1292,20 +1292,30 @@ export class MapView {
     const plate = this.sprite('map_island_plate');
     // real solar time-of-day — needed by the plate crossfade + everything below
     const tod = phaseForTime(Date.now(), this.sunTimesFromWeather());
+    // Evening carries no plate/overlay art of its own — it renders as a
+    // dusk-LEANING blend of dusk and night, so deep twilight sits BETWEEN the
+    // two (warm glow fading to navy) instead of reading as full night. dusk-lean
+    // (0.55 / 0.45) keeps it from going too dark.
+    const wEve = tod.weights.evening;
+    const effDusk = Math.min(1, tod.weights.dusk + wEve * 0.55);
+    const effNight = Math.min(1, tod.weights.night + wEve * 0.45);
+    const phaseW = (ph: 'dawn' | 'dusk' | 'night'): number =>
+      ph === 'dusk' ? effDusk : ph === 'night' ? effNight : tod.weights.dawn;
     if (plate) ctx.drawImage(plate, 0, 0, W, H);
     // Painted time-of-day plates (Map V2): when the art machine has generated a
     // phase's plate, crossfade the whole ground to it by that phase's live
     // weight — dawn melts to midday melts to dusk melts to night, hand-painted
     // at every hour. Each seam stays dormant until its art lands.
     if (plate) {
-      const phasePlates: [keyof PhaseWeights, string][] = [
+      // No evening plate — evening = dusk plate + night plate at the blended
+      // weights (see phaseW), so it sits between the two rather than dark.
+      const phasePlates: ['dawn' | 'dusk' | 'night', string][] = [
         ['dawn', 'map_island_plate_dawn'],
         ['dusk', 'map_island_plate_dusk'],
-        ['evening', 'map_island_plate_evening'],
         ['night', 'map_island_plate_night'],
       ];
       for (const [wKey, id] of phasePlates) {
-        const w = tod.weights[wKey];
+        const w = phaseW(wKey);
         if (w <= 0.02) continue;
         const img = this.sprite(id);
         if (!img) continue;
@@ -1864,7 +1874,7 @@ export class MapView {
           // ruins live in the day cycle too: painted _dawn/_dusk/_night ruin
           // variants crossfade over, same seam as built states
           for (const ph of ['dawn', 'dusk', 'night'] as const) {
-            const wgt = tod.weights[ph];
+            const wgt = phaseW(ph);
             if (wgt <= 0.05 || !ruinArt) continue;
             const phased = this.sprite(`${ruinArt}_${ph}`);
             if (!phased) continue;
@@ -1949,7 +1959,7 @@ export class MapView {
       // Dormant per-building per-phase until each variant's art lands.
       if (BUILDING_INFO[p.art]) {
         for (const ph of ['dawn', 'dusk', 'night'] as const) {
-          const wgt = tod.weights[ph];
+          const wgt = phaseW(ph);
           if (wgt <= 0.05) continue;
           const phased = this.sprite(`${artId}_${ph}`);
           if (!phased) continue;
@@ -1968,7 +1978,7 @@ export class MapView {
           ctx.restore();
         }
       }
-      const dusk = tod.weights.dusk > 0.25;
+      const dusk = effDusk > 0.25;
       const dawn = tod.weights.dawn > 0.25;
       const dim = night || dusk || dawn;
       // cosy warmth spills from the windows of restored homes once the light
@@ -1979,7 +1989,7 @@ export class MapView {
         // A real-world walk brings the town home to its windows: villagersOut
         // advances the evening curve, so more homes glow sooner (figure-free
         // life — the walk reaction after the people pass).
-        const evening = Math.min(1, (tod.weights.dusk * 0.7 + tod.weights.night) * (1 + mood.villagersOut * 0.35)); // 0 day → 1 deep night
+        const evening = Math.min(1, (effDusk * 0.7 + effNight) * (1 + mood.villagersOut * 0.35)); // 0 day → 1 deep night (evening folds in)
         const off = (((Math.sin(p.x * 127.1 + p.y * 311.7) * 43758.5453) % 1) + 1) % 1; // stable 0..1 per home
         const lit = evening > off * 0.55 ? (evening - off * 0.55) / (1 - off * 0.55) : 0; // ramps once past its hour
         const glow = Math.max(lit, tod.weights.dawn * 0.45); // homes still cosy at first light

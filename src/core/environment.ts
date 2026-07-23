@@ -48,8 +48,9 @@ const STOPS: Record<keyof PhaseWeights, Stop> = {
   dawn: { light: [255, 210, 170], ambient: [106, 123, 160], warmth: 0.7 },
   day: { light: [255, 244, 214], ambient: [124, 148, 166], warmth: 0.55 },
   dusk: { light: [242, 160, 82], ambient: [115, 90, 114], warmth: 1 },
-  // deep twilight: the dusk ember cooling toward navy (storyboard's post-sunset frames)
-  evening: { light: [205, 138, 104], ambient: [66, 66, 102], warmth: 0.6 },
+  // deep twilight sits BETWEEN dusk and night (dusk-leaning ~60/40) — warm ember
+  // still in the light, ambient cooling toward navy, but never as dark as night
+  evening: { light: [202, 162, 129], ambient: [84, 74, 100], warmth: 0.66 },
   night: { light: [143, 164, 200], ambient: [38, 49, 79], warmth: 0.15 },
 };
 

@@ -217,7 +217,19 @@ def compose(out_path, layout, orders, phase):
     # per-phase building sprites (lit windows at night, warm rims at dawn/dusk)
     # carry the look, so the crude procedural grade is skipped entirely.
     real_phase = False
-    if phase != "midday":
+    if phase == "evening":
+        # evening has no plate of its own — it's a dusk-leaning blend of the dusk
+        # and night plates (matches the game), so it sits between the two.
+        base = canvas.copy()
+        for pid, a in (("map_island_plate_dusk", 0.55), ("map_island_plate_night", 0.45)):
+            pp = load(pid)
+            if pp:
+                d = pp.resize((W, H), Image.LANCZOS).convert("RGBA")
+                d.putalpha(d.getchannel("A").point(lambda v, a=a: int(v * a)))
+                base.alpha_composite(d)
+        canvas = base
+        real_phase = True
+    elif phase != "midday":
         pp = load(f"map_island_plate_{phase}")
         if pp:
             canvas = pp.resize((W, H), Image.LANCZOS).convert("RGBA")
@@ -247,8 +259,9 @@ def compose(out_path, layout, orders, phase):
 
     for p, art in sorted(pieces, key=lambda q: q[0]["y"]):
         draw_art, varianted = art, False
-        if real_phase and has(f"{art}_{phase}"):
-            draw_art, varianted = f"{art}_{phase}", True
+        eff_phase = "dusk" if phase == "evening" else phase  # evening leans dusk
+        if real_phase and has(f"{art}_{eff_phase}"):
+            draw_art, varianted = f"{art}_{eff_phase}", True
         img = load(draw_art) or load(art)
         if not img:
             continue
