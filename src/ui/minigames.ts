@@ -306,7 +306,17 @@ export class MinigameUI {
     tip.className = 'mg-coach';
     tip.textContent = text;
     stage.appendChild(tip);
-    this.timers.push(window.setTimeout(() => tip.remove(), 4600));
+    // Tap anywhere (or the tip itself) skips it; otherwise it fades on its own.
+    const to = window.setTimeout(() => dismiss(), 6000);
+    const dismiss = (): void => {
+      window.clearTimeout(to);
+      document.removeEventListener('pointerdown', dismiss, true);
+      tip.remove();
+    };
+    tip.addEventListener('click', dismiss);
+    // attach next tick so the tap that opened the game doesn't instantly clear it
+    this.timers.push(window.setTimeout(() => document.addEventListener('pointerdown', dismiss, true), 0));
+    this.timers.push(to);
   }
 
   private finish(reward: MgReward, wish?: { who: string; text: string }, score?: number): void {

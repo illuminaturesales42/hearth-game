@@ -4213,27 +4213,36 @@ body.reduce-motion *::after {
   height: 8px;
   z-index: 2;
 }
+/* Coaching line sits at the BOTTOM of the screen so it never covers the board,
+   and is tap-to-dismiss (a hint on the shelf, not a wall in the way). */
 .mg-coach {
-  position: absolute;
-  top: 4px;
+  position: fixed;
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
-  max-width: 92%;
+  max-width: min(92vw, 420px);
   text-align: center;
   font-size: 12px;
   font-weight: 600;
   color: #1b1206;
   background: linear-gradient(180deg, #ffe6b8, #f4c777);
-  padding: 5px 12px;
+  padding: 8px 16px;
   border-radius: 999px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
-  z-index: 4;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  z-index: 9999;
+  cursor: pointer;
+  pointer-events: auto;
   animation: mgCoachIn 0.3s ease-out;
+}
+.mg-coach::after {
+  content: ' · tap to dismiss';
+  opacity: 0.6;
+  font-weight: 500;
 }
 @keyframes mgCoachIn {
   from {
     opacity: 0;
-    transform: translate(-50%, -6px);
+    transform: translate(-50%, 8px);
   }
   to {
     opacity: 1;

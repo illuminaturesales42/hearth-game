@@ -2165,65 +2165,71 @@ export class MapView {
         const oy = baseY - lh * lanternFrac;
         if (lit) {
           const TAU = Math.PI * 2;
-          // at night the crown light OWNS the skyline: re-emitted above the
-          // grade as a hot jewel + halo (the grade would otherwise crush it)
-          if (night) {
-            this.glowSpots.push({ x: lx, y: oy, r: lw * 0.4, a: 0.85 });
-            this.glowSpots.push({ x: lx, y: oy, r: lw * 1.1, a: 0.3 });
-          }
-          // The lantern is a warm painted glow, not a campfire — a steady lens
-          // that breathes very slightly, with a bright core in the glass.
-          const pulse = this.reduce ? 1 : 0.86 + 0.14 * Math.sin(t / 1100);
-          const bloom = ctx.createRadialGradient(lx, oy, 1, lx, oy, lw * 0.6);
-          bloom.addColorStop(0, `rgba(255, 238, 186, ${0.92 * pulse})`);
-          bloom.addColorStop(0.45, `rgba(255, 214, 132, ${0.42 * pulse})`);
-          bloom.addColorStop(1, 'rgba(255, 210, 128, 0)');
-          ctx.fillStyle = bloom;
-          ctx.beginPath();
-          ctx.arc(lx, oy, lw * 0.6, 0, TAU);
-          ctx.fill();
-          ctx.fillStyle = `rgba(255, 250, 226, ${0.9 * pulse})`;
-          ctx.beginPath();
-          ctx.arc(lx, oy, lw * 0.055, 0, TAU);
-          ctx.fill();
-          // A slow rotating beacon sweep: two opposed soft cones turning around
-          // the lens. Each is longest + brightest as it faces down toward the
-          // viewer and fades to nothing as it turns away, so on the flat iso map
-          // it still reads as a beam raking around in 3D. Foot of the cone rides
-          // an ellipse (dy flattened) to sit in the painted perspective.
-          if (!this.reduce) {
-            const rot = t / 2800;
-            for (const off of [0, Math.PI]) {
-              const a = rot + off;
-              const face = (Math.sin(a) + 1) / 2; // 1 = toward viewer, 0 = behind
-              if (face < 0.03) continue;
-              const len = lw * (1.3 + 2.4 * face);
-              const spread = 0.14;
-              const foot = (ang: number): [number, number] => [
-                lx + Math.cos(ang) * len,
-                oy + (Math.sin(ang) * 0.5 + 0.12) * len,
-              ];
-              const [ex, ey] = foot(a);
-              const beam = ctx.createLinearGradient(lx, oy, ex, ey);
-              beam.addColorStop(0, `rgba(255, 240, 190, ${0.5 * face})`);
-              beam.addColorStop(1, 'rgba(255, 240, 190, 0)');
-              ctx.fillStyle = beam;
-              ctx.beginPath();
-              ctx.moveTo(lx, oy);
-              const [lxo, lyo] = foot(a - spread);
-              const [rxo, ryo] = foot(a + spread);
-              ctx.lineTo(lxo, lyo);
-              ctx.lineTo(rxo, ryo);
-              ctx.closePath();
-              ctx.fill();
+          // The beacon barely shows by day and owns the dark — its whole
+          // intensity ramps with how dark it actually is, so it never blows out
+          // the painted lantern in daylight (the light should reveal the
+          // lighthouse, not hide it).
+          const dark = Math.max(0, Math.min(1, tod.weights.night + tod.weights.evening * 0.9 + tod.weights.dusk * 0.5));
+          if (dark > 0.02) {
+            // at night the crown light lifts above the grade as a soft halo
+            if (night) {
+              this.glowSpots.push({ x: lx, y: oy, r: lw * 0.32, a: 0.5 });
+              this.glowSpots.push({ x: lx, y: oy, r: lw * 0.85, a: 0.2 });
             }
-            // a soft lens flash each time a beam rakes past the viewer
-            const flash = Math.max(0, Math.sin(rot));
-            if (flash > 0) {
-              ctx.fillStyle = `rgba(255, 251, 232, ${0.45 * flash * flash})`;
-              ctx.beginPath();
-              ctx.arc(lx, oy, lw * 0.12, 0, TAU);
-              ctx.fill();
+            const pulse = this.reduce ? 1 : 0.88 + 0.12 * Math.sin(t / 1100);
+            const k = dark * pulse;
+            // warm lens bloom — soft + compact so it haloes the lantern glass
+            // rather than swallowing the tower
+            const bloom = ctx.createRadialGradient(lx, oy, 1, lx, oy, lw * 0.4);
+            bloom.addColorStop(0, `rgba(255, 240, 196, ${0.5 * k})`);
+            bloom.addColorStop(0.5, `rgba(255, 216, 140, ${0.2 * k})`);
+            bloom.addColorStop(1, 'rgba(255, 212, 132, 0)');
+            ctx.fillStyle = bloom;
+            ctx.beginPath();
+            ctx.arc(lx, oy, lw * 0.4, 0, TAU);
+            ctx.fill();
+            ctx.fillStyle = `rgba(255, 250, 228, ${0.6 * k})`;
+            ctx.beginPath();
+            ctx.arc(lx, oy, lw * 0.038, 0, TAU);
+            ctx.fill();
+            // A slow rotating beacon sweep: two opposed soft cones turning around
+            // the lens — longest + brightest facing the viewer, fading as they
+            // turn away, so on the flat iso map it reads as a 3D rake. The cone
+            // foot rides an ellipse to sit in the painted perspective.
+            if (!this.reduce) {
+              const rot = t / 2800;
+              for (const off of [0, Math.PI]) {
+                const a = rot + off;
+                const face = (Math.sin(a) + 1) / 2; // 1 = toward viewer, 0 = behind
+                if (face < 0.03) continue;
+                const len = lw * (1.2 + 2.2 * face);
+                const spread = 0.13;
+                const foot = (ang: number): [number, number] => [
+                  lx + Math.cos(ang) * len,
+                  oy + (Math.sin(ang) * 0.5 + 0.12) * len,
+                ];
+                const [ex, ey] = foot(a);
+                const beam = ctx.createLinearGradient(lx, oy, ex, ey);
+                beam.addColorStop(0, `rgba(255, 240, 190, ${0.34 * face * dark})`);
+                beam.addColorStop(1, 'rgba(255, 240, 190, 0)');
+                ctx.fillStyle = beam;
+                ctx.beginPath();
+                ctx.moveTo(lx, oy);
+                const [lxo, lyo] = foot(a - spread);
+                const [rxo, ryo] = foot(a + spread);
+                ctx.lineTo(lxo, lyo);
+                ctx.lineTo(rxo, ryo);
+                ctx.closePath();
+                ctx.fill();
+              }
+              // a soft lens flash each time a beam rakes past the viewer
+              const flash = Math.max(0, Math.sin(rot));
+              if (flash > 0) {
+                ctx.fillStyle = `rgba(255, 251, 232, ${0.3 * flash * flash * dark})`;
+                ctx.beginPath();
+                ctx.arc(lx, oy, lw * 0.09, 0, TAU);
+                ctx.fill();
+              }
             }
           }
         }
