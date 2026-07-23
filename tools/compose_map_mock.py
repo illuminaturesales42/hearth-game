@@ -27,7 +27,7 @@ ART = os.path.join(ROOT, "public", "art")
 LAYOUT = os.path.join(ROOT, "src", "data", "town-layout.ts")
 
 SCALE = 3
-W, H = 366 * SCALE, 285 * SCALE
+W, H = 366 * SCALE, 315 * SCALE
 
 src = open(LAYOUT, encoding="utf-8").read()
 
@@ -208,7 +208,7 @@ def compose(out_path, layout, orders, phase):
     terrain = parse_pieces(block("TOWN_TERRAIN" + suffix))
     boats = parse_pieces(block("TOWN_BOATS" + suffix))
     building_ids = {b["art"] for b in buildings}
-    lighthouse = {"v1": (0.94, 0.59, 0.15), "v2": (0.84, 0.335, 0.13)}[layout]
+    lighthouse = {"v1": (0.94, 0.59, 0.15), "v2": (0.82, 0.335, 0.13)}[layout]
     stage = 0 if orders == 0 else (2 if orders < 24 else 4)
 
     plate = load("map_island_plate")

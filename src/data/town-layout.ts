@@ -357,7 +357,7 @@ export const PLAZA = MAP_V2 ? ({ x: 0.57, y: 0.48 } as const) : ({ x: 0.5, y: 0.
 
 /** The painted-in lighthouse (4-state ladder): V1 east point / V2 NE islet. */
 export const LIGHTHOUSE_ANCHOR = MAP_V2
-  ? ({ x: 0.84, y: 0.335, w: 0.13 } as const)
+  ? ({ x: 0.82, y: 0.335, w: 0.13 } as const)
   : ({ x: 0.94, y: 0.59, w: 0.15 } as const);
 
 /** Sky-space effects (viewport fractions). */

@@ -595,7 +595,7 @@ export class MapView {
           }
         }
         if (this.decorPick) {
-          const placed = this.game.placeDecor(this.decorPick, x / W, y / 285);
+          const placed = this.game.placeDecor(this.decorPick, x / W, y / MapView.LOGICAL_H);
           if (!placed) {
             const def = DECOR_CATALOG.find((d) => d.art === this.decorPick);
             const broke = def && this.game.snapshot.coins < def.cost;
@@ -940,7 +940,7 @@ export class MapView {
     if (!this.canvas) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = this.canvas.clientWidth || 360;
-    const h = 285;
+    const h = MapView.LOGICAL_H;
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(h * dpr);
     this.ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -954,7 +954,7 @@ export class MapView {
   private get logicalW(): number {
     return this.canvas?.clientWidth || 360;
   }
-  private static readonly LOGICAL_H = 285;
+  private static readonly LOGICAL_H = 315;
 
   /** Keep the viewport inside the scaled scene; fit-zoom is always centred. */
   private clampCam(): void {
@@ -1069,7 +1069,7 @@ export class MapView {
     const cv = this.canvas;
     if (!ctx || !cv) return;
     const W = cv.clientWidth || 360;
-    const H = 285;
+    const H = MapView.LOGICAL_H;
     const prog = this.progress();
     const stage = this.stage();
     ctx.clearRect(0, 0, W, H);
