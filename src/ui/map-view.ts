@@ -2207,7 +2207,9 @@ export class MapView {
           unlockAt: lit ? 9 : -9,
         });
         // the lantern room's height differs per state (measured from the art)
-        const lanternFrac = artId === 'prop_lighthouse_l2' || artId === 'prop_lighthouse_l3' ? 0.81 : 0.88;
+        // measured lantern height in the painted art (from the base): L1/L2 sit
+        // at ~0.67, the taller L3 at ~0.64 — so the beacon glow lands ON the glass
+        const lanternFrac = artId === 'prop_lighthouse_l3' ? 0.64 : 0.67;
         const oy = baseY - lh * lanternFrac;
         if (lit) {
           const TAU = Math.PI * 2;
@@ -2219,8 +2221,8 @@ export class MapView {
           if (dark > 0.02) {
             // at night the crown light lifts above the grade as a soft halo
             if (night) {
-              this.glowSpots.push({ x: lx, y: oy, r: lw * 0.32, a: 0.5 });
-              this.glowSpots.push({ x: lx, y: oy, r: lw * 0.85, a: 0.2 });
+              // one tight jewel — no wide outer ring (it read as an outline glow)
+              this.glowSpots.push({ x: lx, y: oy, r: lw * 0.26, a: 0.5 });
             }
             const pulse = this.reduce ? 1 : 0.88 + 0.12 * Math.sin(t / 1100);
             const k = dark * pulse;
@@ -2683,12 +2685,16 @@ export class MapView {
         s.fillStyle = g;
         s.fillRect(0, 0, W, H);
       });
-      // vignette: deep BLUE dark at the edges (grey murk was the swamp)
+      // vignette: deep BLUE dark drawing in from the edges — it frames the lit
+      // town and sinks the outer ground/paths into the dark so they stop reading
+      // as bright tiles. Starts closer in + deeper than before. The window, lamp
+      // and beacon glows re-emit AFTER this, so the lights still blaze on top.
       ctx.save();
       ctx.globalCompositeOperation = 'multiply';
-      const v = ctx.createRadialGradient(W * 0.5, H * 0.48, H * 0.55, W * 0.5, H * 0.48, H * 1.15);
+      const v = ctx.createRadialGradient(W * 0.5, H * 0.46, H * 0.38, W * 0.5, H * 0.46, H * 1.05);
       v.addColorStop(0, 'rgba(255,255,255,0)');
-      v.addColorStop(1, `rgba(70, 84, 150, ${(0.45 * k).toFixed(3)})`);
+      v.addColorStop(0.6, `rgba(42, 54, 98, ${(0.2 * k).toFixed(3)})`);
+      v.addColorStop(1, `rgba(26, 36, 74, ${(0.72 * k).toFixed(3)})`);
       ctx.fillStyle = v;
       ctx.fillRect(0, 0, W, H);
       ctx.restore();
