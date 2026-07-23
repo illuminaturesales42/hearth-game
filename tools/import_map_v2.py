@@ -470,7 +470,37 @@ def import_buildings(dry: bool, report: list[str], coverage: dict[str, set[str]]
                         gap += 1
                         if gap >= 4:
                             break
-                cell = im.crop((x0, ny0, x1, y1))
+                # ...and content poking past the outer LEFT/RIGHT column edges (the
+                # L3 dock's crane arm runs past the last column). Columns butt
+                # against their neighbours, so x_floor/x_ceil clamp INNER columns
+                # to a no-op; only the sheet's outermost columns reach into the
+                # empty margin. Scan out while foreground continues, stop at a
+                # clear strip.
+                row_prof = fg_sheet[ny0:y1, :].sum(0)
+                thr_x = max(2, int((y1 - ny0) * 0.012))
+                x_ceil = (cols[ci + 1][0] - 2) if ci + 1 < len(cols) else im.width
+                x_floor = (cols[ci - 1][1] + 2) if ci > 0 else 0
+                cap_r = x1 + int((x1 - x0) * 0.4)
+                cap_l = x0 - int((x1 - x0) * 0.4)
+                nx1, xx, gap = x1, x1, 0
+                while xx < min(x_ceil, cap_r):
+                    if row_prof[xx] > thr_x:
+                        nx1, gap = xx + 1, 0
+                    else:
+                        gap += 1
+                        if gap >= 4:
+                            break
+                    xx += 1
+                nx0, xx, gap = x0, x0, 0
+                while xx > max(x_floor, cap_l):
+                    xx -= 1
+                    if row_prof[xx] > thr_x:
+                        nx0, gap = xx, 0
+                    else:
+                        gap += 1
+                        if gap >= 4:
+                            break
+                cell = im.crop((nx0, ny0, nx1, y1))
                 k = despeckle(key_bg(cell))
                 k = lift_trapped_bg(k)  # sky seen through arches/scaffolds/gaps
                 if building in ("lighthouse", "fisherhut", "dock"):
