@@ -8,7 +8,6 @@ import { AppShell } from './ui/app-shell';
 import { MinigameUI } from './ui/minigames';
 import { confirmDialog } from './ui/confirm-modal';
 import { initNetStatus } from './ui/net-status';
-import { initTimeBadge } from './ui/time-badge';
 import { initEnvironmentController } from './ui/environment-controller';
 import { pickNotificationProvider, DAILY_NOTIF_BODY, DEFAULT_NOTIF_HOUR } from './platform/notification-provider';
 import { recentEvents, setSink, track } from './analytics';
@@ -36,9 +35,6 @@ new AppShell(game, metrics);
 // 'hearth:play-minigame' event (unlock at story-complete; attempts from living well).
 new MinigameUI(game);
 
-// The corner time-of-day badge on the Home map (reflects the real clock; the
-// map's own lighting turns with the same phase).
-initTimeBadge();
 // The interface breathes with the day: push the live environment to CSS vars.
 initEnvironmentController();
 

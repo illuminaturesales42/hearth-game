@@ -1091,33 +1091,6 @@ body {
   height: 285px;
   display: block;
 }
-/* The painted time-of-day badge, top-right of the map — reflects the real clock
-   and turns with the map's own lighting (sunrise / midday / sunset / night). */
-.time-badge {
-  position: absolute;
-  top: 1px;
-  right: 6px;
-  width: 66px;
-  aspect-ratio: 47 / 50;
-  z-index: 3;
-  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.5));
-  pointer-events: none;
-}
-/* four stacked phase vignettes; opacity = the live phase weight, so the
-   medallion blends continuously through the day (set in ui/time-badge). */
-.time-badge__layer {
-  position: absolute;
-  inset: 0;
-  background-size: contain;
-  background-position: center;
-  background-repeat: no-repeat;
-  transition: opacity 2.5s ease;
-}
-@media (prefers-reduced-motion: reduce) {
-  .time-badge__layer {
-    transition: none;
-  }
-}
 /* current challenge card on the town map */
 .map-challenge {
   display: flex;

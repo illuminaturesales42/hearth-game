@@ -2158,37 +2158,67 @@ export class MapView {
         const lanternFrac = artId === 'prop_lighthouse_l2' || artId === 'prop_lighthouse_l3' ? 0.81 : 0.88;
         const oy = baseY - lh * lanternFrac;
         if (lit) {
-          // the beacon fire itself, burning in the lantern room
-          this.drawFlame(ctx, 'fx_flame_beacon', lx, oy + lh * 0.09, lw * 0.5, t);
+          const TAU = Math.PI * 2;
           // at night the crown light OWNS the skyline: re-emitted above the
           // grade as a hot jewel + halo (the grade would otherwise crush it)
           if (night) {
             this.glowSpots.push({ x: lx, y: oy, r: lw * 0.4, a: 0.85 });
             this.glowSpots.push({ x: lx, y: oy, r: lw * 1.1, a: 0.3 });
           }
-          // warm lantern-room bloom
-          const g = ctx.createRadialGradient(lx, oy, 2, lx, oy, lw * 0.55);
-          // the beacon burns, not just glows — a gentle fire flicker on the bloom
-          const bFlick = this.reduce ? 1 : 0.78 + 0.22 * Math.abs(Math.sin(t / 130));
-          g.addColorStop(0, `rgba(255, 232, 168, ${0.8 * bFlick})`);
-          g.addColorStop(1, 'rgba(255, 232, 168, 0)');
-          ctx.fillStyle = g;
+          // The lantern is a warm painted glow, not a campfire — a steady lens
+          // that breathes very slightly, with a bright core in the glass.
+          const pulse = this.reduce ? 1 : 0.86 + 0.14 * Math.sin(t / 1100);
+          const bloom = ctx.createRadialGradient(lx, oy, 1, lx, oy, lw * 0.6);
+          bloom.addColorStop(0, `rgba(255, 238, 186, ${0.92 * pulse})`);
+          bloom.addColorStop(0.45, `rgba(255, 214, 132, ${0.42 * pulse})`);
+          bloom.addColorStop(1, 'rgba(255, 210, 128, 0)');
+          ctx.fillStyle = bloom;
           ctx.beginPath();
-          ctx.arc(lx, oy, lw * 0.55, 0, Math.PI * 2);
+          ctx.arc(lx, oy, lw * 0.6, 0, TAU);
           ctx.fill();
-          // sweeping beam
+          ctx.fillStyle = `rgba(255, 250, 226, ${0.9 * pulse})`;
+          ctx.beginPath();
+          ctx.arc(lx, oy, lw * 0.055, 0, TAU);
+          ctx.fill();
+          // A slow rotating beacon sweep: two opposed soft cones turning around
+          // the lens. Each is longest + brightest as it faces down toward the
+          // viewer and fades to nothing as it turns away, so on the flat iso map
+          // it still reads as a beam raking around in 3D. Foot of the cone rides
+          // an ellipse (dy flattened) to sit in the painted perspective.
           if (!this.reduce) {
-            const ang = Math.sin(t / 1500) * 0.5 - 0.25;
-            const beam = ctx.createLinearGradient(lx, oy, lx - 170 * Math.cos(ang), oy - 90 * Math.sin(ang));
-            beam.addColorStop(0, 'rgba(255, 232, 168, 0.42)');
-            beam.addColorStop(1, 'rgba(255, 232, 168, 0)');
-            ctx.fillStyle = beam;
-            ctx.beginPath();
-            ctx.moveTo(lx, oy);
-            ctx.lineTo(lx - 180 * Math.cos(ang - 0.11), oy - 110 * Math.sin(ang - 0.11));
-            ctx.lineTo(lx - 180 * Math.cos(ang + 0.11), oy - 110 * Math.sin(ang + 0.11));
-            ctx.closePath();
-            ctx.fill();
+            const rot = t / 2800;
+            for (const off of [0, Math.PI]) {
+              const a = rot + off;
+              const face = (Math.sin(a) + 1) / 2; // 1 = toward viewer, 0 = behind
+              if (face < 0.03) continue;
+              const len = lw * (1.3 + 2.4 * face);
+              const spread = 0.14;
+              const foot = (ang: number): [number, number] => [
+                lx + Math.cos(ang) * len,
+                oy + (Math.sin(ang) * 0.5 + 0.12) * len,
+              ];
+              const [ex, ey] = foot(a);
+              const beam = ctx.createLinearGradient(lx, oy, ex, ey);
+              beam.addColorStop(0, `rgba(255, 240, 190, ${0.5 * face})`);
+              beam.addColorStop(1, 'rgba(255, 240, 190, 0)');
+              ctx.fillStyle = beam;
+              ctx.beginPath();
+              ctx.moveTo(lx, oy);
+              const [lxo, lyo] = foot(a - spread);
+              const [rxo, ryo] = foot(a + spread);
+              ctx.lineTo(lxo, lyo);
+              ctx.lineTo(rxo, ryo);
+              ctx.closePath();
+              ctx.fill();
+            }
+            // a soft lens flash each time a beam rakes past the viewer
+            const flash = Math.max(0, Math.sin(rot));
+            if (flash > 0) {
+              ctx.fillStyle = `rgba(255, 251, 232, ${0.45 * flash * flash})`;
+              ctx.beginPath();
+              ctx.arc(lx, oy, lw * 0.12, 0, TAU);
+              ctx.fill();
+            }
           }
         }
       }

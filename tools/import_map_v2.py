@@ -213,12 +213,13 @@ def key_bg(im: Image.Image) -> Image.Image:
 def strip_sea(im: Image.Image) -> Image.Image:
     """Peel the painted sea (and any teal-water streak) off a sprite that ships
     with its own water — the lighthouse islet and the fisher-hut's stilt bay both
-    bake sea into the source cell. Only *saturated* blue/teal sea is stripped, and
-    foam only where it directly rides that sea, so light stone, the pale path, and
-    the desaturated blue-grey slate roofs are never eaten. Flooded inward from the
-    sprite border and stopped at the first non-sea pixel, so interior warm windows
-    stay. Dropped onto the plate the sprite then reads as a clean rock/stilt base
-    over the plate's real water."""
+    bake sea into the source cell. Sea is detected by its cool cast dominating red
+    plus real saturation — which holds across the day, from bright midday teal to
+    dark navy night sea (RGB ~22,42,69) — so every phase cleans to the same rock
+    silhouette. Grey stone and the pale path are neutral (cool≈red) so they stay;
+    the desaturated blue-grey slate roofs read cool but are interior/enclosed, so
+    the border flood never reaches them. Foam only where it rides the sea. Dropped
+    onto the plate the sprite then reads as a clean rock/stilt base over real water."""
     a = np.asarray(im.convert("RGBA")).astype(np.int16)
     r, g, b, al = a[:, :, 0], a[:, :, 1], a[:, :, 2], a[:, :, 3]
     op = al >= 12
@@ -227,8 +228,9 @@ def strip_sea(im: Image.Image) -> Image.Image:
     mn = np.minimum(np.minimum(r, g), b)
     sat = mx - mn
     cool = np.maximum(g, b)  # blue OR teal
-    # saturated sea: cool-cast, clearly not grey stone/slate (which is low-sat)
-    sea = op & (cool - r > 24) & (cool > 95) & (sat > 45)
+    # cool-cast sea at any brightness (midday teal → night navy); grey rock/stone
+    # is neutral (cool-r small) and warm decking is red-dominant, so both survive
+    sea = op & (cool - r > 22) & (sat > 32)
     foam = op & (mn > 178) & (sat < 26)
     foam_near = foam & ndimage.binary_dilation(sea, iterations=2)
     bgish = transp | sea | foam_near
