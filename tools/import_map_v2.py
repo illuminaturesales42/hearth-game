@@ -44,9 +44,30 @@ ART = REPO / "public" / "art"
 TS_MANIFEST = REPO / "src" / "art-manifest.ts"
 
 # ---- source locations (in-repo, committed) ----------------------------------
+# Robust to how the art is dropped in: either the flat layout
+#   art-src/Map times of dayFinal.png  +  art-src/buildings/*.png
+# or a straight copy of the whole Core/Map folder
+#   art-src/Map/Map times of dayFinal.png  +  art-src/Map/Full Building Final/*.png
 SRC = REPO / "art-src"
-PLATE_SHEET = SRC / "Map times of dayFinal.png"  # 2x2 quadrant sheet
-BUILDINGS_DIR = SRC / "buildings"
+
+
+def _first(*cands):
+    for c in cands:
+        if c.exists():
+            return c
+    return cands[0]
+
+
+PLATE_SHEET = _first(
+    SRC / "Map times of dayFinal.png",
+    SRC / "Map" / "Map times of dayFinal.png",
+    SRC / "Map" / "MaptimesofdayFinal.png",
+)
+BUILDINGS_DIR = _first(
+    SRC / "buildings",
+    SRC / "Map" / "Full Building Final",
+    SRC / "Full Building Final",
+)
 PLATE_MAX_W = 2048
 
 # quadrant order of the sheet (row-major): dawn | midday / dusk | night
