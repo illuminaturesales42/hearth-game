@@ -488,6 +488,39 @@ export class MapView {
    */
   private glowSpots: { x: number; y: number; r: number; a: number }[] = [];
 
+  /**
+   * One pre-rendered warm radial-falloff stamp shared by EVERY glow draw. A full
+   * lit town pushes dozens of lights; allocating a fresh createRadialGradient per
+   * light per frame was the main animation cost. The stamp is rendered once
+   * (64px, warm amber core -> transparent) and drawn scaled with globalAlpha —
+   * visually identical to the per-light gradients it replaces.
+   */
+  private glowStampCache: HTMLCanvasElement | null = null;
+  private glowStamp(): HTMLCanvasElement {
+    if (this.glowStampCache) return this.glowStampCache;
+    const c = document.createElement('canvas');
+    c.width = 64;
+    c.height = 64;
+    const g = c.getContext('2d');
+    if (g) {
+      const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grad.addColorStop(0, 'rgba(255, 196, 116, 1)');
+      grad.addColorStop(1, 'rgba(255, 196, 116, 0)');
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 64, 64);
+    }
+    this.glowStampCache = c;
+    return c;
+  }
+
+  /** Draw one warm glow via the shared stamp (viewport coords + radius). */
+  private stampGlow(ctx: CanvasRenderingContext2D, px: number, py: number, pr: number, alpha: number): void {
+    if (alpha < 0.01 || pr <= 0) return;
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.drawImage(this.glowStamp(), px - pr, py - pr, pr * 2, pr * 2);
+    ctx.globalAlpha = 1;
+  }
+
   /** last stem levels sent, so ramps only fire when something actually changed */
   private lastStems: StemLevels | null = null;
   private stemsCheckedAt = 0;
@@ -1021,8 +1054,32 @@ export class MapView {
     this.raf = requestAnimationFrame(step);
   }
 
-  /** Draw one frame of a 7-frame flame sprite strip, its base at (cx, groundY).
-   *  Reduced motion holds a single mid-flame frame. */
+  /**
+   * Draw one frame of a horizontal N-frame sprite strip, base at (cx, groundY),
+   * width w (height preserves the single-frame aspect). Reduced motion holds a
+   * representative mid frame. The canonical strip contract (see sprite-strip.ts):
+   * one PNG, N equal-width frames side-by-side, full height, no padding.
+   */
+  private drawStrip(
+    ctx: CanvasRenderingContext2D,
+    id: string,
+    frames: number,
+    fps: number,
+    cx: number,
+    groundY: number,
+    w: number,
+    t: number,
+  ): void {
+    const strip = this.sprite(id);
+    if (!strip || !strip.naturalWidth) return;
+    const cw = Math.round(strip.naturalWidth / frames);
+    const ch = strip.naturalHeight;
+    const fi = this.reduce ? Math.floor(frames / 2) : Math.floor(t / (1000 / fps)) % frames;
+    const h = w * (ch / cw);
+    ctx.drawImage(strip, fi * cw, 0, cw, ch, cx - w / 2, groundY - h, w, h);
+  }
+
+  /** 7-frame flame at ~11fps, base at (cx, groundY). Thin wrapper over drawStrip. */
   private drawFlame(
     ctx: CanvasRenderingContext2D,
     id: string,
@@ -1031,14 +1088,7 @@ export class MapView {
     w: number,
     t: number,
   ): void {
-    const strip = this.sprite(id);
-    if (!strip || !strip.naturalWidth) return;
-    const frames = 7;
-    const cw = Math.round(strip.naturalWidth / frames);
-    const ch = strip.naturalHeight;
-    const fi = this.reduce ? 3 : Math.floor(t / 90) % frames; // ~11fps flicker
-    const h = w * (ch / cw);
-    ctx.drawImage(strip, fi * cw, 0, cw, ch, cx - w / 2, groundY - h, w, h);
+    this.drawStrip(ctx, id, 7, 11, cx, groundY, w, t);
   }
 
   /**
@@ -1107,23 +1157,23 @@ export class MapView {
       // The village's lights answer the dark: re-emit collected window/lamp
       // glows OVER the night grade so they blaze instead of being multiplied
       // away — the deeper the night, the brighter they cut.
-      const nightW = phaseForTime(Date.now(), this.sunTimesFromWeather()).weights.night;
-      if (nightW > 0.05 && this.glowSpots.length) {
+      const wts = phaseForTime(Date.now(), this.sunTimesFromWeather()).weights;
+      const nightW = wts.night;
+      // lights blaze through the whole dark half of the day — evening + dusk fold
+      // in so lit windows/lanterns don't blink off during twilight (evening has
+      // no plate of its own; it leans night, mirroring effNight in drawTown)
+      const glowNight = Math.min(1, nightW + wts.evening * 0.7 + wts.dusk * 0.3);
+      if (glowNight > 0.05 && this.glowSpots.length) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         for (const s of this.glowSpots) {
-          const a = s.a * nightW;
+          const a = s.a * glowNight;
           if (a < 0.01) continue;
           // spots were collected inside the camera transform (incl. the island
           // shift) — map to viewport the same way
           const px = (s.x - this.mapShiftX) * this.cam.zoom + this.cam.panX;
           const py = s.y * this.cam.zoom + this.cam.panY;
-          const pr = s.r * this.cam.zoom;
-          const g = ctx.createRadialGradient(px, py, 0, px, py, pr);
-          g.addColorStop(0, `rgba(255, 196, 116, ${a.toFixed(3)})`);
-          g.addColorStop(1, 'rgba(255, 196, 116, 0)');
-          ctx.fillStyle = g;
-          ctx.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+          this.stampGlow(ctx, px, py, s.r * this.cam.zoom, a);
         }
         ctx.restore();
       }
@@ -2021,7 +2071,9 @@ export class MapView {
       // fails — the single biggest "someone lives here" cue. Homes now light up
       // ONE BY ONE across the real dusk→night window (a per-home offset), not all
       // at once, and a little morning warmth lingers at dawn.
-      if (BUILDING_INFO[p.art] && !this.reduce) {
+      // Window jewels light every home at dusk/night. Kept ON under reduced
+      // motion (a lit town, just static — no candle flicker / forge flame).
+      if (BUILDING_INFO[p.art]) {
         // A real-world walk brings the town home to its windows: villagersOut
         // advances the evening curve, so more homes glow sooner (figure-free
         // life — the walk reaction after the people pass).
@@ -2035,7 +2087,7 @@ export class MapView {
           // JEWEL lights, not haze: a tight hot core over the windows with a
           // modest falloff — small, bright, focused (big soft blobs stacked
           // into the smokey-swamp look)
-          const flick = 0.93 + 0.07 * Math.sin(t / 820 + p.x * 40); // gentle candle-flicker
+          const flick = this.reduce ? 1 : 0.93 + 0.07 * Math.sin(t / 820 + p.x * 40); // gentle candle-flicker
           const k = glow * 0.55 * flick;
           const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 0.2);
           core.addColorStop(0, `rgba(255, 205, 110, ${Math.min(0.85, k * 1.6).toFixed(3)})`);
@@ -2050,38 +2102,53 @@ export class MapView {
           // collected for the post-grade re-emit: hot core + modest halo
           this.glowSpots.push({ x: cx, y: cy, r: w * 0.16, a: k * 0.95 });
           this.glowSpots.push({ x: cx, y: cy, r: w * 0.38, a: k * 0.3 });
-          // and the light lands: a compact pool at the doorway (night only)
-          const spill = lit * tod.weights.night;
+          // and the light lands: a compact pool at the doorway (dusk→night)
+          const spill = lit * effNight;
           if (spill > 0.15) {
             this.glowSpots.push({ x: cx, y: p.y * H + h * 0.02, r: w * 0.28, a: spill * 0.22 });
           }
+          // Hearth: a home with a chimney carries a low warm fire at its base —
+          // the "someone's home" ember, warmer and lower than the window jewels.
+          if (p.smoke) {
+            this.glowSpots.push({ x: cx, y: p.y * H - h * 0.14, r: w * 0.22, a: k * 0.55 });
+          }
+          // The forge burns hottest — a live flame in the blacksmith's arch
+          // (art-gated: fx_flame_forge) plus a hot glow.
+          if (p.art === 'town_blacksmith') {
+            if (!this.reduce) this.drawFlame(ctx, 'fx_flame_forge', cx, p.y * H - h * 0.08, w * 0.34, t);
+            this.glowSpots.push({ x: cx, y: p.y * H - h * 0.22, r: w * 0.3, a: k * 0.85 });
+          }
         }
       }
-      // street lamps cast a warm pool on the ground + a glowing head at dusk/night
-      if (dim && p.art === 'prop_lamp' && !this.reduce) {
+      // Street lamps: a live flame in the glass, a glowing head, and a warm
+      // ground pool at dusk/night. They ignite ONE BY ONE across the dusk->night
+      // window (per-lamp offset), like the homes. Reduced motion keeps a static
+      // lit lamp (no flame strip / flicker) rather than going dark.
+      if (dim && p.art === 'prop_lamp') {
         const lx = p.x * W;
         const ly = p.y * H;
-        const lampFlick = 0.82 + 0.18 * Math.abs(Math.sin(t / 118 + p.x * 25));
-        const pool = ctx.createRadialGradient(lx, ly, 1, lx, ly, w * 2.6);
-        pool.addColorStop(0, `rgba(255, 210, 130, ${0.32 * (0.9 + (0.1 * (lampFlick - 0.82)) / 0.18)})`);
-        pool.addColorStop(1, 'rgba(255, 200, 120, 0)');
-        ctx.fillStyle = pool;
-        ctx.save();
-        ctx.translate(lx, ly);
-        ctx.scale(1, 0.42);
-        ctx.beginPath();
-        ctx.arc(0, 0, w * 2.6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-        const head = ctx.createRadialGradient(lx, ly - h * 0.82, 0, lx, ly - h * 0.82, w * 0.9);
-        head.addColorStop(0, `rgba(255, 226, 150, ${0.6 * lampFlick})`);
-        head.addColorStop(1, 'rgba(255, 226, 150, 0)');
-        ctx.fillStyle = head;
-        ctx.fillRect(lx - w, ly - h * 0.82 - w, w * 2, w * 2);
-        // jewel re-emit: hot glass core, soft small halo, tight ground pool
-        this.glowSpots.push({ x: lx, y: ly - h * 0.82, r: w * 0.45, a: 0.7 * lampFlick });
-        this.glowSpots.push({ x: lx, y: ly - h * 0.82, r: w * 1.0, a: 0.22 * lampFlick });
-        this.glowSpots.push({ x: lx, y: ly, r: w * 1.5, a: 0.12 });
+        const headY = ly - h * 0.82;
+        const toNight = Math.min(1, effDusk * 0.5 + effNight);
+        const off = (((Math.sin(p.x * 91.7 + p.y * 47.3) * 43758.5453) % 1) + 1) % 1; // stable per lamp
+        const litL = toNight > off * 0.5 ? (toNight - off * 0.5) / (1 - off * 0.5) : 0;
+        if (litL > 0.02) {
+          const flick = this.reduce ? 1 : 0.85 + 0.15 * Math.abs(Math.sin(t / 118 + p.x * 25));
+          const k = litL * flick;
+          // elliptical ground pool
+          ctx.save();
+          ctx.translate(lx, ly);
+          ctx.scale(1, 0.42);
+          this.stampGlow(ctx, 0, 0, w * 2.6, 0.3 * k);
+          ctx.restore();
+          // a real flame flickering in the lantern glass (art-gated → the head
+          // glow below stands in until fx_flame_lantern is present)
+          if (!this.reduce) this.drawFlame(ctx, 'fx_flame_lantern', lx, headY + h * 0.16, w * 0.7, t);
+          this.stampGlow(ctx, lx, headY, w * 0.95, 0.5 * k);
+          // jewel re-emit over the night grade
+          this.glowSpots.push({ x: lx, y: headY, r: w * 0.45, a: 0.7 * k });
+          this.glowSpots.push({ x: lx, y: headY, r: w * 1.0, a: 0.2 * k });
+          this.glowSpots.push({ x: lx, y: ly, r: w * 1.5, a: 0.12 * litL });
+        }
       }
       // A walked day opens the market: a warm ember glow under the awning by
       // daylight — trade and bustle without a single drawn figure. Static, so it
