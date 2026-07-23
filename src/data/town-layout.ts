@@ -124,7 +124,7 @@ export const TOWN_BUILDINGS_V2: readonly TownPiece[] = [
   { art: 'town_sawmill', x: 0.47, y: 0.291, w: 0.13, unlockAt: 20, ruinVariant: 1 },
   { art: 'town_blacksmith', x: 0.47, y: 0.525, w: 0.125, unlockAt: 21, smoke: { dx: 0.05, dy: -0.8 }, ruinVariant: 2 },
   // the jetty runs from the SE point out into the bay
-  { art: 'town_dock', x: 0.8, y: 0.697, w: 0.152, unlockAt: 22, ruinVariant: 5, water: true },
+  { art: 'town_dock', x: 0.85, y: 0.71, w: 0.152, unlockAt: 22, ruinVariant: 5, water: true },
   { art: 'town_library', x: 0.39, y: 0.66, w: 0.13, unlockAt: 23, ruinVariant: 3 },
 ] as const;
 

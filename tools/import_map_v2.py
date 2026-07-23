@@ -298,6 +298,29 @@ def lift_trapped_bg(im: Image.Image) -> Image.Image:
     return res
 
 
+def strip_shore_sand(im: Image.Image) -> Image.Image:
+    """Remove the sandy BEACH wedge baked into the bottom-left of the dock's base,
+    so the pier reads on the plate's rocky shore instead of laying its own patch
+    of sand over the rocks. Restricted to the bottom-left wedge AND the warm-tan
+    sand colour, so the (same-tan) deck planks, the boat and the posts — which sit
+    centre/right and higher — are untouched. Runs on the bbox-cropped sprite."""
+    a = np.asarray(im.convert("RGBA")).astype(np.int16)
+    r, g, b, al = a[:, :, 0], a[:, :, 1], a[:, :, 2], a[:, :, 3]
+    h, w = al.shape
+    op = al > 60
+    sand = op & (r > 172) & (r > b + 26) & (g > b + 6) & (g < r + 8)
+    yy, xx = np.mgrid[0:h, 0:w]
+    wedge = (xx < w * 0.34) & (yy > h * 0.46)
+    strip = sand & wedge
+    if not strip.any():
+        return im
+    out = np.asarray(im.convert("RGBA")).copy()
+    out[strip, 3] = 0
+    res = Image.fromarray(out, "RGBA")
+    res.putalpha(res.getchannel("A").filter(ImageFilter.GaussianBlur(0.6)))
+    return despeckle(res, 0.004)
+
+
 def defringe(im: Image.Image) -> Image.Image:
     """Drop the pale anti-aliased halo the near-white key leaves along edges:
     semi-transparent pixels whose colour is close to the (near-white) source
@@ -458,7 +481,10 @@ def import_buildings(dry: bool, report: list[str], coverage: dict[str, set[str]]
                 bb = content_bbox(k)
                 if bb is None:
                     continue
-                pending.setdefault((building, state), []).append((phases[ri], k.crop(bb)))
+                cropped = k.crop(bb)
+                if building == "dock":
+                    cropped = strip_shore_sand(cropped)  # clear the beach wedge
+                pending.setdefault((building, state), []).append((phases[ri], cropped))
 
     # Emit: one shared canvas per (building, state) spanning ALL its phases, each
     # phase centred on it so the midday base and its _dawn/_dusk/_night overlays
