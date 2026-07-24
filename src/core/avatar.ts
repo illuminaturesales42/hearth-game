@@ -172,8 +172,9 @@ export function defaultAvatar(): AvatarConfig {
   };
 }
 
-const has = (opts: readonly { id: string }[], id: unknown): id is string =>
-  typeof id === 'string' && opts.some((o) => o.id === id);
+/** Return `id` if it names an option in `opts`, else the fallback. */
+const pick = (opts: readonly { id: string }[], id: unknown, fallback: string): string =>
+  typeof id === 'string' && opts.some((o) => o.id === id) ? id : fallback;
 
 /**
  * Coerce any appearance (e.g. from an imported/legacy save, or a future build
@@ -183,13 +184,13 @@ const has = (opts: readonly { id: string }[], id: unknown): id is string =>
 export function normalizeAppearance(a: Partial<AvatarAppearance> | undefined): AvatarAppearance {
   const d = defaultAvatar().appearance;
   return {
-    body: has(BODIES, a?.body) ? a!.body! : d.body,
-    skin: has(SKIN_TONES, a?.skin) ? a!.skin! : d.skin,
-    hair: has(HAIR_STYLES, a?.hair) ? a!.hair! : d.hair,
-    hairColour: has(HAIR_COLOURS, a?.hairColour) ? a!.hairColour! : d.hairColour,
-    face: has(FACES, a?.face) ? a!.face! : d.face,
-    top: has(TOPS, a?.top) ? a!.top! : d.top,
-    topColour: has(CLOTH_COLOURS, a?.topColour) ? a!.topColour! : d.topColour,
+    body: pick(BODIES, a?.body, d.body),
+    skin: pick(SKIN_TONES, a?.skin, d.skin),
+    hair: pick(HAIR_STYLES, a?.hair, d.hair),
+    hairColour: pick(HAIR_COLOURS, a?.hairColour, d.hairColour),
+    face: pick(FACES, a?.face, d.face),
+    top: pick(TOPS, a?.top, d.top),
+    topColour: pick(CLOTH_COLOURS, a?.topColour, d.topColour),
   };
 }
 
@@ -204,7 +205,11 @@ export function normalizeAvatar(cfg: Partial<AvatarConfig> | undefined): AvatarC
   if (typeof cfg.pronouns === 'string') out.pronouns = cfg.pronouns.slice(0, 24);
   if (Array.isArray(cfg.owned)) out.owned = cfg.owned.filter((x): x is string => typeof x === 'string');
   if (Array.isArray(cfg.presets)) {
-    out.presets = cfg.presets.map((p) => ({ name: String(p.name).slice(0, 24), appearance: normalizeAppearance(p.appearance) }));
+    const raw = cfg.presets as ReadonlyArray<{ name?: unknown; appearance?: Partial<AvatarAppearance> }>;
+    out.presets = raw.map((p) => ({
+      name: (typeof p.name === 'string' ? p.name : '').slice(0, 24),
+      appearance: normalizeAppearance(p.appearance),
+    }));
   }
   return out;
 }

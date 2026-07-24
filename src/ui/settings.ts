@@ -12,6 +12,8 @@ import { toast } from './toast';
 import { pickNotificationProvider, DAILY_NOTIF_BODY, DEFAULT_NOTIF_HOUR } from '../platform/notification-provider';
 import { requestGeolocation, setLocationByCity, latestLocationLabel, getSkyPref, setSkyPref } from './weather';
 import type { SkyPref } from './weather';
+import { openAvatarCreator } from './avatar-creator';
+import { avatarBustSVG } from './avatar-render';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 
@@ -21,6 +23,11 @@ export class SettingsUI {
   constructor(private game: Game) {
     el<HTMLButtonElement>('settings-open')?.addEventListener('click', () => this.open());
     el<HTMLButtonElement>('settings-close')?.addEventListener('click', () => this.close());
+
+    el<HTMLButtonElement>('set-avatar')?.addEventListener('click', () => void openAvatarCreator(this.game));
+    game.subscribe((ev) => {
+      if (ev.type === 'avatar') this.renderAvatarPreview();
+    });
 
     el<HTMLInputElement>('set-music')?.addEventListener('input', (e) => {
       this.game.setPrefs({ musicVol: Number((e.target as HTMLInputElement).value) / 100 });
@@ -66,7 +73,16 @@ export class SettingsUI {
     if (app) (app.style as CSSStyleDeclaration & { zoom?: string }).zoom = String(p.textScale);
     document.body.classList.toggle('high-contrast', p.highContrast);
     document.body.classList.toggle('reduce-motion', p.forceReducedMotion);
+    this.renderAvatarPreview();
     this.paint();
+  }
+
+  /** Show the player's current bust beside the "Your look" button. */
+  private renderAvatarPreview(): void {
+    const host = el('set-avatar-preview');
+    if (host) host.innerHTML = avatarBustSVG(this.game.avatar.appearance, { backdrop: null, label: 'your look' });
+    const btn = el<HTMLButtonElement>('set-avatar');
+    if (btn) btn.textContent = this.game.avatar.created ? 'Edit your look' : 'Create your look';
   }
 
   private open(): void {

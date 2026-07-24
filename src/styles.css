@@ -6261,3 +6261,142 @@ body.reduce-motion .glow-dot {
   color: #ffd27a;
   font-weight: 600;
 }
+
+/* --- Player avatar creator (portrait-first MVP) ------------------------------ */
+.set-avatar-preview {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 210, 122, 0.12);
+  flex: 0 0 auto;
+}
+.set-avatar-preview svg,
+.ap-mini svg,
+.avatar-preview svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.avatar-card {
+  max-width: 380px;
+  text-align: left;
+}
+.avatar-title {
+  margin: 0 0 10px;
+  text-align: center;
+  color: #ffd9a3;
+}
+.avatar-preview {
+  width: 132px;
+  height: 132px;
+  margin: 0 auto 14px;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+}
+.avatar-presets {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+.avatar-preset {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: rgba(255, 210, 122, 0.1);
+  cursor: pointer;
+}
+.avatar-preset:active {
+  border-color: #ffd27a;
+}
+.ap-mini {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.avatar-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.avatar-cat {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 210, 122, 0.28);
+  background: transparent;
+  color: var(--ink, #f3e7cf);
+  font-size: 0.82rem;
+  cursor: pointer;
+  min-height: 34px;
+}
+.avatar-cat.on {
+  background: rgba(255, 210, 122, 0.22);
+  border-color: #ffd27a;
+  font-weight: 600;
+}
+.avatar-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+  min-height: 44px;
+}
+.avatar-opt {
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 210, 122, 0.28);
+  background: transparent;
+  color: var(--ink, #f3e7cf);
+  cursor: pointer;
+  min-height: 44px;
+}
+.avatar-opt.on {
+  background: rgba(255, 210, 122, 0.24);
+  border-color: #ffd27a;
+}
+.avatar-swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: var(--sw);
+  cursor: pointer;
+  padding: 0;
+}
+.avatar-swatch.on {
+  border-color: #ffd27a;
+  box-shadow: 0 0 0 2px rgba(255, 210, 122, 0.5);
+}
+.avatar-name-row {
+  display: block;
+  margin: 4px 0 16px;
+  color: var(--muted, #cbb790);
+  font-size: 0.85rem;
+}
+.avatar-name {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 210, 122, 0.3);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--ink, #f3e7cf);
+  font-size: 1rem;
+}
+.avatar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.avatar-actions .avatar-done {
+  margin-left: auto;
+}
