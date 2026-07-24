@@ -270,28 +270,16 @@ export interface DecorPiece {
   y: number;
 }
 
-/** The player's chosen look. References only (option ids) — never image data.
- *  Catalogues + factories live in core/avatar.ts. */
-export interface AvatarAppearance {
-  body: string;
-  skin: string;
-  hair: string;
-  hairColour: string;
-  face: string;
-  top: string;
-  topColour: string;
-}
-
-/** Player avatar block stored on the save (v19). `created` stays false until the
- *  creator is finished once, so existing players carry a neutral traveller bust
- *  until they choose to become themselves (no forced interruption). */
+/** Player avatar block stored on the save (v19). Portrait-first: the player picks
+ *  a painted bust (see data/avatar-portraits) that fits Emberhollow's style.
+ *  `created` stays false until the picker is used once, so existing players carry
+ *  a neutral traveller portrait until they choose to become themselves. */
 export interface AvatarConfig {
   created: boolean;
   name?: string;
   pronouns?: string;
-  appearance: AvatarAppearance;
-  owned?: readonly string[];
-  presets?: readonly { readonly name: string; readonly appearance: AvatarAppearance }[];
+  /** Portrait def id (data/avatar-portraits). */
+  portrait: string;
 }
 
 export interface GameState {

@@ -13,7 +13,7 @@ import { pickNotificationProvider, DAILY_NOTIF_BODY, DEFAULT_NOTIF_HOUR } from '
 import { requestGeolocation, setLocationByCity, latestLocationLabel, getSkyPref, setSkyPref } from './weather';
 import type { SkyPref } from './weather';
 import { openAvatarCreator } from './avatar-creator';
-import { avatarBustSVG } from './avatar-render';
+import { avatarPortraitHTML } from './avatar-render';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 
@@ -80,7 +80,7 @@ export class SettingsUI {
   /** Show the player's current bust beside the "Your look" button. */
   private renderAvatarPreview(): void {
     const host = el('set-avatar-preview');
-    if (host) host.innerHTML = avatarBustSVG(this.game.avatar.appearance, { backdrop: null, label: 'your look' });
+    if (host) host.innerHTML = avatarPortraitHTML(this.game.avatar.portrait, { framed: true, label: 'your look' });
     const btn = el<HTMLButtonElement>('set-avatar');
     if (btn) btn.textContent = this.game.avatar.created ? 'Edit your look' : 'Create your look';
   }
