@@ -5775,6 +5775,16 @@ body.reduce-motion .mg-beam {
   background: linear-gradient(180deg, rgba(255, 210, 122, 0.55), rgba(244, 166, 59, 0.35));
   box-shadow: 0 0 10px rgba(255, 210, 122, 0.4);
 }
+/* the smaller inner band — a dead-centre hit here is the prize catch */
+.mg-reel-zone-perfect {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(255, 246, 210, 0.95), rgba(255, 214, 120, 0.75));
+  box-shadow: 0 0 12px rgba(255, 240, 190, 0.9);
+  border-left: 1px solid rgba(255, 250, 230, 0.8);
+  border-right: 1px solid rgba(255, 250, 230, 0.8);
+}
 .mg-reel-marker {
   position: absolute;
   top: 2px;
@@ -5789,6 +5799,10 @@ body.reduce-motion .mg-beam {
 .mg-reel-marker.in-zone {
   background: #ffd27a;
   box-shadow: 0 0 14px rgba(255, 210, 122, 1);
+}
+.mg-reel-marker.bullseye {
+  background: #fff6d2;
+  box-shadow: 0 0 18px rgba(255, 246, 210, 1);
 }
 .mg-reel-marker.out-zone {
   opacity: 0.5;

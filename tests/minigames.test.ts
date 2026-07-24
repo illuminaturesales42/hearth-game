@@ -151,8 +151,10 @@ describe('minigame engines are deterministic', () => {
     expect(fishBite(4)).toEqual(fishBite(4)); // seeded bite timing
     expect(catchReward(1, 1).items[0]).toEqual({ chain: 'fish', level: 3 }); // both perfect: the rarity
     expect(catchReward(1, 0.3).items[0]!.level).toBe(2);
-    expect(catchReward(0, 0).items[0]!.chain).toBe('fish'); // no-fail: still a fish
-    expect(catchReward(0, 0).items[0]!.level).toBe(0);
+    expect(catchReward(0, 0).items[0]!.chain).toBe('seaweed'); // a loss yields seaweed…
+    expect(catchReward(0, 0).coins).toBe(0); // …and no coins
+    expect(catchReward(1, 1, true).items[0]!.level).toBe(3); // bullseye: the prize catch
+    expect(catchReward(0, 0, true).coins).toBeGreaterThan(0); // bullseye overrides a poor blend
     expect(catchReward(1, 1).coins).toBeGreaterThan(catchReward(0.5, 0.3).coins);
   });
 

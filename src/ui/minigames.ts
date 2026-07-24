@@ -15,6 +15,7 @@ import {
   BEACON_SLOTS,
   CATCH_REEL_MS,
   CATCH_REEL_ZONE,
+  CATCH_REEL_PERFECT,
   FORAGE_COLS,
   FORAGE_SIZE,
   FORAGE_STEPS,
@@ -761,7 +762,7 @@ export class MinigameUI {
       // into the pegs. theta=0 (reduced-motion slot tap) → a plain downward release.
       let x = Math.max(R, Math.min(bW - R, xFrac * bW));
       let y = Math.max(30, startYpx);
-      const EXIT = 2.4;
+      const EXIT = 3.1; // slides out along the beam toward the tip — fluid, in-flight
       let vx = Math.sin(theta) * EXIT;
       let vy = Math.max(0, Math.cos(theta) * EXIT);
       let frames = 0;
@@ -911,8 +912,9 @@ export class MinigameUI {
         if (beam) {
           const bb = beacon.getBoundingClientRect();
           // The beam SWEEPS (rotates from a top pivot). Read its live angle and
-          // spawn the ember AT THE BEAM TIP — exactly where the light is touching —
-          // then let it flow out along the beam, so the drop lands where you aimed.
+          // spawn the ember at the MIDDLE of the beam, already moving out toward
+          // the tip — so it slides out of the light with a fluid, in-flight feel
+          // (spawning right at the tip read as a dead drop with nowhere to go).
           const tr = getComputedStyle(beam).transform;
           if (tr && tr !== 'none') {
             const m = new DOMMatrixReadOnly(tr);
@@ -920,9 +922,10 @@ export class MinigameUI {
           }
           const beamTopY = 2;
           const beamLen = beam.offsetHeight || 158; // pivot → tip length in px
-          const tipX = 0.5 * bb.width + beamLen * Math.sin(theta);
-          startYpx = beamTopY + beamLen * Math.cos(theta);
-          if (bb.width) startX = Math.max(0.05, Math.min(0.95, tipX / bb.width));
+          const midLen = beamLen * 0.5; // spawn halfway down the beam
+          const midX = 0.5 * bb.width + midLen * Math.sin(theta);
+          startYpx = beamTopY + midLen * Math.cos(theta);
+          if (bb.width) startX = Math.max(0.05, Math.min(0.95, midX / bb.width));
           if (tr && tr !== 'none') beam.style.transform = tr; // hold the beam where you called it
           beam.classList.add('drop'); // fades out (opacity only — transform stays frozen)
         }
@@ -1122,7 +1125,7 @@ export class MinigameUI {
     const { delayMs, windowMs } = fishBite(seed);
     stage.innerHTML =
       `<div class="mg-catch"><div class="mg-catch-water"><div class="mg-bobber"></div><div class="mg-catch-shadow" hidden></div></div>` +
-      `<div class="mg-reel" hidden><div class="mg-reel-zone"></div><div class="mg-reel-marker"></div></div>` +
+      `<div class="mg-reel" hidden><div class="mg-reel-zone"></div><div class="mg-reel-zone-perfect"></div><div class="mg-reel-marker"></div></div>` +
       `<p class="mg-catch-hint">Cast, then strike the moment the bobber dips.</p></div>`;
     this.coachOnce('joss-catch', 'Strike on the dip, then tap again as the marker crosses the golden water.');
     const water = stage.querySelector<HTMLElement>('.mg-catch-water');
@@ -1134,9 +1137,9 @@ export class MinigameUI {
     const hint = stage.querySelector<HTMLElement>('.mg-catch-hint');
 
     // the run's climax: the catch surfaces as a silhouette, then the reveal
-    const resolveRun = (q: number, reelQ: number): void => {
-      const reward = catchReward(q, reelQ);
-      const blend = q * 0.55 + reelQ * 0.45;
+    const resolveRun = (q: number, reelQ: number, bullseye = false): void => {
+      const reward = catchReward(q, reelQ, bullseye);
+      const blend = bullseye ? 1 : q * 0.55 + reelQ * 0.45;
       if (water && blend > 0.25 && !this.reduce()) {
         this.waterSplash(water, water.clientWidth / 2, water.clientHeight * 0.42, blend > 0.6);
         if (shadow) {
@@ -1160,6 +1163,12 @@ export class MinigameUI {
       const zoneCentre = 0.3 + ((seed % 100) / 100) * 0.4; // seeded zone position
       zone.style.left = `${(zoneCentre - CATCH_REEL_ZONE / 2) * 100}%`;
       zone.style.width = `${CATCH_REEL_ZONE * 100}%`;
+      // the smaller inner band — a dead-centre tap here is the prize catch
+      const perfect = reel.querySelector<HTMLElement>('.mg-reel-zone-perfect');
+      if (perfect) {
+        perfect.style.left = `${(zoneCentre - CATCH_REEL_PERFECT / 2) * 100}%`;
+        perfect.style.width = `${CATCH_REEL_PERFECT * 100}%`;
+      }
       const rT0 = performance.now();
       let reelDone = false;
       const sweepReel = (): void => {
@@ -1179,11 +1188,13 @@ export class MinigameUI {
         if (reelDone) return;
         reelDone = true;
         const mp = parseFloat(marker.style.left) / 100;
-        const dist = Math.abs(mp - zoneCentre) / (CATCH_REEL_ZONE / 2);
+        const off = Math.abs(mp - zoneCentre);
+        const dist = off / (CATCH_REEL_ZONE / 2);
+        const bullseye = off <= CATCH_REEL_PERFECT / 2; // dead-centre → prize
         const reelQ = Math.max(0.2, Math.min(1, 1.05 - dist * 0.5));
-        marker.classList.add(dist <= 1 ? 'in-zone' : 'out-zone');
-        feedback.chime(dist <= 1 ? 600 : 360);
-        resolveRun(q, dist <= 1 ? reelQ : 0.3);
+        marker.classList.add(bullseye ? 'bullseye' : dist <= 1 ? 'in-zone' : 'out-zone');
+        feedback.chime(bullseye ? 760 : dist <= 1 ? 600 : 360);
+        resolveRun(q, dist <= 1 ? reelQ : 0.3, bullseye);
       };
     };
 
@@ -1616,12 +1627,15 @@ export class MinigameUI {
     const tryStrum = (): boolean => {
       const log = liveStrum;
       if (!log || log.done) return false;
-      // Judge by LIVE on-screen position (like every other log), not a clock —
-      // a taller board changes the fall timing but the pixel truth always holds,
-      // so the split lands exactly on the blade line.
+      // The cut is valid the whole time the log is TOUCHING the blade line — i.e.
+      // while the line falls within the log body — so the strike registers as the
+      // roll meets the line, not late once its 78%-point has dropped past it.
       if (!reduce) {
-        const band = (mill?.getBoundingClientRect().height || 300) * 0.15;
-        if (Math.abs(cutOffset(log)) > band) return false;
+        const b = (log.elm.querySelector('.mg-log-body') ?? log.elm).getBoundingClientRect();
+        const lr = lineEl?.getBoundingClientRect();
+        const lineC = lr ? lr.top + lr.height / 2 : 0;
+        const tol = 12; // a touch of leeway either side of first/last contact
+        if (!(b.top - tol <= lineC && b.bottom + tol >= lineC)) return false;
       }
       log.done = true;
       freezeAt(log.elm);

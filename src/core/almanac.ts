@@ -70,6 +70,14 @@ export const ALMANAC_PAGES: readonly AlmanacPage[] = [
     name: 'Deepwater Rarity',
     note: 'A clean strike and a cleaner reel. Joss will talk about this one.',
   },
+  {
+    id: 'seaweed_0',
+    chain: 'seaweed',
+    level: 0,
+    section: 'The Water',
+    name: 'Tangle of Seaweed',
+    note: 'What the line brings up on a poor day — good for the pot or the garden.',
+  },
   // The forge
   {
     id: 'copper_0',

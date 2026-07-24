@@ -13,6 +13,7 @@ export type ChainId =
   | 'water'
   | 'copper'
   | 'fish'
+  | 'seaweed'
   | 'honey'
   | 'herbs'
   | 'wool'

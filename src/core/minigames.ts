@@ -434,17 +434,39 @@ export function fishBite(seed: number): { delayMs: number; windowMs: number } {
 /** The reel stage: a perfect-zone drifts across a bar for ~2s after the strike. */
 export const CATCH_REEL_MS = 2000;
 export const CATCH_REEL_ZONE = 0.22; // the zone's width as a fraction of the bar
+export const CATCH_REEL_PERFECT = 0.07; // the smaller inner band → the prize catch
 
 /**
  * quality 0..1 = the strike; reelQuality 0..1 = the reel stage. The catch is
- * their blend — both perfect surfaces the rare deep fish. Always lands
- * *something* (no-fail); skill triples the ceiling.
+ * their blend. A dead-centre reel (the inner band, `bullseye`) hauls up a prize.
+ * A botched catch pays NO coin — just seaweed, a usable item for later — so a
+ * loss still gives something, but not money.
  */
-export function catchReward(quality: number, reelQuality = 0): MgReward {
+export function catchReward(quality: number, reelQuality = 0, bullseye = false): MgReward {
   const q = Math.max(0, Math.min(1, quality));
   const r = Math.max(0, Math.min(1, reelQuality));
   const blend = q * 0.55 + r * 0.45;
-  const level = q >= 0.75 && r >= 0.75 ? 3 : blend >= 0.6 ? 2 : blend >= 0.3 ? 1 : 0;
+  // A loss (both stages poor, and not a bullseye): seaweed instead of coins.
+  if (blend < 0.3 && !bullseye) {
+    return {
+      coins: 0,
+      items: [{ chain: 'seaweed', level: 0 }],
+      ember: 1,
+      heart: 'The line comes up with only a tangle of seaweed — good for the pot later.',
+    };
+  }
+  if (bullseye) {
+    return {
+      coins: 16 + Math.round(blend * 18), // a premium purse
+      items: [
+        { chain: 'fish', level: 3 },
+        { chain: 'fish', level: 2 },
+      ],
+      ember: 3,
+      heart: 'Dead-centre on the golden water — Joss hauls up a prize catch!',
+    };
+  }
+  const level = q >= 0.75 && r >= 0.75 ? 3 : blend >= 0.6 ? 2 : 1;
   return {
     coins: 6 + Math.round(blend * 18), // 6..24
     items: [{ chain: 'fish', level }],
@@ -454,9 +476,7 @@ export function catchReward(quality: number, reelQuality = 0): MgReward {
         ? 'A deep-water rarity — Joss will talk about this one.'
         : level === 2
           ? 'A fine fish, landed clean.'
-          : level === 1
-            ? 'A good catch off Joss’s line.'
-            : 'A nibble — enough for the pot.',
+          : 'A good catch off Joss’s line.',
   };
 }
 

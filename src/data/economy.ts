@@ -78,6 +78,14 @@ export const CHAINS: readonly ChainDef[] = [
     levelNames: ['Fish', 'Pair', 'Catch', 'Pail', 'Basket', 'Rack', 'Crate'],
   },
   {
+    // A consolation haul from a botched catch — seaweed, still useful later
+    // (broth, garden mulch). Merges up into tidier bundles.
+    id: 'seaweed',
+    name: 'Seaweed',
+    levels: ['🌿', '🍃', '🌊', '🧺'],
+    levelNames: ['Seaweed', 'Kelp', 'Kelp Strand', 'Kelp Basket'],
+  },
+  {
     id: 'honey',
     name: 'Apiary',
     levels: ['🌼', '🍯', '🐝', '🟨', '🥣', '🍯', '🛢️'],
