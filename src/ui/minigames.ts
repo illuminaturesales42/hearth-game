@@ -717,7 +717,7 @@ export class MinigameUI {
     // The drop: a real ember with gravity through THIS run's pegfield — pegs
     // flash, bumpers boing, the golden peg blesses the run, the mover is read
     // live, and a centre-bound finish plays out in slow motion.
-    const release = (xFrac: number): void => {
+    const release = (xFrac: number, theta = 0): void => {
       if (this.reduce() || !ember || !beacon || !pegfield) {
         const targetSlot = Math.max(0, Math.min(BEACON_ROWS, Math.round(xFrac * BEACON_ROWS)));
         return land(beaconDrop(targetSlot, seed));
@@ -756,10 +756,14 @@ export class MinigameUI {
         s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
         return s / 4294967296;
       };
-      let x = Math.max(R, Math.min(bW - R, xFrac * bW + (rand() - 0.5) * 14)); // "roughly where the beam was"
-      let y = 30;
-      let vx = (rand() - 0.5) * 0.6;
-      let vy = 0;
+      let x = Math.max(R, Math.min(bW - R, xFrac * bW + (rand() - 0.5) * 10));
+      let y = 34;
+      // The ember slides OUT along the beam like a ball leaving a moving pipe —
+      // launched down the beam's direction (theta), then gravity curves it into
+      // the pegs. theta=0 (reduced-motion slot tap) → a plain downward release.
+      const EXIT = 2.4;
+      let vx = Math.sin(theta) * EXIT + (rand() - 0.5) * 0.3;
+      let vy = Math.max(0, Math.cos(theta) * EXIT);
       let frames = 0;
       let sinceChime = 9;
       let nudged = false;
@@ -901,24 +905,25 @@ export class MinigameUI {
       const startDrop = (): void => {
         if (released) return;
         released = true;
-        let beamX = 0.5;
+        let startX = 0.5;
+        let theta = 0;
         if (beam) {
           const bb = beacon.getBoundingClientRect();
-          // The beam now SWEEPS (rotates from a top pivot), so its tip — not its
-          // bounding-box centre — is where the light points. Read the live rotation
-          // from the animated transform and project the tip down the beam length.
+          // The beam SWEEPS (rotates from a top pivot). Read its live angle and
+          // start the ember ON the beam line just below the lamp, so it flows out
+          // ALONG the beam like a ball sliding from a moving pendulum pipe.
           const tr = getComputedStyle(beam).transform;
-          let theta = 0;
           if (tr && tr !== 'none') {
             const m = new DOMMatrixReadOnly(tr);
             theta = Math.atan2(m.b, m.a);
           }
-          const len = beam.offsetHeight || 46; // pivot → tip length in px
-          if (bb.width) beamX = Math.max(0.05, Math.min(0.95, 0.5 + (len * Math.sin(theta)) / bb.width));
+          const y0 = 34;
+          const beamTopY = 2;
+          if (bb.width) startX = Math.max(0.05, Math.min(0.95, 0.5 + ((y0 - beamTopY) * Math.tan(theta)) / bb.width));
           if (tr && tr !== 'none') beam.style.transform = tr; // hold the beam where you called it
           beam.classList.add('drop'); // fades out (opacity only — transform stays frozen)
         }
-        release(beamX);
+        release(startX, theta);
       };
       beacon.onpointerdown = startDrop;
       this.startButton('Drop the light', startDrop);
@@ -1489,21 +1494,41 @@ export class MinigameUI {
       this.timers.push(window.setTimeout(() => blade.classList.remove('cutting'), 220));
     };
 
-    // Split the log DOWN THE MIDDLE into two planks that part, tilt and settle.
+    // Split the log DOWN THE MIDDLE: two planks that EXACTLY overlay the log that
+    // was cut (measured, so it works for a narrow lane log or the wide strum roll
+    // alike), part and tilt away, with a bright sawn-seam flash + sawdust down the
+    // cut line so the split reads as real feedback.
     const sawInHalf = (host: HTMLElement, log: HTMLElement, big = false): void => {
-      const y = log.offsetTop;
-      const html = log.querySelector('.mg-log-body')?.outerHTML ?? '';
+      const body = (log.querySelector('.mg-log-body') as HTMLElement | null) ?? log;
+      const br = body.getBoundingClientRect();
+      const hr = host.getBoundingClientRect();
+      const html = body.outerHTML;
+      const left = br.left - hr.left;
+      const top = br.top - hr.top;
+      const w = br.width || 1;
+      const h = br.height || 1;
       log.remove();
       if (reduce) return;
       for (const side of ['l', 'r'] as const) {
         const half = document.createElement('div');
         half.className = `mg-plank mg-plank-${side}${big ? ' mg-plank-big' : ''}`;
+        half.style.left = `${left}px`;
+        half.style.top = `${top}px`;
+        half.style.width = `${w}px`;
+        half.style.height = `${h}px`;
         half.innerHTML = html;
-        half.style.top = `${y}px`;
         host.appendChild(half);
-        this.timers.push(window.setTimeout(() => half.remove(), 620));
+        this.timers.push(window.setTimeout(() => half.remove(), big ? 820 : 620));
       }
-      this.spark(host, 50, LINE_PCT * 100); // sawdust burst at the blade
+      // a bright freshly-sawn seam flashes down the middle where the blade bit
+      const seam = document.createElement('div');
+      seam.className = 'mg-cut-seam';
+      seam.style.left = `${left + w / 2}px`;
+      seam.style.top = `${top}px`;
+      seam.style.height = `${h}px`;
+      host.appendChild(seam);
+      this.timers.push(window.setTimeout(() => seam.remove(), 380));
+      this.spark(host, ((left + w / 2) / (hr.width || 1)) * 100, ((top + h * 0.5) / (hr.height || 1)) * 100);
     };
 
     const scoreCut = (perfect: boolean): void => {

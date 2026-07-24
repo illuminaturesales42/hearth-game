@@ -5882,14 +5882,48 @@ body.reduce-motion .mg-beam {
 }
 /* the split: two PLANKS part down the middle and settle */
 .mg-plank {
+  /* left/top/width/height set inline from the measured log rect, so the halves
+     overlay the exact log that was cut — narrow lane log or wide strum roll. */
   position: absolute;
-  left: 8%;
-  width: 84%;
   z-index: 1;
   pointer-events: none;
+  overflow: visible;
 }
-.mg-plank .mg-log-body {
+.mg-plank > .mg-log-body {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  aspect-ratio: auto !important;
   filter: brightness(1.08);
+}
+/* the fresh-sawn seam: a bright line flashes down the cut, then fades */
+.mg-cut-seam {
+  position: absolute;
+  width: 3px;
+  transform: translateX(-50%);
+  z-index: 3;
+  pointer-events: none;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(255, 250, 230, 0.95), rgba(255, 210, 120, 0.7));
+  box-shadow: 0 0 9px rgba(255, 220, 150, 0.9);
+  animation: mgCutSeam 0.38s ease-out forwards;
+}
+@keyframes mgCutSeam {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scaleY(0.35);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scaleY(1);
+  }
+}
+body.reduce-motion .mg-cut-seam {
+  animation: none;
+  opacity: 0;
 }
 .mg-plank-l {
   clip-path: inset(0 50% 0 0);
