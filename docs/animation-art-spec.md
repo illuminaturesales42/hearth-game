@@ -1,14 +1,28 @@
 # Animation art spec — waves & atmosphere
 
-Generation spec for the animated sprite strips the map engine is already wired for.
-Every call site is **art-gated**: if the PNG isn't present the engine falls back to its
-procedural look, so assets can land one at a time, in any order, with no code changes.
+Generation spec for the map's water and effect art. Every call site is **art-gated**: if the
+PNG isn't present the engine falls back to its procedural look, so assets can land one at a
+time, in any order, with no code changes.
+
+**There are two kinds of asset here, and they have very different rules:**
+
+| | What it is | Rules |
+|---|---|---|
+| **The sea** — `fx_sea_tile` | ONE still square painting of water. No frames, no alpha, no loop. The engine tiles and scrolls it. | **§5a** — short and forgiving. **Start here.** |
+| **Effects** — flames, foam wash, lanterns | Animated sprite strips (N frames in a row). | §0–§3 — strict. |
+
+If you only make one thing, make `fx_sea_tile` (§5a): it's the one that changes how the game
+looks, and it's by far the easiest to produce.
 
 ---
 
 ## 0. READ THIS FIRST — the five rules that get broken
 
-These are in order of how badly they break the asset. A file that fails any of them is
+**These apply to the animated STRIP assets (§5c).** The sea tile in §5a is a still image and
+is exempt from the alpha/frames/loop rules — but rules 1 and 2 (no furniture, top-down) apply
+to *everything*.
+
+These are in order of how badly they break the asset. A strip that fails any of them is
 unusable.
 
 1. **Output the ASSET, not a picture OF the asset.** No title text, no frame numbers, no
@@ -115,7 +129,7 @@ Pull colours from the painted island so effects sit *in* the world rather than o
 Style: painted storybook, soft edges, gentle warm outlines — matching
 `public/art/map_island_plate*.png`. Not flat vector, not photoreal, not pixel-art dithering.
 
-**Night assets** (`fx_moon_shimmer`, `fx_flame_hearth`) must be painted already-dim — the
+**Night assets** (`fx_sea_tile_night`, `fx_flame_hearth`) must be painted already-dim — the
 renderer adds glow on top, so pre-brightened art blows out.
 
 ---
@@ -124,21 +138,60 @@ renderer adds glow on top, so pre-brightened art blows out.
 
 Deliver each to `public/art/<id>.png`.
 
-The three open-water assets are **seamless square tiles** — the engine repeats them across the
-sea in both directions, so a square tile is the right primitive (and it's the shape that
-generates most reliably). "Tileable" here means **edge-wrapping**: the tile's left edge
-continues into its right edge, and its top into its bottom, with no visible seam.
+### 5a. The open water — ONE still tile, no animation
 
-| id | frames | frame px | **total px** | tileable | content |
-|----|--------|----------|--------------|----------|---------|
-| `fx_wave_swell_a` | 10 | 128 × 128 | **1280 × 128** | yes, all edges | Open-water surface from directly above: long low swell lines drifting with soft foam crests. |
-| `fx_wave_swell_b` | 10 | 128 × 128 | **1280 × 128** | yes, all edges | Fainter, darker, calmer counter-ripple tile for the parallax layer behind `_a`. |
-| `fx_moon_shimmer` | 8 | 128 × 128 | **1024 × 128** | yes, all edges | Broken silver moon-path glints on dark night water, from above. Subtle, already-dim. |
-| `fx_wave_foam_wash` | 10 | 192 × 56 | **1920 × 56** | left↔right only | Foam washing up a shoreline waterline then retreating; lacy edge, transparent behind. |
-| `fx_wave_lap` | 8 | 128 × 40 | **1024 × 40** | no | Small lapping wavelet + foam collar, sized to ring pier stilts and rock bases. |
-| `fx_wave_cap` | 6 | 64 × 32 | **384 × 32** | no | One whitecap breaking and dissolving to nothing. |
-| `fx_flame_hearth` | 7 | 48 × 64 | **336 × 64** | no | Low warm hearth fire through a doorway; ember tones, lazy flicker. Side-on is correct *for flames*. |
-| `fx_lantern_string` | 7 | 96 × 32 | **672 × 32** | no | 3–4 small hanging lanterns on a string, swaying gently, lit warm. |
+**This is the important one, and it is much easier than it sounds.** The sea is a *scrolling
+texture*, not a frame-by-frame animation: the engine tiles one image across the water and
+drifts it, with a second slower layer behind for parallax. Motion, speed and direction come
+from the weather at runtime.
+
+That means, for the water, you do **not** need:
+- ❌ frames, a sprite sheet, or a loop (scrolling can't jump — it loops by construction)
+- ❌ an alpha channel or transparency (the engine controls the blend — **opaque is correct**)
+- ❌ exact pixel dimensions (any large square works; it gets resized)
+- ❌ perfect seamless edges (`tools/make_sea_tile.py` guarantees the wrap — see §5b)
+
+What you **do** need is just: **one square painting of open water seen from directly above.**
+
+| id | image | content |
+|----|-------|---------|
+| `fx_sea_tile` | one square PNG, **1024×1024** ideal (512 min), opaque | Open ocean surface from straight above — long low swells with soft warm-white foam crests. The main water layer. |
+| `fx_sea_tile_b` *(optional)* | same, 1024×1024 | A calmer, darker, foam-light version for the slow parallax layer beneath. Nice to have, not required. |
+| `fx_sea_tile_night` *(optional)* | same, 1024×1024 | Same water painted for night — deep navy with sparse silver glints. Otherwise the engine just tints the day tile. |
+
+Rules that still apply: **top-down only** (§1 — no horizon, no wave faces), **no text, labels,
+frame numbers, borders, grid lines or margins** — one continuous painting, edge to edge. Fill
+the whole square with water.
+
+### 5b. Make it tile (one command)
+
+Don't fight for seamless edges — the tool does it:
+
+```bash
+python tools/make_sea_tile.py "path/to/your-water.png" public/art/fx_sea_tile.png --size 512
+```
+
+It auto-finds the painted region (ignoring any label furniture), takes a centre square,
+cross-blends the wrap so opposite edges continue, writes the tile, and drops a
+`*_tiled_proof.png` beside it showing a 3×2 repeat so you can eyeball for seams. If a seam
+survives, re-run with `--blend 0.4`.
+
+### 5c. The remaining effect assets (still sprite strips)
+
+These are small overlays and still use the frame-strip contract in §2.
+
+| id | frames | frame px | **total px** | content |
+|----|--------|----------|--------------|---------|
+| `fx_wave_foam_wash` | 10 | 192 × 56 | **1920 × 56** | Foam washing up a shoreline waterline then retreating; lacy edge, transparent behind. |
+| `fx_wave_lap` | 8 | 128 × 40 | **1024 × 40** | Small lapping wavelet + foam collar, sized to ring pier stilts and rock bases. |
+| `fx_wave_cap` | 6 | 64 × 32 | **384 × 32** | One whitecap breaking and dissolving to nothing. |
+| `fx_flame_hearth` | 7 | 48 × 64 | **336 × 64** | Low warm hearth fire through a doorway; ember tones, lazy flicker. Side-on is correct *for flames*. |
+| `fx_lantern_string` | 7 | 96 × 32 | **672 × 32** | 3–4 small hanging lanterns on a string, swaying gently, lit warm. |
+
+> `fx_wave_swell_a` / `_swell_b` / `fx_moon_shimmer` are **retired** as sprite strips — the
+> scrolling `fx_sea_tile` above replaces them, and it's both easier to produce and better
+> looking. Three attempts at a clean 10-frame water cycle failed on packaging and loop
+> closure; a scrolling tile sidesteps both problems entirely.
 
 If you produce a different frame count than listed, that's fine — **tell me the number** and
 I'll wire it (`drawStrip` takes the count as a parameter). Everything else must match exactly.
@@ -149,11 +202,14 @@ I'll wire it (`drawStrip` takes the count as a parameter). Everything else must 
 
 Each prompt is self-contained. Paste it as-is; don't summarise it.
 
-**`fx_wave_swell_a`**
-> A sprite sheet of 10 animation frames laid side by side in a single horizontal row. Each frame is exactly 128×128 pixels and the finished image is exactly 1280×128 pixels. The frames must touch edge to edge with NO gaps, NO separators, NO borders and NO margin — every frame identical in size. TOP-DOWN AERIAL VIEW of an open ocean surface looking straight down — absolutely no horizon, no sky, no shoreline, no side view, no perspective. Each frame is a SEAMLESSLY TILEABLE tile of water: its left edge continues into its right edge and its top edge into its bottom edge with no visible seam. Long low swell lines drifting slowly with soft warm-white foam crests lying flat on the surface. Painted storybook style with soft edges, sea teal #2e9cc3 to deep #1c5f9e, foam #f4efe2. The water pattern advances exactly one tenth of a cycle per frame so that frame 10 flows seamlessly back into frame 1 — it is one continuous motion sampled ten times, not ten separate pictures. Output ONLY the raw frames: no title, no text, no frame numbers, no labels, no captions, no borders, no drop shadow. Save as a PNG with a real alpha channel — do NOT draw a checkerboard pattern and do NOT fill the background with white or black.
+**`fx_sea_tile`** — the main one. A single still image; no frames, no animation, no transparency.
+> A single square painting of open ocean water, 1024×1024 pixels, filling the entire square edge to edge. TOP-DOWN AERIAL VIEW looking straight down at the water surface — absolutely no horizon, no sky, no shoreline, no boats, no land, no side view, no perspective, no wave faces. It should look like an aerial photograph of the open sea, painted in a warm storybook illustration style with soft edges. Long low swell lines with soft warm-white foam crests lying flat on the surface. Sea colours teal #2e9cc3 through deep blue #1c5f9e, foam warm-white #f4efe2. Even, natural distribution across the whole square — no single dominant feature, no vignette, no darkening at the edges. Output ONE continuous painting only: no text, no title, no labels, no frame numbers, no grid, no panels, no borders, no margin, no checkerboard. Opaque is correct — do not add transparency.
 
-**`fx_wave_swell_b`**
-> A sprite sheet of 10 animation frames laid side by side in a single horizontal row. Each frame is exactly 128×128 pixels and the finished image is exactly 1280×128 pixels. Frames touch edge to edge with NO gaps, separators, borders or margin, all identical in size. TOP-DOWN AERIAL VIEW of calm open water looking straight down — no horizon, no sky, no side view. Each frame is a SEAMLESSLY TILEABLE water tile (left edge continues into right, top into bottom, no seam). Fainter, darker, calmer ripples than a main swell — a subtle secondary layer, cooler tone, only a little foam. Painted storybook style, deep sea #1c5f9e, faint foam #f4efe2. The pattern advances exactly one tenth of a cycle per frame so frame 10 loops seamlessly into frame 1 — one continuous motion sampled ten times. Output ONLY the raw frames: no text, no numbers, no labels, no borders. Save as PNG with a real alpha channel — do NOT paint a checkerboard and do NOT fill the background.
+**`fx_sea_tile_b`** *(optional — the slow parallax layer)*
+> A single square painting of calm open ocean water, 1024×1024 pixels, filling the entire square. TOP-DOWN AERIAL VIEW looking straight down — no horizon, no sky, no land, no side view. Calmer and darker than open swell: gentle ripples, very little foam, deep blue #1c5f9e with soft teal #2e9cc3 variation. Painted storybook style, soft edges, even across the whole square, no vignette. ONE continuous painting only: no text, no labels, no frame numbers, no grid, no borders, no margin. Opaque, no transparency.
+
+**`fx_sea_tile_night`** *(optional)*
+> A single square painting of open ocean water at night, 1024×1024 pixels, filling the entire square. TOP-DOWN AERIAL VIEW looking straight down — no horizon, no sky, no moon, no land. Dark navy water #1a2a4e with sparse broken silver #96b2e0 glints scattered on the surface. Painted storybook style, subtle and already dim — do not over-brighten. Even across the square, no vignette. ONE continuous painting: no text, no labels, no grid, no borders, no margin. Opaque, no transparency.
 
 **`fx_wave_foam_wash`**
 > A single seamless looping sprite-strip image, 10 frames side by side horizontally in ONE image. Each frame exactly 192×56 pixels, total exactly 1920×56 pixels. Transparent background, PNG with alpha. TOP-DOWN AERIAL VIEW looking straight down at a shoreline waterline — no horizon, no sky. A tongue of white foam washes up across the frame over frames 1–5 and retreats over frames 6–10, with a lacy broken leading edge. Fully transparent behind and around the foam. Warm-white foam #f4efe2 over shallow teal water #2e9cc3. Frame 10 returns to the frame 1 state for a seamless loop. Output ONLY the raw frames — no text, no numbers, no labels, no borders, no background.
@@ -170,8 +226,6 @@ Each prompt is self-contained. Paste it as-is; don't summarise it.
 **`fx_lantern_string`**
 > A single seamless looping sprite-strip image, 7 frames side by side horizontally in ONE image. Each frame exactly 96×32 pixels, total exactly 672×32 pixels. Transparent background, PNG with alpha. A string of 3–4 small hanging lanterns, lit warm amber #ffc474, swaying gently left and right. The string's anchor points stay fixed in every frame; only the sway moves. Painted storybook style. Frame 7 returns to the frame 1 pose for a seamless loop. Output ONLY the raw frames — no text, no labels, no borders, no background.
 
-**`fx_moon_shimmer`**
-> A sprite sheet of 8 animation frames laid side by side in a single horizontal row. Each frame is exactly 128×128 pixels and the finished image is exactly 1024×128 pixels. Frames touch edge to edge with NO gaps, separators, borders or margin, all identical in size. TOP-DOWN AERIAL VIEW of dark night water seen from straight above — no horizon, no sky, no moon visible in frame. Each frame is a SEAMLESSLY TILEABLE tile (left edge continues into right, top into bottom). Broken silver glints of moonlight scattered across the water surface, shifting gently between frames. Silver #96b2e0 on dark navy #1a2a4e — subtle and already dim, do not over-brighten. The pattern advances one eighth of a cycle per frame so frame 8 loops seamlessly into frame 1. Output ONLY the raw frames: no text, no numbers, no labels, no borders. Save as PNG with a real alpha channel — do NOT paint a checkerboard and do NOT fill the background.
 
 ---
 

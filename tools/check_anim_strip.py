@@ -23,10 +23,6 @@ from PIL import Image
 
 # id -> (frames, frame_w, frame_h) straight from the spec table
 SPEC: dict[str, tuple[int, int, int]] = {
-    # open-water assets are seamless SQUARE tiles (engine repeats them over the sea)
-    "fx_wave_swell_a": (10, 128, 128),
-    "fx_wave_swell_b": (10, 128, 128),
-    "fx_moon_shimmer": (8, 128, 128),
     "fx_wave_foam_wash": (10, 192, 56),
     "fx_wave_lap": (8, 128, 40),
     "fx_wave_cap": (6, 64, 32),
@@ -34,7 +30,7 @@ SPEC: dict[str, tuple[int, int, int]] = {
     "fx_lantern_string": (7, 96, 32),
 }
 # assets whose left/right edges must wrap (all four edges for the square tiles)
-TILEABLE = {"fx_wave_swell_a", "fx_wave_swell_b", "fx_moon_shimmer", "fx_wave_foam_wash"}
+TILEABLE = {"fx_wave_foam_wash"}  # sea tiles are stills now — see tools/make_sea_tile.py
 
 OK = "PASS"
 NO = "FAIL"
