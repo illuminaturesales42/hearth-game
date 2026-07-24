@@ -79,6 +79,15 @@ export const MINIGAMES: readonly MinigameDef[] = [
       'Logs ride the flume — saw each one as it crosses the blade line. A missed log just drifts on; the timber still stacks.',
     unlock: 'l2',
   },
+  {
+    id: 'bakery-proving',
+    buildingArt: 'town_bakery',
+    title: 'The Proving',
+    verb: 'Mind the oven',
+    blurb:
+      'Three loaves rise at their own pace. Pull each one at its golden moment — and whatever you forget still comes out as honest bread.',
+    unlock: 'l2',
+  },
 ];
 
 export const MINIGAME_BY_ID: Record<string, MinigameDef> = Object.fromEntries(MINIGAMES.map((m) => [m.id, m]));

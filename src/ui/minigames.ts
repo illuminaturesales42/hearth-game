@@ -46,6 +46,12 @@ import {
   sawmillReward,
   sawmillSchedule,
   sawmillScore,
+  BAKE_DURATION_MS,
+  bakeGrade,
+  bakeReward,
+  bakeSchedule,
+  bakeScore,
+  type BakeGrade,
   stacksDeck,
   stacksPairsFor,
   stacksReward,
@@ -73,6 +79,7 @@ const MINIGAME_BACKDROP: Record<string, string> = {
   foraging: 'mg_bg_forage',
   'sorting-stacks': 'mg_bg_stacks',
   sawmill: 'mg_bg_sawmill',
+  'bakery-proving': 'mg_bg_bakery',
 };
 
 const vibrate = (n: number | number[]): void => {
@@ -290,6 +297,7 @@ export class MinigameUI {
     else if (id === 'foraging') this.playForage(run.seed);
     else if (id === 'sorting-stacks') this.playStacks(run.seed);
     else if (id === 'sawmill') this.playSawmill(run.seed);
+    else if (id === 'bakery-proving') this.playBake(run.seed);
   }
 
   /** A one-time, self-dismissing coaching line for a game's first play. */
@@ -1818,5 +1826,94 @@ export class MinigameUI {
         ),
       );
     });
+  }
+
+  // ---------- 8) The Proving (bakery) — three loaves, three peaks ----------
+
+  /**
+   * Three loaves prove at once; each ripens pale → golden → dark. Tap a loaf at
+   * its golden moment to pull it. Attention, not reflexes: the windows never
+   * overlap, so a watchful player can catch all three, and any loaf left in is
+   * still bread. Reduced motion: the same game on a coarse tick with no
+   * transitions — never a dead screen.
+   */
+  private playBake(seed: number): void {
+    const stage = el('mg-stage');
+    if (!stage) return;
+    const loaves = bakeSchedule(seed);
+    const pulled: (number | null)[] = loaves.map(() => null);
+    const bg = artUrl('mg_bg_bakery');
+    const loafArt = artUrl('mg_bake_loaf');
+    const face = (): string =>
+      loafArt ? `<img class="mg-loaf-art" src="${loafArt}" alt="" draggable="false" />` : `<span class="mg-loaf-ico">🍞</span>`;
+
+    stage.innerHTML =
+      `<div class="mg-bake${bg ? ' has-art' : ''}"${bg ? ` style="background-image:url(${bg})"` : ''}>` +
+      `<div class="mg-bake-tray">` +
+      loaves
+        .map(
+          (_, i) =>
+            `<button type="button" class="mg-loaf" data-loaf="${i}" aria-label="Loaf ${i + 1}">` +
+            `${face()}<span class="mg-loaf-meter"><i></i></span>` +
+            `<span class="mg-loaf-tag"></span></button>`,
+        )
+        .join('') +
+      `</div>` +
+      `<p class="mg-bake-hint">Pull each loaf when it turns golden.</p></div>`;
+    this.coachOnce('bakery-proving', 'Watch all three. A loaf glows golden at its moment — tap it then.');
+
+    const start = Date.now();
+    const els = Array.from(stage.querySelectorAll<HTMLButtonElement>('.mg-loaf'));
+
+    const settle = (i: number, grade: BakeGrade): void => {
+      const b = els[i];
+      if (!b) return;
+      b.classList.add('done', `g-${grade}`);
+      b.disabled = true;
+      const tag = b.querySelector<HTMLElement>('.mg-loaf-tag');
+      if (tag) tag.textContent = grade === 'golden' ? 'Golden!' : grade === 'pale' ? 'Pale' : 'Dark';
+      if (grade === 'golden') {
+        feedback.chime(660);
+        this.squash(b);
+      } else feedback.chime(430);
+    };
+
+    els.forEach((b, i) => {
+      b.onclick = () => {
+        if (pulled[i] !== null) return;
+        const at = Date.now() - start;
+        pulled[i] = at;
+        settle(i, bakeGrade(loaves[i]!, at));
+      };
+    });
+
+    // One tick drives every loaf's colour. Coarse under reduced motion (no
+    // transitions to ride), fine otherwise — identical rules either way.
+    const stepMs = this.reduce() ? 250 : 80;
+    const tick = window.setInterval(() => {
+      const t = Date.now() - start;
+      loaves.forEach((l, i) => {
+        if (pulled[i] !== null) return;
+        const b = els[i];
+        if (!b) return;
+        const fill = b.querySelector<HTMLElement>('.mg-loaf-meter i');
+        if (fill) fill.style.width = `${Math.min(100, Math.round((t / (l.peakMs + l.windowMs)) * 100))}%`;
+        b.classList.toggle('is-golden', t >= l.peakMs - l.windowMs && t <= l.peakMs + l.windowMs);
+        b.classList.toggle('is-dark', t > l.peakMs + l.windowMs);
+      });
+    }, stepMs);
+    this.timers.push(tick);
+
+    this.timers.push(
+      window.setTimeout(() => {
+        window.clearInterval(tick);
+        // Anything still in the oven comes out dark — but it still comes out.
+        loaves.forEach((l, i) => {
+          if (pulled[i] === null) settle(i, bakeGrade(l, null));
+        });
+        const grades = loaves.map((l, i) => bakeGrade(l, pulled[i] ?? null));
+        this.finish(bakeReward(grades), undefined, bakeScore(grades));
+      }, BAKE_DURATION_MS + 400),
+    );
   }
 }
