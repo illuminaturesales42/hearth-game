@@ -762,8 +762,8 @@ export class MinigameUI {
       // into the pegs. theta=0 (reduced-motion slot tap) → a plain downward release.
       let x = Math.max(R, Math.min(bW - R, xFrac * bW));
       let y = Math.max(30, startYpx);
-      const EXIT = 3.1; // slides out along the beam toward the tip — fluid, in-flight
-      let vx = Math.sin(theta) * EXIT;
+      const EXIT = 2.7; // slides out along the beam toward the tip — fluid, in-flight
+      let vx = -Math.sin(theta) * EXIT; // same sign convention as the spawn X
       let vy = Math.max(0, Math.cos(theta) * EXIT);
       let frames = 0;
       let sinceChime = 9;
@@ -844,11 +844,13 @@ export class MinigameUI {
               feedback.comboChime(5);
               vibrate([14, 40, 14]);
             } else {
-              // an ordinary peg: a livelier reflection than before (more play in
-              // the board), plus a little jitter so no two paths feel identical
-              const bounce = 0.72;
-              vx = (vx - 2 * dot * nx) * bounce + (rand() - 0.5) * 0.7;
-              vy = Math.max(0.6, (vy - 2 * dot * ny) * bounce);
+              // an ordinary peg: a springy reflection so the ember visibly bounces
+              // (including a little pop UP off a peg top), plus jitter so no two
+              // paths feel identical. The old vy floor killed every upward bounce.
+              const bounce = 0.86;
+              vx = (vx - 2 * dot * nx) * bounce + (rand() - 0.5) * 0.9;
+              vy = (vy - 2 * dot * ny) * bounce;
+              if (vy > -0.35 && vy < 0.45) vy = 0.45; // never stall balanced on a peg
               pg.el.classList.add('hit');
               this.timers.push(window.setTimeout(() => pg.el.classList.remove('hit'), 300));
               if (sinceChime > 3) {
@@ -923,7 +925,10 @@ export class MinigameUI {
           const beamTopY = 2;
           const beamLen = beam.offsetHeight || 158; // pivot → tip length in px
           const midLen = beamLen * 0.5; // spawn halfway down the beam
-          const midX = 0.5 * bb.width + midLen * Math.sin(theta);
+          // CSS rotate() is clockwise in a y-down space, so a point straight down
+          // the beam is at x = pivot − sin(θ)·L (NOT +). Getting this sign wrong
+          // spawned the ember on the opposite side from where the light pointed.
+          const midX = 0.5 * bb.width - midLen * Math.sin(theta);
           startYpx = beamTopY + midLen * Math.cos(theta);
           if (bb.width) startX = Math.max(0.05, Math.min(0.95, midX / bb.width));
           if (tr && tr !== 'none') beam.style.transform = tr; // hold the beam where you called it

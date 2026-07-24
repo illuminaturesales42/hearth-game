@@ -1218,7 +1218,11 @@ export class MapView {
     // — roughly in half. (Battery + thermal on the screen players idle on.)
     const MIN_FRAME_MS = 32;
     const step = (t: number) => {
-      if (t - this.lastDrawT >= MIN_FRAME_MS) {
+      // Skip the full-scene composite while a minigame overlay covers the map —
+      // the island was still redrawing behind every minigame, starving them of
+      // main-thread time (badly on mobile web tabs, fine in the installed PWA).
+      // The rAF chain stays alive so it resumes the instant the overlay closes.
+      if (!this.overlayCovering() && t - this.lastDrawT >= MIN_FRAME_MS) {
         this.lastDrawT = t;
         this.draw(t);
         // weather drifts on its own clock — re-key the ambience every few seconds
@@ -1227,6 +1231,12 @@ export class MapView {
       this.raf = requestAnimationFrame(step);
     };
     this.raf = requestAnimationFrame(step);
+  }
+
+  /** True while a full-screen minigame overlay is covering the map. */
+  private overlayCovering(): boolean {
+    const o = document.getElementById('minigame-overlay');
+    return !!o && !o.hidden;
   }
 
   /**
