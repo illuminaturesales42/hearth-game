@@ -11,6 +11,7 @@ import { BOARD_SKINS } from '../data/shop';
 import { BUILDING_INFO, DECOR_CATALOG, TOWN_BUILDINGS } from '../data/town-layout';
 import { composeWeek } from '../core/chronicle';
 import { seasonForMonth, type Season } from '../core/world-mood';
+import { activeFestival, upcomingFestivals, whenLabel } from '../core/festivals';
 import { latestSouthern } from './weather';
 import { chainDef } from '../core/board';
 import { artUrl, currencyIcon, portraitFor, tileMarkup } from './art';
@@ -62,6 +63,48 @@ export class Screens {
 
   private journalVisible(): boolean {
     return byId('screen-journal')?.classList.contains('active') ?? false;
+  }
+
+  /**
+   * Emberhollow's calendar: whatever is being celebrated right now, plus an
+   * honest "returning soon" list. Triggers are real (solstices, equinoxes, the
+   * true full moon) and hemisphere-aware, so a Sydney player keeps midwinter in
+   * June. No countdown clocks — everything returns every year, so there is
+   * nothing to miss and nothing to be hurried by.
+   *
+   * Banner art is optional: with no painting the card is simply text.
+   */
+  private festivalSection(): string {
+    const now = Date.now();
+    const southern = latestSouthern();
+    const active = activeFestival(now, southern);
+    const soon = upcomingFestivals(now, southern, 2);
+
+    const card = active
+      ? (() => {
+          const url = artUrl(active.art);
+          return (
+            `<div class="festival-card${url ? ' has-art' : ''}"${url ? ` style="background-image:url(${url})"` : ''}>` +
+            `<span class="festival-eyebrow">Being celebrated now</span>` +
+            `<b class="festival-name">${esc(active.name)}</b>` +
+            `<p class="festival-blurb">${esc(active.blurb)}</p></div>`
+          );
+        })()
+      : '';
+
+    const upcoming = soon.length
+      ? `<div class="event-list festival-soon">` +
+        soon
+          .map(
+            (u) =>
+              `<div class="event"><b>${esc(u.def.name)}</b>` +
+              `<span>${esc(u.def.timing)} · ${esc(whenLabel(u.days))}</span></div>`,
+          )
+          .join('') +
+        `</div>`
+      : '';
+
+    return card + upcoming;
   }
 
   private shopVisible(): boolean {
@@ -348,6 +391,7 @@ export class Screens {
       }).join('') +
       `</div>` +
       `<h3 class="screen-h3">In Emberhollow</h3>` +
+      this.festivalSection() +
       `<div class="event-list">` +
       `<div class="event"><b>This season</b><span>${SEASON_NOTE[seasonForMonth(new Date().getMonth(), latestSouthern())]}</span></div>` +
       EVENTS.map((e) => `<div class="event"><b>${e.name}</b><span>${e.timing}</span></div>`).join('') +

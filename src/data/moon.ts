@@ -2,7 +2,9 @@
  * Moon phase from the calendar/date, and the Stargaze action's rewards. Used to
  * make "stare at the moon" feel tied to the real sky — a full moon is worth more.
  */
-const SYNODIC = 29.530588853; // days in a lunar cycle
+/** Days in a lunar cycle. Exported so the festival calendar can find the next
+ *  full moon without re-declaring the constant. */
+export const SYNODIC = 29.530588853;
 const NEW_MOON_EPOCH = Date.UTC(2000, 0, 6, 18, 14); // a known new moon
 
 export const STARGAZE = {
