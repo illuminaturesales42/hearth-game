@@ -5,6 +5,8 @@
 import type { Game } from '../core/game';
 import { chainDef } from '../core/board';
 import { artUrl, portraitFor, itemIconInline } from './art';
+import { avatarPortraitHTML } from './avatar-render';
+import { openAvatarCreator } from './avatar-creator';
 import { ORDERS, ZONE_STAGES } from '../data/economy';
 import { orderAt } from '../data/endless';
 import { feedback } from './feedback';
@@ -22,6 +24,9 @@ export class Home {
       switch (ev.type) {
         case 'state':
           this.render();
+          break;
+        case 'avatar':
+          this.renderAvatar();
           break;
         case 'merge':
           feedback.merge(ev.item.level);
@@ -180,7 +185,17 @@ export class Home {
     this.render();
   }
 
+  /** The player's face, watching over their town — a quiet identity cameo on the
+   *  home map. Tap to change. Painted portrait, so it fits beside the buildings. */
+  private renderAvatar(): void {
+    const host = document.getElementById('home-avatar');
+    if (!host) return;
+    host.innerHTML = avatarPortraitHTML(this.game.avatar.portrait, { framed: true, label: 'your look' });
+    host.onclick = () => void openAvatarCreator(this.game);
+  }
+
   render(): void {
+    this.renderAvatar();
     const s = this.game.snapshot;
     $('hud-coins').textContent = String(s.coins);
     $('hud-energy').textContent = String(s.energy.current);

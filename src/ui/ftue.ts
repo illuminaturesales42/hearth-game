@@ -133,7 +133,9 @@ export class FtueUI {
     }
     const emblem = el('ftue-emblem');
     if (emblem) {
-      const art = artUrl('splash_emblem');
+      // Drop-in art hook: a painted harbour-arrival scene (ftue_arrival) is used
+      // on the welcome step if present, otherwise the existing splash emblem.
+      const art = artUrl('ftue_arrival') ?? artUrl('splash_emblem');
       emblem.style.backgroundImage = this.step === 0 && art ? `url(${art})` : '';
       emblem.hidden = !(this.step === 0 && art);
     }

@@ -20,8 +20,14 @@ GDD (`OneDrive/…/00-Hearth-Avatar-and-Identity-System-GDD.md`) and the art bri
 | **Onboarding** | FTUE "Choose your look" beat after Welcome (Bran-framed); opens picker | `ui/ftue.ts` |
 | **Retrofit** | Once-only gentle nudge for existing saves without an avatar | `ui/avatar-creator.ts` + `ui/app-shell.ts` |
 | **Profile surface** | "You" identity card on the Villagers screen (portrait + name, tappable) | `ui/social-screen.ts` |
+| **Home cameo** | Player-face medallion on the home map overlay, tap to change | `ui/home.ts` + `index.html` |
 | **Settings surface** | "Your look" row (mirror access) shows live bust, opens picker | `ui/settings.ts` |
+| **Arrival art hook** | Welcome step uses painted `ftue_arrival` backdrop if present (drop-in) | `ui/ftue.ts` |
 | **Tests** | model, normalization, catalogue, migration, persistence, event | `tests/avatar.test.ts` |
+
+**Wardrobe decision (locked):** portrait-only. "Cosmetics/progression" = additional
+earnable *painted portraits*, not clothing layers — so **no per-garment art is ever
+needed**, and the Tailor's Cottage unlocks portraits. See `avatar-assets-to-generate.md`.
 
 **Test now:** `pnpm dev` → new game shows the "Choose your look" step; or ⚙ Settings / Villagers "You" card. Persists across reload. Falls back to `avatar_1..6` until the painted set lands.
 
@@ -55,13 +61,12 @@ GDD (`OneDrive/…/00-Hearth-Avatar-and-Identity-System-GDD.md`) and the art bri
 ### 1. Painted portrait set  — **BLOCKED ON ART (you)**
 Generate `avatar_portrait_01..18` per `avatar-portrait-art-spec.md`, drop in `public/art/`, regen manifest. Picker + all surfaces upgrade automatically. *No code work.*
 
-### 2. Player bust in more surfaces — small
-- Home screen header cameo (optional, nice).
-- Reward/achievement cards show your face when *you* earned it.
-- (Dialogue: the player has no spoken lines today; revisit if/when first-person dialogue is added.)
-Effort: low. Risk: low. Reuses `avatarPortraitHTML`.
+### 2. Player bust in more surfaces — ✅ DONE (home cameo + You card + Settings)
+Remaining optional: reward/achievement cards could show your face when *you*
+earned it (low value; deferred). Player has no spoken dialogue line, so no
+map-view dialogue bust.
 
-### 3. Tailor's Cottage (merge-native wardrobe home) — medium/large
+### 3. Tailor's Cottage (merge-native wardrobe home) — medium/large — needs art (P2)
 - New restorable building `town_tailor` in `data/town-layout.ts` (`unlockAt`, ruin→L1..3), `BUILDING_INFO` entry.
 - Its card opens the picker/wardrobe (map-view building-card hook ~`map-view.ts:1042`).
 - New tailor villager `VillagerDef` + friendship gift.
