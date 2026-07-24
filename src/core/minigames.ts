@@ -19,7 +19,7 @@ export const MINIGAME_BASE_TOKENS = 3;
 /** Attempts never bank higher than this — a gentle daily ceiling. */
 export const MINIGAME_MAX_TOKENS = 6;
 /** Energy a day of mini-games can pay out, so play never out-earns real life. */
-export const MINIGAME_EMBER_CAP = 5;
+export const MINIGAME_EMBER_CAP = 15;
 
 function lcg(seed: number): () => number {
   let s = seed >>> 0 || 1;

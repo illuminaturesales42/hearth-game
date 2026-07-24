@@ -329,18 +329,10 @@ export const TOWN_NATURE_V2: readonly (TownPiece & { stage: number })[] = [
   // STREET LANTERNS at the path junctions — they light the town at dusk/night
   // (warm ground pool + glowing head + glow re-emit, see map-view prop_lamp),
   // and read as quiet posts by day. They come on as the town heals (stage).
-  // Lanterns trace the path network so the whole town lights at night. They come
-  // on as the town heals (stage) and ignite one-by-one through dusk (map-view).
-  { art: 'prop_lamp', x: 0.57, y: 0.55, w: 0.02, unlockAt: 0, stage: 2 }, // plaza
-  { art: 'prop_lamp', x: 0.44, y: 0.47, w: 0.02, unlockAt: 0, stage: 2 }, // upper-left junction
-  { art: 'prop_lamp', x: 0.5, y: 0.6, w: 0.02, unlockAt: 0, stage: 3 }, // lower-central
-  { art: 'prop_lamp', x: 0.64, y: 0.54, w: 0.02, unlockAt: 0, stage: 3 }, // right of well
-  { art: 'prop_lamp', x: 0.5, y: 0.36, w: 0.02, unlockAt: 0, stage: 4 }, // north ridge
-  { art: 'prop_lamp', x: 0.4, y: 0.55, w: 0.02, unlockAt: 0, stage: 3 }, // by the forge
-  { art: 'prop_lamp', x: 0.62, y: 0.47, w: 0.02, unlockAt: 0, stage: 4 }, // bakery approach
-  { art: 'prop_lamp', x: 0.36, y: 0.5, w: 0.02, unlockAt: 0, stage: 4 }, // west lane (cottage/library)
-  { art: 'prop_lamp', x: 0.58, y: 0.66, w: 0.02, unlockAt: 0, stage: 4 }, // south path to the shore
-  { art: 'prop_lamp', x: 0.72, y: 0.6, w: 0.02, unlockAt: 0, stage: 4 }, // market / dock approach
+  // Buildings-only at night: the free-standing lamp posts drew too small to read
+  // against the painted plate, so their head-glows floated as orphaned dots that
+  // didn't line up with anything. Night light now comes ONLY from the buildings'
+  // own painted lanterns/windows (measured per-light in map-view).
 ] as const;
 export const TOWN_TERRAIN_V2: readonly TownPiece[] = [] as const;
 

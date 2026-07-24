@@ -228,7 +228,8 @@ describe('minigame unlock, tokens and embers (pure)', () => {
     expect(s.tokens).toBe(0);
     const e1 = addEmber(s, 3);
     expect(e1.granted).toBe(3);
-    const e2 = addEmber(e1.state, 10);
+    // request more than the day's remaining pool — grant clamps to the cap
+    const e2 = addEmber(e1.state, MINIGAME_EMBER_CAP + 5);
     expect(e2.granted).toBe(MINIGAME_EMBER_CAP - 3);
     expect(e2.state.emberToday).toBe(MINIGAME_EMBER_CAP);
     // a new day refills tokens and clears embers

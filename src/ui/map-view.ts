@@ -2288,13 +2288,9 @@ export class MapView {
               this.glowSpots.push({ x: cx, y: cy, r: w * 0.16, a: wgtK * 0.18 });
             }
           }
-          // The forge's live fire is a real light source — flame + glow at the
-          // arch (art-gated: fx_flame_forge).
-          if (p.art === 'town_blacksmith') {
-            const fx = p.x * W;
-            if (!this.reduce) this.drawFlame(ctx, 'fx_flame_forge', fx, p.y * H - h * 0.08, w * 0.34, t);
-            this.glowSpots.push({ x: fx, y: p.y * H - h * 0.22, r: w * 0.22, a: k * 0.65 });
-          }
+          // (No separate forge flame: the blacksmith sprite already paints its
+          // own forge fire, and a per-light cluster above lands a glow on that hot
+          // mouth. An extra fx_flame_forge in the yard read as a stray broken fire.)
         }
       }
       // Street lamps: a live flame in the glass, a glowing head, and a warm
