@@ -8,7 +8,7 @@ import type { GameState, MinigameState } from './types';
 import { localDayKey } from './energy';
 import { initialMinigames } from './minigames';
 
-export const CURRENT_VERSION = 17;
+export const CURRENT_VERSION = 18;
 
 const KEY = 'hearth:save';
 /** Older builds wrote the version into the key. Read them once, then adopt KEY. */
@@ -18,14 +18,12 @@ const BACKUP_STAMP = 'hearth:backup:at';
 const BACKUP_EVERY_MS = 60 * 60 * 1000;
 
 export function defaultPrefs(): GameState['prefs'] {
-  // The OS reduced-motion preference seeds the DEFAULT for new players only —
-  // the in-game Settings toggle owns the final say (Windows reports
-  // prefers-reduced-motion whenever its "animation effects" switch is off,
-  // which would otherwise silently freeze the sea, flames and merge pops with
-  // no way back in-game).
-  const osReduce =
-    typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  return { musicVol: 0.7, sfxVol: 1, textScale: 1, highContrast: false, forceReducedMotion: osReduce };
+  // Reduced motion is OPT-IN via the in-game Settings toggle only. We deliberately
+  // do NOT seed it from the OS prefers-reduced-motion query: Windows reports that
+  // true whenever "animation effects" is off, which is not a request to make the
+  // MINIGAMES auto-play — it was silently dropping every minigame into its
+  // non-interactive fallback (logs parked, beacon tap-a-slot, forge no fire).
+  return { musicVol: 0.7, sfxVol: 1, textScale: 1, highContrast: false, forceReducedMotion: false };
 }
 
 /**
@@ -70,6 +68,15 @@ const MIGRATIONS: Record<number, (s: LooseState) => LooseState> = {
   // presence-guard change — a returning player simply sees the glows for
   // whatever they've not engaged with yet.
   16: (s) => ({ ...s, version: 17, discovered: [] }),
+  // v17 → v18: clear the OS-seeded forceReducedMotion. Earlier builds seeded it
+  // from the OS prefers-reduced-motion query, which Windows reports true for
+  // "animation effects off" — silently dropping every minigame into its
+  // non-interactive fallback. Reduced motion is opt-in via Settings from now on;
+  // anyone who genuinely wants it just re-enables the toggle.
+  17: (s) => {
+    const prefs = (s.prefs as GameState['prefs'] | undefined) ?? defaultPrefs();
+    return { ...s, version: 18, prefs: { ...prefs, forceReducedMotion: false } };
+  },
 };
 
 /** Upgrade any historical state to CURRENT_VERSION, or null if unrecognizable. */
