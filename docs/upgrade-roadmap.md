@@ -2,7 +2,7 @@
 
 Index of the six upgrade tracks scoped for Hearth beyond the avatar/identity system.
 Each track has its own spec document with concrete asset lists and a code sketch.
-**Status: design/specs only — none of these are implemented yet.**
+**Status: partially built** — see the status column and "Built so far" below. Everything built is art-gated, so it works today and upgrades when art lands.
 
 ---
 
@@ -67,7 +67,7 @@ F  Multiplayer          — largest; needs a backend
 
 What the surveys found, so future sessions don't re-research it:
 
-**Real and well-built:** villager bonds/memories/greetings, town requests, the 7 minigames (all substantial, seeded, no-fail), true lunar phase (`src/data/moon.ts`), real geolocation-derived season/daylight (`src/ui/weather.ts`), day-spanning weather memory with wetness/snow accumulation (`src/core/weather-history.ts`), the local hot-seat Bonfire Duel, and the share-card composer.
+**Real and well-built:** villager bonds/memories/greetings, town requests, the minigames (8 now, all substantial, seeded, no-fail), true lunar phase (`src/data/moon.ts`), real geolocation-derived season/daylight (`src/ui/weather.ts`), day-spanning weather memory with wetness/snow accumulation (`src/core/weather-history.ts`), the local hot-seat Bonfire Duel, and the share-card composer.
 
 **Stubbed / simulated (labelled as such in-code):**
 - Multiplayer/social — client-side simulation; "They joined" is a tester-gated free-energy faucet (`src/core/social.ts:2`, `src/ui/social-screen.ts:47`).
@@ -76,7 +76,7 @@ What the surveys found, so future sessions don't re-research it:
 - Analytics sink (above).
 - Some item art still emoji (`src/core/types.ts:31`).
 
-**Missing entirely:** any festival/seasonal-event system (`src/data/world.ts:313` has only daily + weekly rhythms).
+**Was missing entirely, now built:** the festival/seasonal-event system — `src/data/world.ts:313` still holds only the daily + weekly rhythms, with festivals living in `src/data/festivals.ts` + `src/core/festivals.ts`.
 
 **Not a gap (verified):** decor pieces and shop skins are intentional — all 11 decor entries map to existing `prop_*`/`tree_*`/`terrain_*` art, and board/town skins are deliberate CSS colour washes, not missing sprites.
 
