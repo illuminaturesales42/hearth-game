@@ -419,13 +419,24 @@ export class Game {
       this.emit({ type: 'chronicle', day: entry.day });
     }
     if (this.state.stats.day !== today) {
+      // A live day-turn (the app sat open past 4am): roll EVERY daily system,
+      // including the action counts and the health ledger, so the Energy panel's
+      // done/available state refreshes without waiting for the next tap or reload.
+      const ledger = this.state.healthLedger;
       this.state = {
         ...this.state,
         stats: rolloverStats(this.state.stats, today),
         questsClaimed: [],
         requestsFilled: [],
         minigames: rolloverMinigames(this.state.minigames, today),
+        actions: rolloverActions(this.state.actions, now),
       };
+      // Reset the sensor ledger on the same turn (its granted flags drive the
+      // "Auto" done-state), but only when it exists and is stale.
+      if (ledger && ledger.day !== today) {
+        this.state = { ...this.state, healthLedger: initialLedger(now) };
+      }
+      this.emit({ type: 'state' }); // repaint the open Energy panel at the turn
     }
   }
 

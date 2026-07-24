@@ -6,8 +6,14 @@
 import type { EnergyState } from './types';
 import { ENERGY } from '../data/economy';
 
+/** Hours past midnight at which the Hearth "day" turns over. A late-night player
+ *  (up until 3am) keeps the same day; everything daily — energy actions, minigame
+ *  goes, stats, gratitude, chronicle — resets together at 4am local. */
+export const DAY_RESET_HOUR = 4;
+
 export function localDayKey(now: number): string {
-  const d = new Date(now);
+  // Shift back by the reset hour so the calendar date only flips at 4am local.
+  const d = new Date(now - DAY_RESET_HOUR * 60 * 60 * 1000);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 

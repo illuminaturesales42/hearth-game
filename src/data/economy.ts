@@ -2,7 +2,7 @@
  * Economy configuration. Everything here is designed to be remote-config
  * shaped: plain serializable data, no logic, live-tunable in M3.
  */
-import type { ChainDef, ChainId, LifeQuestDef, OrderDef } from '../core/types';
+import type { ChainDef, ChainId, OrderDef } from '../core/types';
 
 export const CHAINS: readonly ChainDef[] = [
   {
@@ -204,12 +204,6 @@ export const ENERGY = {
   /** Cost to tap the producer once. */
   spawnCost: 1,
 } as const;
-
-export const LIFE_QUESTS: readonly LifeQuestDef[] = [
-  { id: 'steps', label: '4,200 steps', energy: 6, source: 'self-report' },
-  { id: 'sleep', label: '7.5h sleep', energy: 8, source: 'self-report' },
-  { id: 'water', label: 'Drink a glass of water', energy: 2, source: 'self-report' },
-] as const;
 
 /**
  * Chapter 1: The Letter. 12 orders; the order chain doubles as the story

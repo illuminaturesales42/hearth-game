@@ -64,14 +64,6 @@ export interface OrderDef {
   rewardCoins: number;
 }
 
-export interface LifeQuestDef {
-  id: 'steps' | 'sleep' | 'water';
-  label: string;
-  energy: number;
-  /** How the grant is sourced in production. Self-report in M1. */
-  source: 'healthkit' | 'self-report';
-}
-
 export interface EnergyState {
   current: number;
   /** epoch ms of last time-regen accrual. */
