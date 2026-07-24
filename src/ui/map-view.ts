@@ -1180,6 +1180,8 @@ export class MapView {
         }
         ctx.restore();
       }
+      // living water sits ABOVE the grade so the night multiply can't crush it
+      this.drawShoreShimmer(ctx, W, H, t, mood, nightW > 0.4);
       if (nightW > 0.05) this.nightAmbience(ctx, W, H, t, nightW, mood, stage);
       const rainbow = this.rainbowStrength(mood);
       if (rainbow > 0) this.drawRainbow(ctx, W, H, rainbow);
@@ -2374,40 +2376,9 @@ export class MapView {
       }
     }
 
-    // --- sea shimmer at the shore: the water carries the day's mood ---
-    if (!this.reduce) {
-      const amp = 1.0 + mood.sea * 3.4;
-      const pace = 620 - mood.sea * 320;
-      ctx.strokeStyle = night ? 'rgba(180, 200, 255, 0.12)' : 'rgba(255,220,150,0.16)';
-      ctx.lineWidth = 1;
-      for (let y = H * 0.9; y < H; y += 8) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        for (let x = 0; x <= W; x += 22) ctx.lineTo(x, y + Math.sin(x / 26 + t / pace + y) * amp);
-        ctx.stroke();
-      }
-      // whitecaps once the water is truly restless
-      if (mood.sea > 0.55) {
-        ctx.strokeStyle = 'rgba(235, 240, 248, 0.4)';
-        ctx.lineWidth = 1.4;
-        for (let i = 0; i < 7; i++) {
-          const wx = (((i * 137 + Math.floor(t / 1400) * 41) % 100) / 100) * W;
-          const wy = H * (0.9 + ((i * 53) % 10) / 110);
-          ctx.beginPath();
-          ctx.moveTo(wx, wy);
-          ctx.lineTo(wx + 7 + mood.sea * 6, wy);
-          ctx.stroke();
-        }
-      }
-      // a quiet mind stills the water: a soft moon-path glint on calm days
-      if (mood.calm && mood.sea < 0.3) {
-        const glint = ctx.createLinearGradient(0, H * 0.9, 0, H);
-        glint.addColorStop(0, 'rgba(255, 236, 190, 0.10)');
-        glint.addColorStop(1, 'rgba(255, 236, 190, 0)');
-        ctx.fillStyle = glint;
-        ctx.fillRect(W * 0.6, H * 0.88, W * 0.4, H * 0.12);
-      }
-    }
+    // (sea shimmer / whitecaps moved OUT of the town pass — they were painted
+    //  here and then multiplied dark by the night grade. See drawShoreShimmer(),
+    //  now called from draw() after applyTimeLight so they sit above the grade.)
 
     // --- weather falls over everything ---
     if (mood.weather === 'fog') {
@@ -2890,6 +2861,59 @@ export class MapView {
    * color / screen / lighter alike — true region-clipped colour grading.
    */
   /**
+   * Shore shimmer + whitecaps along the near water. Drawn AFTER the time-of-day
+   * grade (the night pass multiplies the sea toward ink; painting these before it
+   * simply crushed them dark), and mapped through the camera + island shift so
+   * they track pan/zoom like the re-emitted lights do.
+   */
+  private drawShoreShimmer(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    t: number,
+    mood: WorldMood,
+    night: boolean,
+  ): void {
+    if (this.reduce) return;
+    const { zoom, panX, panY } = this.cam;
+    const mx = (x: number): number => (x - this.mapShiftX) * zoom + panX;
+    const my = (y: number): number => y * zoom + panY;
+    const amp = (1.0 + mood.sea * 3.4) * zoom;
+    const pace = 620 - mood.sea * 320;
+    ctx.save();
+    ctx.strokeStyle = night ? 'rgba(180, 200, 255, 0.18)' : 'rgba(255, 220, 150, 0.2)';
+    ctx.lineWidth = 1;
+    for (let y = H * 0.9; y < H; y += 8) {
+      ctx.beginPath();
+      ctx.moveTo(mx(0), my(y));
+      for (let x = 0; x <= W; x += 22) ctx.lineTo(mx(x), my(y) + Math.sin(x / 26 + t / pace + y) * amp);
+      ctx.stroke();
+    }
+    // whitecaps once the water is truly restless
+    if (mood.sea > 0.55) {
+      ctx.strokeStyle = 'rgba(235, 240, 248, 0.45)';
+      ctx.lineWidth = 1.4;
+      for (let i = 0; i < 7; i++) {
+        const wx = (((i * 137 + Math.floor(t / 1400) * 41) % 100) / 100) * W;
+        const wy = H * (0.9 + ((i * 53) % 10) / 110);
+        ctx.beginPath();
+        ctx.moveTo(mx(wx), my(wy));
+        ctx.lineTo(mx(wx + 7 + mood.sea * 6), my(wy));
+        ctx.stroke();
+      }
+    }
+    // a quiet mind stills the water: a soft moon-path glint on calm days
+    if (mood.calm && mood.sea < 0.3) {
+      const glint = ctx.createLinearGradient(0, my(H * 0.9), 0, my(H));
+      glint.addColorStop(0, 'rgba(255, 236, 190, 0.10)');
+      glint.addColorStop(1, 'rgba(255, 236, 190, 0)');
+      ctx.fillStyle = glint;
+      ctx.fillRect(mx(W * 0.6), my(H * 0.88), W * 0.4 * zoom, H * 0.12 * zoom);
+    }
+    ctx.restore();
+  }
+
+  /**
    * Dynamic waves over the painted sea — drifting swell lines that answer the
    * real weather (calm ripples → storm swell), clipped to the sea mask so they
    * never touch land. Amplitude/speed scale with mood.sea, drift follows
@@ -2913,13 +2937,16 @@ export class MapView {
     const drift = this.reduce ? 12000 : t; // fixed phase when still
     const amp = 1.2 + sea * 5.2; // calm swells ~1px, storm ~6px
     const pace = 4200 - sea * 2600; // faster when rough
-    const alpha = (0.05 + sea * 0.07) * (1 - nightAmt * 0.55); // subtle; dimmer at night
-    if (alpha < 0.012) return;
+    // Visible, not shy: at ~3% these were mathematically drawn but invisible on
+    // the ink-graded night sea. Calm day ~0.14, calm night ~0.10 reads as real
+    // moving water while staying under the painted plate's own detail.
+    const alpha = (0.14 + sea * 0.14) * (1 - nightAmt * 0.35);
+    if (alpha < 0.03) return;
     // crest highlight cools toward silver at night, warm-teal by day
     const crest = nightAmt > 0.45 ? '150, 178, 224' : '206, 234, 244';
     const shade = nightAmt > 0.45 ? '30, 46, 86' : '70, 132, 170';
     this.maskedGrade(ctx, W, H, seaMask, 'source-over', (s) => {
-      s.lineWidth = 1.2;
+      s.lineWidth = 1.6;
       for (let y = -6; y <= H; y += 22) {
         const ph = y * 0.045;
         const xoff = windDir * ((drift / 90) % 46);
