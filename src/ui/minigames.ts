@@ -1576,8 +1576,13 @@ export class MinigameUI {
     const tryStrum = (): boolean => {
       const log = liveStrum;
       if (!log || log.done) return false;
-      const dt = performance.now() - log.crossAt;
-      if (!reduce && Math.abs(dt) > SAWMILL_WINDOW_MS) return false;
+      // Judge by LIVE on-screen position (like every other log), not a clock —
+      // a taller board changes the fall timing but the pixel truth always holds,
+      // so the split lands exactly on the blade line.
+      if (!reduce) {
+        const band = (mill?.getBoundingClientRect().height || 300) * 0.15;
+        if (Math.abs(cutOffset(log)) > band) return false;
+      }
       log.done = true;
       log.elm.style.transition = 'none';
       log.elm.style.top = `${log.elm.offsetTop}px`;
