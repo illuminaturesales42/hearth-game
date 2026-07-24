@@ -23,15 +23,18 @@ from PIL import Image
 
 # id -> (frames, frame_w, frame_h) straight from the spec table
 SPEC: dict[str, tuple[int, int, int]] = {
-    "fx_wave_swell_a": (10, 256, 64),
-    "fx_wave_swell_b": (10, 256, 48),
+    # open-water assets are seamless SQUARE tiles (engine repeats them over the sea)
+    "fx_wave_swell_a": (10, 128, 128),
+    "fx_wave_swell_b": (10, 128, 128),
+    "fx_moon_shimmer": (8, 128, 128),
     "fx_wave_foam_wash": (10, 192, 56),
     "fx_wave_lap": (8, 128, 40),
     "fx_wave_cap": (6, 64, 32),
     "fx_flame_hearth": (7, 48, 64),
     "fx_lantern_string": (7, 96, 32),
-    "fx_moon_shimmer": (8, 192, 48),
 }
+# assets whose left/right edges must wrap (all four edges for the square tiles)
+TILEABLE = {"fx_wave_swell_a", "fx_wave_swell_b", "fx_moon_shimmer", "fx_wave_foam_wash"}
 
 OK = "PASS"
 NO = "FAIL"
@@ -65,6 +68,26 @@ def check(path: Path, frames_override: int | None = None) -> bool:
         ok = False
     else:
         print(f"  {OK}  has transparency ({transparent / al.size:.0%} of pixels are clear)")
+
+    # --- PAINTED checkerboard masquerading as transparency ---------------------
+    # A drawn checker is a regular grid of two near-neutral light greys. Detect it
+    # by looking for a strong alternating pattern in an opaque light-grey region.
+    rgb0 = a[:, :, :3].astype(int)
+    mx0, mn0 = rgb0.max(2), rgb0.min(2)
+    lightgrey = (al > 200) & (mn0 > 200) & ((mx0 - mn0) < 12)
+    if lightgrey.mean() > 0.05:
+        vals = rgb0[lightgrey][:, 0]
+        shades, counts = np.unique(vals, return_counts=True)
+        order = np.argsort(counts)[::-1]
+        top2 = counts[order[:2]].sum() / max(1, counts.sum())
+        spread = int(shades[order[:2]].max() - shades[order[:2]].min()) if len(shades) > 1 else 0
+        # a drawn checker = two dominant near-identical light greys covering the area
+        if top2 > 0.55 and 1 <= spread <= 30:
+            print(
+                f"  {NO}  looks like a PAINTED CHECKERBOARD ({lightgrey.mean():.0%} of pixels are "
+                f"light grey, two shades cover {top2:.0%}) — draw nothing there; use a real alpha channel"
+            )
+            ok = False
 
     # --- dimensions ------------------------------------------------------------
     if spec:
@@ -114,6 +137,40 @@ def check(path: Path, frames_override: int | None = None) -> bool:
 
             if avg < 0.5:
                 print(f"  {WARN} frames barely differ (avg {avg:.2f}) — is it actually animating?")
+
+            # --- gaps / separators between frames --------------------------
+            # Only meaningful for assets that FILL their frame (the water tiles).
+            # A flame or lantern legitimately has empty columns around the subject.
+            if path.stem in TILEABLE:
+                colfill = (al > 8).mean(0)
+                empty_cols = np.where(colfill < 0.01)[0]
+                inner_empty = [int(x) for x in empty_cols if 2 < x < w - 3]
+                if inner_empty:
+                    print(
+                        f"  {NO}  {len(inner_empty)} empty column(s) INSIDE the strip "
+                        f"(e.g. x={inner_empty[:6]}) — frames must butt edge to edge, no gaps/separators"
+                    )
+                    ok = False
+                else:
+                    print(f"  {OK}  frames butt edge to edge (no gaps)")
+
+            # --- seamless tiling (edge wrap) -------------------------------
+            if path.stem in TILEABLE:
+                lr = diff(cells[0][:, :2, :], cells[0][:, -2:, :])
+                msg = f"left/right edge wrap {lr:.1f}"
+                if spec and spec[1] == spec[2]:  # square tile: check top/bottom too
+                    tb = float(
+                        np.abs(
+                            cells[0][:2, :, :3].astype(float) - cells[0][-2:, :, :3].astype(float)
+                        ).mean()
+                    )
+                    msg += f", top/bottom wrap {tb:.1f}"
+                    if tb > 45:
+                        print(f"  {WARN} top/bottom edges may not tile seamlessly ({tb:.1f})")
+                if lr > 45:
+                    print(f"  {WARN} left/right edges may not tile seamlessly ({lr:.1f})")
+                else:
+                    print(f"  {OK}  {msg}")
 
     # --- embedded text / label furniture ---------------------------------------
     # Text is small, high-contrast, near-neutral and clustered in horizontal bands.

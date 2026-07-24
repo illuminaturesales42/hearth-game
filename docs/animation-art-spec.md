@@ -17,17 +17,28 @@ unusable.
    edge to edge. If it looks like a slide, it's wrong.
 2. **Top-down aerial view. No horizon, no sky, no side-on view.** See §1 — this is the one
    that silently ruins otherwise-good art.
-3. **Transparent background (PNG with an alpha channel).** Not black, not white, not a
-   colour you intend to be keyed later. Save as RGBA.
-4. **Exact pixel dimensions.** Total width must equal `frames × frameWidth` precisely, and
-   height must equal `frameHeight` precisely. No padding, no gutters, no margins.
+3. **Real alpha channel — do NOT draw a checkerboard.** Save as RGBA PNG with genuinely
+   empty pixels. A grey/white checker pattern *painted into the image* is *not*
+   transparency; neither is a white or black fill. If in doubt, the background pixels must
+   have alpha = 0.
+4. **Frames must butt directly against each other — no gaps, no separators, equal widths.**
+   Every frame exactly the same size, tiled edge to edge, with no margin around the strip.
+   Total width must equal `frames × frameWidth` precisely.
 5. **It must loop.** Frame N flows back into frame 1 with no jump. See §3.
 
-> **What went wrong on the first attempt** (so it isn't repeated): the generator produced a
-> 1774×887 RGB *presentation sheet* — title, frame-number labels, two strip rows, black
-> background — containing **side-on seascape** waves with a horizon. Every one of the five
-> rules above was broken. The wave painting itself was decent; the packaging and camera angle
-> made it unusable.
+> **Failures so far** (so they aren't repeated):
+>
+> - *Attempt 1* — a 1774×887 RGB **presentation sheet**: title, frame-number labels, two
+>   strip rows, black background, and **side-on seascape** waves with a horizon. All five
+>   rules broken.
+> - *Attempt 2 (`WaveTest`)* — camera angle **fixed** (proper top-down water, good palette
+>   and style), but still 1774×887 RGB with: a **painted checkerboard** standing in for
+>   transparency, frame-number labels, **2–3px gaps** between frames, **unequal** frame
+>   widths (163–175px), large empty margins, and a **loop jump** (frame 10→1 differed
+>   twice as much as the average step).
+>
+> The lesson: the *painting* is fine. It's the **packaging** that keeps failing — alpha,
+> exact geometry, no furniture, closed loop.
 
 ---
 
@@ -113,16 +124,21 @@ renderer adds glow on top, so pre-brightened art blows out.
 
 Deliver each to `public/art/<id>.png`.
 
-| id | frames | frame px | **total px** | content |
-|----|--------|----------|--------------|---------|
-| `fx_wave_swell_a` | 10 | 256 × 64 | **2560 × 64** | Long low rolling swell crest, aerial view. Tiles left↔right within each frame. |
-| `fx_wave_swell_b` | 10 | 256 × 48 | **2560 × 48** | Smaller counter-swell for the parallax layer behind `_a`. Darker, cooler, same tiling. |
-| `fx_wave_foam_wash` | 10 | 192 × 56 | **1920 × 56** | Foam washing up a shore edge then retreating; lacy broken leading edge, transparent behind. |
-| `fx_wave_lap` | 8 | 128 × 40 | **1024 × 40** | Small lapping wavelet + foam collar, sized to ring pier stilts and rock bases. |
-| `fx_wave_cap` | 6 | 64 × 32 | **384 × 32** | One whitecap breaking and dissolving to nothing. |
-| `fx_flame_hearth` | 7 | 48 × 64 | **336 × 64** | Low warm hearth fire through a doorway; ember tones, slow lazy flicker. Side-on is correct *for flames*. |
-| `fx_lantern_string` | 7 | 96 × 32 | **672 × 32** | 3–4 small hanging lanterns on a string, swaying gently, lit warm. |
-| `fx_moon_shimmer` | 8 | 192 × 48 | **1536 × 48** | Broken silver moon-path glints on dark water, aerial view. Subtle, already-dim. |
+The three open-water assets are **seamless square tiles** — the engine repeats them across the
+sea in both directions, so a square tile is the right primitive (and it's the shape that
+generates most reliably). "Tileable" here means **edge-wrapping**: the tile's left edge
+continues into its right edge, and its top into its bottom, with no visible seam.
+
+| id | frames | frame px | **total px** | tileable | content |
+|----|--------|----------|--------------|----------|---------|
+| `fx_wave_swell_a` | 10 | 128 × 128 | **1280 × 128** | yes, all edges | Open-water surface from directly above: long low swell lines drifting with soft foam crests. |
+| `fx_wave_swell_b` | 10 | 128 × 128 | **1280 × 128** | yes, all edges | Fainter, darker, calmer counter-ripple tile for the parallax layer behind `_a`. |
+| `fx_moon_shimmer` | 8 | 128 × 128 | **1024 × 128** | yes, all edges | Broken silver moon-path glints on dark night water, from above. Subtle, already-dim. |
+| `fx_wave_foam_wash` | 10 | 192 × 56 | **1920 × 56** | left↔right only | Foam washing up a shoreline waterline then retreating; lacy edge, transparent behind. |
+| `fx_wave_lap` | 8 | 128 × 40 | **1024 × 40** | no | Small lapping wavelet + foam collar, sized to ring pier stilts and rock bases. |
+| `fx_wave_cap` | 6 | 64 × 32 | **384 × 32** | no | One whitecap breaking and dissolving to nothing. |
+| `fx_flame_hearth` | 7 | 48 × 64 | **336 × 64** | no | Low warm hearth fire through a doorway; ember tones, lazy flicker. Side-on is correct *for flames*. |
+| `fx_lantern_string` | 7 | 96 × 32 | **672 × 32** | no | 3–4 small hanging lanterns on a string, swaying gently, lit warm. |
 
 If you produce a different frame count than listed, that's fine — **tell me the number** and
 I'll wire it (`drawStrip` takes the count as a parameter). Everything else must match exactly.
@@ -134,10 +150,10 @@ I'll wire it (`drawStrip` takes the count as a parameter). Everything else must 
 Each prompt is self-contained. Paste it as-is; don't summarise it.
 
 **`fx_wave_swell_a`**
-> A single seamless looping sprite-strip image, 10 frames laid side by side horizontally in ONE image. Each frame is exactly 256×64 pixels, total image exactly 2560×64 pixels. Transparent background, PNG with alpha. TOP-DOWN AERIAL VIEW of an open ocean surface looking straight down — absolutely no horizon, no sky, no side view, no perspective. Long low rolling swell lines drifting horizontally with soft warm-white foam crests lying flat on the water. Painted storybook style, soft edges, sea colours teal #2e9cc3 to deep #1c5f9e, foam #f4efe2. The wave pattern shifts by exactly one tenth of a cycle per frame so frame 10 flows seamlessly back into frame 1; the overall shape stays in the same position, only surface detail advances. Output ONLY the raw frames edge to edge — no title, no text, no frame numbers, no labels, no borders, no background colour, no drop shadow.
+> A sprite sheet of 10 animation frames laid side by side in a single horizontal row. Each frame is exactly 128×128 pixels and the finished image is exactly 1280×128 pixels. The frames must touch edge to edge with NO gaps, NO separators, NO borders and NO margin — every frame identical in size. TOP-DOWN AERIAL VIEW of an open ocean surface looking straight down — absolutely no horizon, no sky, no shoreline, no side view, no perspective. Each frame is a SEAMLESSLY TILEABLE tile of water: its left edge continues into its right edge and its top edge into its bottom edge with no visible seam. Long low swell lines drifting slowly with soft warm-white foam crests lying flat on the surface. Painted storybook style with soft edges, sea teal #2e9cc3 to deep #1c5f9e, foam #f4efe2. The water pattern advances exactly one tenth of a cycle per frame so that frame 10 flows seamlessly back into frame 1 — it is one continuous motion sampled ten times, not ten separate pictures. Output ONLY the raw frames: no title, no text, no frame numbers, no labels, no captions, no borders, no drop shadow. Save as a PNG with a real alpha channel — do NOT draw a checkerboard pattern and do NOT fill the background with white or black.
 
 **`fx_wave_swell_b`**
-> A single seamless looping sprite-strip image, 10 frames laid side by side horizontally in ONE image. Each frame exactly 256×48 pixels, total exactly 2560×48 pixels. Transparent background, PNG with alpha. TOP-DOWN AERIAL VIEW of open ocean surface — no horizon, no sky, no side view. Smaller, subtler, darker counter-swell ripples than a main swell, cooler tone, fainter foam. Painted storybook style, deep sea #1c5f9e, faint foam #f4efe2. Pattern advances exactly one tenth of a cycle per frame, frame 10 loops seamlessly to frame 1, silhouette stays put. Output ONLY the raw frames edge to edge — no text, no numbers, no labels, no borders, no background.
+> A sprite sheet of 10 animation frames laid side by side in a single horizontal row. Each frame is exactly 128×128 pixels and the finished image is exactly 1280×128 pixels. Frames touch edge to edge with NO gaps, separators, borders or margin, all identical in size. TOP-DOWN AERIAL VIEW of calm open water looking straight down — no horizon, no sky, no side view. Each frame is a SEAMLESSLY TILEABLE water tile (left edge continues into right, top into bottom, no seam). Fainter, darker, calmer ripples than a main swell — a subtle secondary layer, cooler tone, only a little foam. Painted storybook style, deep sea #1c5f9e, faint foam #f4efe2. The pattern advances exactly one tenth of a cycle per frame so frame 10 loops seamlessly into frame 1 — one continuous motion sampled ten times. Output ONLY the raw frames: no text, no numbers, no labels, no borders. Save as PNG with a real alpha channel — do NOT paint a checkerboard and do NOT fill the background.
 
 **`fx_wave_foam_wash`**
 > A single seamless looping sprite-strip image, 10 frames side by side horizontally in ONE image. Each frame exactly 192×56 pixels, total exactly 1920×56 pixels. Transparent background, PNG with alpha. TOP-DOWN AERIAL VIEW looking straight down at a shoreline waterline — no horizon, no sky. A tongue of white foam washes up across the frame over frames 1–5 and retreats over frames 6–10, with a lacy broken leading edge. Fully transparent behind and around the foam. Warm-white foam #f4efe2 over shallow teal water #2e9cc3. Frame 10 returns to the frame 1 state for a seamless loop. Output ONLY the raw frames — no text, no numbers, no labels, no borders, no background.
@@ -155,7 +171,7 @@ Each prompt is self-contained. Paste it as-is; don't summarise it.
 > A single seamless looping sprite-strip image, 7 frames side by side horizontally in ONE image. Each frame exactly 96×32 pixels, total exactly 672×32 pixels. Transparent background, PNG with alpha. A string of 3–4 small hanging lanterns, lit warm amber #ffc474, swaying gently left and right. The string's anchor points stay fixed in every frame; only the sway moves. Painted storybook style. Frame 7 returns to the frame 1 pose for a seamless loop. Output ONLY the raw frames — no text, no labels, no borders, no background.
 
 **`fx_moon_shimmer`**
-> A single seamless looping sprite-strip image, 8 frames side by side horizontally in ONE image. Each frame exactly 192×48 pixels, total exactly 1536×48 pixels. Transparent background, PNG with alpha. TOP-DOWN AERIAL VIEW of dark night water seen from straight above — no horizon, no sky, no moon in frame. Broken silver glints of a moon path scattered on the water surface, shifting gently between frames. Silver #96b2e0 on dark navy #1a2a4e, subtle and already-dim. Frame 8 loops seamlessly to frame 1. Output ONLY the raw frames — no text, no labels, no borders, no background.
+> A sprite sheet of 8 animation frames laid side by side in a single horizontal row. Each frame is exactly 128×128 pixels and the finished image is exactly 1024×128 pixels. Frames touch edge to edge with NO gaps, separators, borders or margin, all identical in size. TOP-DOWN AERIAL VIEW of dark night water seen from straight above — no horizon, no sky, no moon visible in frame. Each frame is a SEAMLESSLY TILEABLE tile (left edge continues into right, top into bottom). Broken silver glints of moonlight scattered across the water surface, shifting gently between frames. Silver #96b2e0 on dark navy #1a2a4e — subtle and already dim, do not over-brighten. The pattern advances one eighth of a cycle per frame so frame 8 loops seamlessly into frame 1. Output ONLY the raw frames: no text, no numbers, no labels, no borders. Save as PNG with a real alpha channel — do NOT paint a checkerboard and do NOT fill the background.
 
 ---
 
