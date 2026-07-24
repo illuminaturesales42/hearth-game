@@ -66,7 +66,17 @@ Remaining optional: reward/achievement cards could show your face when *you*
 earned it (low value; deferred). Player has no spoken dialogue line, so no
 map-view dialogue bust.
 
-### 3. Tailor's Cottage (merge-native wardrobe home) — medium/large — needs art (P2)
+### 3. Tailor's Cottage — ✅ CODE DONE (art-gated; drop in the sprite to activate)
+- Building `town_tailor` added to `data/town-layout.ts`, **art-gated** — it joins the
+  town only when its sprite exists, so nothing breaks meanwhile (tests stay green).
+- Restores at **order 14**; `BUILDING_INFO` + `returnsAt` (via `SPECIAL_RETURNS`) registered.
+- Building card shows a **"Choose your look" / "Change your look"** button that opens the
+  picker (`map-view.ts` `showBuilding` + `#bldg-wardrobe` in `index.html`).
+- **To activate:** generate `town_tailor` matrix sheet (+ optional `char_pell_bust` villager)
+  per `avatar-assets-to-generate.md` §P2, drop in, regen manifest. Then validate the anchor
+  (x 0.235 / y 0.60) against `tests/town-layout.test.ts` spacing and nudge if needed.
+
+### 3b. Older deferred note (superseded by #3 above)
 - New restorable building `town_tailor` in `data/town-layout.ts` (`unlockAt`, ruin→L1..3), `BUILDING_INFO` entry.
 - Its card opens the picker/wardrobe (map-view building-card hook ~`map-view.ts:1042`).
 - New tailor villager `VillagerDef` + friendship gift.

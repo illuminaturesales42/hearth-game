@@ -51,6 +51,7 @@ type SunKey = { dx: number; dy: number; lowness: number } | null;
 /** Per-phase damping of the procedural grade (0.35 when a painted plate exists). */
 type PhaseScales = { dawn: number; dusk: number; night: number };
 import { artUrl, portraitFor, tileMarkup } from './art';
+import { openAvatarCreator } from './avatar-creator';
 import { esc } from './esc';
 import { ALMANAC_PAGES, ALMANAC_SECTIONS, almanacProgress } from '../core/almanac';
 import { VILLAGER_DEFS } from '../data/villagers';
@@ -1023,6 +1024,21 @@ export class MapView {
     this.renderBond(art, locked);
 
     const m = document.getElementById('bldg-modal');
+    // The Tailor's Cottage is the wardrobe's home: once restored, its card
+    // offers the avatar picker (GDD §8.6). Art-gated, so this only ever shows
+    // when the building itself exists.
+    const wardrobe = document.getElementById('bldg-wardrobe') as HTMLButtonElement | null;
+    if (wardrobe) {
+      const isTailor = art === 'town_tailor' && !locked;
+      wardrobe.hidden = !isTailor;
+      wardrobe.textContent = this.game.avatar.created ? 'Change your look' : 'Choose your look';
+      wardrobe.onclick = isTailor
+        ? () => {
+            if (m) m.hidden = true;
+            void openAvatarCreator(this.game);
+          }
+        : null;
+    }
     if (m) m.hidden = false;
   }
 

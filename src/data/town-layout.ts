@@ -92,7 +92,7 @@ export const TOWN_BUILDINGS_V1: readonly TownPiece[] = [
  * crossroads; the jetty(dock) running SE into the bay; cottages and workshops
  * down the west and south lanes; beach open along the south.
  */
-export const TOWN_BUILDINGS_V2: readonly TownPiece[] = [
+const TOWN_BUILDINGS_V2_BASE: readonly TownPiece[] = [
   // Seated on the painted island's grassy clearings, ringing the central
   // landmarks the plate already carries (stone monument ~0.58/0.62, obelisk
   // ~0.42/0.57, painted well ~0.76/0.79) and clear of the north pine forest,
@@ -134,6 +134,21 @@ export const TOWN_BUILDINGS_V2: readonly TownPiece[] = [
   { art: 'town_library', x: 0.39, y: 0.66, w: 0.13, unlockAt: 23, ruinVariant: 3 },
 ] as const;
 
+/**
+ * The Tailor's Cottage — home of the wardrobe/avatar picker (GDD §8.6). Weaver's
+ * cottage on the quiet west lane. **Art-gated:** it joins the town only once its
+ * sprite (`town_tailor`) exists, so nothing breaks before the art lands and the
+ * no-collision test isn't triggered by an unplaced building. When the art ships,
+ * validate this anchor against tests/town-layout.test.ts (spacing rule) and,
+ * if needed, nudge x/y. Restores at order 14 (after the Post Office). See
+ * docs/avatar-assets-to-generate.md for the sprite sheet spec.
+ */
+const TOWN_TAILOR: TownPiece = { art: 'town_tailor', x: 0.235, y: 0.6, w: 0.11, unlockAt: 14, ruinVariant: 1 };
+
+export const TOWN_BUILDINGS_V2: readonly TownPiece[] = artUrl('town_tailor')
+  ? [...TOWN_BUILDINGS_V2_BASE, TOWN_TAILOR]
+  : TOWN_BUILDINGS_V2_BASE;
+
 /** The ACTIVE world (all consumers read this; the gate picks per the art). */
 export const TOWN_BUILDINGS: readonly TownPiece[] = MAP_V2 ? TOWN_BUILDINGS_V2 : TOWN_BUILDINGS_V1;
 
@@ -144,6 +159,9 @@ export const TOWN_BUILDINGS: readonly TownPiece[] = MAP_V2 ? TOWN_BUILDINGS_V2 :
  */
 const SPECIAL_RETURNS: Record<string, number> = {
   prop_lighthouse: 9,
+  // The Tailor's Cottage returns at order 14. Declared here too so returnsAt()
+  // resolves it even while the building is art-gated out of TOWN_BUILDINGS.
+  town_tailor: 14,
 };
 
 /**
@@ -173,6 +191,7 @@ export const BUILDING_INFO: Record<string, string> = {
   town_blacksmith: 'The Forge',
   town_dock: 'North Docks',
   town_library: 'The Library',
+  town_tailor: 'The Tailor’s Cottage',
   prop_lighthouse: 'The Lighthouse',
 };
 

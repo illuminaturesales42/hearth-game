@@ -38,11 +38,14 @@ entries the same way (one line each in `src/data/avatar-portraits.ts`).
 
 ---
 
-## P2 — Tailor's Cottage (merge-native wardrobe home)
+## P2 — Tailor's Cottage (wardrobe home)  ⟵ CODE IS DONE, just needs the art
 
-The building that diegetically hosts the picker/wardrobe on the map. **Decision
-locked: wardrobe is portrait-only** (no layered paper-doll), so the Tailor unlocks
-*additional earnable portraits*, not clothing layers — no per-garment art needed.
+The building is **already fully wired and art-gated**: added to the town at order
+14, its card opens the avatar picker. It is simply invisible until its sprite
+exists — generate the sheet below and it appears, working, with no code change.
+**Decision locked: wardrobe is portrait-only** (no layered paper-doll), so the
+Tailor unlocks *additional earnable portraits*, not clothing layers — no
+per-garment art needed.
 
 ### P2a — Building sprite set — `town_tailor`
 Follow the existing **building matrix sheet** convention (see `tools/import_map_v2.py`):
