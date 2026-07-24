@@ -267,60 +267,78 @@ export interface BeaconPeg {
 export const BEACON_EMBER_R = 0.027;
 
 /**
- * A seeded, varied pegfield (no uniform pyramid): staggered rows with jittered
- * positions, a couple of round BUMPERS (bigger, bouncier), one GOLDEN beacon
- * peg (bonus when struck), one MOVER (the UI swings it side to side), and 1–2
- * open channels so every run reads differently. Deterministic per seed.
+ * A seeded, MIRROR-SYMMETRIC pegfield: a clean quincunx (staggered rows,
+ * left-right symmetric about the centre line) rather than a jittered scatter,
+ * with a symmetric PAIR of round BUMPERS, one centred MOVER (the UI swings it
+ * side to side), and one centred GOLDEN beacon peg (bonus when struck). The seed
+ * tunes spacing / row-count / quincunx phase so replays still differ, but every
+ * board reads as a balanced, symmetric arrangement. Deterministic per seed.
  * Invariants (tested): spacing ≥ ember-diameter × 1.6 between peg surfaces,
- * everything inside [0.06, 0.94] × [0, 1].
+ * everything inside [0.06, 0.94] × [0, 1], exactly one golden, ≥2 bumpers.
  */
 export function beaconPegField(seed: number): BeaconPeg[] {
   const rand = lcg(seed);
-  const pegs: BeaconPeg[] = [];
+  let pegs: BeaconPeg[] = [];
   const PEG_R = 0.018;
   const clearance = BEACON_EMBER_R * 2 * 1.6;
-  const fits = (x: number, y: number, r: number): boolean =>
-    pegs.every((p) => Math.hypot(p.x - x, (p.y - y) * 1.15, 0) - (p.r + r) >= clearance);
-  const rows = 7;
-  // 1-2 open channels — columns the row generator leaves sparse this run
-  const chan1 = 0.12 + rand() * 0.76;
-  const chan2 = rand() < 0.5 ? 0.12 + rand() * 0.76 : -1;
+  const clashes = (x: number, y: number, r: number): boolean =>
+    pegs.some((p) => Math.hypot(p.x - x, (p.y - y) * 1.15) - (p.r + r) < clearance);
+  const add = (x: number, y: number, r: number, kind: BeaconPeg['kind']): void => {
+    if (!clashes(x, y, r)) pegs.push({ x, y, r, kind });
+  };
+  // clear a symmetric slot for a special peg, then it always fits
+  const clearAround = (x: number, y: number, r: number): void => {
+    pegs = pegs.filter((p) => Math.hypot(p.x - x, (p.y - y) * 1.15) - (p.r + r) >= clearance);
+  };
+
+  // Seed-tuned but symmetric: spacing, row count, and which rows carry a centre peg.
+  const rows = rand() < 0.5 ? 7 : 8;
+  const gap = 0.14 + rand() * 0.02; // horizontal peg spacing (≥ min clearance)
+  const phase = rand() < 0.5 ? 0 : 1;
+  const half = 0.42; // pegs within 0.5 ± 0.42 → x ∈ [0.08, 0.92]
+
   for (let row = 0; row < rows; row++) {
-    const y = (row + 0.5) / rows;
-    const count = 4 + Math.floor(rand() * 3); // 4-6 per row
-    const stagger = (row % 2) * (0.5 / count) + (rand() - 0.5) * 0.06;
-    for (let c = 0; c < count; c++) {
-      const x = 0.08 + ((c + 0.5) / count) * 0.84 + stagger + (rand() - 0.5) * 0.05;
-      const jy = y + (rand() - 0.5) * 0.05;
-      if (x < 0.06 || x > 0.94) continue;
-      if (Math.abs(x - chan1) < 0.07 || (chan2 >= 0 && Math.abs(x - chan2) < 0.07)) continue; // the channel stays open
-      if (!fits(x, jy, PEG_R)) continue;
-      pegs.push({ x, y: Math.max(0.02, Math.min(0.98, jy)), r: PEG_R, kind: 'peg' });
+    const y = (row + 0.6) / (rows + 0.4);
+    const centred = (row + phase) % 2 === 0;
+    if (centred) {
+      add(0.5, y, PEG_R, 'peg');
+      for (let k = 1; k * gap <= half + 1e-9; k++) {
+        add(0.5 - k * gap, y, PEG_R, 'peg');
+        add(0.5 + k * gap, y, PEG_R, 'peg');
+      }
+    } else {
+      for (let k = 0; (k + 0.5) * gap <= half + 1e-9; k++) {
+        add(0.5 - (k + 0.5) * gap, y, PEG_R, 'peg');
+        add(0.5 + (k + 0.5) * gap, y, PEG_R, 'peg');
+      }
     }
   }
-  // 2-3 round bumpers, mid-board, roomier
-  const nBump = 2 + (rand() < 0.5 ? 1 : 0);
-  for (let b = 0, tries = 0; b < nBump && tries < 40; tries++) {
-    const x = 0.14 + rand() * 0.72;
-    const y = 0.25 + rand() * 0.5;
-    if (!fits(x, y, 0.045)) continue;
-    pegs.push({ x, y, r: 0.045, kind: 'bumper' });
-    b++;
+
+  // A symmetric PAIR of bumpers, mid-board, off the centre line.
+  const bumpY = 0.42 + rand() * 0.1;
+  const bumpX = 0.24 + rand() * 0.06;
+  for (const bx of [0.5 - bumpX, 0.5 + bumpX]) {
+    clearAround(bx, bumpY, 0.045);
+    pegs.push({ x: bx, y: bumpY, r: 0.045, kind: 'bumper' });
   }
-  // one mover, upper-mid — the UI swings it; physics reads its live position
-  for (let tries = 0; tries < 30; tries++) {
-    const x = 0.3 + rand() * 0.4;
-    const y = 0.15 + rand() * 0.25;
-    if (!fits(x, y, 0.026)) continue;
-    pegs.push({ x, y, r: 0.026, kind: 'mover' });
-    break;
-  }
-  // one golden beacon peg — promote a mid-board peg so it's genuinely reachable
-  const candidates = pegs.filter((p) => p.kind === 'peg' && p.y > 0.3 && p.y < 0.8);
-  if (candidates.length) {
-    const pick = candidates[Math.floor(rand() * candidates.length)]!;
+
+  // one centred mover, upper-mid — the UI swings it; physics reads its live position
+  const movY = 0.16 + rand() * 0.08;
+  clearAround(0.5, movY, 0.026);
+  pegs.push({ x: 0.5, y: movY, r: 0.026, kind: 'mover' });
+
+  // one centred golden beacon peg — promote the centre peg nearest mid-board,
+  // or plant one on the axis if this run's mid rows are offset.
+  const centreCandidates = pegs
+    .filter((p) => p.kind === 'peg' && Math.abs(p.x - 0.5) < 1e-6 && p.y > 0.35 && p.y < 0.78)
+    .sort((a, b) => Math.abs(a.y - 0.56) - Math.abs(b.y - 0.56));
+  if (centreCandidates.length) {
+    const pick = centreCandidates[0]!;
     pick.kind = 'golden';
     pick.r = 0.024;
+  } else {
+    clearAround(0.5, 0.56, 0.024);
+    pegs.push({ x: 0.5, y: 0.56, r: 0.024, kind: 'golden' });
   }
   return pegs;
 }

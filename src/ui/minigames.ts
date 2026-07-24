@@ -660,7 +660,6 @@ export class MinigameUI {
   private playBeacon(seed: number): void {
     const stage = el('mg-stage');
     if (!stage) return;
-    const beaconUrl = artUrl('fx_flame_beacon');
     const field = beaconPegField(seed);
     const pegHtml = field
       .map(
@@ -676,17 +675,14 @@ export class MinigameUI {
     }
     stage.innerHTML =
       `<div class="mg-beacon">` +
-      `<div class="mg-beacon-lamp">${beaconUrl ? `<div class="mg-beacon-flame" aria-hidden="true"></div>` : '🔆'}</div>` +
+      `<div class="mg-beacon-lamp"><div class="mg-beacon-flame" aria-hidden="true"></div></div>` +
       `<div class="mg-beam" aria-hidden="true"></div>` +
       `<div class="mg-pegfield">${pegHtml}</div>` +
       `<div class="mg-slots">${slotCells}</div>` +
       `<div class="mg-ember"></div></div>`;
     const ember = stage.querySelector<HTMLElement>('.mg-ember');
-    const lampFlame = stage.querySelector<HTMLElement>('.mg-beacon-flame');
-    if (lampFlame && beaconUrl) {
-      if (this.reduce()) lampFlame.style.backgroundImage = `url(${beaconUrl})`;
-      else this.playStrip(lampFlame, 'fx_flame_beacon', { fps: 14, loop: true });
-    }
+    // The lantern flame is a pure-CSS ember glow (flickers via keyframe) — the old
+    // fx_flame_beacon strip squashed into its box and read as a garbled wave.
 
     const beacon = stage.querySelector<HTMLElement>('.mg-beacon');
     const beam = stage.querySelector<HTMLElement>('.mg-beam');
@@ -908,10 +904,19 @@ export class MinigameUI {
         let beamX = 0.5;
         if (beam) {
           const bb = beacon.getBoundingClientRect();
-          const brc = beam.getBoundingClientRect();
-          if (bb.width) beamX = Math.max(0.05, Math.min(0.95, (brc.left + brc.width / 2 - bb.left) / bb.width));
-          beam.style.animationPlayState = 'paused'; // the light holds where you called it
-          beam.classList.add('drop');
+          // The beam now SWEEPS (rotates from a top pivot), so its tip — not its
+          // bounding-box centre — is where the light points. Read the live rotation
+          // from the animated transform and project the tip down the beam length.
+          const tr = getComputedStyle(beam).transform;
+          let theta = 0;
+          if (tr && tr !== 'none') {
+            const m = new DOMMatrixReadOnly(tr);
+            theta = Math.atan2(m.b, m.a);
+          }
+          const len = beam.offsetHeight || 46; // pivot → tip length in px
+          if (bb.width) beamX = Math.max(0.05, Math.min(0.95, 0.5 + (len * Math.sin(theta)) / bb.width));
+          if (tr && tr !== 'none') beam.style.transform = tr; // hold the beam where you called it
+          beam.classList.add('drop'); // fades out (opacity only — transform stays frozen)
         }
         release(beamX);
       };
@@ -1472,6 +1477,18 @@ export class MinigameUI {
 
     const LINE_PCT = 0.78;
 
+    // The spinning blade darts to whichever lane is being cut (it lives on the
+    // full-width blade line, so we swap its right-pin for a lane-centre left%).
+    const blade = stage.querySelector<HTMLElement>('.mg-sawblade, .mg-sawblade-fallback');
+    const moveBlade = (li: number): void => {
+      if (!blade || reduce) return;
+      blade.style.right = 'auto';
+      blade.style.marginLeft = '-15px'; // half the 30px blade → centres on the lane
+      blade.style.left = `${((li + 0.5) / SAWMILL_LANES) * 100}%`;
+      blade.classList.add('cutting');
+      this.timers.push(window.setTimeout(() => blade.classList.remove('cutting'), 220));
+    };
+
     // Split the log DOWN THE MIDDLE into two planks that part, tilt and settle.
     const sawInHalf = (host: HTMLElement, log: HTMLElement, big = false): void => {
       const y = log.offsetTop;
@@ -1513,7 +1530,8 @@ export class MinigameUI {
       log.done = true;
       log.elm.style.transition = 'none';
       log.elm.style.top = `${log.elm.offsetTop}px`;
-      sawInHalf(lane, log.elm);
+      moveBlade(laneEls.indexOf(lane)); // the blade darts over to bite this log
+      sawInHalf(lane, log.elm, perfect); // a clean cut splits wider
       lane.classList.add('flash');
       this.timers.push(window.setTimeout(() => lane.classList.remove('flash'), 240));
       scoreCut(perfect);
@@ -1621,6 +1639,7 @@ export class MinigameUI {
           // holding — the full ride is a clean cut; letting go early still cuts.
           log.done = true;
           const startHold = performance.now();
+          moveBlade(li); // the blade rides over onto the long log
           log.elm.classList.add('holding');
           log.elm.style.transition = 'none';
           log.elm.style.top = `${log.elm.offsetTop}px`;

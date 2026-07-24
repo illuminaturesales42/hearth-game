@@ -821,6 +821,39 @@ body {
   z-index: 70;
   overflow: hidden;
 }
+/* Merge/deliver bloom: a warm ember heart that swells and bursts like a bubble
+   popping. Pure CSS (no sprite strip → never garbles); JS mounts it only when
+   motion is allowed and removes it after the 0.56s keyframe. */
+.fx-bloom {
+  position: absolute;
+  width: 84px;
+  height: 84px;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.2);
+  transform-origin: center;
+  opacity: 0;
+  /* soft ember core → warm halo, with a hearth-heart glyph riding on top */
+  background:
+    radial-gradient(circle at 50% 46%, rgba(255, 252, 238, 0.95) 0%, rgba(255, 214, 120, 0.85) 26%,
+      rgba(255, 150, 60, 0.5) 52%, rgba(255, 120, 40, 0) 72%);
+  animation: fxBloom 0.56s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.fx-bloom::after {
+  content: '';
+  position: absolute;
+  inset: 26%;
+  background: var(--ember-hi, #ff9d3c);
+  /* a small heart, drawn with two circles + a rotated square (clip-path) */
+  clip-path: path('M22 40 C6 28 0 18 8 9 C13 3 21 4 22 12 C23 4 31 3 36 9 C44 18 38 28 22 40 Z');
+  filter: drop-shadow(0 0 6px rgba(255, 180, 90, 0.9));
+  opacity: 0.9;
+}
+@keyframes fxBloom {
+  0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
+  35% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.7); opacity: 0; }
+}
+body.reduce-motion .fx-bloom { animation: none; opacity: 0; }
 /* Heartfire merge bloom: a 7-frame sprite strip (176px cell, 1232px strip) played
    with steps(); the JS only mounts it when motion is allowed. */
 .fx-heart {
@@ -4325,7 +4358,7 @@ body.reduce-motion *::after {
 .mg-beacon {
   position: relative;
   width: min(260px, 100%);
-  height: clamp(230px, 40dvh, 320px); /* physics reads getBoundingClientRect — fluid-safe */
+  height: clamp(320px, 56dvh, 440px); /* taller = longer fall; physics reads getBoundingClientRect */
 }
 .mg-beacon-lamp {
   height: 34px;
@@ -4917,6 +4950,11 @@ body.reduce-motion *::after {
   transform: translateY(-50%);
   object-fit: contain;
   animation: mgBladeSpin 0.9s linear infinite;
+  /* JS swaps the right-pin for a lane-centre left% and darts the blade across */
+  transition: left 0.18s cubic-bezier(0.34, 1.35, 0.5, 1);
+}
+.mg-sawblade.cutting {
+  filter: drop-shadow(0 0 9px rgba(255, 200, 110, 0.95));
 }
 .mg-sawblade-fallback {
   position: absolute;
@@ -4991,10 +5029,10 @@ body.reduce-motion *::after {
 .mg-saw-score b {
   color: #ffd27a;
 }
-@media (prefers-reduced-motion: reduce) {
-  .mg-sawblade {
-    animation: none;
-  }
+/* Blade spin follows the APP motion toggle, not the OS query — Windows often
+   reports reduce-motion, which would freeze the saw for players who never asked. */
+body.reduce-motion .mg-sawblade {
+  animation: none;
 }
 
 /* ===================== VILLAGE LIFE — FEEL POLISH ===================== */
@@ -5234,13 +5272,37 @@ body.reduce-motion *::after {
     transform: translate(var(--dx, 0), var(--dy, 0)) scale(0.5);
   }
 }
+/* The lantern flame: a warm ember teardrop that flickers via CSS — replaces the
+   fx_flame_beacon sprite strip, which squashed into this box as a garbled wave. */
 .mg-beacon-flame {
-  width: 48px;
-  height: 44px;
-  margin-top: -8px;
-  background-repeat: no-repeat;
-  background-size: 700% 100%; /* playStrip steps the position; reduced-motion shows frame 0 */
-  filter: drop-shadow(0 0 14px rgba(255, 190, 90, 0.6));
+  width: 26px;
+  height: 34px;
+  margin-top: -6px;
+  border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
+  background: radial-gradient(
+    ellipse 60% 70% at 50% 68%,
+    rgba(255, 252, 232, 0.98) 0%,
+    rgba(255, 214, 120, 0.95) 34%,
+    rgba(255, 150, 56, 0.75) 66%,
+    rgba(255, 110, 40, 0) 100%
+  );
+  filter: drop-shadow(0 0 14px rgba(255, 170, 70, 0.75));
+  transform-origin: 50% 90%;
+  animation: mgFlameFlicker 0.42s ease-in-out infinite alternate;
+}
+@keyframes mgFlameFlicker {
+  from {
+    transform: scale(0.92, 0.96) translateY(0);
+    opacity: 0.92;
+  }
+  to {
+    transform: scale(1.06, 1.12) translateY(-1px);
+    opacity: 1;
+  }
+}
+body.reduce-motion .mg-beacon-flame,
+body.reduce-motion .mg-beam {
+  animation: none;
 }
 .mg-forge.hot-streak .mg-forge-grid {
   filter: drop-shadow(0 0 12px rgba(255, 170, 70, 0.6));
@@ -5563,42 +5625,47 @@ body.reduce-motion *::after {
   z-index: 2;
 }
 
-/* -- beacon: the carnival beam (CSS-driven sweep — survives rAF throttling) -- */
+/* -- beacon: a real lighthouse beam that SWEEPS side to side, pivoting at the
+   lamp (top centre). A long cone (apex at the lamp, widening downward over the
+   boats) rotated about its apex — not a triangle sliding sideways. CSS-driven so
+   it survives rAF throttling; the tap reads the live rotation to find the tip. -- */
 .mg-beam {
   position: absolute;
-  top: 0;
+  top: 2px;
   left: 50%;
   width: 0;
   height: 0;
   z-index: 2;
   pointer-events: none;
-  transform: translateX(-50%);
-  border-left: 14px solid transparent;
-  border-right: 14px solid transparent;
-  border-top: 46px solid rgba(255, 226, 170, 0.34);
-  filter: drop-shadow(0 0 10px rgba(255, 210, 122, 0.5));
+  transform-origin: 50% 0; /* pivot at the lamp */
+  transform: translateX(-50%) rotate(0deg);
+  border-left: 20px solid transparent;
+  border-right: 20px solid transparent;
+  border-bottom: 158px solid rgba(255, 226, 170, 0.3);
+  filter: drop-shadow(0 0 12px rgba(255, 210, 122, 0.45));
 }
 .mg-beam.sweep {
-  animation: mgBeamSweep 1.5s ease-in-out infinite alternate;
+  animation: mgBeamSweep 2.6s ease-in-out infinite alternate;
 }
 @keyframes mgBeamSweep {
   from {
-    left: 7%;
+    transform: translateX(-50%) rotate(-32deg);
   }
   to {
-    left: 93%;
+    transform: translateX(-50%) rotate(32deg);
   }
 }
 .mg-beam::after {
+  /* the bright lamp glint at the pivot */
   content: '';
   position: absolute;
-  left: -3px;
-  top: -50px;
-  width: 6px;
+  left: -4px;
+  top: -6px;
+  width: 8px;
   height: 8px;
   border-radius: 50%;
   background: #ffe6b8;
-  box-shadow: 0 0 10px rgba(255, 226, 170, 0.9);
+  box-shadow: 0 0 12px rgba(255, 226, 170, 0.95);
 }
 .mg-beam.puff {
   filter: drop-shadow(0 0 18px rgba(255, 226, 170, 0.9)) brightness(1.4);

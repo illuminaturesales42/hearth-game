@@ -5,7 +5,6 @@ import type { Game } from '../core/game';
 import { chainDef } from '../core/board';
 import { PRODUCER_INDEX, sellValue } from '../data/economy';
 import { artUrl, tileMarkup } from './art';
-import { playStrip } from './sprite-strip';
 
 export class BoardView {
   private root: HTMLElement;
@@ -429,18 +428,20 @@ export class BoardView {
     this.fxLayer.appendChild(ring);
     setTimeout(() => ring.remove(), 480);
 
-    // The ember-heart blooms at the merge — Hearth's signature juice (7-frame
-    // sprite strip, plays once). Only when motion is allowed (this.reduce guards).
-    const heartUrl = artUrl('fx_heartfire');
-    if (heartUrl) {
-      const heart = document.createElement('div');
-      heart.className = 'fx-heart';
-      heart.style.left = `${c.x}px`;
-      heart.style.top = `${c.y}px`;
-      this.fxLayer.appendChild(heart);
-      playStrip(heart, heartUrl, { fps: 14, onEnd: () => heart.remove() });
-      setTimeout(() => heart.remove(), 700); // safety net if a frame stalls
-    }
+    // The hearth bloom greets the merge — Hearth's signature juice: a warm ember
+    // heart swells and bursts like a bubble popping (pure CSS, art-independent, so
+    // it never garbles the way the old sprite strip did). Guarded by reduced().
+    this.bloom(c.x, c.y);
+  }
+
+  /** A warm ember-heart that swells and pops like a bubble — the merge/deliver bloom. */
+  private bloom(x: number, y: number): void {
+    const el = document.createElement('div');
+    el.className = 'fx-bloom';
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    this.fxLayer.appendChild(el);
+    setTimeout(() => el.remove(), 560); // matches the fxBloom keyframe duration
   }
 
   /** Deliver juice: an energy orb floats from the completed cell to the order card. */
@@ -465,19 +466,8 @@ export class BoardView {
     });
     setTimeout(() => orb.remove(), 640);
 
-    // the order lands: a heartfire bloom greets it at the order card
-    const heartUrl = artUrl('fx_heartfire');
-    if (heartUrl) {
-      setTimeout(() => {
-        const heart = document.createElement('div');
-        heart.className = 'fx-heart';
-        heart.style.left = `${to.x}px`;
-        heart.style.top = `${to.y}px`;
-        this.fxLayer.appendChild(heart);
-        playStrip(heart, heartUrl, { fps: 14, onEnd: () => heart.remove() });
-        setTimeout(() => heart.remove(), 700);
-      }, 430);
-    }
+    // the order lands: a hearth bloom greets it at the order card
+    setTimeout(() => this.bloom(to.x, to.y), 430);
   }
 
   private boardCentre(): { x: number; y: number } {
