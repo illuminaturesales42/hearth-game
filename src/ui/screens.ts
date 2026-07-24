@@ -13,7 +13,7 @@ import { composeWeek } from '../core/chronicle';
 import { seasonForMonth, type Season } from '../core/world-mood';
 import { latestSouthern } from './weather';
 import { chainDef } from '../core/board';
-import { artUrl, portraitFor, tileMarkup } from './art';
+import { artUrl, currencyIcon, portraitFor, tileMarkup } from './art';
 import { esc } from './esc';
 import { feedback } from './feedback';
 import { toast } from './toast';
@@ -230,7 +230,7 @@ export class Screens {
             )}</button>`
           : req
             ? `<button class="repo-give" data-chain="${r.chain}" data-level="${r.level}">` +
-              `Give to ${esc(req.who)} · +${req.coins}🪙</button>`
+              `Give to ${esc(req.who)} · +${req.coins}${currencyIcon('coin')}</button>`
             : '';
         const ask = matchesOrder
           ? `<p class="repo-ask repo-ask-order">${esc(this.game.currentOrder().who)} needs exactly this.</p>`
@@ -269,7 +269,7 @@ export class Screens {
     const skins = BOARD_SKINS.map((sk) => {
       const owned = this.game.ownsSkin(sk.id);
       const equipped = this.game.currentSkin() === sk.id;
-      const label = equipped ? 'Equipped' : owned ? 'Equip' : `Buy · ${sk.cost}🪙`;
+      const label = equipped ? 'Equipped' : owned ? 'Equip' : `Buy · ${sk.cost}${currencyIcon('coin')}`;
       const afford = owned || coins >= sk.cost;
       return (
         `<button class="shop-skin ${equipped ? 'on' : ''}" data-skin="${sk.id}" data-cost="${sk.cost}" ` +
@@ -290,7 +290,7 @@ export class Screens {
         return (
           `<button class="shop-upgrade" data-art="${b.art}" ${afford ? '' : 'disabled'}>` +
           `<b>${esc(BUILDING_INFO[b.art]!)}</b><span>Tier ${tier + 1} → ${tier + 2}</span>` +
-          `<em>${cost}🪙</em></button>`
+          `<em>${cost}${currencyIcon('coin')}</em></button>`
         );
       })
       .join('');
@@ -302,14 +302,14 @@ export class Screens {
       const thumb = url
         ? `<span class="decor-thumb" style="background-image:url(${url})"></span>`
         : `<span class="decor-thumb"></span>`;
-      return `<div class="shop-decor">${thumb}<b>${esc(d.name)}</b><em>${d.cost}🪙</em></div>`;
+      return `<div class="shop-decor">${thumb}<b>${esc(d.name)}</b><em>${d.cost}${currencyIcon('coin')}</em></div>`;
     }).join('');
 
     host.innerHTML =
       this.repositorySection() +
       `<h2 class="screen-title">Market</h2>` +
       `<p class="screen-sub">Coins buy beauty and comfort — never power, never energy.</p>` +
-      `<p class="earn-label">Your coins · ${coins}🪙</p>` +
+      `<p class="earn-label">Your coins · ${coins}${currencyIcon('coin')}</p>` +
       `<p class="earn-label">Board skins</p>` +
       `<div class="shop-grid">${skins}</div>` +
       (beautify ? `<p class="earn-label">Beautify Emberhollow</p><div class="shop-grid">${beautify}</div>` : '') +
@@ -340,7 +340,7 @@ export class Screens {
       `<div class="coll-list">` +
       COLLECTIONS.map((c) => {
         const p = this.game.collectionProgress(c.id);
-        const label = p.done ? `Mastered · +${c.coins}🪙` : `${p.have}/${p.total}`;
+        const label = p.done ? `Mastered · +${c.coins}${currencyIcon('coin')}` : `${p.have}/${p.total}`;
         return (
           `<div class="coll ${p.done ? 'done' : ''}"><b>${c.name}</b><span>${label}</span>` +
           `<div class="coll-bar"><i style="width:${Math.round((p.have / p.total) * 100)}%"></i></div></div>`

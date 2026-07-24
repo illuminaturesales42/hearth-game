@@ -50,7 +50,7 @@ type SunKey = { dx: number; dy: number; lowness: number } | null;
 
 /** Per-phase damping of the procedural grade (0.35 when a painted plate exists). */
 type PhaseScales = { dawn: number; dusk: number; night: number };
-import { artUrl, portraitFor, tileMarkup } from './art';
+import { artUrl, currencyIcon, portraitFor, tileMarkup } from './art';
 import { esc } from './esc';
 import { ALMANAC_PAGES, ALMANAC_SECTIONS, almanacProgress } from '../core/almanac';
 import { VILLAGER_DEFS } from '../data/villagers';
@@ -899,7 +899,7 @@ export class MapView {
           return (
             `<button class="decor-item ${this.decorPick === d.art ? 'picked' : ''} ${afford ? '' : 'broke'}" data-art="${d.art}">` +
             (url ? `<span class="decor-ico" style="background-image:url(${url})"></span>` : '') +
-            `<span class="decor-name">${d.name}</span><span class="decor-cost">🪙 ${d.cost}</span></button>`
+            `<span class="decor-name">${d.name}</span><span class="decor-cost">${currencyIcon('coin')} ${d.cost}</span></button>`
           );
         }).join('');
       tray.querySelectorAll<HTMLButtonElement>('.decor-item').forEach((b) => {

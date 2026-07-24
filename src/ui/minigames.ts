@@ -57,7 +57,7 @@ import {
 import type { AlmanacPage } from '../core/almanac';
 import type { ChainId } from '../core/types';
 import { MINIGAME_BY_ID, WISHES } from '../data/minigames';
-import { artUrl, tileMarkup } from './art';
+import { artUrl, currencyIcon, tileMarkup } from './art';
 import { feedback } from './feedback';
 import { playStrip } from './sprite-strip';
 import { toast } from './toast';
@@ -356,11 +356,11 @@ export class MinigameUI {
       `<div class="mg-reward-row">${items}</div>` +
       // Show what was ACTUALLY banked: ember is capped per day, and promising
       // "+2 energy" while granting 0 read as energy silently not being added.
-      `<p class="mg-reward-line">🪙 <b id="mg-tally-coins">0</b>${
+      `<p class="mg-reward-line">${currencyIcon('coin')} <b id="mg-tally-coins">0</b>${
         emberGranted > 0
-          ? ` · 🔥 +${emberGranted} energy`
+          ? ` · ${currencyIcon('energy')} +${emberGranted} energy`
           : reward.ember > 0
-            ? ` · 🔥 today's ember pool is full`
+            ? ` · ${currencyIcon('energy')} today's ember pool is full`
             : ''
       }</p>` +
       `<p class="mg-best" id="mg-best-line" hidden>✦ A new personal best!</p>` +
