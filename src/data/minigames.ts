@@ -1,7 +1,8 @@
 /**
  * Village Life catalogue: which building opens which mini-game, and the pool of
  * villager wishes the Wishing Well surfaces. Data only — the engine lives in
- * ../core/minigames. Wave 1 ships three; the rest follow one building at a time.
+ * ../core/minigames. Seven games ship today, one per building; further buildings
+ * gain their own over time (concepts in docs/minigames-new-spec.md).
  */
 
 export interface MinigameDef {

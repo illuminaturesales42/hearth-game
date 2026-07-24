@@ -20,14 +20,19 @@ Every track follows the pattern proven by the avatar work:
 
 ## The tracks
 
-| # | Track | Doc | Impact | Effort | New assets | Risk |
+| # | Track | Doc | Impact | Effort | New assets | Status |
 |---|---|---|---|---|---|---|
-| **A** | Visual polish (M2 art pass) | [`art-m2-pass-spec.md`](./art-m2-pass-spec.md) | High (consistency) | **Low** | Few (much is wiring only) | Very low |
-| **B** | Photo / Share upgrade | [`photo-share-spec.md`](./photo-share-spec.md) | High (growth) | Low–Med | Frames/backdrops | Low |
-| **C** | Festivals & seasons | [`festivals-spec.md`](./festivals-spec.md) | High | Medium | Banners, dressing | Medium |
-| **D** | New minigames | [`minigames-new-spec.md`](./minigames-new-spec.md) | Medium–High | **High** | Per-game art | Medium |
-| **E** | Audio (M2 audio pass) | [`audio-m2-spec.md`](./audio-m2-spec.md) | Medium–High | Medium | **All audio** | Medium (payload) |
-| **F** | Real multiplayer/social | [`multiplayer-spec.md`](./multiplayer-spec.md) | Highest | **Highest** | Few | High (backend, abuse) |
+| **A** | Visual polish (M2 art pass) | [`art-m2-pass-spec.md`](./art-m2-pass-spec.md) | High (consistency) | **Low** | Few (much is wiring only) | 🟡 **Part 1 DONE** (currency wired); rest art-blocked |
+| **B** | Photo / Share upgrade | [`photo-share-spec.md`](./photo-share-spec.md) | High (growth) | Low–Med | Frames/backdrops | ⬜ Waits on avatar branch + frame art |
+| **C** | Festivals & seasons | [`festivals-spec.md`](./festivals-spec.md) | High | Medium | Banners, dressing | 🟢 **CORE DONE** (art-gated); banners/dressing pending |
+| **D** | New minigames | [`minigames-new-spec.md`](./minigames-new-spec.md) | Medium–High | **High** | Per-game art | ⬜ Spec only |
+| **E** | Audio (M2 audio pass) | [`audio-m2-spec.md`](./audio-m2-spec.md) | Medium–High | Medium | **All audio** | ⬜ Spec only |
+| **F** | Real multiplayer/social | [`multiplayer-spec.md`](./multiplayer-spec.md) | Highest | **Highest** | Few | ⬜ Spec only (do last) |
+
+### Built so far (branch `feature/hearth-upgrades`)
+
+- **Track A Part 1** — `currencyIcon()` / `uiIcon()` in `src/ui/art.ts`; painted `res_coin`/`res_energy` now render at 10 innerHTML sites. Toast and `.textContent` sites deliberately keep emoji (HTML would leak as literal text there). Chrome icons intentionally left until `icon_decorate`/`icon_workshop` exist, so the app doesn't end up half-painted.
+- **Track C core** — `src/data/festivals.ts` + `src/core/festivals.ts` (pure, hemisphere-aware, 14 tests) and the festival card + "returning soon" list on the Collect screen. **Fully working with no art**; banners slot in when painted.
 
 ### Recommended order
 
