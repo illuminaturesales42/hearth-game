@@ -91,6 +91,7 @@ CANON: dict[str, str] = {
     "farm": "town_farm", "fisherhut": "town_fisherhut", "sawmill": "town_sawmill",
     "blacksmith": "town_blacksmith", "dock": "town_dock", "library": "town_library",
     "well": "prop_well", "sign": "prop_sign", "lighthouse": "prop_lighthouse",
+    "postoffice": "town_postoffice",
 }
 ALIASES: dict[str, str] = {
     "church": "townhall", "chapel": "townhall", "hall": "townhall",
@@ -102,6 +103,7 @@ ALIASES: dict[str, str] = {
     "house": "cottage", "home": "cottage",
     "shop": "workshop", "noticeboard": "sign", "notice": "sign", "board": "sign",
     "wishingwell": "well", "meadowfarm": "farm", "meadow": "farm",
+    "post": "postoffice", "mail": "postoffice", "postal": "postoffice",
 }
 
 STATE_ORDER = ["ruin", "wip", "l1", "l2", "l3"]

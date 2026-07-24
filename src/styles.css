@@ -5645,7 +5645,9 @@ body.reduce-motion .mg-beam {
   filter: drop-shadow(0 0 12px rgba(255, 210, 122, 0.45));
 }
 .mg-beam.sweep {
-  animation: mgBeamSweep 2.6s ease-in-out infinite alternate;
+  /* linear = constant angular speed, so timing skill maps to where it lands
+     (ease-in-out dwelt at the edges and raced through the centre heart slot). */
+  animation: mgBeamSweep 2.6s linear infinite alternate;
 }
 @keyframes mgBeamSweep {
   from {

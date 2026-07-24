@@ -67,6 +67,7 @@ export const TOWN_BUILDINGS_V1: readonly TownPiece[] = [
   { art: 'town_market', x: 0.54, y: 0.59, w: 0.138, unlockAt: 8, ruinVariant: 7 },
   { art: 'town_garden', x: 0.775, y: 0.5, w: 0.148, unlockAt: 10, ruinVariant: 4 },
   { art: 'town_townhall', x: 0.2, y: 0.345, w: 0.148, unlockAt: 12, ruinVariant: 3 },
+  { art: 'town_postoffice', x: 0.32, y: 0.3, w: 0.115, unlockAt: 13, ruinVariant: 5 },
   { art: 'town_workshop', x: 0.25, y: 0.825, w: 0.138, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
   { art: 'town_farm', x: 0.715, y: 0.31, w: 0.148, unlockAt: 16, ruinVariant: 5 },
   // Joss's hut is a stilted pier: it sits on the SE point with its deck over the
@@ -116,7 +117,12 @@ export const TOWN_BUILDINGS_V2: readonly TownPiece[] = [
   { art: 'prop_well', x: 0.615, y: 0.508, w: 0.08, unlockAt: 6, ruinVariant: 4 },
   { art: 'town_market', x: 0.70, y: 0.615, w: 0.115, unlockAt: 8, ruinVariant: 7 },
   { art: 'town_garden', x: 0.55, y: 0.42, w: 0.135, unlockAt: 10, ruinVariant: 4 },
-  { art: 'town_townhall', x: 0.35, y: 0.407, w: 0.14, unlockAt: 12, ruinVariant: 3 },
+  { art: 'town_townhall', x: 0.3, y: 0.407, w: 0.14, unlockAt: 12, ruinVariant: 3 },
+  // The Post Office — Wren the postmistress's home, referenced from the very first
+  // order ("the post office took the other half"). Sits between the Town Hall
+  // (0.30/0.407) and the Sawmill (0.47/0.291) on the upper diagonal; w < 0.12 keeps
+  // it clear of the landmark-spacing rule. Restores at order 13, just after the hall.
+  { art: 'town_postoffice', x: 0.405, y: 0.352, w: 0.115, unlockAt: 13, ruinVariant: 5 },
   { art: 'town_workshop', x: 0.53, y: 0.655, w: 0.125, unlockAt: 15, smoke: { dx: 0.16, dy: -0.75 }, ruinVariant: 1 },
   { art: 'town_farm', x: 0.65, y: 0.305, w: 0.135, unlockAt: 16, ruinVariant: 5 },
   // Joss's hut sits on the east shore, its stilt-deck out over the water
@@ -159,6 +165,7 @@ export const BUILDING_INFO: Record<string, string> = {
   town_market: 'Market Square',
   town_garden: 'The Garden',
   town_townhall: 'The Town Hall',
+  town_postoffice: 'The Post Office',
   town_workshop: 'The Workshop',
   town_farm: 'Meadow Farm',
   town_fisherhut: 'Joss’s Hut',

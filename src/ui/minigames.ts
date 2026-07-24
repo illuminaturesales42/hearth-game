@@ -717,7 +717,7 @@ export class MinigameUI {
     // The drop: a real ember with gravity through THIS run's pegfield — pegs
     // flash, bumpers boing, the golden peg blesses the run, the mover is read
     // live, and a centre-bound finish plays out in slow motion.
-    const release = (xFrac: number, theta = 0): void => {
+    const release = (xFrac: number, theta = 0, startYpx = 34): void => {
       if (this.reduce() || !ember || !beacon || !pegfield) {
         const targetSlot = Math.max(0, Math.min(BEACON_ROWS, Math.round(xFrac * BEACON_ROWS)));
         return land(beaconDrop(targetSlot, seed));
@@ -756,13 +756,13 @@ export class MinigameUI {
         s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
         return s / 4294967296;
       };
-      let x = Math.max(R, Math.min(bW - R, xFrac * bW + (rand() - 0.5) * 10));
-      let y = 34;
-      // The ember slides OUT along the beam like a ball leaving a moving pipe —
-      // launched down the beam's direction (theta), then gravity curves it into
-      // the pegs. theta=0 (reduced-motion slot tap) → a plain downward release.
+      // Spawn AT the beam tip (where the light touches) — no jitter, so the aim is
+      // honest — then flow OUT along the beam's direction (theta); gravity curves it
+      // into the pegs. theta=0 (reduced-motion slot tap) → a plain downward release.
+      let x = Math.max(R, Math.min(bW - R, xFrac * bW));
+      let y = Math.max(30, startYpx);
       const EXIT = 2.4;
-      let vx = Math.sin(theta) * EXIT + (rand() - 0.5) * 0.3;
+      let vx = Math.sin(theta) * EXIT;
       let vy = Math.max(0, Math.cos(theta) * EXIT);
       let frames = 0;
       let sinceChime = 9;
@@ -846,7 +846,7 @@ export class MinigameUI {
               // an ordinary peg: a livelier reflection than before (more play in
               // the board), plus a little jitter so no two paths feel identical
               const bounce = 0.72;
-              vx = (vx - 2 * dot * nx) * bounce + (rand() - 0.5) * 1.1;
+              vx = (vx - 2 * dot * nx) * bounce + (rand() - 0.5) * 0.7;
               vy = Math.max(0.6, (vy - 2 * dot * ny) * bounce);
               pg.el.classList.add('hit');
               this.timers.push(window.setTimeout(() => pg.el.classList.remove('hit'), 300));
@@ -906,24 +906,27 @@ export class MinigameUI {
         if (released) return;
         released = true;
         let startX = 0.5;
+        let startYpx = 34;
         let theta = 0;
         if (beam) {
           const bb = beacon.getBoundingClientRect();
           // The beam SWEEPS (rotates from a top pivot). Read its live angle and
-          // start the ember ON the beam line just below the lamp, so it flows out
-          // ALONG the beam like a ball sliding from a moving pendulum pipe.
+          // spawn the ember AT THE BEAM TIP — exactly where the light is touching —
+          // then let it flow out along the beam, so the drop lands where you aimed.
           const tr = getComputedStyle(beam).transform;
           if (tr && tr !== 'none') {
             const m = new DOMMatrixReadOnly(tr);
             theta = Math.atan2(m.b, m.a);
           }
-          const y0 = 34;
           const beamTopY = 2;
-          if (bb.width) startX = Math.max(0.05, Math.min(0.95, 0.5 + ((y0 - beamTopY) * Math.tan(theta)) / bb.width));
+          const beamLen = beam.offsetHeight || 158; // pivot → tip length in px
+          const tipX = 0.5 * bb.width + beamLen * Math.sin(theta);
+          startYpx = beamTopY + beamLen * Math.cos(theta);
+          if (bb.width) startX = Math.max(0.05, Math.min(0.95, tipX / bb.width));
           if (tr && tr !== 'none') beam.style.transform = tr; // hold the beam where you called it
           beam.classList.add('drop'); // fades out (opacity only — transform stays frozen)
         }
-        release(startX, theta);
+        release(startX, theta, startYpx);
       };
       beacon.onpointerdown = startDrop;
       this.startButton('Drop the light', startDrop);
