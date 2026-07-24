@@ -7,8 +7,9 @@
 import type { GameState, MinigameState } from './types';
 import { localDayKey } from './energy';
 import { initialMinigames } from './minigames';
+import { defaultAvatar } from './avatar';
 
-export const CURRENT_VERSION = 18;
+export const CURRENT_VERSION = 19;
 
 const KEY = 'hearth:save';
 /** Older builds wrote the version into the key. Read them once, then adopt KEY. */
@@ -77,6 +78,10 @@ const MIGRATIONS: Record<number, (s: LooseState) => LooseState> = {
     const prefs = (s.prefs as GameState['prefs'] | undefined) ?? defaultPrefs();
     return { ...s, version: 18, prefs: { ...prefs, forceReducedMotion: false } };
   },
+  // v18 → v19: player avatar / identity. Seeded neutral (created:false), so an
+  // existing player keeps a gentle traveller bust until they choose to visit the
+  // creator — no forced interruption. Optional field, so no presence-guard change.
+  18: (s) => ({ ...s, version: 19, avatar: defaultAvatar() }),
 };
 
 /** Upgrade any historical state to CURRENT_VERSION, or null if unrecognizable. */

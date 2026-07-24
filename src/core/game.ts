@@ -42,6 +42,7 @@ import { questMultiplier, questsForDay } from '../data/daily-quests';
 import { newMilestones } from '../data/milestones';
 import { requestsForDay, type TownRequest } from '../data/town-requests';
 import { CURRENT_VERSION, defaultPrefs, loadState, saveState } from './save';
+import { defaultAvatar, normalizeAvatar, type AvatarConfig } from './avatar';
 import { applySnapshot, initialLedger } from '../health/health-energy';
 import type { HealthSnapshot } from '../health/health-provider';
 import {
@@ -152,6 +153,7 @@ export type GameEvent =
   | { type: 'upgrade'; art: string; tier: number; coins: number }
   | { type: 'decor' }
   | { type: 'settings' }
+  | { type: 'avatar'; created: boolean }
   | { type: 'duelEnd'; won: boolean; streak: number; multiplier: number; coins: number; itemCount: number }
   | { type: 'minigameUnlocked'; id: string; title: string }
   | { type: 'minigameEnd'; id: string; title: string; coins: number; ember: number; itemCount: number; wish?: string }
@@ -197,6 +199,7 @@ export class Game {
     for (const s of seeds) board = withItem(board, s.i, { chain: s.chain, level: s.level, uid: uid++ });
     return {
       version: CURRENT_VERSION,
+      avatar: defaultAvatar(),
       board,
       energy: initialEnergy(now),
       actions: initialActionState(now),
@@ -1060,6 +1063,21 @@ export class Game {
   setPrefs(patch: Partial<GameState['prefs']>): void {
     this.state = { ...this.state, prefs: { ...this.state.prefs, ...patch } };
     this.emit({ type: 'settings' });
+  }
+
+  /** The player's avatar, always normalised (never null — old saves get the
+   *  neutral default). Read this everywhere the player's look is rendered. */
+  get avatar(): AvatarConfig {
+    return normalizeAvatar(this.state.avatar);
+  }
+
+  /** Persist a new avatar look. Pass the full config; the creator builds it and
+   *  flips `created` to true on first completion. Cosmetic only — never touches
+   *  energy, coins or progression. Emits so busts/profile repaint. */
+  setAvatar(cfg: AvatarConfig): void {
+    const avatar = normalizeAvatar(cfg);
+    this.state = { ...this.state, avatar };
+    this.emit({ type: 'avatar', created: avatar.created });
   }
 
   /** Whether any mergeable pair currently exists on the board. */

@@ -270,8 +270,36 @@ export interface DecorPiece {
   y: number;
 }
 
+/** The player's chosen look. References only (option ids) — never image data.
+ *  Catalogues + factories live in core/avatar.ts. */
+export interface AvatarAppearance {
+  body: string;
+  skin: string;
+  hair: string;
+  hairColour: string;
+  face: string;
+  top: string;
+  topColour: string;
+}
+
+/** Player avatar block stored on the save (v19). `created` stays false until the
+ *  creator is finished once, so existing players carry a neutral traveller bust
+ *  until they choose to become themselves (no forced interruption). */
+export interface AvatarConfig {
+  created: boolean;
+  name?: string;
+  pronouns?: string;
+  appearance: AvatarAppearance;
+  owned?: readonly string[];
+  presets?: readonly { readonly name: string; readonly appearance: AvatarAppearance }[];
+}
+
 export interface GameState {
   version: number;
+  /** Player avatar / identity (save v19). Optional: absent on pre-v19 saves and
+   *  seeded neutral by migration, so the presence guard deliberately skips it.
+   *  Distinct from Friend.avatar (a 1-6 palette index) — this is the player. */
+  avatar?: AvatarConfig;
   healthLedger?: HealthLedgerState;
   chronicle: ChronicleState;
   stats: StatsState;
