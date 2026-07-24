@@ -516,6 +516,48 @@ export class MapView {
     return c;
   }
 
+  /**
+   * WHERE a sprite's painted lights actually sit, as fractions of its own frame,
+   * measured from its night art (the warm/bright pixels = lit windows, lanterns,
+   * a lantern room). Glows are then placed ON the glowing part of the graphic
+   * instead of a guessed centre — so every building lights where it's painted to.
+   * Measured once per art id on a downscaled copy and cached.
+   */
+  private glowAnchorCache = new Map<string, { fx: number; fy: number } | null>();
+  private glowAnchor(artId: string): { fx: number; fy: number } | null {
+    const hit = this.glowAnchorCache.get(artId);
+    if (hit !== undefined) return hit;
+    const img = this.sprite(`${artId}_night`) ?? this.sprite(artId);
+    if (!img || !img.naturalWidth) return null; // not loaded yet — don't cache a miss
+    const c = document.createElement('canvas');
+    const scale = Math.min(1, 96 / img.naturalWidth);
+    c.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const g = c.getContext('2d', { willReadFrequently: true });
+    if (!g) return null;
+    g.drawImage(img, 0, 0, c.width, c.height);
+    let sx = 0;
+    let sy = 0;
+    let n = 0;
+    try {
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      for (let i = 0; i < d.length; i += 4) {
+        // warm + bright + opaque = a painted light
+        if (d[i + 3]! > 120 && d[i]! > 185 && d[i]! > d[i + 2]! + 45 && d[i + 1]! > 110) {
+          const px = i / 4;
+          sx += px % c.width;
+          sy += Math.floor(px / c.width);
+          n++;
+        }
+      }
+    } catch {
+      return null; // tainted canvas — fall back to the guessed anchor
+    }
+    const res = n > 4 ? { fx: sx / n / c.width, fy: sy / n / c.height } : null;
+    this.glowAnchorCache.set(artId, res);
+    return res;
+  }
+
   /** Draw one warm glow via the shared stamp (viewport coords + radius). */
   private stampGlow(ctx: CanvasRenderingContext2D, px: number, py: number, pr: number, alpha: number): void {
     if (alpha < 0.01 || pr <= 0) return;
@@ -1465,7 +1507,11 @@ export class MapView {
       ];
       for (const [wKey, id] of phasePlates) {
         const w = phaseW(wKey);
-        if (w <= 0.02) continue;
+        // Each plate carries its own PAINTED sun (the dawn plate's is huge —
+        // ~0.82W, 0.14H). At a trace weight the plate adds nothing but that sun,
+        // which ghosts in as a stray warm disc in the corner of an otherwise dark
+        // sky. Require a real contribution before a plate is allowed in.
+        if (w <= 0.12) continue;
         const img = this.sprite(id);
         if (!img) continue;
         ctx.save();
@@ -2159,8 +2205,11 @@ export class MapView {
         const lit = evening > off * 0.55 ? (evening - off * 0.55) / (1 - off * 0.55) : 0; // ramps once past its hour
         const glow = Math.max(lit, tod.weights.dawn * 0.45); // homes still cosy at first light
         if (glow > 0.02) {
-          const cx = p.x * W;
-          const cy = p.y * H - h * 0.4;
+          // land the glow ON the painted lights (measured from the night art),
+          // falling back to a sensible upper-middle guess before it's loaded
+          const anchor = this.glowAnchor(artId);
+          const cx = p.x * W + (anchor ? (anchor.fx - 0.5) * w * scale : 0);
+          const cy = anchor ? p.y * H - h * scale * (1 - anchor.fy) : p.y * H - h * 0.4;
           // JEWEL lights, not haze: a tight hot core over the windows with a
           // modest falloff — small, bright, focused (big soft blobs stacked
           // into the smokey-swamp look)
@@ -2353,13 +2402,14 @@ export class MapView {
         // the lantern room's height differs per state (measured from the art)
         // measured lantern height in the painted art (from the base): L1/L2 sit
         // at ~0.67, the taller L3 at ~0.64 — so the beacon glow lands ON the glass
+        // Put the beacon exactly on the painted lantern glass: measured from the
+        // art itself (same rule every other building's glow now uses), with the
+        // old hand-measured fraction as the fallback until the sprite loads.
+        const la = this.glowAnchor(artId);
         const lanternFrac = artId === 'prop_lighthouse_l3' ? 0.64 : 0.67;
-        // `lh` scales with WIDTH (lw * aspect) while baseY scales with the fixed
-        // logical height — on a wide viewport the lantern point can float up past
-        // the top edge and the bloom then renders as a cut-off amber disc in the
-        // corner. Clamp it back on-screen (and skip entirely if it's off-canvas).
-        const oy = Math.max(baseY - lh * lanternFrac, H * 0.06);
-        const beaconOnScreen = lx > -lw && lx < W + lw && oy < H;
+        const oy = la ? baseY - lh * (1 - la.fy) : baseY - lh * lanternFrac;
+        const gx = la ? lx + (la.fx - 0.5) * lw : lx;
+        const beaconOnScreen = gx > -lw && gx < W + lw && oy > -lh && oy < H;
         if (lit && beaconOnScreen) {
           const TAU = Math.PI * 2;
           // The beacon barely shows by day and owns the dark — its whole
@@ -2371,23 +2421,23 @@ export class MapView {
             // at night the crown light lifts above the grade as a soft halo
             if (night) {
               // one tight jewel — no wide outer ring (it read as an outline glow)
-              this.glowSpots.push({ x: lx, y: oy, r: lw * 0.2, a: 0.4 });
+              this.glowSpots.push({ x: gx, y: oy, r: lw * 0.2, a: 0.4 });
             }
             const pulse = this.reduce ? 1 : 0.88 + 0.12 * Math.sin(t / 1100);
             const k = dark * pulse;
             // warm lens bloom — soft + compact so it haloes the lantern glass
             // rather than swallowing the tower
-            const bloom = ctx.createRadialGradient(lx, oy, 1, lx, oy, lw * 0.3);
+            const bloom = ctx.createRadialGradient(gx, oy, 1, gx, oy, lw * 0.3);
             bloom.addColorStop(0, `rgba(255, 240, 196, ${0.4 * k})`);
             bloom.addColorStop(0.5, `rgba(255, 216, 140, ${0.16 * k})`);
             bloom.addColorStop(1, 'rgba(255, 212, 132, 0)');
             ctx.fillStyle = bloom;
             ctx.beginPath();
-            ctx.arc(lx, oy, lw * 0.3, 0, TAU);
+            ctx.arc(gx, oy, lw * 0.3, 0, TAU);
             ctx.fill();
             ctx.fillStyle = `rgba(255, 250, 228, ${0.6 * k})`;
             ctx.beginPath();
-            ctx.arc(lx, oy, lw * 0.038, 0, TAU);
+            ctx.arc(gx, oy, lw * 0.038, 0, TAU);
             ctx.fill();
             // A slow rotating beacon sweep: two opposed soft cones turning around
             // the lens — longest + brightest facing the viewer, fading as they
@@ -2402,16 +2452,16 @@ export class MapView {
                 const len = lw * (1.2 + 2.2 * face);
                 const spread = 0.13;
                 const foot = (ang: number): [number, number] => [
-                  lx + Math.cos(ang) * len,
+                  gx + Math.cos(ang) * len,
                   oy + (Math.sin(ang) * 0.5 + 0.12) * len,
                 ];
                 const [ex, ey] = foot(a);
-                const beam = ctx.createLinearGradient(lx, oy, ex, ey);
+                const beam = ctx.createLinearGradient(gx, oy, ex, ey);
                 beam.addColorStop(0, `rgba(255, 240, 190, ${0.34 * face * dark})`);
                 beam.addColorStop(1, 'rgba(255, 240, 190, 0)');
                 ctx.fillStyle = beam;
                 ctx.beginPath();
-                ctx.moveTo(lx, oy);
+                ctx.moveTo(gx, oy);
                 const [lxo, lyo] = foot(a - spread);
                 const [rxo, ryo] = foot(a + spread);
                 ctx.lineTo(lxo, lyo);
@@ -2424,7 +2474,7 @@ export class MapView {
               if (flash > 0) {
                 ctx.fillStyle = `rgba(255, 251, 232, ${0.3 * flash * flash * dark})`;
                 ctx.beginPath();
-                ctx.arc(lx, oy, lw * 0.09, 0, TAU);
+                ctx.arc(gx, oy, lw * 0.09, 0, TAU);
                 ctx.fill();
               }
             }
@@ -3004,7 +3054,13 @@ export class MapView {
     const shade = nightAmt > 0.45 ? '30, 46, 86' : '70, 132, 170';
     this.maskedGrade(ctx, W, H, seaMask, 'source-over', (s) => {
       s.lineWidth = 1.6;
-      for (let y = -6; y <= H; y += 22) {
+      // The blue-dominance sea mask also flags the SKY (it is, after all, blue),
+      // so waves must start below the painted horizon (~0.15H) or they march up
+      // into the clouds. Ease them in over a short band so there's no hard line.
+      const horizon = H * 0.17;
+      for (let y = horizon; y <= H; y += 22) {
+        const fade = Math.min(1, (y - horizon) / (H * 0.1));
+        if (fade <= 0.02) continue;
         const ph = y * 0.045;
         const xoff = windDir * ((drift / 90) % 46);
         s.beginPath();
@@ -3017,10 +3073,10 @@ export class MapView {
           if (x === -12) s.moveTo(x, yy);
           else s.lineTo(x, yy);
         }
-        s.strokeStyle = `rgba(${crest}, ${alpha.toFixed(3)})`;
+        s.strokeStyle = `rgba(${crest}, ${(alpha * fade).toFixed(3)})`;
         s.stroke();
         // a faint trough shadow just below each crest gives the swell body
-        s.strokeStyle = `rgba(${shade}, ${(alpha * 0.6).toFixed(3)})`;
+        s.strokeStyle = `rgba(${shade}, ${(alpha * fade * 0.6).toFixed(3)})`;
         s.beginPath();
         for (let x = -12; x <= W + 12; x += 12) {
           const u = x + xoff;
