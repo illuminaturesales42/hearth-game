@@ -6350,3 +6350,40 @@ body.reduce-motion .glow-dot {
   display: flex;
   justify-content: center;
 }
+
+/* --- Player identity card (Villagers screen) -------------------------------- */
+.you-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 4px 0 14px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 210, 122, 0.3);
+  background: linear-gradient(180deg, rgba(255, 210, 122, 0.12), rgba(255, 210, 122, 0.04));
+  cursor: pointer;
+  text-align: left;
+  color: var(--ink, #f3e7cf);
+}
+.you-face {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+}
+.you-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+.you-body b {
+  font-size: 1.02rem;
+}
+.you-body span {
+  font-size: 0.82rem;
+  color: var(--muted, #cbb790);
+}
+.you-go {
+  font-size: 1.4rem;
+  color: rgba(255, 210, 122, 0.7);
+}

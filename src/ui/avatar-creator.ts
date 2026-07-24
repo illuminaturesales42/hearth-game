@@ -15,6 +15,26 @@ import type { AvatarConfig } from '../core/types';
 import { availablePortraits } from '../data/avatar-portraits';
 import { avatarPortraitHTML } from './avatar-render';
 import { esc } from './esc';
+import { toast } from './toast';
+
+const NUDGE_KEY = 'hearth:avatar-nudged';
+
+/**
+ * Gentle, once-only retrofit for existing players who have no avatar yet
+ * (created:false). Opt-in, never forced (GDD §3b): a warm toast pointing them to
+ * their look. Called at boot for saves that skipped the FTUE avatar step.
+ */
+export function maybeNudgeAvatar(game: Game): void {
+  try {
+    if (game.avatar.created) return;
+    if (localStorage.getItem(NUDGE_KEY)) return;
+    localStorage.setItem(NUDGE_KEY, '1');
+  } catch {
+    return; // storage unavailable — skip quietly rather than nag every boot
+  }
+  // A beat after load so it doesn't collide with the sunrise/new-day panel.
+  setTimeout(() => toast('A looking-glass washed up with the tide — choose your look under Villagers, or in Settings.'), 2600);
+}
 
 /**
  * Open the picker. Resolves true if the player saved, false if cancelled.

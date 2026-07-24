@@ -7,6 +7,7 @@
 import type { Game } from '../core/game';
 import { artUrl } from './art';
 import type { Metrics } from '../platform/metrics';
+import { openAvatarCreator } from './avatar-creator';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 
@@ -20,12 +21,24 @@ interface Step {
   waitFor?: 'merge' | 'delivered' | 'action';
   /** CSS selector clicked when the step shows (e.g. open the energy sheet). */
   tap?: string;
+  /** Special action performed by this step's button before advancing. */
+  action?: 'avatar';
 }
 
 const STEPS: Step[] = [
   {
     text: 'Welcome to Emberhollow. A storm took the harbour years ago — and you are the reason it comes back. Restore the village, befriend its people, and uncover what happened to Marta.',
     button: 'Begin',
+    screen: 'home',
+  },
+  {
+    // Identity before instruction: the player becomes a villager before they
+    // learn a single mechanic. Bran-framed ("how should the village see you?").
+    // The button opens the painted-portrait picker; advancing keeps whatever
+    // they chose (or the gentle default if they close it — never a dead end).
+    text: 'Before the village meets you — let’s give them a face to know you by. Bran’s already saved you a spot by the fire.',
+    button: 'Choose your look',
+    action: 'avatar',
     screen: 'home',
   },
   {
@@ -109,7 +122,14 @@ export class FtueUI {
     if (btn) {
       btn.hidden = s.button === null;
       btn.textContent = s.button ?? '';
-      btn.onclick = () => this.advance();
+      btn.onclick =
+        s.action === 'avatar'
+          ? () => {
+              // Open the picker; advance whether they pick or close it (the
+              // default look stands, and the mirror stays open forever).
+              void openAvatarCreator(this.game).then(() => this.advance());
+            }
+          : () => this.advance();
     }
     const emblem = el('ftue-emblem');
     if (emblem) {

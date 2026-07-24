@@ -14,6 +14,8 @@ import { JOIN_BONUS } from '../core/social';
 import { greetingFor } from '../core/relationships';
 import { VILLAGER_DEFS } from '../data/villagers';
 import { toast } from './toast';
+import { avatarPortraitHTML } from './avatar-render';
+import { openAvatarCreator } from './avatar-creator';
 
 const host = () => document.getElementById('villagers-body');
 const hearts = (n: number) => '♥'.repeat(n) + '♡'.repeat(Math.max(0, 5 - n));
@@ -24,7 +26,8 @@ export class SocialScreen {
     private onDuel: () => void = () => undefined,
   ) {
     game.subscribe((ev) => {
-      if ((ev.type === 'social' || ev.type === 'duelEnd' || ev.type === 'bond') && this.isVisible()) this.render();
+      if ((ev.type === 'social' || ev.type === 'duelEnd' || ev.type === 'bond' || ev.type === 'avatar') && this.isVisible())
+        this.render();
     });
   }
 
@@ -44,8 +47,16 @@ export class SocialScreen {
     // to testers only, so live players can't mint energy from fake friends.
     const canSimJoin = this.game.isTesterUnlimited;
 
+    const me = this.game.avatar;
     el.innerHTML =
       `<h2 class="screen-title">Your Village</h2>` +
+      // The player's own identity card — their painted face, their name, tappable
+      // to change. First real "profile" surface (GDD §8 social identity).
+      `<button type="button" class="you-card" id="you-card">` +
+      `<span class="you-face">${avatarPortraitHTML(me.portrait, { framed: true, label: 'your look' })}</span>` +
+      `<span class="you-body"><b>${me.name ? esc(me.name) : 'You'}</b>` +
+      `<span>${me.created ? 'A villager of Emberhollow' : 'Tap to choose your look'}</span></span>` +
+      `<span class="you-go">›</span></button>` +
       `<p class="screen-sub">Invite friends to Emberhollow. When they join, your hearth flares. Ask a friend for a hand when a task runs tough.</p>` +
       `<div class="invite-card">` +
       `<div class="invite-copy"><b>Invite a friend</b><span>You both get +${JOIN_BONUS} energy the moment they join.</span></div>` +
@@ -146,6 +157,8 @@ export class SocialScreen {
   }
 
   private wire(el: HTMLElement): void {
+    const youCard = el.querySelector<HTMLButtonElement>('#you-card');
+    if (youCard) youCard.onclick = () => void openAvatarCreator(this.game);
     const invite = el.querySelector<HTMLButtonElement>('#invite-btn');
     if (invite)
       invite.onclick = () => {

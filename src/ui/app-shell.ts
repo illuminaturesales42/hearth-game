@@ -18,6 +18,7 @@ import { KindnessUI } from './kindness';
 import { SettingsUI } from './settings';
 import { artUrl, actionArt } from './art';
 import { FtueUI } from './ftue';
+import { maybeNudgeAvatar } from './avatar-creator';
 import { NewDayUI } from './new-day';
 import { GrowthUI } from './growth';
 import { refreshGlobalGlows } from './glow-marker';
@@ -57,7 +58,12 @@ export class AppShell {
     const newDay = new NewDayUI(game);
     // New players get the welcome first; the sunrise claim follows it.
     const ftueShown = new FtueUI(game, this.metrics).maybeStart(() => newDay.maybeShow());
-    if (!ftueShown) newDay.maybeShow();
+    if (!ftueShown) {
+      newDay.maybeShow();
+      // Existing players (past the FTUE) who never got an avatar: a soft, once-
+      // only nudge to choose their look. New players get it inside the FTUE.
+      maybeNudgeAvatar(game);
+    }
     // The town map now lives on the Home screen; animate it while Home is active.
     this.map.setVisible(true);
 
