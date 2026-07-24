@@ -1497,6 +1497,15 @@ export class MinigameUI {
       this.timers.push(window.setTimeout(() => blade.classList.remove('cutting'), 220));
     };
 
+    // Pin a falling log at its CURRENT visual position (logs ride on a composited
+    // transform, so we must freeze the live transform before killing the
+    // transition — otherwise it snaps to the animation's end value).
+    const freezeAt = (elm: HTMLElement): void => {
+      const cur = getComputedStyle(elm).transform;
+      elm.style.transition = 'none';
+      if (cur && cur !== 'none') elm.style.transform = cur;
+    };
+
     // Split the log DOWN THE MIDDLE: two planks that EXACTLY overlay the log that
     // was cut (measured, so it works for a narrow lane log or the wide strum roll
     // alike), part and tilt away, with a bright sawn-seam flash + sawdust down the
@@ -1556,8 +1565,7 @@ export class MinigameUI {
 
     const onCut = (lane: HTMLElement, log: LiveLog, perfect: boolean): void => {
       log.done = true;
-      log.elm.style.transition = 'none';
-      log.elm.style.top = `${log.elm.offsetTop}px`;
+      freezeAt(log.elm);
       moveBlade(laneEls.indexOf(lane)); // the blade darts over to bite this log
       sawInHalf(lane, log.elm, perfect); // a clean cut splits wider
       lane.classList.add('flash');
@@ -1580,10 +1588,14 @@ export class MinigameUI {
         log.style.top = `${LINE_PCT * 100}%`;
         entry.crossAt = performance.now();
       } else {
+        // composited transform fall (see the per-lane logs above)
         const totalMs = SAWMILL_FALL_MS / LINE_PCT;
+        const millH = mill.clientHeight || 300;
+        log.style.top = '0px';
+        log.style.transform = 'translateY(-44px)';
         requestAnimationFrame(() => {
-          log.style.transition = `top ${Math.round(totalMs)}ms linear`;
-          log.style.top = '104%';
+          log.style.transition = `transform ${Math.round(totalMs)}ms linear`;
+          log.style.transform = `translateY(${(millH * 1.04).toFixed(1)}px)`;
         });
       }
       this.timers.push(
@@ -1612,8 +1624,7 @@ export class MinigameUI {
         if (Math.abs(cutOffset(log)) > band) return false;
       }
       log.done = true;
-      log.elm.style.transition = 'none';
-      log.elm.style.top = `${log.elm.offsetTop}px`;
+      freezeAt(log.elm);
       mill?.classList.add('strum-hit');
       if (mill) sawInHalf(mill, log.elm, true);
       this.timers.push(window.setTimeout(() => mill?.classList.remove('strum-hit'), 500));
@@ -1635,10 +1646,20 @@ export class MinigameUI {
     };
     // Anticipation: the blade line brightens as a log enters the good zone.
     if (!reduce) {
+      // Read the (fixed) blade line ONCE per frame, then only read each live log's
+      // rect — halves the forced layout reads that were making the fall stutter.
+      const offFrom = (lg: LiveLog, lineC: number): number => {
+        const b = (lg.elm.querySelector('.mg-log-body') ?? lg.elm).getBoundingClientRect();
+        return Math.abs(b.top + b.height * 0.78 - lineC);
+      };
       const pulse = (): void => {
+        const lr = lineEl?.getBoundingClientRect();
+        const lineC = lr ? lr.top + lr.height / 2 : 0;
         let near = false;
-        for (const q of live) for (const lg of q) if (!lg.done && Math.abs(cutOffset(lg)) < 46) near = true;
-        if (liveStrum && !liveStrum.done && Math.abs(cutOffset(liveStrum)) < 60) near = true;
+        if (lr) {
+          for (const q of live) for (const lg of q) if (!lg.done && offFrom(lg, lineC) < 46) near = true;
+          if (liveStrum && !liveStrum.done && offFrom(liveStrum, lineC) < 60) near = true;
+        }
         lineEl?.classList.toggle('ready', near);
         this.rafs.push(requestAnimationFrame(pulse));
       };
@@ -1674,8 +1695,7 @@ export class MinigameUI {
           const startHold = performance.now();
           moveBlade(li); // the blade rides over onto the long log
           log.elm.classList.add('holding');
-          log.elm.style.transition = 'none';
-          log.elm.style.top = `${log.elm.offsetTop}px`;
+          freezeAt(log.elm);
           lane.setPointerCapture(ev.pointerId);
           let settled = false;
           const settle = (full: boolean): void => {
@@ -1739,10 +1759,15 @@ export class MinigameUI {
             const crossAt = t0 + sp.atMs + SAWMILL_FALL_MS;
             const entry: LiveLog = { elm: log, crossAt, done: false, kind: sp.kind };
             live[sp.lane]!.push(entry);
+            // Ride the flume on a COMPOSITED transform (not `top`) so the fall
+            // stays smooth even with several logs on a tall board.
             const totalMs = SAWMILL_FALL_MS / LINE_PCT;
+            const laneH = lane.clientHeight || 300;
+            log.style.top = '0px';
+            log.style.transform = 'translateY(-44px)';
             requestAnimationFrame(() => {
-              log.style.transition = `top ${Math.round(totalMs)}ms linear`;
-              log.style.top = '104%';
+              log.style.transition = `transform ${Math.round(totalMs)}ms linear`;
+              log.style.transform = `translateY(${(laneH * 1.04).toFixed(1)}px)`;
             });
             this.timers.push(
               window.setTimeout(
