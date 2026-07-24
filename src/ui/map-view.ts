@@ -503,8 +503,11 @@ export class MapView {
     c.height = 64;
     const g = c.getContext('2d');
     if (g) {
+      // Softer shoulder than a straight 1→0 ramp: a gentler core and a quick
+      // mid falloff keep lights reading as small jewels rather than big orbs.
       const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-      grad.addColorStop(0, 'rgba(255, 196, 116, 1)');
+      grad.addColorStop(0, 'rgba(255, 196, 116, 0.85)');
+      grad.addColorStop(0.45, 'rgba(255, 196, 116, 0.28)');
       grad.addColorStop(1, 'rgba(255, 196, 116, 0)');
       g.fillStyle = grad;
       g.fillRect(0, 0, 64, 64);
@@ -1370,9 +1373,24 @@ export class MapView {
     const edgeX = W * 0.03;
     const seaEdge = (img: HTMLImageElement): void =>
       void ctx.drawImage(img, img.naturalWidth - 2, 0, 2, img.naturalHeight, W, 0, edgeX + 2, H);
-    if (plate) {
-      ctx.drawImage(plate, 0, 0, W, H);
-      seaEdge(plate);
+    // BASE plate follows the DOMINANT phase, not always midday. The midday
+    // painting carries a painted sun in its top-right; using it as the base at
+    // night let that sun bleed through the overlays as a stray warm disc in the
+    // corner. Basing on the heaviest phase kills that whole class of artifact.
+    const basePlate = (() => {
+      if (!plate) return null;
+      const cands: [number, string][] = [
+        [tod.weights.day, 'map_island_plate'],
+        [tod.weights.dawn, 'map_island_plate_dawn'],
+        [effDusk, 'map_island_plate_dusk'],
+        [effNight, 'map_island_plate_night'],
+      ];
+      cands.sort((a, b) => b[0] - a[0]);
+      return this.sprite(cands[0]![1]) ?? plate;
+    })();
+    if (basePlate) {
+      ctx.drawImage(basePlate, 0, 0, W, H);
+      seaEdge(basePlate);
     }
     // Painted time-of-day plates (Map V2): when the art machine has generated a
     // phase's plate, crossfade the whole ground to it by that phase's live
@@ -2088,35 +2106,35 @@ export class MapView {
           // modest falloff — small, bright, focused (big soft blobs stacked
           // into the smokey-swamp look)
           const flick = this.reduce ? 1 : 0.93 + 0.07 * Math.sin(t / 820 + p.x * 40); // gentle candle-flicker
-          const k = glow * 0.55 * flick;
-          const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 0.2);
-          core.addColorStop(0, `rgba(255, 205, 110, ${Math.min(0.85, k * 1.6).toFixed(3)})`);
+          const k = glow * 0.4 * flick;
+          const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 0.14);
+          core.addColorStop(0, `rgba(255, 205, 110, ${Math.min(0.6, k * 1.4).toFixed(3)})`);
           core.addColorStop(1, 'rgba(255, 190, 90, 0)');
           ctx.fillStyle = core;
-          ctx.fillRect(cx - w * 0.25, cy - w * 0.25, w * 0.5, w * 0.5);
-          const halo = ctx.createRadialGradient(cx, cy, w * 0.08, cx, cy, w * 0.4);
-          halo.addColorStop(0, `rgba(255, 190, 100, ${(k * 0.4).toFixed(3)})`);
+          ctx.fillRect(cx - w * 0.18, cy - w * 0.18, w * 0.36, w * 0.36);
+          const halo = ctx.createRadialGradient(cx, cy, w * 0.06, cx, cy, w * 0.28);
+          halo.addColorStop(0, `rgba(255, 190, 100, ${(k * 0.3).toFixed(3)})`);
           halo.addColorStop(1, 'rgba(255, 190, 100, 0)');
           ctx.fillStyle = halo;
-          ctx.fillRect(cx - w * 0.45, cy - w * 0.45, w * 0.9, w * 0.9);
-          // collected for the post-grade re-emit: hot core + modest halo
-          this.glowSpots.push({ x: cx, y: cy, r: w * 0.16, a: k * 0.95 });
-          this.glowSpots.push({ x: cx, y: cy, r: w * 0.38, a: k * 0.3 });
+          ctx.fillRect(cx - w * 0.32, cy - w * 0.32, w * 0.64, w * 0.64);
+          // collected for the post-grade re-emit: small jewel + tight halo
+          this.glowSpots.push({ x: cx, y: cy, r: w * 0.11, a: k * 0.8 });
+          this.glowSpots.push({ x: cx, y: cy, r: w * 0.26, a: k * 0.2 });
           // and the light lands: a compact pool at the doorway (dusk→night)
           const spill = lit * effNight;
           if (spill > 0.15) {
-            this.glowSpots.push({ x: cx, y: p.y * H + h * 0.02, r: w * 0.28, a: spill * 0.22 });
+            this.glowSpots.push({ x: cx, y: p.y * H + h * 0.02, r: w * 0.2, a: spill * 0.16 });
           }
           // Hearth: a home with a chimney carries a low warm fire at its base —
           // the "someone's home" ember, warmer and lower than the window jewels.
           if (p.smoke) {
-            this.glowSpots.push({ x: cx, y: p.y * H - h * 0.14, r: w * 0.22, a: k * 0.55 });
+            this.glowSpots.push({ x: cx, y: p.y * H - h * 0.14, r: w * 0.16, a: k * 0.45 });
           }
           // The forge burns hottest — a live flame in the blacksmith's arch
           // (art-gated: fx_flame_forge) plus a hot glow.
           if (p.art === 'town_blacksmith') {
             if (!this.reduce) this.drawFlame(ctx, 'fx_flame_forge', cx, p.y * H - h * 0.08, w * 0.34, t);
-            this.glowSpots.push({ x: cx, y: p.y * H - h * 0.22, r: w * 0.3, a: k * 0.85 });
+            this.glowSpots.push({ x: cx, y: p.y * H - h * 0.22, r: w * 0.22, a: k * 0.65 });
           }
         }
       }
@@ -2138,16 +2156,16 @@ export class MapView {
           ctx.save();
           ctx.translate(lx, ly);
           ctx.scale(1, 0.42);
-          this.stampGlow(ctx, 0, 0, w * 2.6, 0.3 * k);
+          this.stampGlow(ctx, 0, 0, w * 1.8, 0.22 * k);
           ctx.restore();
           // a real flame flickering in the lantern glass (art-gated → the head
           // glow below stands in until fx_flame_lantern is present)
           if (!this.reduce) this.drawFlame(ctx, 'fx_flame_lantern', lx, headY + h * 0.16, w * 0.7, t);
-          this.stampGlow(ctx, lx, headY, w * 0.95, 0.5 * k);
-          // jewel re-emit over the night grade
-          this.glowSpots.push({ x: lx, y: headY, r: w * 0.45, a: 0.7 * k });
-          this.glowSpots.push({ x: lx, y: headY, r: w * 1.0, a: 0.2 * k });
-          this.glowSpots.push({ x: lx, y: ly, r: w * 1.5, a: 0.12 * litL });
+          this.stampGlow(ctx, lx, headY, w * 0.6, 0.4 * k);
+          // jewel re-emit over the night grade — small points, not orbs
+          this.glowSpots.push({ x: lx, y: headY, r: w * 0.3, a: 0.6 * k });
+          this.glowSpots.push({ x: lx, y: headY, r: w * 0.7, a: 0.15 * k });
+          this.glowSpots.push({ x: lx, y: ly, r: w * 1.0, a: 0.08 * litL });
         }
       }
       // A walked day opens the market: a warm ember glow under the awning by
@@ -2277,8 +2295,13 @@ export class MapView {
         // measured lantern height in the painted art (from the base): L1/L2 sit
         // at ~0.67, the taller L3 at ~0.64 — so the beacon glow lands ON the glass
         const lanternFrac = artId === 'prop_lighthouse_l3' ? 0.64 : 0.67;
-        const oy = baseY - lh * lanternFrac;
-        if (lit) {
+        // `lh` scales with WIDTH (lw * aspect) while baseY scales with the fixed
+        // logical height — on a wide viewport the lantern point can float up past
+        // the top edge and the bloom then renders as a cut-off amber disc in the
+        // corner. Clamp it back on-screen (and skip entirely if it's off-canvas).
+        const oy = Math.max(baseY - lh * lanternFrac, H * 0.06);
+        const beaconOnScreen = lx > -lw && lx < W + lw && oy < H;
+        if (lit && beaconOnScreen) {
           const TAU = Math.PI * 2;
           // The beacon barely shows by day and owns the dark — its whole
           // intensity ramps with how dark it actually is, so it never blows out
@@ -2289,19 +2312,19 @@ export class MapView {
             // at night the crown light lifts above the grade as a soft halo
             if (night) {
               // one tight jewel — no wide outer ring (it read as an outline glow)
-              this.glowSpots.push({ x: lx, y: oy, r: lw * 0.26, a: 0.5 });
+              this.glowSpots.push({ x: lx, y: oy, r: lw * 0.2, a: 0.4 });
             }
             const pulse = this.reduce ? 1 : 0.88 + 0.12 * Math.sin(t / 1100);
             const k = dark * pulse;
             // warm lens bloom — soft + compact so it haloes the lantern glass
             // rather than swallowing the tower
-            const bloom = ctx.createRadialGradient(lx, oy, 1, lx, oy, lw * 0.4);
-            bloom.addColorStop(0, `rgba(255, 240, 196, ${0.5 * k})`);
-            bloom.addColorStop(0.5, `rgba(255, 216, 140, ${0.2 * k})`);
+            const bloom = ctx.createRadialGradient(lx, oy, 1, lx, oy, lw * 0.3);
+            bloom.addColorStop(0, `rgba(255, 240, 196, ${0.4 * k})`);
+            bloom.addColorStop(0.5, `rgba(255, 216, 140, ${0.16 * k})`);
             bloom.addColorStop(1, 'rgba(255, 212, 132, 0)');
             ctx.fillStyle = bloom;
             ctx.beginPath();
-            ctx.arc(lx, oy, lw * 0.4, 0, TAU);
+            ctx.arc(lx, oy, lw * 0.3, 0, TAU);
             ctx.fill();
             ctx.fillStyle = `rgba(255, 250, 228, ${0.6 * k})`;
             ctx.beginPath();
@@ -3080,7 +3103,9 @@ export class MapView {
       ctx.fillStyle = `rgba(150, 165, 205, ${(0.06 * (moon - 0.5) * 2 * k).toFixed(3)})`;
       ctx.fillRect(0, 0, W, H);
     }
-    const warm = (0.1 + (this.reduce ? 0 : 0.02 * Math.sin(t / 1400))) * k;
+    // halved — the town's warmth should come from the individual jewels/lanterns,
+    // not a broad orange haze over the plaza
+    const warm = (0.05 + (this.reduce ? 0 : 0.01 * Math.sin(t / 1400))) * k;
     const hx = PLAZA.x * W;
     const hy = PLAZA.y * H - H * 0.08;
     const hearth = ctx.createRadialGradient(hx, hy, 10, hx, hy, W * 0.55);
