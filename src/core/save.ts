@@ -18,7 +18,14 @@ const BACKUP_STAMP = 'hearth:backup:at';
 const BACKUP_EVERY_MS = 60 * 60 * 1000;
 
 export function defaultPrefs(): GameState['prefs'] {
-  return { musicVol: 0.7, sfxVol: 1, textScale: 1, highContrast: false, forceReducedMotion: false };
+  // The OS reduced-motion preference seeds the DEFAULT for new players only —
+  // the in-game Settings toggle owns the final say (Windows reports
+  // prefers-reduced-motion whenever its "animation effects" switch is off,
+  // which would otherwise silently freeze the sea, flames and merge pops with
+  // no way back in-game).
+  const osReduce =
+    typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return { musicVol: 0.7, sfxVol: 1, textScale: 1, highContrast: false, forceReducedMotion: osReduce };
 }
 
 /**

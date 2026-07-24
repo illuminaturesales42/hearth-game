@@ -108,13 +108,14 @@ export class MapView {
   /** Last storm-flash cycle we rolled thunder for (one clap per flash). */
   private lastThunderCycle = -1;
   private visible = false;
-  private mediaReduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  /** Reduced-motion is honoured from BOTH the OS media query AND the in-app
-   *  Settings toggle (body.reduce-motion) — matching board-view and the minigame
-   *  overlay, so choosing "reduce motion" in Settings actually calms the map
-   *  (onset cues become toasts, ambient loops hold still). */
+  /** Reduced-motion follows the IN-GAME Settings toggle (body.reduce-motion)
+   *  only. The OS media query merely seeds that toggle's default for new saves
+   *  (see core/save.ts) — it must not hard-freeze the game, because Windows
+   *  reports prefers-reduced-motion whenever its "animation effects" switch is
+   *  off, which silently killed the sea, flames and merge animations for those
+   *  players with no way back in-game. */
   private get reduce(): boolean {
-    return this.mediaReduce || document.body.classList.contains('reduce-motion');
+    return document.body.classList.contains('reduce-motion');
   }
   /** Painted stage backdrops (sliced from the concept sheets); null until loaded. */
   private stageArt: (HTMLImageElement | null)[] = [null, null, null, null, null];
@@ -523,8 +524,15 @@ export class MapView {
    * instead of a guessed centre — so every building lights where it's painted to.
    * Measured once per art id on a downscaled copy and cached.
    */
-  private glowAnchorCache = new Map<string, { fx: number; fy: number } | null>();
-  private glowAnchor(artId: string): { fx: number; fy: number } | null {
+  private glowAnchorCache = new Map<string, { fx: number; fy: number; wt: number }[] | null>();
+  /**
+   * ALL the places a sprite's painted lights sit, as fractions of its frame —
+   * one entry per CLUSTER of warm/bright pixels in the night art (each lit
+   * window, lantern, forge mouth), weighted by cluster size. A single averaged
+   * centroid put one glow on the dark wall BETWEEN two windows; per-cluster,
+   * every painted light gets its own small glow and unpainted walls get none.
+   */
+  private glowAnchor(artId: string): { fx: number; fy: number; wt: number }[] | null {
     const hit = this.glowAnchorCache.get(artId);
     if (hit !== undefined) return hit;
     const img = this.sprite(`${artId}_night`) ?? this.sprite(artId);
@@ -536,24 +544,57 @@ export class MapView {
     const g = c.getContext('2d', { willReadFrequently: true });
     if (!g) return null;
     g.drawImage(img, 0, 0, c.width, c.height);
-    let sx = 0;
-    let sy = 0;
-    let n = 0;
+    const W = c.width;
+    const H = c.height;
+    let warm: Uint8Array;
     try {
-      const d = g.getImageData(0, 0, c.width, c.height).data;
-      for (let i = 0; i < d.length; i += 4) {
+      const d = g.getImageData(0, 0, W, H).data;
+      warm = new Uint8Array(W * H);
+      for (let i = 0; i < W * H; i++) {
+        const o = i * 4;
         // warm + bright + opaque = a painted light
-        if (d[i + 3]! > 120 && d[i]! > 185 && d[i]! > d[i + 2]! + 45 && d[i + 1]! > 110) {
-          const px = i / 4;
-          sx += px % c.width;
-          sy += Math.floor(px / c.width);
-          n++;
-        }
+        if (d[o + 3]! > 120 && d[o]! > 185 && d[o]! > d[o + 2]! + 45 && d[o + 1]! > 110) warm[i] = 1;
       }
     } catch {
-      return null; // tainted canvas — fall back to the guessed anchor
+      return null; // tainted canvas — treat as unmeasurable
     }
-    const res = n > 4 ? { fx: sx / n / c.width, fy: sy / n / c.height } : null;
+    // flood-fill connected warm regions (8-neighbour) into clusters
+    const seen = new Uint8Array(W * H);
+    const clusters: { fx: number; fy: number; wt: number }[] = [];
+    const stack: number[] = [];
+    for (let start = 0; start < W * H; start++) {
+      if (!warm[start] || seen[start]) continue;
+      stack.length = 0;
+      stack.push(start);
+      seen[start] = 1;
+      let sx = 0;
+      let sy = 0;
+      let n = 0;
+      while (stack.length) {
+        const p = stack.pop()!;
+        const px = p % W;
+        const py = (p / W) | 0;
+        sx += px;
+        sy += py;
+        n++;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const qx = px + dx;
+            const qy = py + dy;
+            if (qx < 0 || qy < 0 || qx >= W || qy >= H) continue;
+            const q = qy * W + qx;
+            if (warm[q] && !seen[q]) {
+              seen[q] = 1;
+              stack.push(q);
+            }
+          }
+        }
+      }
+      if (n >= 3) clusters.push({ fx: sx / n / W, fy: sy / n / H, wt: n });
+    }
+    // biggest lights first; cap so a glittery sprite doesn't spawn dozens
+    clusters.sort((a, b) => b.wt - a.wt);
+    const res = clusters.length ? clusters.slice(0, 6) : null;
     this.glowAnchorCache.set(artId, res);
     return res;
   }
@@ -2123,10 +2164,13 @@ export class MapView {
           this.drawWaterGrounding(ctx, bx, by, w, t);
         } else {
           // warm groomed-earth pad — wide + whisper-subtle so it only softens the
-          // seam between building and painted ground, never reads as a dirt blob
+          // seam between building and painted ground, never reads as a dirt blob.
+          // The warm amber fades out with the light and the pad cools/darkens, so
+          // plot edges melt into the night terrain instead of standing pale on it.
+          const padDim = 1 - effNight * 0.8;
           const pad = ctx.createRadialGradient(bx, by, 2, bx, by, w * 0.66);
-          pad.addColorStop(0, 'rgba(150, 128, 78, 0.14)');
-          pad.addColorStop(0.6, 'rgba(150, 128, 78, 0.07)');
+          pad.addColorStop(0, `rgba(150, 128, 78, ${(0.14 * padDim).toFixed(3)})`);
+          pad.addColorStop(0.6, `rgba(150, 128, 78, ${(0.07 * padDim).toFixed(3)})`);
           pad.addColorStop(1, 'rgba(150, 128, 78, 0)');
           ctx.save();
           ctx.translate(bx, by);
@@ -2135,10 +2179,11 @@ export class MapView {
           ctx.beginPath();
           ctx.arc(0, 0, w * 0.68, 0, Math.PI * 2);
           ctx.fill();
-          // darker contact shadow, tighter under the base
+          // darker contact shadow, tighter under the base — deepens into night so
+          // buildings settle INTO the dark ground rather than floating on it
           const sh = ctx.createRadialGradient(0, 0, 2, 0, 0, w * 0.5);
-          sh.addColorStop(0, 'rgba(18, 24, 14, 0.32)');
-          sh.addColorStop(1, 'rgba(18, 24, 14, 0)');
+          sh.addColorStop(0, `rgba(14, 18, 26, ${(0.32 + effNight * 0.16).toFixed(3)})`);
+          sh.addColorStop(1, 'rgba(14, 18, 26, 0)');
           ctx.fillStyle = sh;
           ctx.beginPath();
           ctx.arc(0, 0, w * 0.5, 0, Math.PI * 2);
@@ -2205,44 +2250,37 @@ export class MapView {
         const lit = evening > off * 0.55 ? (evening - off * 0.55) / (1 - off * 0.55) : 0; // ramps once past its hour
         const glow = Math.max(lit, tod.weights.dawn * 0.45); // homes still cosy at first light
         if (glow > 0.02) {
-          // land the glow ON the painted lights (measured from the night art),
-          // falling back to a sensible upper-middle guess before it's loaded
-          const anchor = this.glowAnchor(artId);
-          const cx = p.x * W + (anchor ? (anchor.fx - 0.5) * w * scale : 0);
-          const cy = anchor ? p.y * H - h * scale * (1 - anchor.fy) : p.y * H - h * 0.4;
-          // JEWEL lights, not haze: a tight hot core over the windows with a
-          // modest falloff — small, bright, focused (big soft blobs stacked
-          // into the smokey-swamp look)
+          // Glows land ONLY on the painted lights — one small jewel per measured
+          // warm cluster (each lit window / lantern) in the night art. No painted
+          // light, no glow: unlit walls stay dark instead of wearing a guessed
+          // halo. (The old single averaged centroid put one big orb on the dark
+          // wall BETWEEN a building's windows.)
+          const clusters = this.glowAnchor(artId);
           const flick = this.reduce ? 1 : 0.93 + 0.07 * Math.sin(t / 820 + p.x * 40); // gentle candle-flicker
           const k = glow * 0.4 * flick;
-          const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 0.14);
-          core.addColorStop(0, `rgba(255, 205, 110, ${Math.min(0.6, k * 1.4).toFixed(3)})`);
-          core.addColorStop(1, 'rgba(255, 190, 90, 0)');
-          ctx.fillStyle = core;
-          ctx.fillRect(cx - w * 0.18, cy - w * 0.18, w * 0.36, w * 0.36);
-          const halo = ctx.createRadialGradient(cx, cy, w * 0.06, cx, cy, w * 0.28);
-          halo.addColorStop(0, `rgba(255, 190, 100, ${(k * 0.3).toFixed(3)})`);
-          halo.addColorStop(1, 'rgba(255, 190, 100, 0)');
-          ctx.fillStyle = halo;
-          ctx.fillRect(cx - w * 0.32, cy - w * 0.32, w * 0.64, w * 0.64);
-          // collected for the post-grade re-emit: small jewel + tight halo
-          this.glowSpots.push({ x: cx, y: cy, r: w * 0.11, a: k * 0.8 });
-          this.glowSpots.push({ x: cx, y: cy, r: w * 0.26, a: k * 0.2 });
-          // and the light lands: a compact pool at the doorway (dusk→night)
-          const spill = lit * effNight;
-          if (spill > 0.15) {
-            this.glowSpots.push({ x: cx, y: p.y * H + h * 0.02, r: w * 0.2, a: spill * 0.16 });
+          if (clusters) {
+            const total = clusters.reduce((sum, cl) => sum + cl.wt, 0) || 1;
+            for (const cl of clusters) {
+              const cx = p.x * W + (cl.fx - 0.5) * w * scale;
+              const cy = p.y * H - h * scale * (1 - cl.fy);
+              // bigger painted lights glow a touch more; every jewel stays small
+              const wgtK = k * (0.55 + 0.45 * Math.min(1, (cl.wt / total) * clusters.length));
+              const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 0.09);
+              core.addColorStop(0, `rgba(255, 205, 110, ${Math.min(0.55, wgtK * 1.3).toFixed(3)})`);
+              core.addColorStop(1, 'rgba(255, 190, 90, 0)');
+              ctx.fillStyle = core;
+              ctx.fillRect(cx - w * 0.12, cy - w * 0.12, w * 0.24, w * 0.24);
+              // re-emit over the night grade: a small jewel + a tight halo
+              this.glowSpots.push({ x: cx, y: cy, r: w * 0.07, a: wgtK * 0.8 });
+              this.glowSpots.push({ x: cx, y: cy, r: w * 0.16, a: wgtK * 0.18 });
+            }
           }
-          // Hearth: a home with a chimney carries a low warm fire at its base —
-          // the "someone's home" ember, warmer and lower than the window jewels.
-          if (p.smoke) {
-            this.glowSpots.push({ x: cx, y: p.y * H - h * 0.14, r: w * 0.16, a: k * 0.45 });
-          }
-          // The forge burns hottest — a live flame in the blacksmith's arch
-          // (art-gated: fx_flame_forge) plus a hot glow.
+          // The forge's live fire is a real light source — flame + glow at the
+          // arch (art-gated: fx_flame_forge).
           if (p.art === 'town_blacksmith') {
-            if (!this.reduce) this.drawFlame(ctx, 'fx_flame_forge', cx, p.y * H - h * 0.08, w * 0.34, t);
-            this.glowSpots.push({ x: cx, y: p.y * H - h * 0.22, r: w * 0.22, a: k * 0.65 });
+            const fx = p.x * W;
+            if (!this.reduce) this.drawFlame(ctx, 'fx_flame_forge', fx, p.y * H - h * 0.08, w * 0.34, t);
+            this.glowSpots.push({ x: fx, y: p.y * H - h * 0.22, r: w * 0.22, a: k * 0.65 });
           }
         }
       }
@@ -2405,7 +2443,9 @@ export class MapView {
         // Put the beacon exactly on the painted lantern glass: measured from the
         // art itself (same rule every other building's glow now uses), with the
         // old hand-measured fraction as the fallback until the sprite loads.
-        const la = this.glowAnchor(artId);
+        // the LARGEST warm cluster is the lantern room (smaller ones are the
+        // keeper's windows on the tower)
+        const la = this.glowAnchor(artId)?.[0] ?? null;
         const lanternFrac = artId === 'prop_lighthouse_l3' ? 0.64 : 0.67;
         const oy = la ? baseY - lh * (1 - la.fy) : baseY - lh * lanternFrac;
         const gx = la ? lx + (la.fx - 0.5) * lw : lx;
@@ -3053,6 +3093,12 @@ export class MapView {
     const crest = nightAmt > 0.45 ? '150, 178, 224' : '206, 234, 244';
     const shade = nightAmt > 0.45 ? '30, 46, 86' : '70, 132, 170';
     this.maskedGrade(ctx, W, H, seaMask, 'source-over', (s) => {
+      // WORLD space: the crest lines ride the same camera transform the terrain
+      // uses, so waves lock to the sea under pan/pinch instead of floating in
+      // viewport space (the mask blit in maskedGrade is transformed to match).
+      s.translate(this.cam.panX, this.cam.panY);
+      s.scale(this.cam.zoom, this.cam.zoom);
+      s.translate(-this.mapShiftX, 0);
       s.lineWidth = 1.6;
       // The blue-dominance sea mask also flags the SKY (it is, after all, blue),
       // so waves must start below the painted horizon (~0.15H) or they march up
@@ -3109,6 +3155,12 @@ export class MapView {
     s.clearRect(0, 0, W, H);
     build(s);
     s.globalCompositeOperation = 'destination-in';
+    // The sea/land masks are built from the un-zoomed plate; blit them through
+    // the live camera so the clip region tracks the terrain under pan/pinch —
+    // otherwise grades and waves land on the wrong ground when zoomed in.
+    s.translate(this.cam.panX, this.cam.panY);
+    s.scale(this.cam.zoom, this.cam.zoom);
+    s.translate(-this.mapShiftX, 0);
     s.drawImage(mask, 0, 0);
     s.restore();
     ctx.save();

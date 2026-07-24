@@ -12,10 +12,12 @@ export class BoardView {
   private ghost: HTMLElement | null = null;
   private dragFrom = -1;
   private fxLayer: HTMLElement;
-  private reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  /** Motion off if the OS asks OR the in-app Settings toggle is on — re-checked per event. */
+  /** Motion follows the IN-GAME Settings toggle only; the OS media query just
+   *  seeds that toggle's default (core/save.ts). Windows reports
+   *  prefers-reduced-motion whenever its "animation effects" switch is off,
+   *  which was silently killing the merge/pop animations for those players. */
   private reduced(): boolean {
-    return this.reduce || document.body.classList.contains('reduce-motion');
+    return document.body.classList.contains('reduce-motion');
   }
   /** last cell that was deliverable, captured pre-delivery for the orb origin */
   private lastDeliverable = -1;
@@ -44,12 +46,19 @@ export class BoardView {
     this.bindKeyboard();
     game.subscribe((ev) => {
       if (ev.type === 'state') this.render();
-      if (ev.type === 'spawn') this.popCell(ev.index);
+      // Every non-state event is followed SYNCHRONOUSLY by a trailing `state`
+      // (game.ts emit) whose render() rewrites every cell — which used to strip
+      // the just-added .pop class and replace the tile node in the same tick,
+      // so the merge/spawn pop never played (the tile snapped). Defer the pop a
+      // microtask so it lands on the freshly rendered cell instead.
+      if (ev.type === 'spawn') queueMicrotask(() => this.popCell(ev.index));
       if (ev.type === 'merge') {
-        this.popCell(ev.index);
-        this.mergeBurst(ev.index);
+        queueMicrotask(() => {
+          this.popCell(ev.index);
+          this.mergeBurst(ev.index);
+        });
       }
-      if (ev.type === 'reject' && ev.index >= 0) this.shakeCell(ev.index);
+      if (ev.type === 'reject' && ev.index >= 0) queueMicrotask(() => this.shakeCell(ev.index));
       if (ev.type === 'delivered') this.deliverFly();
     });
     this.render();
