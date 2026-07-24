@@ -699,7 +699,7 @@ export class MapView {
         e.preventDefault();
         const rect = cv.getBoundingClientRect();
         const steps = MapView.ZOOM_STEPS;
-        const i = steps.indexOf(this.cam.zoom as (typeof steps)[number]);
+        const i = this.nearestZoomStep(); // tolerant of a continuous pinch zoom
         const dir = e.deltaY < 0 ? 1 : -1;
         const next = steps[Math.min(steps.length - 1, Math.max(0, i + dir))] ?? 1;
         if (next !== this.cam.zoom) this.zoomTo(next, { x: e.clientX - rect.left, y: e.clientY - rect.top });
@@ -707,16 +707,53 @@ export class MapView {
       { passive: false },
     );
 
-    // Pointer drag to pan (touch + mouse). A small move threshold distinguishes
-    // a pan from a tap so buildings still open on a clean tap.
+    // Pointer drag to pan (touch + mouse) and TWO-FINGER PINCH to zoom. A small
+    // move threshold distinguishes a pan from a tap so buildings still open on a
+    // clean tap; a pinch marks dragMoved so the trailing tap never opens a card.
+    const active = new Map<number, { x: number; y: number }>();
+    let pinch: { dist: number; zoom: number } | null = null;
+    const spread = (): { dist: number; cx: number; cy: number } | null => {
+      const pts = [...active.values()];
+      if (pts.length < 2) return null;
+      const [a, b] = [pts[0]!, pts[1]!];
+      return { dist: Math.hypot(b.x - a.x, b.y - a.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
+    };
+
     cv.addEventListener('pointerdown', (e) => {
-      if (this.decorMode || this.cam.zoom <= 1) return;
+      if (this.decorMode) return;
+      active.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      cv.setPointerCapture(e.pointerId);
+      const s = spread();
+      if (s) {
+        // second finger down — start a pinch, abandon any single-finger drag
+        pinch = { dist: s.dist, zoom: this.cam.zoom };
+        this.dragging = false;
+        this.dragMoved = true; // suppress the tap that follows the gesture
+        return;
+      }
+      // single pointer: drag-pan only makes sense once zoomed in
+      if (this.cam.zoom <= 1) return;
       this.dragging = true;
       this.dragMoved = false;
       this.dragFrom = { x: e.clientX, y: e.clientY, panX: this.cam.panX, panY: this.cam.panY };
-      cv.setPointerCapture(e.pointerId);
     });
+
     cv.addEventListener('pointermove', (e) => {
+      if (active.has(e.pointerId)) active.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const s = spread();
+      if (pinch && s) {
+        // continuous zoom about the finger midpoint (zoomAt keeps that world
+        // point fixed); clamped to the same range the stepped controls use
+        const rect = cv.getBoundingClientRect();
+        const steps = MapView.ZOOM_STEPS;
+        const min = steps[0] ?? 1;
+        const max = steps[steps.length - 1] ?? 2.6;
+        const next = Math.min(max, Math.max(min, pinch.zoom * (s.dist / (pinch.dist || 1))));
+        this.dragMoved = true;
+        this.zoomTo(next, { x: s.cx - rect.left, y: s.cy - rect.top });
+        if (this.reduce) this.draw(0);
+        return;
+      }
       if (!this.dragging) return;
       const dx = e.clientX - this.dragFrom.x;
       const dy = e.clientY - this.dragFrom.y;
@@ -726,9 +763,20 @@ export class MapView {
       this.clampCam();
       if (this.reduce) this.draw(0);
     });
+
     const endDrag = (e: PointerEvent) => {
-      if (!this.dragging) return;
-      this.dragging = false;
+      active.delete(e.pointerId);
+      if (active.size < 2) pinch = null;
+      // lifting one finger of a pinch: hand control back to a drag from here
+      if (active.size === 1 && this.cam.zoom > 1) {
+        const [only] = [...active.values()];
+        if (only) {
+          this.dragging = true;
+          this.dragFrom = { x: only.x, y: only.y, panX: this.cam.panX, panY: this.cam.panY };
+        }
+      } else if (active.size === 0) {
+        this.dragging = false;
+      }
       try {
         cv.releasePointerCapture(e.pointerId);
       } catch {
@@ -737,7 +785,7 @@ export class MapView {
     };
     cv.addEventListener('pointerup', endDrag);
     cv.addEventListener('pointercancel', endDrag);
-    cv.style.touchAction = 'none'; // let us own drag-pan without the page scrolling
+    cv.style.touchAction = 'none'; // let us own drag-pan/pinch without the page scrolling
   }
 
   /** The decorate tray: pick a piece, tap the town. Coins buy beauty, never power. */
@@ -1019,10 +1067,19 @@ export class MapView {
   }
 
   /** Cycle fit → close → closer → fit (the primary, touch-friendly zoom control). */
+  /** Index of the zoom step closest to the current (possibly pinched) zoom. */
+  private nearestZoomStep(): number {
+    const steps = MapView.ZOOM_STEPS;
+    let best = 0;
+    for (let i = 1; i < steps.length; i++) {
+      if (Math.abs(steps[i]! - this.cam.zoom) < Math.abs(steps[best]! - this.cam.zoom)) best = i;
+    }
+    return best;
+  }
+
   private cycleZoom(): void {
     const steps = MapView.ZOOM_STEPS;
-    const i = steps.indexOf(this.cam.zoom as (typeof steps)[number]);
-    this.zoomTo(steps[(i + 1) % steps.length] ?? 1);
+    this.zoomTo(steps[(this.nearestZoomStep() + 1) % steps.length] ?? 1);
   }
 
   private updateZoomBtn(): void {
