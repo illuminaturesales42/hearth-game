@@ -929,10 +929,29 @@ export class MapView {
     const locked = unlockAt < 0;
     const at = Math.abs(unlockAt);
     const img = document.getElementById('bldg-art') as HTMLImageElement | null;
-    const url = artUrl(art);
+    // Show the SAME sprite the map draws — matched to this building's real state
+    // (storm ruin / scaffold while still lost, or its actual upgrade tier L1/L2/L3
+    // once restored) — so the card graphic always reflects where the building is.
+    let cardArt = art;
+    let dim = false;
+    if (locked) {
+      const delivered = this.game.snapshot.orderIndex;
+      const upcoming = TOWN_BUILDINGS.filter((b) => b.unlockAt > delivered)
+        .map((b) => b.unlockAt)
+        .sort((a, b) => a - b);
+      const isNext = upcoming.length > 0 && at === upcoming[0];
+      const ruinId = isNext && artUrl(`${art}_wip`) ? `${art}_wip` : `${art}_ruin`;
+      if (artUrl(ruinId)) cardArt = ruinId;
+      else dim = true; // props with no storm art → keep the sepia "still lost" wash on the base
+    } else if (this.game.isUpgradeable(art)) {
+      const tier = this.game.upgradeTier(art);
+      if (tier >= 2 && artUrl(`${art}_l3`)) cardArt = `${art}_l3`;
+      else if (tier >= 1 && artUrl(`${art}_l2`)) cardArt = `${art}_l2`;
+    }
+    const url = artUrl(cardArt) ?? artUrl(art);
     if (img && url) {
       img.src = url;
-      img.style.filter = locked ? 'sepia(0.4) saturate(0.6) brightness(0.72)' : '';
+      img.style.filter = dim ? 'sepia(0.4) saturate(0.6) brightness(0.72)' : '';
     }
     const name = document.getElementById('bldg-name');
     if (name) name.textContent = BUILDING_INFO[art] ?? 'Emberhollow';
