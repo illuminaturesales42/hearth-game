@@ -535,10 +535,14 @@ export class MapView {
   private glowAnchor(artId: string): { fx: number; fy: number; wt: number }[] | null {
     const hit = this.glowAnchorCache.get(artId);
     if (hit !== undefined) return hit;
-    const img = this.sprite(`${artId}_night`) ?? this.sprite(artId);
+    // Measure ONLY the true night art. Falling back to the day sprite poisoned
+    // the cache: warm wooden walls/decks pass a "warm pixel" test in daylight,
+    // so glows landed mid-building instead of on the lanterns. No night art
+    // loaded yet -> no glow this frame (uncached; it'll measure once it loads).
+    const img = this.sprite(`${artId}_night`);
     if (!img || !img.naturalWidth) return null; // not loaded yet — don't cache a miss
     const c = document.createElement('canvas');
-    const scale = Math.min(1, 96 / img.naturalWidth);
+    const scale = Math.min(1, 160 / img.naturalWidth); // fine enough that a small window is a real cluster
     c.width = Math.max(1, Math.round(img.naturalWidth * scale));
     c.height = Math.max(1, Math.round(img.naturalHeight * scale));
     const g = c.getContext('2d', { willReadFrequently: true });
@@ -552,8 +556,17 @@ export class MapView {
       warm = new Uint8Array(W * H);
       for (let i = 0; i < W * H; i++) {
         const o = i * 4;
-        // warm + bright + opaque = a painted light
-        if (d[o + 3]! > 120 && d[o]! > 185 && d[o]! > d[o + 2]! + 45 && d[o + 1]! > 110) warm[i] = 1;
+        // A painted LIGHT is saturated yellow/orange and bright — lantern glass,
+        // lit window, forge mouth. Night walls are dim/blue and stone is grey,
+        // so neither passes; only the actually-glowing paint does.
+        if (
+          d[o + 3]! > 120 && // opaque
+          d[o]! > 185 && // hot red channel
+          d[o + 1]! > 115 && // yellow-orange, not pure red
+          d[o + 2]! < 165 && // not washed toward white/blue
+          d[o]! - d[o + 2]! > 55 // clearly warm over blue
+        )
+          warm[i] = 1;
       }
     } catch {
       return null; // tainted canvas — treat as unmeasurable
@@ -590,7 +603,7 @@ export class MapView {
           }
         }
       }
-      if (n >= 3) clusters.push({ fx: sx / n / W, fy: sy / n / H, wt: n });
+      if (n >= 4) clusters.push({ fx: sx / n / W, fy: sy / n / H, wt: n });
     }
     // biggest lights first; cap so a glittery sprite doesn't spawn dozens
     clusters.sort((a, b) => b.wt - a.wt);
@@ -3435,33 +3448,9 @@ export class MapView {
       ctx.fillRect(gx - gr, gy - gr, gr * 2, gr * 1.5);
     }
 
-    // Nature photo + water → flowers bloom, a richer band the more you tend.
-    if (mood.bloom > 0) {
-      const n = 3 + Math.round(mood.bloom * 7);
-      for (let i = 0; i < n; i++) {
-        const f = i / Math.max(1, n - 1);
-        // scatter organically along the shore band, not in a tidy fence line
-        const band = GROUND_BANDS.bloomShore;
-        const jitterX = Math.sin(i * 12.9898) * 0.025;
-        const jitterY = (Math.sin(i * 78.233) * 0.5 + 0.5) * (band.y1 - band.y0);
-        const x = W * (band.x0 + f * (band.x1 - band.x0) + jitterX);
-        const y = H * (band.y0 + jitterY);
-        const size = 2.4 + mood.bloom * 1.4 + (i % 3) * 0.5;
-        drawFlower(ctx, x, y, size, FLOWER_COLOURS[i % FLOWER_COLOURS.length]!);
-      }
-      // a small cluster nestles by the garden plot when it exists
-      if (delivered >= 10 && garden) {
-        for (let i = 0; i < 3; i++) {
-          drawFlower(
-            ctx,
-            (garden.x - 0.075 + i * 0.03) * W,
-            (garden.y + 0.03 + (i % 2) * 0.015) * H,
-            2.6,
-            FLOWER_COLOURS[(i + 2) % FLOWER_COLOURS.length]!,
-          );
-        }
-      }
-    }
+    // (The nature-photo flower scatter was retired: painted vector flowers on
+    // top of the painted plate read as stickers, not garden. The reaction lives
+    // on through the garden's green lush wash above + the butterflies below.)
 
     // Drink water → the well sparkles and its plaza feels fresh.
     const well = anchorOf('prop_well');

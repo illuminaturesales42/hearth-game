@@ -324,7 +324,7 @@ export class MinigameUI {
     this.banked = true;
     const res = this.game.finishMinigame(this.id, reward, wish, score);
     feedback.chime(res.isBest ? 720 : 560);
-    this.showResult(reward, wish, res.isBest, res.discovered);
+    this.showResult(reward, wish, res.isBest, res.discovered, res.emberGranted);
   }
 
   /**
@@ -337,6 +337,7 @@ export class MinigameUI {
     wish?: { who: string; text: string },
     isBest?: boolean,
     discovered: readonly AlmanacPage[] = [],
+    emberGranted: number = 0,
   ): void {
     const result = el('mg-result');
     const title = el('mg-result-title');
@@ -352,7 +353,15 @@ export class MinigameUI {
       .join('');
     body.innerHTML =
       `<div class="mg-reward-row">${items}</div>` +
-      `<p class="mg-reward-line">🪙 <b id="mg-tally-coins">0</b>${reward.ember > 0 ? ` · 🔥 +${reward.ember} energy` : ''}</p>` +
+      // Show what was ACTUALLY banked: ember is capped per day, and promising
+      // "+2 energy" while granting 0 read as energy silently not being added.
+      `<p class="mg-reward-line">🪙 <b id="mg-tally-coins">0</b>${
+        emberGranted > 0
+          ? ` · 🔥 +${emberGranted} energy`
+          : reward.ember > 0
+            ? ` · 🔥 today's ember pool is full`
+            : ''
+      }</p>` +
       `<p class="mg-best" id="mg-best-line" hidden>✦ A new personal best!</p>` +
       (newPages ? `<p class="mg-almanac-line" id="mg-almanac-line" hidden>${newPages}</p>` : '') +
       (wish ? `<p class="mg-wish">“${wish.who} ${wish.text}”</p>` : '') +

@@ -1333,9 +1333,9 @@ export class Game {
     reward: MgReward,
     wish?: { who: string; text: string },
     score?: number,
-  ): { isBest: boolean; best: number | null; discovered: AlmanacPage[] } {
+  ): { isBest: boolean; best: number | null; discovered: AlmanacPage[]; emberGranted: number } {
     const def = MINIGAME_BY_ID[id];
-    if (!def) return { isBest: false, best: null, discovered: [] };
+    if (!def) return { isBest: false, best: null, discovered: [], emberGranted: 0 };
     const em = addEmber(this.state.minigames, reward.ember);
     let minigames = em.state;
     if (wish) {
@@ -1375,7 +1375,7 @@ export class Game {
       itemCount: reward.items.length,
       ...(wish ? { wish: `${wish.who} ${wish.text}` } : {}),
     });
-    return { isBest, best: this.state.minigames.bests?.[id] ?? null, discovered: stamped.discovered };
+    return { isBest, best: this.state.minigames.bests?.[id] ?? null, discovered: stamped.discovered, emberGranted: em.granted };
   }
 
   /** The player's personal best for a mini-game, or null if never played. */
