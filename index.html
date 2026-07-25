@@ -59,26 +59,27 @@
       <div class="screens">
         <!-- ================= HOME (the town map) ================= -->
         <section class="screen active" id="screen-home">
-          <section class="home-map" aria-label="Your Emberhollow, growing as you play">
-            <canvas id="map-canvas" class="map-canvas" role="img" aria-label="Your harbour town"></canvas>
-            <div class="home-map-overlay">
-              <!-- The HUD now IS the map's status line: who you are, your local
-                   time, how far Emberhollow has come back, and your real sky.
-                   Portrait and weather medallion deliberately overhang the bar. -->
-              <div id="home-hud" class="home-hud">
-                <button id="hud-portrait" class="hud-portrait" aria-label="Your look" title="Your look"></button>
-                <div class="hud-block hud-time">
-                  <b id="hud-clock">—</b>
-                  <span id="hud-restored" class="hud-sub"></span>
-                </div>
-                <div class="hud-block hud-weather">
-                  <span class="hud-wx-text"><b id="hud-temp">—</b><span id="hud-sky" class="hud-sub"></span></span>
-                </div>
-                <span id="hud-weather-ico" class="hud-wx-ico" aria-hidden="true"></span>
+          <div class="home-map-wrap">
+            <section class="home-map" aria-label="Your Emberhollow, growing as you play">
+              <canvas id="map-canvas" class="map-canvas" role="img" aria-label="Your harbour town"></canvas>
+            </section>
+            <!-- The HUD IS the map's status line: who you are, your local time,
+                 how far Emberhollow has come back, and your real sky. It is a
+                 SIBLING of the (overflow:hidden) map, pulled up to overlap its
+                 bottom edge, so the portrait/medallion can overhang past the
+                 map's own boundary without being clipped by it. -->
+            <div id="home-hud" class="home-hud">
+              <button id="hud-portrait" class="hud-portrait" aria-label="Your look" title="Your look"></button>
+              <div class="hud-block hud-time">
+                <b id="hud-clock">—</b>
+                <span id="hud-restored" class="hud-sub"></span>
               </div>
-              <div class="map-bar"><i id="map-bar-fill"></i></div>
+              <div class="hud-block hud-weather">
+                <span class="hud-wx-text"><b id="hud-temp">—</b><span id="hud-sky" class="hud-sub"></span></span>
+              </div>
+              <span id="hud-weather-ico" class="hud-wx-ico" aria-hidden="true"></span>
             </div>
-          </section>
+          </div>
           <div class="map-actions">
             <button id="map-zoom-btn" class="tool-btn" aria-pressed="false">🔍 Zoom in</button>
             <button id="decor-btn" class="tool-btn">🪴 Decorate</button>

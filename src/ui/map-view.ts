@@ -28,7 +28,7 @@ import {
   TOWN_TERRAIN,
   anchorOf,
 } from '../data/town-layout';
-import { computeMood, earnedFlourishes, meditatedToday, moodCaption, seasonForMonth } from '../core/world-mood';
+import { computeMood, earnedFlourishes, meditatedToday, seasonForMonth } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
 import { stemLevels, type StemLevels } from '../core/stem-levels';
 import { illumination } from '../data/moon';
@@ -62,13 +62,6 @@ import { feedback } from './feedback';
 import { minigameCta } from './minigame-cta';
 import { tomorrowLine } from './tease';
 
-const STAGE_NAMES = [
-  'Storm-Wrecked',
-  'Rebuilding Begins',
-  'A Place to Call Home',
-  'A Flourishing Haven',
-  'Beacon of Emberhollow',
-] as const;
 
 /**
  * Emberhollow's coastline, clockwise from the west edge — hand-laid headlands
@@ -4030,17 +4023,11 @@ export class MapView {
     }
   }
 
-  private updateBar(prog: number, stage: number, mood?: WorldMood): void {
-    const fill = document.getElementById('map-bar-fill');
-    if (fill) fill.style.width = `${Math.round(prog * 100)}%`;
-    // The status LINE moved into the under-map HUD (home.ts), which now owns
-    // the clock, the restored %, and the live sky. This keeps only the bar.
-    const label = document.getElementById('map-progress');
-    if (label) {
-      const scene = mood ? moodCaption(mood) : '';
-      label.textContent = `${STAGE_NAMES[stage]} · ${Math.round(prog * 100)}% restored${scene ? ` · ${scene}` : ''}`;
-    }
-  }
+  // updateBar previously drove a coloured progress rail + status line under
+  // the map. Both moved into the under-map HUD (home.ts owns the clock, the
+  // restored %, and the live sky); the method is kept as a documented no-op
+  // seam rather than ripped out of every call site.
+  private updateBar(_prog: number, _stage: number, _mood?: WorldMood): void {}
 
   private renderList(): void {
     const host = document.getElementById('map-body');

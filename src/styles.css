@@ -1107,9 +1107,18 @@ body.reduce-motion .fx-bloom { animation: none; opacity: 0; }
   margin: 8px 0 0;
 }
 /* ---------- home map hero (the town, front and centre) ---------- */
-.home-map {
+/* The wrap holds the (clipped) map canvas AND the HUD as siblings. The HUD is
+   absolutely positioned to the wrap's bottom edge — NOT nested inside the
+   map's own overflow:hidden box — so its portrait/medallion can overhang past
+   the map's boundary and still be visible. */
+.home-map-wrap {
   position: relative;
   margin: 4px 0 12px;
+  flex: 0 0 auto;
+}
+.home-map {
+  position: relative;
+  margin: 0;
   border-radius: var(--r-panel);
   overflow: hidden;
   /* flex: none is load-bearing — overflow:hidden zeroes a flex item's min
@@ -1193,39 +1202,8 @@ body.reduce-motion .fx-bloom { animation: none; opacity: 0; }
   letter-spacing: 0.02em;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
 }
-.home-map-overlay {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 20px 12px 8px;
-  background: linear-gradient(180deg, transparent, rgba(8, 10, 18, 0.75));
-}
-.map-progress {
-  display: block;
-  font-size: 11px;
-  color: var(--ember-hi);
-  letter-spacing: 0.04em;
-  margin-bottom: 5px;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
-}
-.map-bar {
-  height: 8px;
-  border-radius: 5px;
-  background: rgba(0, 0, 0, 0.4);
-  overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(255, 210, 122, 0.2);
-}
-.map-bar i {
-  display: block;
-  height: 100%;
-  border-radius: 5px;
-  background: linear-gradient(90deg, var(--sea), var(--env-ember-hi));
-  box-shadow: 0 0 12px rgba(255, 210, 122, 0.5);
-  transition:
-    width 0.6s ease,
-    background 2.8s ease;
-}
+/* .home-map-overlay removed: the HUD moved out to .home-map-wrap (see above) so
+   it is no longer nested inside the map's own overflow:hidden box. */
 
 .loc-list,
 .coll-list,
@@ -6561,7 +6539,13 @@ body.reduce-motion .mg-loaf {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 10px 10px;
+  /* True edge-to-edge against the map, sitting ON its bottom edge (a sibling of
+     the clipped map box, not nested inside it — see .home-map-wrap). */
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  margin: 0 6px;
   padding: 2px 4px;
   border-radius: 999px;
   border: 1px solid rgba(255, 210, 122, 0.34);

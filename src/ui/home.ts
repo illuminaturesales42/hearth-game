@@ -9,12 +9,33 @@ import { avatarPortraitHTML } from './avatar-render';
 import { openAvatarCreator } from './avatar-creator';
 import { effectiveWeather, latestSunTimes, latestWeather } from './weather';
 import type { WeatherKind } from '../core/world-mood';
+import { PHASE_META, phaseForTime, type TimeOfDay } from '../core/time-of-day';
 import { ORDERS, RESTORE_ORDERS, ZONE_STAGES } from '../data/economy';
 import { orderAt } from '../data/endless';
 import { feedback } from './feedback';
 import { toast } from './toast';
 
 /** Plain-language sky, for the under-map HUD. */
+/** Emoji fallback for the medallion when no time_badge_* art is sliced. */
+const PHASE_FALLBACK: Record<TimeOfDay, string> = {
+  sunrise: '🌅',
+  midday: '☀️',
+  sunset: '🌇',
+  evening: '🌆',
+  night: '🌙',
+};
+
+/** A small glyph beside the sky word — faster to read than text alone. */
+const SKY_GLYPH: Record<WeatherKind, string> = {
+  clear: '☀️',
+  clouds: '⛅',
+  overcast: '☁️',
+  fog: '🌫️',
+  rain: '🌧️',
+  storm: '⛈️',
+  snow: '❄️',
+};
+
 const SKY_WORD: Record<WeatherKind, string> = {
   clear: 'clear',
   clouds: 'cloudy',
@@ -224,42 +245,38 @@ export class Home {
     const clock = document.getElementById('hud-clock');
     if (clock) clock.textContent = new Date(now).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
-    const w = effectiveWeather(latestWeather());
+    // The medallion's TIME-OF-DAY face uses the exact same model the map's own
+    // sky reads (core/time-of-day: "the single source of truth… so the little
+    // badge and the whole scene always agree") — five real phases from the
+    // player's true sun times, not an ad-hoc day/night guess.
     const sun = latestSunTimes();
-    const isDay = w?.isDay ?? (sun ? now >= sun.sunriseMs && now < sun.sunsetMs : true);
-
-    // Day-part: name the stretch of day the player is actually standing in.
-    let part = isDay ? 'daytime' : 'night';
-    let badge = isDay ? 'time_badge_midday' : 'time_badge_night';
-    if (sun) {
-      const near = 45 * 60_000; // within 45 min of the event reads as that moment
-      if (Math.abs(now - sun.sunriseMs) < near) [part, badge] = ['sunrise', 'time_badge_sunrise'];
-      else if (Math.abs(now - sun.sunsetMs) < near) [part, badge] = ['sunset', 'time_badge_sunset'];
-    }
-    // The stage of restoration now lives here — it is the map's headline stat.
+    const { phase } = phaseForTime(now, sun);
+    const meta = PHASE_META[phase];
     const restored = document.getElementById('hud-restored');
     if (restored) {
       const pct = Math.min(100, Math.round((this.game.snapshot.orderIndex / RESTORE_ORDERS) * 100));
       restored.textContent = `${pct}% restored`;
     }
-    const ico0 = document.getElementById('hud-weather-ico');
-    if (ico0) ico0.title = part; // day-part survives as the medallion's tooltip
 
     const ico = document.getElementById('hud-weather-ico');
     if (ico) {
-      const url = artUrl(badge);
+      ico.title = meta.label;
+      const url = artUrl(meta.art);
       ico.style.backgroundImage = url ? `url(${url})` : '';
       ico.classList.toggle('has-art', Boolean(url));
-      if (!url) ico.textContent = isDay ? '☀' : '☾';
+      ico.textContent = url ? '' : PHASE_FALLBACK[phase];
     }
 
+    const w = effectiveWeather(latestWeather());
     const block = document.querySelector<HTMLElement>('.hud-weather');
     if (block) block.hidden = !w;
     if (!w) return;
     const temp = document.getElementById('hud-temp');
     if (temp) temp.textContent = typeof w.tempC === 'number' ? `${Math.round(w.tempC)}°` : '';
     const sky = document.getElementById('hud-sky');
-    if (sky) sky.textContent = SKY_WORD[w.kind] ?? '';
+    // A small weather glyph reads faster than the word alone, and still shows
+    // the real sky even for a player who never opens the reactive-world panel.
+    if (sky) sky.textContent = `${SKY_GLYPH[w.kind] ?? ''} ${SKY_WORD[w.kind] ?? ''}`.trim();
   }
 
   render(): void {
