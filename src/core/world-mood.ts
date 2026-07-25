@@ -18,6 +18,29 @@ export interface WeatherNow {
   /** mm/h currently falling */
   precipMm: number;
   fetchedAt: number;
+  /** Real local day/night from Open-Meteo `is_day` (solar elevation). */
+  isDay?: boolean;
+  /** Today's local sunrise/sunset as real instants (epoch ms). */
+  sunriseMs?: number;
+  sunsetMs?: number;
+  /** Wind direction in meteorological degrees (0=N, the direction it comes FROM). */
+  windDir?: number;
+  /** Current temperature °C, and the "feels like" apparent temperature °C. */
+  tempC?: number;
+  feelsLikeC?: number;
+  /** Southern hemisphere (latitude < 0) — flips the seasons. */
+  southern?: boolean;
+}
+
+/** Extra live signals attached to a reading, all optional (best-effort fetch). */
+export interface WeatherExtra {
+  isDay?: boolean;
+  sunriseMs?: number;
+  sunsetMs?: number;
+  windDir?: number;
+  tempC?: number;
+  feelsLikeC?: number;
+  southern?: boolean;
 }
 
 /** Map a WMO weather code (Open-Meteo `weather_code`) to a render category. */
@@ -27,6 +50,7 @@ export function weatherFromWmo(
   windKph: number,
   precipMm: number,
   fetchedAt: number,
+  extra?: WeatherExtra,
 ): WeatherNow {
   let kind: WeatherKind = 'clear';
   if (code >= 95) kind = 'storm';
@@ -35,13 +59,21 @@ export function weatherFromWmo(
   else if (code === 45 || code === 48) kind = 'fog';
   else if (code === 3) kind = 'overcast';
   else if (code === 1 || code === 2) kind = 'clouds';
-  return {
+  const now: WeatherNow = {
     kind,
     cloudCover: clamp01(cloudCoverPct / 100),
     windKph: Math.max(0, windKph),
     precipMm: Math.max(0, precipMm),
     fetchedAt,
   };
+  if (extra?.isDay !== undefined) now.isDay = extra.isDay;
+  if (extra?.sunriseMs !== undefined) now.sunriseMs = extra.sunriseMs;
+  if (extra?.sunsetMs !== undefined) now.sunsetMs = extra.sunsetMs;
+  if (extra?.windDir !== undefined) now.windDir = extra.windDir;
+  if (extra?.tempC !== undefined) now.tempC = extra.tempC;
+  if (extra?.feelsLikeC !== undefined) now.feelsLikeC = extra.feelsLikeC;
+  if (extra?.southern !== undefined) now.southern = extra.southern;
+  return now;
 }
 
 export interface WorldMood {
@@ -74,6 +106,14 @@ export interface WorldMood {
   seaMist: number; // cold plunge → a cool mist drifts over the water (0..1)
   saunaWarm: boolean; // sauna → warmer chimney smoke curls up
   stargazed: boolean; // stargaze after dark → a constellation lights the bay (night only)
+  /**
+   * Weather's memory (from the day-keyed reading log — see core/weather-history):
+   * wet ground that lingers after rain, snow that settled over a cold spell, and
+   * a frost bite that the map paints as a dawn sheen. All 0..1, all additive.
+   */
+  wetness: number; // 0..1 puddles / wet sheen left by recent rain
+  snowDepth: number; // 0..1 snow lying on roofs and ground
+  frost: number; // 0..1 cold bite (near/below freezing) → dawn frost sheen
 }
 
 /** Whole days between two YYYY-MM-DD local day keys (b - a, ≥0 when b later). */
@@ -118,6 +158,8 @@ export interface MoodInputs {
   walkedToday?: boolean;
   /** current daily streak length — long streaks bring festival decor */
   streak?: number;
+  /** derived weather memory (core/weather-history) — wet ground + lying snow */
+  accumulation?: { wetness: number; snowDepth: number } | null;
 }
 
 export function computeMood(inp: MoodInputs): WorldMood {
@@ -168,6 +210,12 @@ export function computeMood(inp: MoodInputs): WorldMood {
   // Stargaze → a constellation lights the bay (the map shows it only after dark).
   const stargazed = tally(counts, STAR_IDS) > 0;
 
+  // Weather's memory: puddles/snow carried in from the reading log, plus a frost
+  // bite derived straight from the current temperature (1 near −4°C, 0 by +2°C).
+  const wetness = clamp01(inp.accumulation?.wetness ?? 0);
+  const snowDepth = clamp01(inp.accumulation?.snowDepth ?? 0);
+  const frost = w && typeof w.tempC === 'number' ? clamp01((2 - w.tempC) / 6) : 0;
+
   return {
     weather: kind,
     cloudCover,
@@ -186,6 +234,9 @@ export function computeMood(inp: MoodInputs): WorldMood {
     seaMist,
     saunaWarm,
     stargazed,
+    wetness,
+    snowDepth,
+    frost,
   };
 }
 
@@ -232,8 +283,8 @@ export function moodCaption(m: WorldMood): string {
 export function earnedFlourishes(m: WorldMood): string[] {
   const out: string[] = [];
   if (m.calm) out.push('The seas settled as you breathed.');
-  if (m.villagersOut >= 0.9) out.push('The lanes filled with folk after your walks.');
-  else if (m.villagersOut > 0) out.push('A neighbour took the air after your walk.');
+  if (m.villagersOut >= 0.9) out.push('Windows glowed and chimneys smoked, the town wide awake after your walks.');
+  else if (m.villagersOut > 0) out.push('A window warmed and a chimney stirred after your walk.');
   if (m.wellSparkle) out.push('The wells sparkled — you drank with them.');
   if (m.bloom >= 0.6) out.push('Flowers bloomed along the shore.');
   else if (m.gardenLush >= 0.4) out.push('The gardens greened where you stretched.');
@@ -250,12 +301,21 @@ export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
 /** The player's real-world (northern-hemisphere) season for a 0-indexed month.
  *  Pure — the map reads it from the live date to tint the town's ambience so the
  *  world echoes the season the player is actually living in. */
-export function seasonForMonth(month: number): Season {
+const OPPOSITE: Record<Season, Season> = { winter: 'summer', summer: 'winter', spring: 'autumn', autumn: 'spring' };
+
+export function seasonForMonth(month: number, southern = false): Season {
   const m = ((Math.trunc(month) % 12) + 12) % 12;
-  if (m === 11 || m <= 1) return 'winter'; // Dec, Jan, Feb
-  if (m <= 4) return 'spring'; // Mar, Apr, May
-  if (m <= 7) return 'summer'; // Jun, Jul, Aug
-  return 'autumn'; // Sep, Oct, Nov
+  let s: Season;
+  if (m === 11 || m <= 1)
+    s = 'winter'; // Dec, Jan, Feb
+  else if (m <= 4)
+    s = 'spring'; // Mar, Apr, May
+  else if (m <= 7)
+    s = 'summer'; // Jun, Jul, Aug
+  else s = 'autumn'; // Sep, Oct, Nov
+  // Below the equator the seasons are flipped — a July player in Sydney should
+  // see winter snow, not summer pollen.
+  return southern ? OPPOSITE[s] : s;
 }
 
 function clamp01(v: number): number {

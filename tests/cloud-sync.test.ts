@@ -12,25 +12,28 @@ import { HttpSyncProvider } from '../src/platform/sync-provider';
 const KEY = 'aaaaaaaa-bbbb-cccc-dddd-eeeeffff0000';
 const env = (rev: number, save = '{"v":1}'): SyncEnvelope => ({ rev, updatedAt: rev * 1000, save });
 
-/** A one-row fake D1 that understands exactly the two statements we issue. */
+/** A one-row fake D1 that understands exactly the statements we issue. The
+ *  INSERT is an atomic conditional upsert (`... WHERE excluded.rev > saves.rev
+ *  RETURNING rev`), so the fake applies it only when the incoming rev wins and
+ *  returns the applied rev (or null) — mirroring D1/SQLite. */
 function fakeDb(seed: { rev: number; updated_at: number; save: string } | null = null) {
   const state = { row: seed };
+  const upsert = (values: unknown[]): { rev: number } | null => {
+    const rev = values[1] as number;
+    if (state.row && rev <= state.row.rev) return null; // WHERE guard rejects
+    state.row = { rev, updated_at: values[2] as number, save: values[3] as string };
+    return { rev };
+  };
   const db: D1Like = {
     prepare(sql: string) {
       return {
         bind(...values: unknown[]) {
           return {
             async first<T>(): Promise<T | null> {
-              return state.row as T | null;
+              return (sql.startsWith('INSERT') ? upsert(values) : state.row) as T | null;
             },
             async run(): Promise<unknown> {
-              if (sql.startsWith('INSERT')) {
-                state.row = {
-                  rev: values[1] as number,
-                  updated_at: values[2] as number,
-                  save: values[3] as string,
-                };
-              }
+              if (sql.startsWith('INSERT')) upsert(values);
               return {};
             },
           };
@@ -99,6 +102,31 @@ describe('save API — request handlers', () => {
     expect(stale.status).toBe(409);
     expect(((await stale.json()) as SyncEnvelope).rev).toBe(4);
     expect(state.row?.rev).toBe(4); // untouched
+  });
+
+  it('the write guard rejects a stale rev even if the pre-read was optimistic (TOCTOU)', async () => {
+    // Race: the SELECT sees rev 4, but the row actually advanced to rev 10 by
+    // the time the conditional INSERT runs. Our rev-5 write passes the
+    // acceptsWrite pre-check yet must still be rejected by the atomic WHERE.
+    const raced = { rev: 10 };
+    const db: D1Like = {
+      prepare: (sql: string) => ({
+        bind: (...values: unknown[]) => ({
+          async first<T>(): Promise<T | null> {
+            if (sql.startsWith('INSERT')) {
+              const rev = values[1] as number;
+              return (rev > raced.rev ? { rev } : null) as T | null; // WHERE excluded.rev > saves.rev
+            }
+            return { rev: 4, updated_at: 4000, save: '{"v":4}' } as T | null; // the optimistic read
+          },
+          async run(): Promise<unknown> {
+            return {};
+          },
+        }),
+      }),
+    };
+    const res = await onRequestPut({ request: req('PUT', env(5)), env: { DB: db } });
+    expect(res.status).toBe(409); // the atomic guard caught the lost-race write
   });
 
   it('PUT rejects malformed bodies', async () => {

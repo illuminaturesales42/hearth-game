@@ -1,0 +1,15 @@
+# Cloudflare Pages security headers. `public/` is copied to the dist root, so
+# Pages serves this file from `/_headers`. The CSP is the backstop that stops a
+# missed escaping sink (see src/ui/esc.ts) from executing injected script or
+# exfiltrating the device key.
+#
+# NOTE: index.html ships a single external module script and no inline scripts,
+# so `script-src 'self'` holds. If you set VITE_ANALYTICS_ENDPOINT to an
+# off-origin host, add that host to `connect-src` below.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com; worker-src 'self'; manifest-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: geolocation=(self), camera=(self), microphone=(), payment=(), usb=(), interest-cohort=()
+  Cross-Origin-Opener-Policy: same-origin

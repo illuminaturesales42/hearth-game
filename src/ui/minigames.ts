@@ -15,6 +15,7 @@ import {
   BEACON_SLOTS,
   CATCH_REEL_MS,
   CATCH_REEL_ZONE,
+  CATCH_REEL_PERFECT,
   FORAGE_COLS,
   FORAGE_SIZE,
   FORAGE_STEPS,
@@ -45,6 +46,12 @@ import {
   sawmillReward,
   sawmillSchedule,
   sawmillScore,
+  BAKE_DURATION_MS,
+  bakeGrade,
+  bakeReward,
+  bakeSchedule,
+  bakeScore,
+  type BakeGrade,
   stacksDeck,
   stacksPairsFor,
   stacksReward,
@@ -56,7 +63,7 @@ import {
 import type { AlmanacPage } from '../core/almanac';
 import type { ChainId } from '../core/types';
 import { MINIGAME_BY_ID, WISHES } from '../data/minigames';
-import { artUrl, tileMarkup } from './art';
+import { artUrl, currencyIcon, tileMarkup } from './art';
 import { feedback } from './feedback';
 import { playStrip } from './sprite-strip';
 import { toast } from './toast';
@@ -72,6 +79,7 @@ const MINIGAME_BACKDROP: Record<string, string> = {
   foraging: 'mg_bg_forage',
   'sorting-stacks': 'mg_bg_stacks',
   sawmill: 'mg_bg_sawmill',
+  'bakery-proving': 'mg_bg_bakery',
 };
 
 const vibrate = (n: number | number[]): void => {
@@ -80,6 +88,9 @@ const vibrate = (n: number | number[]): void => {
 
 export class MinigameUI {
   private id: string | null = null;
+  /** True once the current run's rewards have been banked, so a double-fired
+   *  end-timer/button can't bank the same run twice. Reset on each new play. */
+  private banked = false;
   private timers: number[] = [];
   private rafs: number[] = [];
   private strips: (() => void)[] = [];
@@ -272,6 +283,7 @@ export class MinigameUI {
     }
     this.clearTimers();
     this.id = id;
+    this.banked = false; // a fresh run may bank exactly once
     const result = el('mg-result');
     if (result) result.hidden = true;
     const stage = el('mg-stage');
@@ -285,6 +297,7 @@ export class MinigameUI {
     else if (id === 'foraging') this.playForage(run.seed);
     else if (id === 'sorting-stacks') this.playStacks(run.seed);
     else if (id === 'sawmill') this.playSawmill(run.seed);
+    else if (id === 'bakery-proving') this.playBake(run.seed);
   }
 
   /** A one-time, self-dismissing coaching line for a game's first play. */
@@ -302,14 +315,25 @@ export class MinigameUI {
     tip.className = 'mg-coach';
     tip.textContent = text;
     stage.appendChild(tip);
-    this.timers.push(window.setTimeout(() => tip.remove(), 4600));
+    // Tap anywhere (or the tip itself) skips it; otherwise it fades on its own.
+    const to = window.setTimeout(() => dismiss(), 6000);
+    const dismiss = (): void => {
+      window.clearTimeout(to);
+      document.removeEventListener('pointerdown', dismiss, true);
+      tip.remove();
+    };
+    tip.addEventListener('click', dismiss);
+    // attach next tick so the tap that opened the game doesn't instantly clear it
+    this.timers.push(window.setTimeout(() => document.addEventListener('pointerdown', dismiss, true), 0));
+    this.timers.push(to);
   }
 
   private finish(reward: MgReward, wish?: { who: string; text: string }, score?: number): void {
-    if (!this.id) return;
+    if (!this.id || this.banked) return; // ignore a double-fired finish
+    this.banked = true;
     const res = this.game.finishMinigame(this.id, reward, wish, score);
     feedback.chime(res.isBest ? 720 : 560);
-    this.showResult(reward, wish, res.isBest, res.discovered);
+    this.showResult(reward, wish, res.isBest, res.discovered, res.emberGranted);
   }
 
   /**
@@ -322,6 +346,7 @@ export class MinigameUI {
     wish?: { who: string; text: string },
     isBest?: boolean,
     discovered: readonly AlmanacPage[] = [],
+    emberGranted: number = 0,
   ): void {
     const result = el('mg-result');
     const title = el('mg-result-title');
@@ -337,7 +362,15 @@ export class MinigameUI {
       .join('');
     body.innerHTML =
       `<div class="mg-reward-row">${items}</div>` +
-      `<p class="mg-reward-line">🪙 <b id="mg-tally-coins">0</b>${reward.ember > 0 ? ` · 🔥 +${reward.ember} energy` : ''}</p>` +
+      // Show what was ACTUALLY banked: ember is capped per day, and promising
+      // "+2 energy" while granting 0 read as energy silently not being added.
+      `<p class="mg-reward-line">${currencyIcon('coin')} <b id="mg-tally-coins">0</b>${
+        emberGranted > 0
+          ? ` · ${currencyIcon('energy')} +${emberGranted} energy`
+          : reward.ember > 0
+            ? ` · ${currencyIcon('energy')} today's ember pool is full`
+            : ''
+      }</p>` +
       `<p class="mg-best" id="mg-best-line" hidden>✦ A new personal best!</p>` +
       (newPages ? `<p class="mg-almanac-line" id="mg-almanac-line" hidden>${newPages}</p>` : '') +
       (wish ? `<p class="mg-wish">“${wish.who} ${wish.text}”</p>` : '') +
@@ -356,10 +389,13 @@ export class MinigameUI {
       // items pop in first, then the coins tick up with rising pitch, then the banner
       itemEls.forEach((it, i) =>
         this.timers.push(
-          window.setTimeout(() => {
-            it.classList.add('in');
-            feedback.tick(380 + i * 60);
-          }, 120 + i * 160),
+          window.setTimeout(
+            () => {
+              it.classList.add('in');
+              feedback.tick(380 + i * 60);
+            },
+            120 + i * 160,
+          ),
         ),
       );
       const startAt = 200 + itemEls.length * 160;
@@ -610,9 +646,7 @@ export class MinigameUI {
           const slot = powerToSlot(pull);
           pebble.style.transform = `translateY(${pull * 16}px) scale(${1 + pull * 0.25})`;
           // the preview glows the ring the current draw would reach
-          stage
-            .querySelectorAll<HTMLElement>('.mg-ring')
-            .forEach((r, i) => r.classList.toggle('aim', i === slot));
+          stage.querySelectorAll<HTMLElement>('.mg-ring').forEach((r, i) => r.classList.toggle('aim', i === slot));
           if (arc) arc.style.setProperty('--pull', String(pull));
         };
         const up = (): void => {
@@ -635,7 +669,6 @@ export class MinigameUI {
   private playBeacon(seed: number): void {
     const stage = el('mg-stage');
     if (!stage) return;
-    const beaconUrl = artUrl('fx_flame_beacon');
     const field = beaconPegField(seed);
     const pegHtml = field
       .map(
@@ -651,17 +684,14 @@ export class MinigameUI {
     }
     stage.innerHTML =
       `<div class="mg-beacon">` +
-      `<div class="mg-beacon-lamp">${beaconUrl ? `<div class="mg-beacon-flame" aria-hidden="true"></div>` : '🔆'}</div>` +
+      `<div class="mg-beacon-lamp"><div class="mg-beacon-flame" aria-hidden="true"></div></div>` +
       `<div class="mg-beam" aria-hidden="true"></div>` +
       `<div class="mg-pegfield">${pegHtml}</div>` +
       `<div class="mg-slots">${slotCells}</div>` +
       `<div class="mg-ember"></div></div>`;
     const ember = stage.querySelector<HTMLElement>('.mg-ember');
-    const lampFlame = stage.querySelector<HTMLElement>('.mg-beacon-flame');
-    if (lampFlame && beaconUrl) {
-      if (this.reduce()) lampFlame.style.backgroundImage = `url(${beaconUrl})`;
-      else this.playStrip(lampFlame, 'fx_flame_beacon', { fps: 14, loop: true });
-    }
+    // The lantern flame is a pure-CSS ember glow (flickers via keyframe) — the old
+    // fx_flame_beacon strip squashed into its box and read as a garbled wave.
 
     const beacon = stage.querySelector<HTMLElement>('.mg-beacon');
     const beam = stage.querySelector<HTMLElement>('.mg-beam');
@@ -686,14 +716,17 @@ export class MinigameUI {
       feedback.chime(slot === BEACON_ROWS / 2 ? 620 : 300);
       if (slot === BEACON_ROWS / 2) feedback.deliver(); // centre catch: the 3-note motif + haptic
       this.timers.push(
-        window.setTimeout(() => this.finish(beaconReward(slot, goldenHit), undefined, beaconScore(slot, goldenHit)), 500),
+        window.setTimeout(
+          () => this.finish(beaconReward(slot, goldenHit), undefined, beaconScore(slot, goldenHit)),
+          500,
+        ),
       );
     };
 
     // The drop: a real ember with gravity through THIS run's pegfield — pegs
     // flash, bumpers boing, the golden peg blesses the run, the mover is read
     // live, and a centre-bound finish plays out in slow motion.
-    const release = (xFrac: number): void => {
+    const release = (xFrac: number, theta = 0, startYpx = 34): void => {
       if (this.reduce() || !ember || !beacon || !pegfield) {
         const targetSlot = Math.max(0, Math.min(BEACON_ROWS, Math.round(xFrac * BEACON_ROWS)));
         return land(beaconDrop(targetSlot, seed));
@@ -732,10 +765,14 @@ export class MinigameUI {
         s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
         return s / 4294967296;
       };
-      let x = Math.max(R, Math.min(bW - R, xFrac * bW + (rand() - 0.5) * 14)); // "roughly where the beam was"
-      let y = 30;
-      let vx = (rand() - 0.5) * 0.6;
-      let vy = 0;
+      // Spawn AT the beam tip (where the light touches) — no jitter, so the aim is
+      // honest — then flow OUT along the beam's direction (theta); gravity curves it
+      // into the pegs. theta=0 (reduced-motion slot tap) → a plain downward release.
+      let x = Math.max(R, Math.min(bW - R, xFrac * bW));
+      let y = Math.max(30, startYpx);
+      const EXIT = 2.7; // slides out along the beam toward the tip — fluid, in-flight
+      let vx = -Math.sin(theta) * EXIT; // same sign convention as the spawn X
+      let vy = Math.max(0, Math.cos(theta) * EXIT);
       let frames = 0;
       let sinceChime = 9;
       let nudged = false;
@@ -815,11 +852,13 @@ export class MinigameUI {
               feedback.comboChime(5);
               vibrate([14, 40, 14]);
             } else {
-              // an ordinary peg: a livelier reflection than before (more play in
-              // the board), plus a little jitter so no two paths feel identical
-              const bounce = 0.72;
-              vx = (vx - 2 * dot * nx) * bounce + (rand() - 0.5) * 1.1;
-              vy = Math.max(0.6, (vy - 2 * dot * ny) * bounce);
+              // an ordinary peg: a springy reflection so the ember visibly bounces
+              // (including a little pop UP off a peg top), plus jitter so no two
+              // paths feel identical. The old vy floor killed every upward bounce.
+              const bounce = 0.86;
+              vx = (vx - 2 * dot * nx) * bounce + (rand() - 0.5) * 0.9;
+              vy = (vy - 2 * dot * ny) * bounce;
+              if (vy > -0.35 && vy < 0.45) vy = 0.45; // never stall balanced on a peg
               pg.el.classList.add('hit');
               this.timers.push(window.setTimeout(() => pg.el.classList.remove('hit'), 300));
               if (sinceChime > 3) {
@@ -877,15 +916,33 @@ export class MinigameUI {
       const startDrop = (): void => {
         if (released) return;
         released = true;
-        let beamX = 0.5;
+        let startX = 0.5;
+        let startYpx = 34;
+        let theta = 0;
         if (beam) {
           const bb = beacon.getBoundingClientRect();
-          const brc = beam.getBoundingClientRect();
-          if (bb.width) beamX = Math.max(0.05, Math.min(0.95, (brc.left + brc.width / 2 - bb.left) / bb.width));
-          beam.style.animationPlayState = 'paused'; // the light holds where you called it
-          beam.classList.add('drop');
+          // The beam SWEEPS (rotates from a top pivot). Read its live angle and
+          // spawn the ember at the MIDDLE of the beam, already moving out toward
+          // the tip — so it slides out of the light with a fluid, in-flight feel
+          // (spawning right at the tip read as a dead drop with nowhere to go).
+          const tr = getComputedStyle(beam).transform;
+          if (tr && tr !== 'none') {
+            const m = new DOMMatrixReadOnly(tr);
+            theta = Math.atan2(m.b, m.a);
+          }
+          const beamTopY = 2;
+          const beamLen = beam.offsetHeight || 158; // pivot → tip length in px
+          const midLen = beamLen * 0.5; // spawn halfway down the beam
+          // CSS rotate() is clockwise in a y-down space, so a point straight down
+          // the beam is at x = pivot − sin(θ)·L (NOT +). Getting this sign wrong
+          // spawned the ember on the opposite side from where the light pointed.
+          const midX = 0.5 * bb.width - midLen * Math.sin(theta);
+          startYpx = beamTopY + midLen * Math.cos(theta);
+          if (bb.width) startX = Math.max(0.05, Math.min(0.95, midX / bb.width));
+          if (tr && tr !== 'none') beam.style.transform = tr; // hold the beam where you called it
+          beam.classList.add('drop'); // fades out (opacity only — transform stays frozen)
         }
-        release(beamX);
+        release(startX, theta, startYpx);
       };
       beacon.onpointerdown = startDrop;
       this.startButton('Drop the light', startDrop);
@@ -1081,7 +1138,7 @@ export class MinigameUI {
     const { delayMs, windowMs } = fishBite(seed);
     stage.innerHTML =
       `<div class="mg-catch"><div class="mg-catch-water"><div class="mg-bobber"></div><div class="mg-catch-shadow" hidden></div></div>` +
-      `<div class="mg-reel" hidden><div class="mg-reel-zone"></div><div class="mg-reel-marker"></div></div>` +
+      `<div class="mg-reel" hidden><div class="mg-reel-zone"></div><div class="mg-reel-zone-perfect"></div><div class="mg-reel-marker"></div></div>` +
       `<p class="mg-catch-hint">Cast, then strike the moment the bobber dips.</p></div>`;
     this.coachOnce('joss-catch', 'Strike on the dip, then tap again as the marker crosses the golden water.');
     const water = stage.querySelector<HTMLElement>('.mg-catch-water');
@@ -1093,9 +1150,9 @@ export class MinigameUI {
     const hint = stage.querySelector<HTMLElement>('.mg-catch-hint');
 
     // the run's climax: the catch surfaces as a silhouette, then the reveal
-    const resolveRun = (q: number, reelQ: number): void => {
-      const reward = catchReward(q, reelQ);
-      const blend = q * 0.55 + reelQ * 0.45;
+    const resolveRun = (q: number, reelQ: number, bullseye = false): void => {
+      const reward = catchReward(q, reelQ, bullseye);
+      const blend = bullseye ? 1 : q * 0.55 + reelQ * 0.45;
       if (water && blend > 0.25 && !this.reduce()) {
         this.waterSplash(water, water.clientWidth / 2, water.clientHeight * 0.42, blend > 0.6);
         if (shadow) {
@@ -1119,6 +1176,12 @@ export class MinigameUI {
       const zoneCentre = 0.3 + ((seed % 100) / 100) * 0.4; // seeded zone position
       zone.style.left = `${(zoneCentre - CATCH_REEL_ZONE / 2) * 100}%`;
       zone.style.width = `${CATCH_REEL_ZONE * 100}%`;
+      // the smaller inner band — a dead-centre tap here is the prize catch
+      const perfect = reel.querySelector<HTMLElement>('.mg-reel-zone-perfect');
+      if (perfect) {
+        perfect.style.left = `${(zoneCentre - CATCH_REEL_PERFECT / 2) * 100}%`;
+        perfect.style.width = `${CATCH_REEL_PERFECT * 100}%`;
+      }
       const rT0 = performance.now();
       let reelDone = false;
       const sweepReel = (): void => {
@@ -1138,11 +1201,13 @@ export class MinigameUI {
         if (reelDone) return;
         reelDone = true;
         const mp = parseFloat(marker.style.left) / 100;
-        const dist = Math.abs(mp - zoneCentre) / (CATCH_REEL_ZONE / 2);
+        const off = Math.abs(mp - zoneCentre);
+        const dist = off / (CATCH_REEL_ZONE / 2);
+        const bullseye = off <= CATCH_REEL_PERFECT / 2; // dead-centre → prize
         const reelQ = Math.max(0.2, Math.min(1, 1.05 - dist * 0.5));
-        marker.classList.add(dist <= 1 ? 'in-zone' : 'out-zone');
-        feedback.chime(dist <= 1 ? 600 : 360);
-        resolveRun(q, dist <= 1 ? reelQ : 0.3);
+        marker.classList.add(bullseye ? 'bullseye' : dist <= 1 ? 'in-zone' : 'out-zone');
+        feedback.chime(bullseye ? 760 : dist <= 1 ? 600 : 360);
+        resolveRun(q, dist <= 1 ? reelQ : 0.3, bullseye);
       };
     };
 
@@ -1221,7 +1286,11 @@ export class MinigameUI {
     const end = (): void => {
       if (ended) return;
       ended = true;
-      this.finish(forageReward(acc, heartFound, Math.max(0, steps)), undefined, acc.items.length + acc.ember + (heartFound ? Math.max(0, steps) : 0));
+      this.finish(
+        forageReward(acc, heartFound, Math.max(0, steps)),
+        undefined,
+        acc.items.length + acc.ember + (heartFound ? Math.max(0, steps) : 0),
+      );
     };
     // "Head home" — stop early and keep everything; with the heart found, the
     // unspent footsteps become the forager's bonus (a real decision at last).
@@ -1274,17 +1343,21 @@ export class MinigameUI {
         vibrate([16, 60, 20]);
         feedback.deliver();
         const hint = stage.querySelector<HTMLElement>('.mg-forage-steps');
-        hint?.insertAdjacentHTML('beforeend', ' · <span class="mg-forage-bonus">honeycomb found — home pays +3/step!</span>');
+        hint?.insertAdjacentHTML(
+          'beforeend',
+          ' · <span class="mg-forage-bonus">honeycomb found — home pays +3/step!</span>',
+        );
       } else if (kind === 'clearing') {
         // the clearing opens its neighbours in a gentle rush — free reveals
         feedback.chime(560);
         const col = i % FORAGE_COLS;
-        const neigh = [i - FORAGE_COLS, i + FORAGE_COLS, col > 0 ? i - 1 : -1, col < FORAGE_COLS - 1 ? i + 1 : -1].filter(
-          (n) => n >= 0 && n < FORAGE_SIZE,
-        );
-        neigh.forEach((n, k) =>
-          this.timers.push(window.setTimeout(() => reveal(n, true, depth + 1), 140 + k * 110)),
-        );
+        const neigh = [
+          i - FORAGE_COLS,
+          i + FORAGE_COLS,
+          col > 0 ? i - 1 : -1,
+          col < FORAGE_COLS - 1 ? i + 1 : -1,
+        ].filter((n) => n >= 0 && n < FORAGE_SIZE);
+        neigh.forEach((n, k) => this.timers.push(window.setTimeout(() => reveal(n, true, depth + 1), 140 + k * 110)));
       } else {
         if (kind === 'ember' || kind === 'coins') this.spark(t, 50, 46);
         // warmer tiles ring higher — you can HEAR the trail
@@ -1436,21 +1509,62 @@ export class MinigameUI {
 
     const LINE_PCT = 0.78;
 
-    // Split the log DOWN THE MIDDLE into two planks that part, tilt and settle.
+    // The spinning blade darts to whichever lane is being cut (it lives on the
+    // full-width blade line, so we swap its right-pin for a lane-centre left%).
+    const blade = stage.querySelector<HTMLElement>('.mg-sawblade, .mg-sawblade-fallback');
+    const moveBlade = (li: number): void => {
+      if (!blade || reduce) return;
+      blade.style.right = 'auto';
+      blade.style.marginLeft = '-15px'; // half the 30px blade → centres on the lane
+      blade.style.left = `${((li + 0.5) / SAWMILL_LANES) * 100}%`;
+      blade.classList.add('cutting');
+      this.timers.push(window.setTimeout(() => blade.classList.remove('cutting'), 220));
+    };
+
+    // Pin a falling log at its CURRENT visual position (logs ride on a composited
+    // transform, so we must freeze the live transform before killing the
+    // transition — otherwise it snaps to the animation's end value).
+    const freezeAt = (elm: HTMLElement): void => {
+      const cur = getComputedStyle(elm).transform;
+      elm.style.transition = 'none';
+      if (cur && cur !== 'none') elm.style.transform = cur;
+    };
+
+    // Split the log DOWN THE MIDDLE: two planks that EXACTLY overlay the log that
+    // was cut (measured, so it works for a narrow lane log or the wide strum roll
+    // alike), part and tilt away, with a bright sawn-seam flash + sawdust down the
+    // cut line so the split reads as real feedback.
     const sawInHalf = (host: HTMLElement, log: HTMLElement, big = false): void => {
-      const y = log.offsetTop;
-      const html = log.querySelector('.mg-log-body')?.outerHTML ?? '';
+      const body = log.querySelector('.mg-log-body') ?? log;
+      const br = body.getBoundingClientRect();
+      const hr = host.getBoundingClientRect();
+      const html = body.outerHTML;
+      const left = br.left - hr.left;
+      const top = br.top - hr.top;
+      const w = br.width || 1;
+      const h = br.height || 1;
       log.remove();
       if (reduce) return;
       for (const side of ['l', 'r'] as const) {
         const half = document.createElement('div');
         half.className = `mg-plank mg-plank-${side}${big ? ' mg-plank-big' : ''}`;
+        half.style.left = `${left}px`;
+        half.style.top = `${top}px`;
+        half.style.width = `${w}px`;
+        half.style.height = `${h}px`;
         half.innerHTML = html;
-        half.style.top = `${y}px`;
         host.appendChild(half);
-        this.timers.push(window.setTimeout(() => half.remove(), 620));
+        this.timers.push(window.setTimeout(() => half.remove(), big ? 820 : 620));
       }
-      this.spark(host, 50, LINE_PCT * 100); // sawdust burst at the blade
+      // a bright freshly-sawn seam flashes down the middle where the blade bit
+      const seam = document.createElement('div');
+      seam.className = 'mg-cut-seam';
+      seam.style.left = `${left + w / 2}px`;
+      seam.style.top = `${top}px`;
+      seam.style.height = `${h}px`;
+      host.appendChild(seam);
+      this.timers.push(window.setTimeout(() => seam.remove(), 380));
+      this.spark(host, ((left + w / 2) / (hr.width || 1)) * 100, ((top + h * 0.5) / (hr.height || 1)) * 100);
     };
 
     const scoreCut = (perfect: boolean): void => {
@@ -1475,9 +1589,9 @@ export class MinigameUI {
 
     const onCut = (lane: HTMLElement, log: LiveLog, perfect: boolean): void => {
       log.done = true;
-      log.elm.style.transition = 'none';
-      log.elm.style.top = `${log.elm.offsetTop}px`;
-      sawInHalf(lane, log.elm);
+      freezeAt(log.elm);
+      moveBlade(laneEls.indexOf(lane)); // the blade darts over to bite this log
+      sawInHalf(lane, log.elm, perfect); // a clean cut splits wider
       lane.classList.add('flash');
       this.timers.push(window.setTimeout(() => lane.classList.remove('flash'), 240));
       scoreCut(perfect);
@@ -1498,10 +1612,14 @@ export class MinigameUI {
         log.style.top = `${LINE_PCT * 100}%`;
         entry.crossAt = performance.now();
       } else {
+        // composited transform fall (see the per-lane logs above)
         const totalMs = SAWMILL_FALL_MS / LINE_PCT;
+        const millH = mill.clientHeight || 300;
+        log.style.top = '0px';
+        log.style.transform = 'translateY(-44px)';
         requestAnimationFrame(() => {
-          log.style.transition = `top ${Math.round(totalMs)}ms linear`;
-          log.style.top = '104%';
+          log.style.transition = `transform ${Math.round(totalMs)}ms linear`;
+          log.style.transform = `translateY(${(millH * 1.04).toFixed(1)}px)`;
         });
       }
       this.timers.push(
@@ -1522,11 +1640,18 @@ export class MinigameUI {
     const tryStrum = (): boolean => {
       const log = liveStrum;
       if (!log || log.done) return false;
-      const dt = performance.now() - log.crossAt;
-      if (!reduce && Math.abs(dt) > SAWMILL_WINDOW_MS) return false;
+      // The cut is valid the whole time the log is TOUCHING the blade line — i.e.
+      // while the line falls within the log body — so the strike registers as the
+      // roll meets the line, not late once its 78%-point has dropped past it.
+      if (!reduce) {
+        const b = (log.elm.querySelector('.mg-log-body') ?? log.elm).getBoundingClientRect();
+        const lr = lineEl?.getBoundingClientRect();
+        const lineC = lr ? lr.top + lr.height / 2 : 0;
+        const tol = 12; // a touch of leeway either side of first/last contact
+        if (!(b.top - tol <= lineC && b.bottom + tol >= lineC)) return false;
+      }
       log.done = true;
-      log.elm.style.transition = 'none';
-      log.elm.style.top = `${log.elm.offsetTop}px`;
+      freezeAt(log.elm);
       mill?.classList.add('strum-hit');
       if (mill) sawInHalf(mill, log.elm, true);
       this.timers.push(window.setTimeout(() => mill?.classList.remove('strum-hit'), 500));
@@ -1548,10 +1673,20 @@ export class MinigameUI {
     };
     // Anticipation: the blade line brightens as a log enters the good zone.
     if (!reduce) {
+      // Read the (fixed) blade line ONCE per frame, then only read each live log's
+      // rect — halves the forced layout reads that were making the fall stutter.
+      const offFrom = (lg: LiveLog, lineC: number): number => {
+        const b = (lg.elm.querySelector('.mg-log-body') ?? lg.elm).getBoundingClientRect();
+        return Math.abs(b.top + b.height * 0.78 - lineC);
+      };
       const pulse = (): void => {
+        const lr = lineEl?.getBoundingClientRect();
+        const lineC = lr ? lr.top + lr.height / 2 : 0;
         let near = false;
-        for (const q of live) for (const lg of q) if (!lg.done && Math.abs(cutOffset(lg)) < 46) near = true;
-        if (liveStrum && !liveStrum.done && Math.abs(cutOffset(liveStrum)) < 60) near = true;
+        if (lr) {
+          for (const q of live) for (const lg of q) if (!lg.done && offFrom(lg, lineC) < 46) near = true;
+          if (liveStrum && !liveStrum.done && offFrom(liveStrum, lineC) < 60) near = true;
+        }
         lineEl?.classList.toggle('ready', near);
         this.rafs.push(requestAnimationFrame(pulse));
       };
@@ -1585,9 +1720,9 @@ export class MinigameUI {
           // holding — the full ride is a clean cut; letting go early still cuts.
           log.done = true;
           const startHold = performance.now();
+          moveBlade(li); // the blade rides over onto the long log
           log.elm.classList.add('holding');
-          log.elm.style.transition = 'none';
-          log.elm.style.top = `${log.elm.offsetTop}px`;
+          freezeAt(log.elm);
           lane.setPointerCapture(ev.pointerId);
           let settled = false;
           const settle = (full: boolean): void => {
@@ -1651,10 +1786,15 @@ export class MinigameUI {
             const crossAt = t0 + sp.atMs + SAWMILL_FALL_MS;
             const entry: LiveLog = { elm: log, crossAt, done: false, kind: sp.kind };
             live[sp.lane]!.push(entry);
+            // Ride the flume on a COMPOSITED transform (not `top`) so the fall
+            // stays smooth even with several logs on a tall board.
             const totalMs = SAWMILL_FALL_MS / LINE_PCT;
+            const laneH = lane.clientHeight || 300;
+            log.style.top = '0px';
+            log.style.transform = 'translateY(-44px)';
             requestAnimationFrame(() => {
-              log.style.transition = `top ${Math.round(totalMs)}ms linear`;
-              log.style.top = '104%';
+              log.style.transition = `transform ${Math.round(totalMs)}ms linear`;
+              log.style.transform = `translateY(${(laneH * 1.04).toFixed(1)}px)`;
             });
             this.timers.push(
               window.setTimeout(
@@ -1686,5 +1826,96 @@ export class MinigameUI {
         ),
       );
     });
+  }
+
+  // ---------- 8) The Proving (bakery) — three loaves, three peaks ----------
+
+  /**
+   * Three loaves prove at once; each ripens pale → golden → dark. Tap a loaf at
+   * its golden moment to pull it. Attention, not reflexes: the windows never
+   * overlap, so a watchful player can catch all three, and any loaf left in is
+   * still bread. Reduced motion: the same game on a coarse tick with no
+   * transitions — never a dead screen.
+   */
+  private playBake(seed: number): void {
+    const stage = el('mg-stage');
+    if (!stage) return;
+    const loaves = bakeSchedule(seed);
+    const pulled: (number | null)[] = loaves.map(() => null);
+    const bg = artUrl('mg_bg_bakery');
+    const loafArt = artUrl('mg_bake_loaf');
+    const face = (): string =>
+      loafArt
+        ? `<img class="mg-loaf-art" src="${loafArt}" alt="" draggable="false" />`
+        : `<span class="mg-loaf-ico">🍞</span>`;
+
+    stage.innerHTML =
+      `<div class="mg-bake${bg ? ' has-art' : ''}"${bg ? ` style="background-image:url(${bg})"` : ''}>` +
+      `<div class="mg-bake-tray">` +
+      loaves
+        .map(
+          (_, i) =>
+            `<button type="button" class="mg-loaf" data-loaf="${i}" aria-label="Loaf ${i + 1}">` +
+            `${face()}<span class="mg-loaf-meter"><i></i></span>` +
+            `<span class="mg-loaf-tag"></span></button>`,
+        )
+        .join('') +
+      `</div>` +
+      `<p class="mg-bake-hint">Pull each loaf when it turns golden.</p></div>`;
+    this.coachOnce('bakery-proving', 'Watch all three. A loaf glows golden at its moment — tap it then.');
+
+    const start = Date.now();
+    const els = Array.from(stage.querySelectorAll<HTMLButtonElement>('.mg-loaf'));
+
+    const settle = (i: number, grade: BakeGrade): void => {
+      const b = els[i];
+      if (!b) return;
+      b.classList.add('done', `g-${grade}`);
+      b.disabled = true;
+      const tag = b.querySelector<HTMLElement>('.mg-loaf-tag');
+      if (tag) tag.textContent = grade === 'golden' ? 'Golden!' : grade === 'pale' ? 'Pale' : 'Dark';
+      if (grade === 'golden') {
+        feedback.chime(660);
+        this.squash(b);
+      } else feedback.chime(430);
+    };
+
+    els.forEach((b, i) => {
+      b.onclick = () => {
+        if (pulled[i] !== null) return;
+        const at = Date.now() - start;
+        pulled[i] = at;
+        settle(i, bakeGrade(loaves[i]!, at));
+      };
+    });
+
+    // One tick drives every loaf's colour. Coarse under reduced motion (no
+    // transitions to ride), fine otherwise — identical rules either way.
+    const stepMs = this.reduce() ? 250 : 80;
+    const tick = window.setInterval(() => {
+      const t = Date.now() - start;
+      loaves.forEach((l, i) => {
+        if (pulled[i] !== null) return;
+        const b = els[i];
+        if (!b) return;
+        const fill = b.querySelector<HTMLElement>('.mg-loaf-meter i');
+        if (fill) fill.style.width = `${Math.min(100, Math.round((t / (l.peakMs + l.windowMs)) * 100))}%`;
+        b.classList.toggle('is-golden', t >= l.peakMs - l.windowMs && t <= l.peakMs + l.windowMs);
+        b.classList.toggle('is-dark', t > l.peakMs + l.windowMs);
+      });
+    }, stepMs);
+    this.timers.push(tick);
+
+    this.timers.push(
+      window.setTimeout(() => {
+        window.clearInterval(tick);
+        // Anything still in the oven comes out dark — but it still comes out.
+        loaves.forEach((l, i) => {
+          if (pulled[i] === null) settle(i, bakeGrade(l, null));
+        });
+        const grades = loaves.map((l, i) => bakeGrade(l, pulled[i] ?? null));
+        this.finish(bakeReward(grades), undefined, bakeScore(grades));
+      }, BAKE_DURATION_MS + 400),
+    );
   }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createNetworkSink, stripHealthValues, type WireEvent } from '../src/platform/analytics-sink';
+import { createNetworkSink, stableAnonId, stripHealthValues, type WireEvent } from '../src/platform/analytics-sink';
 import type { AnalyticsEvent } from '../src/analytics';
 
 describe('stripHealthValues', () => {
@@ -30,6 +30,17 @@ describe('stripHealthValues', () => {
   });
 });
 
+describe('stableAnonId', () => {
+  it('is stable, distinct per seed, and never leaks the raw key', () => {
+    const key = 'aaaaaaaa-bbbb-cccc-dddd-eeeeffff0000';
+    const id = stableAnonId(key);
+    expect(stableAnonId(key)).toBe(id); // stable
+    expect(id).not.toContain(key); // one-way — not the credential
+    expect(id.startsWith('d-')).toBe(true);
+    expect(stableAnonId('other-key')).not.toBe(id); // distinct
+  });
+});
+
 describe('createNetworkSink', () => {
   const ev = (name: string, props: AnalyticsEvent['props'] = {}): AnalyticsEvent => ({ name, props, at: 1000 });
 
@@ -42,6 +53,21 @@ describe('createNetworkSink', () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]).toHaveLength(2);
     expect(sent[0]![0]).toEqual({ name: 'merge', props: { chain: 'wood' }, at: 1000, session: 't' });
+  });
+
+  it('tags events with a stable distinct id when configured (for cohort retention)', () => {
+    const sent: WireEvent[][] = [];
+    const distinctId = stableAnonId('device-key-uuid');
+    const { sink } = createNetworkSink('/x', { batchSize: 1, session: 't', distinctId, send: (_e, b) => sent.push(b) });
+    sink(ev('session_start'));
+    expect(sent[0]![0]!.distinct).toBe(distinctId);
+  });
+
+  it('omits distinct entirely when no id is configured', () => {
+    const sent: WireEvent[][] = [];
+    const { sink } = createNetworkSink('/x', { batchSize: 1, session: 't', send: (_e, b) => sent.push(b) });
+    sink(ev('session_start'));
+    expect(sent[0]![0]).not.toHaveProperty('distinct');
   });
 
   it('flush() sends a partial batch and clears the queue', () => {

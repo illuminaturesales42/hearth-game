@@ -9,6 +9,7 @@
  */
 import type { Game } from '../core/game';
 import { RESTORE_ORDERS } from '../data/economy';
+import { skyStamp } from './weather';
 import { toast } from './toast';
 
 /** Swap for a real list address/endpoint when one exists. */
@@ -119,7 +120,15 @@ export class GrowthUI {
     ctx.fillStyle = '#f0c878';
     ctx.font = '600 64px Georgia, serif';
     ctx.textAlign = 'center';
-    ctx.fillText('HEARTH', out.width / 2, 95);
+    ctx.fillText('HEARTH', out.width / 2, 88);
+    // "my sky right now" — the shareable real→game moment: the island in the
+    // card literally shows the player's live weather + light + moon.
+    const sky = skyStamp();
+    if (sky) {
+      ctx.font = 'italic 27px Georgia, serif';
+      ctx.fillStyle = 'rgba(240, 200, 120, 0.85)';
+      ctx.fillText(`my sky right now · ${sky}`, out.width / 2, 130);
+    }
     ctx.fillStyle = 'rgba(235, 226, 208, 0.9)';
     ctx.font = '30px Georgia, serif';
     ctx.fillText(`Emberhollow, ${pct}% restored — grown by my real days`, out.width / 2, 150 + mapH + 62);
@@ -180,8 +189,12 @@ export class GrowthUI {
     const exportStale = Date.now() - lastExport > 5 * DAY;
 
     const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    const isMobile = isIos || /Android/i.test(navigator.userAgent) || window.matchMedia('(pointer: coarse)').matches;
     const needsInstall = !standalone && (isIos || this.installEvt !== null);
-    const show = engaged && !snoozed && (needsInstall || exportStale);
+    // On mobile, surface the "install the app" prompt straight away (testers land
+    // on the web link and should be offered the installed app immediately); the
+    // desktop / export-safety nudge still waits until the player is invested.
+    const show = !snoozed && ((needsInstall && isMobile) || (engaged && (needsInstall || exportStale)));
     card.hidden = !show;
     if (!show) return;
 

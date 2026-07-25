@@ -10,7 +10,7 @@ Vite 6 + TypeScript (strict) + vitest. No UI framework — pure-logic core, DOM-
 
 ```bash
 pnpm dev            # dev server
-pnpm test           # vitest (currently 155 tests)
+pnpm test           # vitest (currently 342 tests)
 npx tsc --noEmit    # typecheck
 pnpm build          # production build -> dist/ (must stay clean)
 python tools/slice_assets.py   # regenerate art from source sheets
@@ -30,11 +30,11 @@ Always land changes green: `tsc` clean + tests pass + build clean, then commit.
 
 ## Save system (critical)
 
-`core/save.ts` — versioned localStorage with a **migration chain** (currently v13). Any schema change to `GameState` MUST add a `MIGRATIONS[n]` step + bump `CURRENT_VERSION` + extend the null-guard, or public saves wipe. Round-trip is regression-tested. Rotating backups + export/import exist.
+`core/save.ts` — versioned localStorage with a **migration chain** (currently v17). Any schema change to `GameState` MUST add a `MIGRATIONS[n]` step + bump `CURRENT_VERSION` + extend the null-guard, or public saves wipe. Round-trip is regression-tested. Rotating backups + export/import exist. (Purely-optional fields read defensively — e.g. `stats.dayDuelWins` — may skip the migration; anything the null-guard requires must not.)
 
 ## Art pipeline & visual authority
 
-- **AUTHORITATIVE art library: `C:\Users\illum\OneDrive\Desktop\Hearth\Graphics and UI\Core\Final Assets\`** — the production sheets (Batch 1 style-lock, Batch 2-4 world/merge/resources, Batch 5 buildings L1/L2/L3, Batch 6-7 terrain + full UI kit) + `Asset Guide (Read Me).txt`. Merge icons, resources, currencies (ember-heart energy), and all 12 town buildings + L2/L3 are sliced from here. Batches 8+ (characters, wellness action icons) NOT yet delivered → villager portraits + wellness-action medallions still use older sheets/emoji until then.
+- **AUTHORITATIVE art library: `C:\Users\illum\OneDrive\Desktop\Hearth\Graphics and UI\Core\Final Assets\`** — the production sheets (Batch 1 style-lock, Batch 2-4 world/merge/resources, Batch 5 buildings L1/L2/L3, Batch 6-7 terrain + full UI kit) + `Asset Guide (Read Me).txt`. Merge icons, resources, currencies (ember-heart energy), and all 12 town buildings + L2/L3 are sliced from here. Most later batches (all 20 merge chains, buildings + L2/L3, wellness-action medallions, villager busts, chapter splashes) are now delivered and wired; the remaining gaps are tracked in `docs/art-todo-2026-07-20.md` (late-game Ch3-6 restoration set + premium beauty-decor). Some tool-bar glyphs (⚙ 🔍 🪴 📸 ↩ ✦ ⚒ ⚔ 🔒 🪙) still have no art-swap path.
 - Earlier reference (`Core\` root): `MVP.png` (board), `Map.png` (terrain kit), `UI Flame.png` (ember energy). Design bibles: `…\HEARTH_Codex_and_Production_Pack_v1\` (Book V art, Technical Art Bible, Book VI naming).
 - `tools/slice_assets.py` crops sprites from source sheets → `public/art/` + generated `src/art-manifest.ts` (`artUrl(id)`). `KEYED` set = edge-flood bg removal; per-id `TOLERANCE`. Item icons also get `clean_sprite()` (speckle removal + autocrop).
 - Rulings: dark navy/gold storybook style is authoritative; **no gems/premium-currency art ever**; energy = ember-heart, not a lightning bolt.

@@ -6,6 +6,8 @@
 import type { Game } from '../core/game';
 import { nextTease } from './tease';
 import { nudgeLine } from '../core/discovery';
+import { latestSunTimes } from './weather';
+import { dawnSkyBeat } from '../data/constellations';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 
@@ -39,6 +41,21 @@ export class NewDayUI {
       teaseEl.textContent = tease ? `Today: ${tease}` : '';
       teaseEl.hidden = !tease;
     }
+    // A quiet "look up" beat tied to the real sky tonight: a meteor shower on
+    // its peak night, a full moon rising, or the player's own golden hour.
+    const teaseHost = teaseEl?.parentElement;
+    let skyEl = el('newday-sky');
+    if (!skyEl && teaseHost && teaseEl) {
+      skyEl = document.createElement('p');
+      skyEl.id = 'newday-sky';
+      skyEl.className = teaseEl.className;
+      teaseHost.insertBefore(skyEl, teaseEl.nextSibling);
+    }
+    if (skyEl) {
+      const sky = NewDayUI.skyLine();
+      skyEl.textContent = sky;
+      skyEl.hidden = !sky;
+    }
     // One warm nudge toward the most worthwhile thing not yet tried — an
     // invitation, never a checklist. The matching glow marks the spot on return.
     const nudgeEl = el('newday-nudge');
@@ -49,6 +66,12 @@ export class NewDayUI {
       nudgeEl.hidden = !line;
     }
     el('newday-modal')!.hidden = false;
+  }
+
+  /** The night's real celestial beat, if any (most special first). */
+  private static skyLine(): string {
+    const beat = dawnSkyBeat(Date.now(), latestSunTimes()?.sunsetMs ?? null);
+    return beat ? `✦ ${beat}` : '';
   }
 
   private claim(): void {

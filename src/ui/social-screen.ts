@@ -9,10 +9,13 @@
 import type { Game } from '../core/game';
 import { chainDef } from '../core/board';
 import { portraitFor } from './art';
+import { esc } from './esc';
 import { JOIN_BONUS } from '../core/social';
 import { greetingFor } from '../core/relationships';
 import { VILLAGER_DEFS } from '../data/villagers';
 import { toast } from './toast';
+import { avatarPortraitHTML } from './avatar-render';
+import { openAvatarCreator } from './avatar-creator';
 
 const host = () => document.getElementById('villagers-body');
 const hearts = (n: number) => '♥'.repeat(n) + '♡'.repeat(Math.max(0, 5 - n));
@@ -23,7 +26,11 @@ export class SocialScreen {
     private onDuel: () => void = () => undefined,
   ) {
     game.subscribe((ev) => {
-      if ((ev.type === 'social' || ev.type === 'duelEnd' || ev.type === 'bond') && this.isVisible()) this.render();
+      if (
+        (ev.type === 'social' || ev.type === 'duelEnd' || ev.type === 'bond' || ev.type === 'avatar') &&
+        this.isVisible()
+      )
+        this.render();
     });
   }
 
@@ -38,9 +45,21 @@ export class SocialScreen {
     const joined = s.friends.filter((f) => f.status === 'joined');
     const pending = s.friends.filter((f) => f.status === 'pending');
     const reqs = this.game.activeRequests();
+    // The join is a client-side simulation that grants energy; until the real
+    // backend exists, expose the "They joined" shortcut (a free-energy faucet)
+    // to testers only, so live players can't mint energy from fake friends.
+    const canSimJoin = this.game.isTesterUnlimited;
 
+    const me = this.game.avatar;
     el.innerHTML =
       `<h2 class="screen-title">Your Village</h2>` +
+      // The player's own identity card — their painted face, their name, tappable
+      // to change. First real "profile" surface (GDD §8 social identity).
+      `<button type="button" class="you-card" id="you-card">` +
+      `<span class="you-face">${avatarPortraitHTML(me.portrait, { framed: true, label: 'your look' })}</span>` +
+      `<span class="you-body"><b>${me.name ? esc(me.name) : 'You'}</b>` +
+      `<span>${me.created ? 'A villager of Emberhollow' : 'Tap to choose your look'}</span></span>` +
+      `<span class="you-go">›</span></button>` +
       `<p class="screen-sub">Invite friends to Emberhollow. When they join, your hearth flares. Ask a friend for a hand when a task runs tough.</p>` +
       `<div class="invite-card">` +
       `<div class="invite-copy"><b>Invite a friend</b><span>You both get +${JOIN_BONUS} energy the moment they join.</span></div>` +
@@ -60,8 +79,8 @@ export class SocialScreen {
               const name = def.levelNames[r.level] ?? def.name;
               const can = this.game.canFulfil(r);
               return (
-                `<div class="req"><div class="req-body"><b>${r.who} needs ${r.qty}× ${name}</b>` +
-                `<span>${def.name} · +${r.coins} coins</span></div>` +
+                `<div class="req"><div class="req-body"><b>${esc(r.who)} needs ${r.qty}× ${esc(name)}</b>` +
+                `<span>${esc(def.name)} · +${r.coins} coins</span></div>` +
                 (can
                   ? `<button class="earn-btn" data-req="${r.id}">Give</button>`
                   : `<span class="earn-auto">Need ${r.qty}× L${r.level + 1}</span>`) +
@@ -78,7 +97,7 @@ export class SocialScreen {
               const glyph = chainDef(g.chain).levels[g.level] ?? '🎁';
               return (
                 `<div class="gift"><span class="gift-ico">${glyph}</span>` +
-                `<span class="gift-body"><b>${chainDef(g.chain).name}</b><span>from ${g.from}</span></span>` +
+                `<span class="gift-body"><b>${esc(chainDef(g.chain).name)}</b><span>from ${esc(g.from)}</span></span>` +
                 `<button class="earn-btn" data-gift="${g.id}">Place</button></div>`
               );
             })
@@ -92,7 +111,7 @@ export class SocialScreen {
           const can = this.game.canAskFriend(f.id);
           return (
             `<div class="friend"><div class="friend-face av-${f.avatar}" aria-hidden="true"></div>` +
-            `<div class="friend-body"><b>${f.name}</b><span>By your hearth</span></div>` +
+            `<div class="friend-body"><b>${esc(f.name)}</b><span>By your hearth</span></div>` +
             (can
               ? `<button class="earn-btn" data-ask="${f.id}">Ask for help</button>`
               : `<span class="earn-auto">Asked today</span>`) +
@@ -104,8 +123,9 @@ export class SocialScreen {
         .map(
           (f) =>
             `<div class="friend pending"><div class="friend-face av-${f.avatar}" aria-hidden="true"></div>` +
-            `<div class="friend-body"><b>${f.name}</b><span>Invited · waiting</span></div>` +
-            `<button class="earn-btn ghost" data-joined="${f.id}">They joined</button></div>`,
+            `<div class="friend-body"><b>${esc(f.name)}</b><span>Invited · waiting</span></div>` +
+            (canSimJoin ? `<button class="earn-btn ghost" data-joined="${f.id}">They joined</button>` : '') +
+            `</div>`,
         )
         .join('') +
       `</div>` +
@@ -125,12 +145,12 @@ export class SocialScreen {
         return (
           `<div class="folk">` +
           `<div class="folk-head">${face}` +
-          `<div class="friend-body"><b>${v.name}</b><span>${v.role} · ${v.trait}</span></div>` +
+          `<div class="friend-body"><b>${esc(v.name)}</b><span>${esc(v.role)} · ${esc(v.trait)}</span></div>` +
           `<span class="friend-hearts" title="${b.hearts}/5">${hearts(b.hearts)}</span></div>` +
-          `<p class="folk-greet">${greeting}</p>` +
+          `<p class="folk-greet">${esc(greeting)}</p>` +
           (memory && b.hearts > 0
             ? ''
-            : `<p class="folk-hint">Deliver ${v.name}’s orders to earn their trust — you’ll find them near ${v.favouritePlace}.</p>`) +
+            : `<p class="folk-hint">Deliver ${esc(v.name)}’s orders to earn their trust — you’ll find them near ${esc(v.favouritePlace)}.</p>`) +
           `</div>`
         );
       }).join('') +
@@ -140,13 +160,19 @@ export class SocialScreen {
   }
 
   private wire(el: HTMLElement): void {
+    const youCard = el.querySelector<HTMLButtonElement>('#you-card');
+    if (youCard) youCard.onclick = () => void openAvatarCreator(this.game);
     const invite = el.querySelector<HTMLButtonElement>('#invite-btn');
     if (invite)
       invite.onclick = () => {
         const { code, name } = this.game.inviteFriend();
         const link = `https://hearth.game/join/${code}`;
         void navigator.clipboard?.writeText(link).catch(() => undefined);
-        toast(`Invite link copied — ${name} is on the way. Tap "They joined" to simulate.`);
+        toast(
+          this.game.isTesterUnlimited
+            ? `Invite link copied — ${name} is on the way. Tap "They joined" to simulate.`
+            : `Invite link copied — share Emberhollow with ${name}.`,
+        );
       };
     el.querySelectorAll<HTMLButtonElement>('[data-joined]').forEach((b) => {
       b.onclick = () => this.game.markFriendJoined(b.dataset.joined ?? '');

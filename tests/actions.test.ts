@@ -35,10 +35,24 @@ describe('action ledger', () => {
     expect(recordAction(s, 'breathe', T0).energy).toBe(0);
   });
 
-  it('resets counts at midnight', () => {
+  it('resets counts when the day turns at 4am (not midnight)', () => {
     const done = recordAction(initialActionState(T0), 'water', T0).state;
-    const nextDay = rolloverActions(done, T0 + 24 * 3600_000);
-    expect(nextDay.counts.water ?? 0).toBe(0);
+    // 3:59am the next calendar day is STILL the same Hearth day → counts persist
+    const beforeTurn = new Date('2026-07-06T03:59:00').getTime();
+    expect(rolloverActions(done, beforeTurn).counts.water ?? 0).toBe(1);
+    // 4:01am → the day has turned → counts wiped
+    const afterTurn = new Date('2026-07-06T04:01:00').getTime();
+    expect(rolloverActions(done, afterTurn).counts.water ?? 0).toBe(0);
+  });
+
+  it('rolls action counts live when the app sits open past the 4am turn', () => {
+    const g = new Game(T0);
+    g.completeAction('water', T0);
+    expect(g.canDoAction('water', T0)).toBe(false); // done for the day
+    // no tap, no reload — just the heartbeat tick after the next 4am turn
+    const afterTurn = new Date('2026-07-06T04:01:00').getTime();
+    g.tick(afterTurn);
+    expect(g.canDoAction('water', afterTurn)).toBe(true); // reset, available again
   });
 
   it('grows the streak on consecutive days', () => {

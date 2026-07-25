@@ -9,11 +9,11 @@ import { EXPORT_STAMP_KEY } from './growth';
 import { recentEvents } from '../analytics';
 import { feedback } from './feedback';
 import { toast } from './toast';
-import {
-  pickNotificationProvider,
-  DAILY_NOTIF_BODY,
-  DEFAULT_NOTIF_HOUR,
-} from '../platform/notification-provider';
+import { pickNotificationProvider, DAILY_NOTIF_BODY, DEFAULT_NOTIF_HOUR } from '../platform/notification-provider';
+import { requestGeolocation, setLocationByCity, latestLocationLabel, getSkyPref, setSkyPref } from './weather';
+import type { SkyPref } from './weather';
+import { openAvatarCreator } from './avatar-creator';
+import { avatarPortraitHTML } from './avatar-render';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 
@@ -23,6 +23,11 @@ export class SettingsUI {
   constructor(private game: Game) {
     el<HTMLButtonElement>('settings-open')?.addEventListener('click', () => this.open());
     el<HTMLButtonElement>('settings-close')?.addEventListener('click', () => this.close());
+
+    el<HTMLButtonElement>('set-avatar')?.addEventListener('click', () => void openAvatarCreator(this.game));
+    game.subscribe((ev) => {
+      if (ev.type === 'avatar') this.renderAvatarPreview();
+    });
 
     el<HTMLInputElement>('set-music')?.addEventListener('input', (e) => {
       this.game.setPrefs({ musicVol: Number((e.target as HTMLInputElement).value) / 100 });
@@ -48,6 +53,11 @@ export class SettingsUI {
     el<HTMLButtonElement>('set-import')?.addEventListener('click', () => this.import());
     el<HTMLButtonElement>('set-diag')?.addEventListener('click', () => this.diagnostics());
     el<HTMLButtonElement>('set-reset')?.addEventListener('click', () => this.reset());
+    el<HTMLButtonElement>('set-loc-gps')?.addEventListener('click', () => void this.useMyLocation());
+    el<HTMLButtonElement>('set-loc-city-btn')?.addEventListener('click', () => void this.useCity());
+    document.querySelectorAll<HTMLButtonElement>('#set-skypref button').forEach((b) => {
+      b.addEventListener('click', () => this.chooseSky(b.dataset.sky as SkyPref));
+    });
 
     game.subscribe((ev) => {
       if (ev.type === 'settings') this.apply();
@@ -63,7 +73,16 @@ export class SettingsUI {
     if (app) (app.style as CSSStyleDeclaration & { zoom?: string }).zoom = String(p.textScale);
     document.body.classList.toggle('high-contrast', p.highContrast);
     document.body.classList.toggle('reduce-motion', p.forceReducedMotion);
+    this.renderAvatarPreview();
     this.paint();
+  }
+
+  /** Show the player's current bust beside the "Your look" button. */
+  private renderAvatarPreview(): void {
+    const host = el('set-avatar-preview');
+    if (host) host.innerHTML = avatarPortraitHTML(this.game.avatar.portrait, { framed: true, label: 'your look' });
+    const btn = el<HTMLButtonElement>('set-avatar');
+    if (btn) btn.textContent = this.game.avatar.created ? 'Edit your look' : 'Create your look';
   }
 
   private open(): void {
@@ -97,6 +116,7 @@ export class SettingsUI {
     if (notifNote) notifNote.hidden = !p.notifyDaily;
     const v = el('set-version');
     if (v) v.textContent = `Hearth MVP · save v${CURRENT_VERSION} · health data never leaves your device`;
+    this.paintLocation();
   }
 
   /**
@@ -126,6 +146,77 @@ export class SettingsUI {
     } else {
       await provider.cancelAll();
       this.game.setPrefs({ notifyDaily: false });
+    }
+  }
+
+  /** Reflect the current location choice + refresh the status line. */
+  private paintLocation(): void {
+    const status = el('set-loc-status');
+    if (status) {
+      const label = latestLocationLabel();
+      status.textContent = label
+        ? `Following ${label}. The island mirrors its sky.`
+        : 'Not set — the island keeps a gentle default sky.';
+    }
+    this.paintSky();
+  }
+
+  private static readonly SKY_NOTE: Record<SkyPref, string> = {
+    real: 'Following your real sky. Prefer a mood? Choose one — the day’s light still tracks your true sunrise.',
+    clear: 'Clear skies over Emberhollow, whatever it’s doing outside. Your daylight still follows your real sun.',
+    rain: 'A cosy rain settles over the island. Your daylight still follows your real sun.',
+    snow: 'A soft snowfall blankets the island. Your daylight still follows your real sun.',
+  };
+
+  /** Reflect the chosen sky in the segmented control + its note. */
+  private paintSky(): void {
+    const pref = getSkyPref();
+    document.querySelectorAll<HTMLButtonElement>('#set-skypref button').forEach((b) => {
+      b.classList.toggle('on', b.dataset.sky === pref);
+    });
+    const note = el('set-skypref-note');
+    if (note) note.textContent = SettingsUI.SKY_NOTE[pref];
+  }
+
+  /** Switch the island's sky and repaint straight away. */
+  private chooseSky(pref: SkyPref): void {
+    if (!pref) return;
+    setSkyPref(pref);
+    this.paintSky();
+    // Nudge the map to re-render with the new sky at once.
+    document.dispatchEvent(new CustomEvent('hearth:location-changed'));
+  }
+
+  /** Nudge the map to refetch weather for a just-changed location. */
+  private notifyLocationChanged(): void {
+    document.dispatchEvent(new CustomEvent('hearth:location-changed'));
+    this.paintLocation();
+  }
+
+  private async useMyLocation(): Promise<void> {
+    toast('Asking your device for its location…');
+    const ok = await requestGeolocation();
+    toast(
+      ok ? 'Location shared — your sky is on its way.' : 'Couldn’t get your location. You can set your town instead.',
+    );
+    if (ok) this.notifyLocationChanged();
+  }
+
+  private async useCity(): Promise<void> {
+    const input = el<HTMLInputElement>('set-loc-city');
+    const name = input?.value.trim() ?? '';
+    if (!name) {
+      toast('Type your town first.');
+      return;
+    }
+    toast('Finding your town…');
+    const label = await setLocationByCity(name);
+    if (label) {
+      if (input) input.value = '';
+      toast(`Set to ${label}.`);
+      this.notifyLocationChanged();
+    } else {
+      toast('Couldn’t find that town. Try a nearby city.');
     }
   }
 

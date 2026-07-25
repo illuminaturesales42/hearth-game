@@ -16,36 +16,51 @@ import { orderAt } from '../data/endless';
 import { questsForDay } from '../data/daily-quests';
 import {
   BUILDING_INFO,
+  BUILDING_PLATE_SCALE,
   DECOR_CATALOG,
+  GROUND_BANDS,
+  LIGHTHOUSE_ANCHOR,
+  PLAZA,
+  SKY_ANCHORS,
   TOWN_BOATS,
   TOWN_BUILDINGS,
   TOWN_NATURE,
   TOWN_TERRAIN,
-  TOWN_WALKERS,
+  anchorOf,
 } from '../data/town-layout';
-import { computeMood, earnedFlourishes, meditatedToday, moodCaption, seasonForMonth } from '../core/world-mood';
+import { computeMood, earnedFlourishes, meditatedToday, seasonForMonth } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
-import { stemLevels } from '../core/stem-levels';
+import { stemLevels, type StemLevels } from '../core/stem-levels';
+import { illumination } from '../data/moon';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
+import { getPhaseOverride, phaseForTime, type PhaseWeights, type SunTimes } from '../core/time-of-day';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
-import { currentWeather } from './weather';
-import { artUrl, portraitFor, tileMarkup } from './art';
+import {
+  currentWeather,
+  latestAccumulation,
+  effectiveWeather,
+  presetAccumulation,
+  getSkyPref,
+  latestCoords,
+} from './weather';
+import { sunPosition } from '../core/sun';
+
+/** The sun's screen-side key for the lighting washes, or null with no location. */
+type SunKey = { dx: number; dy: number; lowness: number } | null;
+
+/** Per-phase damping of the procedural grade (0.35 when a painted plate exists). */
+type PhaseScales = { dawn: number; dusk: number; night: number };
+import { artUrl, currencyIcon, portraitFor, tileMarkup } from './art';
+import { openAvatarCreator } from './avatar-creator';
+import { esc } from './esc';
 import { ALMANAC_PAGES, ALMANAC_SECTIONS, almanacProgress } from '../core/almanac';
 import { VILLAGER_DEFS } from '../data/villagers';
 import { bondFor, greetingFor, hearts, HEARTS_MAX } from '../core/relationships';
-import { drawButterfly, drawFlower, drawSparkle, drawStroller } from './paint-flourishes';
+import { drawButterfly, drawSparkle } from './paint-flourishes';
 import { toast } from './toast';
 import { feedback } from './feedback';
 import { minigameCta } from './minigame-cta';
 import { tomorrowLine } from './tease';
-
-const STAGE_NAMES = [
-  'Storm-Wrecked',
-  'Rebuilding Begins',
-  'A Place to Call Home',
-  'A Flourishing Haven',
-  'Beacon of Emberhollow',
-] as const;
 
 /**
  * Emberhollow's coastline, clockwise from the west edge — hand-laid headlands
@@ -81,14 +96,19 @@ export class MapView {
   private canvas: HTMLCanvasElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
   private raf = 0;
+  /** rAF timestamp of the last drawn frame (for the ~30fps ambient cap). */
+  private lastDrawT = -1000;
+  /** Last storm-flash cycle we rolled thunder for (one clap per flash). */
+  private lastThunderCycle = -1;
   private visible = false;
-  private mediaReduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  /** Reduced-motion is honoured from BOTH the OS media query AND the in-app
-   *  Settings toggle (body.reduce-motion) — matching board-view and the minigame
-   *  overlay, so choosing "reduce motion" in Settings actually calms the map
-   *  (onset cues become toasts, ambient loops hold still). */
+  /** Reduced-motion follows the IN-GAME Settings toggle (body.reduce-motion)
+   *  only. The OS media query merely seeds that toggle's default for new saves
+   *  (see core/save.ts) — it must not hard-freeze the game, because Windows
+   *  reports prefers-reduced-motion whenever its "animation effects" switch is
+   *  off, which silently killed the sea, flames and merge animations for those
+   *  players with no way back in-game. */
   private get reduce(): boolean {
-    return this.mediaReduce || document.body.classList.contains('reduce-motion');
+    return document.body.classList.contains('reduce-motion');
   }
   /** Painted stage backdrops (sliced from the concept sheets); null until loaded. */
   private stageArt: (HTMLImageElement | null)[] = [null, null, null, null, null];
@@ -145,6 +165,13 @@ export class MapView {
         img.src = url;
       }
     }
+    // The player set/changed their town or picked a sky in Settings — refetch and
+    // repaint now (the redraw matters for reduced-motion, which has no rAF loop).
+    document.addEventListener('hearth:location-changed', () => {
+      this.forceWeatherRefresh();
+      this.accumCache = null;
+      if (this.visible && this.reduce) this.draw(0);
+    });
     game.subscribe((ev) => {
       const refresh =
         ev.type === 'delivered' ||
@@ -236,11 +263,155 @@ export class MapView {
     return c;
   }
 
+  /** Soft black cutout of a sprite, cached per art id — the cast-shadow stamp. */
+  private silCache = new Map<string, HTMLCanvasElement>();
+  private silhouette(artId: string, img: HTMLImageElement): HTMLCanvasElement | null {
+    const hit = this.silCache.get(artId);
+    if (hit) return hit;
+    if (!img.naturalWidth) return null;
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    const g = c.getContext('2d');
+    if (!g) return null;
+    g.filter = 'blur(3px)'; // baked feather → soft-edged shadows at draw time
+    g.drawImage(img, 0, 0);
+    g.filter = 'none';
+    g.globalCompositeOperation = 'source-in';
+    g.fillStyle = '#0b1526';
+    g.fillRect(0, 0, c.width, c.height);
+    this.silCache.set(artId, c);
+    return c;
+  }
+
+  /**
+   * The night sky over the bay: a soft starfield dimmed by real cloud cover.
+   * (The phase-accurate moon, constellations and meteor showers were retired
+   * from the main map in the environment pass — the sky here is atmosphere, not
+   * an astronomy display; the stargaze feature keeps its own dedicated sky, and
+   * real moonlight still lifts the night lighting wash in washNight.)
+   * Reduced-motion holds the stars steady.
+   */
+  private drawStarfield(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, mood: WorldMood): void {
+    const clear = 1 - mood.cloudCover * 0.75; // stars fade behind cloud
+    if (clear <= 0.05) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(240, 244, 255, 1)';
+    for (let i = 0; i < 70; i++) {
+      const sx = (((Math.sin(i * 12.9898) * 43758.5) % 1) + 1) % 1;
+      const sy = (((Math.sin(i * 78.233) * 12543.7) % 1) + 1) % 1;
+      const x = sx * W;
+      const y = sy * H * 0.24 + H * 0.01;
+      const big = i % 9 === 0;
+      const tw = this.reduce ? 0.6 : 0.28 + 0.55 * Math.abs(Math.sin(t / 900 + i * 1.3));
+      ctx.globalAlpha = tw * 0.8 * clear;
+      ctx.fillRect(x, y, big ? 1.7 : 1, big ? 1.7 : 1);
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /**
+   * The night's living layer, drawn ABOVE the night grade (everything drawn
+   * inside the town pass gets multiplied into the dark — lights and life must
+   * be re-asserted on top): stars, fireflies over the meadow, a lantern speck
+   * on each moored boat, and the lighthouse beam's shimmer on the sea.
+   * Positions are scene-space and camera-mapped; reduced-motion holds still.
+   */
+  private nightAmbience(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    t: number,
+    k: number,
+    mood: WorldMood,
+    stage: number,
+  ): void {
+    const { zoom, panX, panY } = this.cam;
+    // fold in the island's left shift so these night specks track the scene
+    const mapX = (x: number): number => (x - this.mapShiftX) * zoom + panX;
+    const mapY = (y: number): number => y * zoom + panY;
+    ctx.save();
+    ctx.globalAlpha = k;
+    this.drawStarfield(ctx, W, H, t, mood);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'lighter';
+    // fireflies wander the meadow — warm living specks against the blue dark
+    if (!this.reduce && mood.weather !== 'rain' && mood.weather !== 'storm' && mood.weather !== 'snow') {
+      const n = 12;
+      for (let i = 0; i < n; i++) {
+        const fx = W * (0.14 + 0.7 * ((i / n + Math.sin(t / 3200 + i * 1.7) * 0.06 + 1) % 1));
+        const fy = H * (0.46 + 0.3 * (0.5 + Math.cos(t / 2600 + i * 2.3) * 0.5));
+        const tw = 0.35 + 0.65 * Math.abs(Math.sin(t / 700 + i * 2.1));
+        const px = mapX(fx);
+        const py = mapY(fy);
+        const g = ctx.createRadialGradient(px, py, 0, px, py, 3 * zoom);
+        g.addColorStop(0, `rgba(215, 240, 150, ${(0.6 * tw * k).toFixed(3)})`);
+        g.addColorStop(1, 'rgba(215, 240, 150, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(px - 4 * zoom, py - 4 * zoom, 8 * zoom, 8 * zoom);
+      }
+    }
+    // a warm lantern speck at each moored boat's stern — the harbour keeps watch
+    for (const b of TOWN_BOATS) {
+      if (stage < b.stage) continue;
+      const px = mapX((b.x + b.w * 0.24) * W);
+      const py = mapY(b.y * H - b.w * W * 0.24);
+      const g = ctx.createRadialGradient(px, py, 0, px, py, 3.4 * zoom);
+      g.addColorStop(0, `rgba(255, 208, 120, ${(0.75 * k).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(255, 208, 120, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(px - 4 * zoom, py - 4 * zoom, 8 * zoom, 8 * zoom);
+    }
+    // the lit beacon lays a shimmering streak on the sea below the rock
+    if (this.game.snapshot.orderIndex >= 9) {
+      const lx = mapX(LIGHTHOUSE_ANCHOR.x * W);
+      const ly = mapY((LIGHTHOUSE_ANCHOR.y + 0.13) * H);
+      const shimmer = this.reduce ? 0.7 : 0.55 + 0.45 * Math.abs(Math.sin(t / 1100));
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.scale(0.32, 1);
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, H * 0.16 * zoom);
+      g.addColorStop(0, `rgba(255, 226, 150, ${(0.3 * k * shimmer).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(255, 226, 150, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(-H * 0.2 * zoom, -H * 0.2 * zoom, H * 0.4 * zoom, H * 0.4 * zoom);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   /** How the world feels right now: real weather + the player's day. */
+  /**
+   * Signed horizontal wind (−1 = blowing left/west … +1 = right/east) from the
+   * real wind direction, so rain slants and snow drifts the way the wind is
+   * actually blowing where the player is. Meteorological windDir is where the
+   * wind comes FROM, so it blows toward windDir+180°. Gentle rightward default
+   * until a direction is known.
+   */
+  private windX(): number {
+    const d = this.weather?.windDir;
+    return d == null ? 0.6 : Math.sin(((d + 180) * Math.PI) / 180);
+  }
+
+  /** The player's real sun times from the latest reading, or null (→ clock fallback). */
+  private sunTimesFromWeather(): SunTimes | null {
+    const w = this.weather;
+    if (w && typeof w.sunriseMs === 'number' && typeof w.sunsetMs === 'number') {
+      return { sunriseMs: w.sunriseMs, sunsetMs: w.sunsetMs };
+    }
+    return null;
+  }
+
   private mood(): WorldMood {
     const s = this.game.snapshot;
+    // "Pick your sky": a chosen mood overrides the real weather (opt-out for
+    // grey-climate players) while the solar clock still tracks the real sunrise.
+    const pref = getSkyPref();
+    const weather = effectiveWeather(this.weather, pref);
+    const accumulation = pref === 'real' ? this.accumulation() : presetAccumulation(pref);
     return computeMood({
-      weather: this.weather,
+      weather,
       meditatedToday: meditatedToday(s.actions.counts),
       lastCalmDay: s.wellbeing.lastCalmDay,
       today: s.actions.day,
@@ -248,7 +419,21 @@ export class MapView {
       counts: s.actions.counts,
       walkedToday: (s.healthLedger?.stepsGranted ?? 0) > 0,
       streak: s.actions.streak,
+      accumulation,
     });
+  }
+
+  private accumCache: { at: number; value: ReturnType<typeof latestAccumulation> } | null = null;
+  /**
+   * Weather's memory changes on an hourly / slow-decay clock, so it's wasteful to
+   * re-read the log and re-fold it every frame — recompute at most once a minute.
+   */
+  private accumulation(): ReturnType<typeof latestAccumulation> {
+    const now = Date.now();
+    if (!this.accumCache || now - this.accumCache.at > 60_000) {
+      this.accumCache = { at: now, value: latestAccumulation(now) };
+    }
+    return this.accumCache.value;
   }
 
   private refreshWeather(): void {
@@ -257,8 +442,18 @@ export class MapView {
     void currentWeather().then((w) => {
       if (!w) return;
       this.weather = w;
+      this.accumCache = null; // a fresh reading just extended the log
+      // Real sun times just landed — let the time badge (and anyone else
+      // reading the solar clock) repaint immediately.
+      document.dispatchEvent(new CustomEvent('hearth:sky-updated'));
       if (this.visible && this.reduce) this.draw(0);
     });
+  }
+
+  /** Refetch weather right now (the player changed location in Settings). */
+  private forceWeatherRefresh(): void {
+    this.weatherAskedAt = 0;
+    this.refreshWeather();
   }
 
   setVisible(v: boolean): void {
@@ -279,8 +474,147 @@ export class MapView {
     }
   }
 
+  /**
+   * Warm light sources collected during the town pass (lit windows, lamp heads,
+   * doorway pools). The night grade multiplies the whole land down — so these
+   * are RE-EMITTED after grading with `lighter`, letting the village's lights
+   * genuinely blaze against the dark instead of being crushed by it.
+   */
+  private glowSpots: { x: number; y: number; r: number; a: number }[] = [];
+
+  /**
+   * One pre-rendered warm radial-falloff stamp shared by EVERY glow draw. A full
+   * lit town pushes dozens of lights; allocating a fresh createRadialGradient per
+   * light per frame was the main animation cost. The stamp is rendered once
+   * (64px, warm amber core -> transparent) and drawn scaled with globalAlpha —
+   * visually identical to the per-light gradients it replaces.
+   */
+  private glowStampCache: HTMLCanvasElement | null = null;
+  private glowStamp(): HTMLCanvasElement {
+    if (this.glowStampCache) return this.glowStampCache;
+    const c = document.createElement('canvas');
+    c.width = 64;
+    c.height = 64;
+    const g = c.getContext('2d');
+    if (g) {
+      // Softer shoulder than a straight 1→0 ramp: a gentler core and a quick
+      // mid falloff keep lights reading as small jewels rather than big orbs.
+      const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grad.addColorStop(0, 'rgba(255, 196, 116, 0.85)');
+      grad.addColorStop(0.45, 'rgba(255, 196, 116, 0.28)');
+      grad.addColorStop(1, 'rgba(255, 196, 116, 0)');
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 64, 64);
+    }
+    this.glowStampCache = c;
+    return c;
+  }
+
+  /**
+   * WHERE a sprite's painted lights actually sit, as fractions of its own frame,
+   * measured from its night art (the warm/bright pixels = lit windows, lanterns,
+   * a lantern room). Glows are then placed ON the glowing part of the graphic
+   * instead of a guessed centre — so every building lights where it's painted to.
+   * Measured once per art id on a downscaled copy and cached.
+   */
+  private glowAnchorCache = new Map<string, { fx: number; fy: number; wt: number }[] | null>();
+  /**
+   * ALL the places a sprite's painted lights sit, as fractions of its frame —
+   * one entry per CLUSTER of warm/bright pixels in the night art (each lit
+   * window, lantern, forge mouth), weighted by cluster size. A single averaged
+   * centroid put one glow on the dark wall BETWEEN two windows; per-cluster,
+   * every painted light gets its own small glow and unpainted walls get none.
+   */
+  private glowAnchor(artId: string): { fx: number; fy: number; wt: number }[] | null {
+    const hit = this.glowAnchorCache.get(artId);
+    if (hit !== undefined) return hit;
+    // Measure ONLY the true night art. Falling back to the day sprite poisoned
+    // the cache: warm wooden walls/decks pass a "warm pixel" test in daylight,
+    // so glows landed mid-building instead of on the lanterns. No night art
+    // loaded yet -> no glow this frame (uncached; it'll measure once it loads).
+    const img = this.sprite(`${artId}_night`);
+    if (!img || !img.naturalWidth) return null; // not loaded yet — don't cache a miss
+    const c = document.createElement('canvas');
+    const scale = Math.min(1, 160 / img.naturalWidth); // fine enough that a small window is a real cluster
+    c.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const g = c.getContext('2d', { willReadFrequently: true });
+    if (!g) return null;
+    g.drawImage(img, 0, 0, c.width, c.height);
+    const W = c.width;
+    const H = c.height;
+    let warm: Uint8Array;
+    try {
+      const d = g.getImageData(0, 0, W, H).data;
+      warm = new Uint8Array(W * H);
+      for (let i = 0; i < W * H; i++) {
+        const o = i * 4;
+        // A painted LIGHT is saturated yellow/orange and bright — lantern glass,
+        // lit window, forge mouth. Night walls are dim/blue and stone is grey,
+        // so neither passes; only the actually-glowing paint does.
+        if (
+          d[o + 3]! > 120 && // opaque
+          d[o]! > 185 && // hot red channel
+          d[o + 1]! > 115 && // yellow-orange, not pure red
+          d[o + 2]! < 165 && // not washed toward white/blue
+          d[o]! - d[o + 2]! > 55 // clearly warm over blue
+        )
+          warm[i] = 1;
+      }
+    } catch {
+      return null; // tainted canvas — treat as unmeasurable
+    }
+    // flood-fill connected warm regions (8-neighbour) into clusters
+    const seen = new Uint8Array(W * H);
+    const clusters: { fx: number; fy: number; wt: number }[] = [];
+    const stack: number[] = [];
+    for (let start = 0; start < W * H; start++) {
+      if (!warm[start] || seen[start]) continue;
+      stack.length = 0;
+      stack.push(start);
+      seen[start] = 1;
+      let sx = 0;
+      let sy = 0;
+      let n = 0;
+      while (stack.length) {
+        const p = stack.pop()!;
+        const px = p % W;
+        const py = (p / W) | 0;
+        sx += px;
+        sy += py;
+        n++;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const qx = px + dx;
+            const qy = py + dy;
+            if (qx < 0 || qy < 0 || qx >= W || qy >= H) continue;
+            const q = qy * W + qx;
+            if (warm[q] && !seen[q]) {
+              seen[q] = 1;
+              stack.push(q);
+            }
+          }
+        }
+      }
+      if (n >= 4) clusters.push({ fx: sx / n / W, fy: sy / n / H, wt: n });
+    }
+    // biggest lights first; cap so a glittery sprite doesn't spawn dozens
+    clusters.sort((a, b) => b.wt - a.wt);
+    const res = clusters.length ? clusters.slice(0, 6) : null;
+    this.glowAnchorCache.set(artId, res);
+    return res;
+  }
+
+  /** Draw one warm glow via the shared stamp (viewport coords + radius). */
+  private stampGlow(ctx: CanvasRenderingContext2D, px: number, py: number, pr: number, alpha: number): void {
+    if (alpha < 0.01 || pr <= 0) return;
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.drawImage(this.glowStamp(), px - pr, py - pr, pr * 2, pr * 2);
+    ctx.globalAlpha = 1;
+  }
+
   /** last stem levels sent, so ramps only fire when something actually changed */
-  private lastStems: { calmPad: number; rain: number; chatter: number } | null = null;
+  private lastStems: StemLevels | null = null;
   private stemsCheckedAt = 0;
 
   /**
@@ -291,13 +625,27 @@ export class MapView {
   private updateStems(): void {
     if (!this.visible) return;
     this.stemsCheckedAt = Date.now();
-    const levels = stemLevels(this.mood());
+    const { weights } = phaseForTime(Date.now(), this.sunTimesFromWeather());
+    const levels = stemLevels(this.mood(), weights);
     const last = this.lastStems;
-    if (last && last.calmPad === levels.calmPad && last.rain === levels.rain && last.chatter === levels.chatter) return;
+    const same =
+      last &&
+      last.calmPad === levels.calmPad &&
+      last.rain === levels.rain &&
+      last.chatter === levels.chatter &&
+      last.wind === levels.wind &&
+      last.surf === levels.surf &&
+      last.birds === levels.birds &&
+      last.crickets === levels.crickets;
+    if (same) return;
     this.lastStems = levels;
     feedback.setStem('calmPad', levels.calmPad);
     feedback.setStem('rain', levels.rain);
     feedback.setStem('chatter', levels.chatter);
+    feedback.setStem('wind', levels.wind);
+    feedback.setStem('surf', levels.surf);
+    feedback.setStem('birds', levels.birds);
+    feedback.setStem('crickets', levels.crickets);
   }
 
   /**
@@ -373,7 +721,7 @@ export class MapView {
           }
         }
         if (this.decorPick) {
-          const placed = this.game.placeDecor(this.decorPick, x / W, y / 285);
+          const placed = this.game.placeDecor(this.decorPick, x / W, y / MapView.LOGICAL_H);
           if (!placed) {
             const def = DECOR_CATALOG.find((d) => d.art === this.decorPick);
             const broke = def && this.game.snapshot.coins < def.cost;
@@ -440,7 +788,7 @@ export class MapView {
         e.preventDefault();
         const rect = cv.getBoundingClientRect();
         const steps = MapView.ZOOM_STEPS;
-        const i = steps.indexOf(this.cam.zoom as (typeof steps)[number]);
+        const i = this.nearestZoomStep(); // tolerant of a continuous pinch zoom
         const dir = e.deltaY < 0 ? 1 : -1;
         const next = steps[Math.min(steps.length - 1, Math.max(0, i + dir))] ?? 1;
         if (next !== this.cam.zoom) this.zoomTo(next, { x: e.clientX - rect.left, y: e.clientY - rect.top });
@@ -448,16 +796,53 @@ export class MapView {
       { passive: false },
     );
 
-    // Pointer drag to pan (touch + mouse). A small move threshold distinguishes
-    // a pan from a tap so buildings still open on a clean tap.
+    // Pointer drag to pan (touch + mouse) and TWO-FINGER PINCH to zoom. A small
+    // move threshold distinguishes a pan from a tap so buildings still open on a
+    // clean tap; a pinch marks dragMoved so the trailing tap never opens a card.
+    const active = new Map<number, { x: number; y: number }>();
+    let pinch: { dist: number; zoom: number } | null = null;
+    const spread = (): { dist: number; cx: number; cy: number } | null => {
+      const pts = [...active.values()];
+      if (pts.length < 2) return null;
+      const [a, b] = [pts[0]!, pts[1]!];
+      return { dist: Math.hypot(b.x - a.x, b.y - a.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 };
+    };
+
     cv.addEventListener('pointerdown', (e) => {
-      if (this.decorMode || this.cam.zoom <= 1) return;
+      if (this.decorMode) return;
+      active.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      cv.setPointerCapture(e.pointerId);
+      const s = spread();
+      if (s) {
+        // second finger down — start a pinch, abandon any single-finger drag
+        pinch = { dist: s.dist, zoom: this.cam.zoom };
+        this.dragging = false;
+        this.dragMoved = true; // suppress the tap that follows the gesture
+        return;
+      }
+      // single pointer: drag-pan only makes sense once zoomed in
+      if (this.cam.zoom <= 1) return;
       this.dragging = true;
       this.dragMoved = false;
       this.dragFrom = { x: e.clientX, y: e.clientY, panX: this.cam.panX, panY: this.cam.panY };
-      cv.setPointerCapture(e.pointerId);
     });
+
     cv.addEventListener('pointermove', (e) => {
+      if (active.has(e.pointerId)) active.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const s = spread();
+      if (pinch && s) {
+        // continuous zoom about the finger midpoint (zoomAt keeps that world
+        // point fixed); clamped to the same range the stepped controls use
+        const rect = cv.getBoundingClientRect();
+        const steps = MapView.ZOOM_STEPS;
+        const min = steps[0] ?? 1;
+        const max = steps[steps.length - 1] ?? 2.6;
+        const next = Math.min(max, Math.max(min, pinch.zoom * (s.dist / (pinch.dist || 1))));
+        this.dragMoved = true;
+        this.zoomTo(next, { x: s.cx - rect.left, y: s.cy - rect.top });
+        if (this.reduce) this.draw(0);
+        return;
+      }
       if (!this.dragging) return;
       const dx = e.clientX - this.dragFrom.x;
       const dy = e.clientY - this.dragFrom.y;
@@ -467,9 +852,20 @@ export class MapView {
       this.clampCam();
       if (this.reduce) this.draw(0);
     });
+
     const endDrag = (e: PointerEvent) => {
-      if (!this.dragging) return;
-      this.dragging = false;
+      active.delete(e.pointerId);
+      if (active.size < 2) pinch = null;
+      // lifting one finger of a pinch: hand control back to a drag from here
+      if (active.size === 1 && this.cam.zoom > 1) {
+        const [only] = [...active.values()];
+        if (only) {
+          this.dragging = true;
+          this.dragFrom = { x: only.x, y: only.y, panX: this.cam.panX, panY: this.cam.panY };
+        }
+      } else if (active.size === 0) {
+        this.dragging = false;
+      }
       try {
         cv.releasePointerCapture(e.pointerId);
       } catch {
@@ -478,7 +874,7 @@ export class MapView {
     };
     cv.addEventListener('pointerup', endDrag);
     cv.addEventListener('pointercancel', endDrag);
-    cv.style.touchAction = 'none'; // let us own drag-pan without the page scrolling
+    cv.style.touchAction = 'none'; // let us own drag-pan/pinch without the page scrolling
   }
 
   /** The decorate tray: pick a piece, tap the town. Coins buy beauty, never power. */
@@ -496,7 +892,7 @@ export class MapView {
           return (
             `<button class="decor-item ${this.decorPick === d.art ? 'picked' : ''} ${afford ? '' : 'broke'}" data-art="${d.art}">` +
             (url ? `<span class="decor-ico" style="background-image:url(${url})"></span>` : '') +
-            `<span class="decor-name">${d.name}</span><span class="decor-cost">🪙 ${d.cost}</span></button>`
+            `<span class="decor-name">${d.name}</span><span class="decor-cost">${currencyIcon('coin')} ${d.cost}</span></button>`
           );
         }).join('');
       tray.querySelectorAll<HTMLButtonElement>('.decor-item').forEach((b) => {
@@ -526,10 +922,29 @@ export class MapView {
     const locked = unlockAt < 0;
     const at = Math.abs(unlockAt);
     const img = document.getElementById('bldg-art') as HTMLImageElement | null;
-    const url = artUrl(art);
+    // Show the SAME sprite the map draws — matched to this building's real state
+    // (storm ruin / scaffold while still lost, or its actual upgrade tier L1/L2/L3
+    // once restored) — so the card graphic always reflects where the building is.
+    let cardArt = art;
+    let dim = false;
+    if (locked) {
+      const delivered = this.game.snapshot.orderIndex;
+      const upcoming = TOWN_BUILDINGS.filter((b) => b.unlockAt > delivered)
+        .map((b) => b.unlockAt)
+        .sort((a, b) => a - b);
+      const isNext = upcoming.length > 0 && at === upcoming[0];
+      const ruinId = isNext && artUrl(`${art}_wip`) ? `${art}_wip` : `${art}_ruin`;
+      if (artUrl(ruinId)) cardArt = ruinId;
+      else dim = true; // props with no storm art → keep the sepia "still lost" wash on the base
+    } else if (this.game.isUpgradeable(art)) {
+      const tier = this.game.upgradeTier(art);
+      if (tier >= 2 && artUrl(`${art}_l3`)) cardArt = `${art}_l3`;
+      else if (tier >= 1 && artUrl(`${art}_l2`)) cardArt = `${art}_l2`;
+    }
+    const url = artUrl(cardArt) ?? artUrl(art);
     if (img && url) {
       img.src = url;
-      img.style.filter = locked ? 'sepia(0.4) saturate(0.6) brightness(0.72)' : '';
+      img.style.filter = dim ? 'sepia(0.4) saturate(0.6) brightness(0.72)' : '';
     }
     const name = document.getElementById('bldg-name');
     if (name) name.textContent = BUILDING_INFO[art] ?? 'Emberhollow';
@@ -541,6 +956,12 @@ export class MapView {
         : order
           ? order.resolution
           : 'It has always stood here, waiting.';
+      // The Notice Board folds into the Town Hall — its painted board stands at
+      // the steps, the first letter still pinned to it.
+      if (!locked && art === 'town_townhall') {
+        story.textContent +=
+          ' The old notice board still stands at its steps — a letter addressed to nobody, postmarked seventeen years ago, pinned dead centre.';
+      }
     }
     const meta = document.getElementById('bldg-meta');
     if (meta)
@@ -595,6 +1016,21 @@ export class MapView {
     this.renderBond(art, locked);
 
     const m = document.getElementById('bldg-modal');
+    // The Tailor's Cottage is the wardrobe's home: once restored, its card
+    // offers the avatar picker (GDD §8.6). Art-gated, so this only ever shows
+    // when the building itself exists.
+    const wardrobe = document.getElementById('bldg-wardrobe') as HTMLButtonElement | null;
+    if (wardrobe) {
+      const isTailor = art === 'town_tailor' && !locked;
+      wardrobe.hidden = !isTailor;
+      wardrobe.textContent = this.game.avatar.created ? 'Change your look' : 'Choose your look';
+      wardrobe.onclick = isTailor
+        ? () => {
+            if (m) m.hidden = true;
+            void openAvatarCreator(this.game);
+          }
+        : null;
+    }
     if (m) m.hidden = false;
   }
 
@@ -616,9 +1052,9 @@ export class MapView {
     host.innerHTML =
       (bust ? `<span class="bldg-bond-bust" style="background-image:url(${bust})"></span>` : '') +
       `<div class="bldg-bond-body">` +
-      `<b>${villager.name}<span class="bldg-bond-hearts" role="img" aria-label="${filled} of ${HEARTS_MAX} hearts">${heartRow}</span></b>` +
-      `<span class="bldg-bond-trait">${villager.trait}</span>` +
-      `<p class="bldg-bond-greet">“${greet}”</p></div>`;
+      `<b>${esc(villager.name)}<span class="bldg-bond-hearts" role="img" aria-label="${filled} of ${HEARTS_MAX} hearts">${heartRow}</span></b>` +
+      `<span class="bldg-bond-trait">${esc(villager.trait)}</span>` +
+      `<p class="bldg-bond-greet">“${esc(greet)}”</p></div>`;
   }
 
   /** Hide the building card and launch its game. */
@@ -712,7 +1148,7 @@ export class MapView {
     if (!this.canvas) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = this.canvas.clientWidth || 360;
-    const h = 285;
+    const h = MapView.LOGICAL_H;
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(h * dpr);
     this.ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -726,7 +1162,13 @@ export class MapView {
   private get logicalW(): number {
     return this.canvas?.clientWidth || 360;
   }
-  private static readonly LOGICAL_H = 285;
+  private static readonly LOGICAL_H = 315;
+  /** Nudge the whole island a little left of centre so the right-side forest
+   *  doesn't crowd the frame — more open water on the right. Applied as an extra
+   *  translate on the scene AND folded into screenToWorld so taps stay true. */
+  private get mapShiftX(): number {
+    return this.logicalW * 0.03;
+  }
 
   /** Keep the viewport inside the scaled scene; fit-zoom is always centred. */
   private clampCam(): void {
@@ -735,7 +1177,8 @@ export class MapView {
 
   /** Viewport CSS px → logical scene coords (undoes the camera transform). */
   private screenToWorld(x: number, y: number): { x: number; y: number } {
-    return screenToWorld(this.cam, x, y);
+    const p = screenToWorld(this.cam, x, y);
+    return { x: p.x + this.mapShiftX, y: p.y };
   }
 
   /** Zoom to `z`, keeping the world point under `centre` (viewport px) fixed. */
@@ -747,10 +1190,19 @@ export class MapView {
   }
 
   /** Cycle fit → close → closer → fit (the primary, touch-friendly zoom control). */
+  /** Index of the zoom step closest to the current (possibly pinched) zoom. */
+  private nearestZoomStep(): number {
+    const steps = MapView.ZOOM_STEPS;
+    let best = 0;
+    for (let i = 1; i < steps.length; i++) {
+      if (Math.abs(steps[i]! - this.cam.zoom) < Math.abs(steps[best]! - this.cam.zoom)) best = i;
+    }
+    return best;
+  }
+
   private cycleZoom(): void {
     const steps = MapView.ZOOM_STEPS;
-    const i = steps.indexOf(this.cam.zoom as (typeof steps)[number]);
-    this.zoomTo(steps[(i + 1) % steps.length] ?? 1);
+    this.zoomTo(steps[(this.nearestZoomStep() + 1) % steps.length] ?? 1);
   }
 
   private updateZoomBtn(): void {
@@ -767,17 +1219,60 @@ export class MapView {
     // would start each time — the old handle gets overwritten and can never be
     // cancelled, compounding a full-canvas redraw per orphaned loop per frame.
     if (this.raf) return;
+    // Cap the ambient redraw at ~30fps. Every animation is a smooth function of
+    // `t` (drifting clouds, water, flames, particles, the storm flash), so
+    // halving the redraw rate on a 60Hz display is imperceptible while cutting
+    // the per-frame cost — the full-scene composite + all the atmosphere washes
+    // — roughly in half. (Battery + thermal on the screen players idle on.)
+    const MIN_FRAME_MS = 32;
     const step = (t: number) => {
-      this.draw(t);
-      // weather drifts on its own clock — re-key the ambience every few seconds
-      if (Date.now() - this.stemsCheckedAt > 5000) this.updateStems();
+      // Skip the full-scene composite while a minigame overlay covers the map —
+      // the island was still redrawing behind every minigame, starving them of
+      // main-thread time (badly on mobile web tabs, fine in the installed PWA).
+      // The rAF chain stays alive so it resumes the instant the overlay closes.
+      if (!this.overlayCovering() && t - this.lastDrawT >= MIN_FRAME_MS) {
+        this.lastDrawT = t;
+        this.draw(t);
+        // weather drifts on its own clock — re-key the ambience every few seconds
+        if (Date.now() - this.stemsCheckedAt > 5000) this.updateStems();
+      }
       this.raf = requestAnimationFrame(step);
     };
     this.raf = requestAnimationFrame(step);
   }
 
-  /** Draw one frame of a 7-frame flame sprite strip, its base at (cx, groundY).
-   *  Reduced motion holds a single mid-flame frame. */
+  /** True while a full-screen minigame overlay is covering the map. */
+  private overlayCovering(): boolean {
+    const o = document.getElementById('minigame-overlay');
+    return !!o && !o.hidden;
+  }
+
+  /**
+   * Draw one frame of a horizontal N-frame sprite strip, base at (cx, groundY),
+   * width w (height preserves the single-frame aspect). Reduced motion holds a
+   * representative mid frame. The canonical strip contract (see sprite-strip.ts):
+   * one PNG, N equal-width frames side-by-side, full height, no padding.
+   */
+  private drawStrip(
+    ctx: CanvasRenderingContext2D,
+    id: string,
+    frames: number,
+    fps: number,
+    cx: number,
+    groundY: number,
+    w: number,
+    t: number,
+  ): void {
+    const strip = this.sprite(id);
+    if (!strip || !strip.naturalWidth) return;
+    const cw = Math.round(strip.naturalWidth / frames);
+    const ch = strip.naturalHeight;
+    const fi = this.reduce ? Math.floor(frames / 2) : Math.floor(t / (1000 / fps)) % frames;
+    const h = w * (ch / cw);
+    ctx.drawImage(strip, fi * cw, 0, cw, ch, cx - w / 2, groundY - h, w, h);
+  }
+
+  /** 7-frame flame at ~11fps, base at (cx, groundY). Thin wrapper over drawStrip. */
   private drawFlame(
     ctx: CanvasRenderingContext2D,
     id: string,
@@ -786,14 +1281,39 @@ export class MapView {
     w: number,
     t: number,
   ): void {
-    const strip = this.sprite(id);
-    if (!strip || !strip.naturalWidth) return;
-    const frames = 7;
-    const cw = Math.round(strip.naturalWidth / frames);
-    const ch = strip.naturalHeight;
-    const fi = this.reduce ? 3 : Math.floor(t / 90) % frames; // ~11fps flicker
-    const h = w * (ch / cw);
-    ctx.drawImage(strip, fi * cw, 0, cw, ch, cx - w / 2, groundY - h, w, h);
+    this.drawStrip(ctx, id, 7, 11, cx, groundY, w, t);
+  }
+
+  /**
+   * Grounding for anything that stands in or on the bay (stilted pier, moored
+   * hull): a flattened darkened-water reflection where an earth pad would break
+   * the illusion, plus one slow ripple ring spreading from the footprint. Under
+   * reduced-motion the ring holds mid-spread (static grounding still happens).
+   */
+  private drawWaterGrounding(ctx: CanvasRenderingContext2D, bx: number, by: number, w: number, t: number): void {
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.scale(1, 0.3);
+    // the hull/deck's dark mirror in the water
+    const refl = ctx.createRadialGradient(0, 0, 2, 0, 0, w * 0.58);
+    refl.addColorStop(0, 'rgba(12, 38, 52, 0.22)');
+    refl.addColorStop(0.65, 'rgba(12, 38, 52, 0.11)');
+    refl.addColorStop(1, 'rgba(12, 38, 52, 0)');
+    ctx.fillStyle = refl;
+    ctx.beginPath();
+    ctx.arc(0, 0, w * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    // one quiet ripple lapping the FRONT of the footprint only (a full ring
+    // reads as a selection bubble around the roof-line — kept faint so it never
+    // haloes the building against the dark sea), staggered per-site so
+    // neighbours don't pulse in sync
+    const phase = this.reduce ? 0.5 : ((t + bx * 13) % 3600) / 3600;
+    ctx.strokeStyle = `rgba(206, 230, 240, ${(0.07 * (1 - phase)).toFixed(3)})`;
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.arc(0, 0, w * (0.3 + 0.34 * phase), Math.PI * 0.12, Math.PI * 0.88);
+    ctx.stroke();
+    ctx.restore();
   }
 
   private draw(t: number): void {
@@ -801,7 +1321,7 @@ export class MapView {
     const cv = this.canvas;
     if (!ctx || !cv) return;
     const W = cv.clientWidth || 360;
-    const H = 285;
+    const H = MapView.LOGICAL_H;
     const prog = this.progress();
     const stage = this.stage();
     ctx.clearRect(0, 0, W, H);
@@ -813,6 +1333,9 @@ export class MapView {
     ctx.save();
     ctx.translate(this.cam.panX, this.cam.panY);
     ctx.scale(this.cam.zoom, this.cam.zoom);
+    // shift the whole island a touch left (the right strip is filled with sea by
+    // the plate draw); folded into screenToWorld so hit-testing stays aligned
+    ctx.translate(-this.mapShiftX, 0);
 
     // Composed living town (building sprites unlock with the story).
     if (artUrl('town_townhall')) {
@@ -823,6 +1346,36 @@ export class MapView {
       // a warm wash after sleep + meditation, cooler when the mind is restless —
       // the cheapest way to make the *entire* town feel like it answered your day.
       this.applyColourGrade(ctx, W, H, mood);
+      this.applyTimeLight(ctx, W, H, t, mood);
+      // The village's lights answer the dark: re-emit collected window/lamp
+      // glows OVER the night grade so they blaze instead of being multiplied
+      // away — the deeper the night, the brighter they cut.
+      const wts = phaseForTime(Date.now(), this.sunTimesFromWeather()).weights;
+      const nightW = wts.night;
+      // lights blaze through the whole dark half of the day — evening + dusk fold
+      // in so lit windows/lanterns don't blink off during twilight (evening has
+      // no plate of its own; it leans night, mirroring effNight in drawTown)
+      const glowNight = Math.min(1, nightW + wts.evening * 0.7 + wts.dusk * 0.3);
+      if (glowNight > 0.05 && this.glowSpots.length) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (const s of this.glowSpots) {
+          const a = s.a * glowNight;
+          if (a < 0.01) continue;
+          // spots were collected inside the camera transform (incl. the island
+          // shift) — map to viewport the same way
+          const px = (s.x - this.mapShiftX) * this.cam.zoom + this.cam.panX;
+          const py = s.y * this.cam.zoom + this.cam.panY;
+          this.stampGlow(ctx, px, py, s.r * this.cam.zoom, a);
+        }
+        ctx.restore();
+      }
+      // living water sits ABOVE the grade so the night multiply can't crush it
+      this.drawShoreShimmer(ctx, W, H, t, mood, nightW > 0.4);
+      if (nightW > 0.05) this.nightAmbience(ctx, W, H, t, nightW, mood, stage);
+      const rainbow = this.rainbowStrength(mood);
+      if (rainbow > 0) this.drawRainbow(ctx, W, H, rainbow);
+      if (!this.reduce) this.applyStormFx(ctx, W, H, t, mood);
       this.updateBar(prog, stage, mood);
       return;
     }
@@ -843,7 +1396,14 @@ export class MapView {
         const speed = meditated ? 2600 : 1600;
         const base = sleptWell ? 0.09 : 0.05;
         const pulse = base + 0.03 * Math.sin(t / speed);
-        const glow = ctx.createRadialGradient(W * 0.5, H * 0.42, 10, W * 0.5, H * 0.42, W * 0.6);
+        const glow = ctx.createRadialGradient(
+          PLAZA.x * W,
+          PLAZA.y * H - H * 0.1,
+          10,
+          PLAZA.x * W,
+          PLAZA.y * H - H * 0.1,
+          W * 0.6,
+        );
         glow.addColorStop(0, `rgba(255, 200, 120, ${pulse.toFixed(3)})`);
         glow.addColorStop(1, 'rgba(255, 200, 120, 0)');
         ctx.fillStyle = glow;
@@ -988,7 +1548,70 @@ export class MapView {
     // stars, weather, foam, boats, buildings, people, effects) on top, so the
     // plate reads as a single painting yet still breathes with the time of day.
     const plate = this.sprite('map_island_plate');
-    if (plate) ctx.drawImage(plate, 0, 0, W, H);
+    // real solar time-of-day — needed by the plate crossfade + everything below
+    const tod = phaseForTime(Date.now(), this.sunTimesFromWeather());
+    // Evening carries no plate/overlay art of its own — it renders as a
+    // dusk-LEANING blend of dusk and night, so deep twilight sits BETWEEN the
+    // two (warm glow fading to navy) instead of reading as full night. dusk-lean
+    // (0.55 / 0.45) keeps it from going too dark.
+    const wEve = tod.weights.evening;
+    const effDusk = Math.min(1, tod.weights.dusk + wEve * 0.55);
+    const effNight = Math.min(1, tod.weights.night + wEve * 0.45);
+    const phaseW = (ph: 'dawn' | 'dusk' | 'night'): number =>
+      ph === 'dusk' ? effDusk : ph === 'night' ? effNight : tod.weights.dawn;
+    // The island is drawn a touch left of centre (see mapShiftX). That exposes a
+    // thin strip on the right — fill it with the plate's OWN sea edge (2px right
+    // column stretched), so it stays sea at every time of day with no seam.
+    const edgeX = W * 0.03;
+    const seaEdge = (img: HTMLImageElement): void =>
+      void ctx.drawImage(img, img.naturalWidth - 2, 0, 2, img.naturalHeight, W, 0, edgeX + 2, H);
+    // BASE plate follows the DOMINANT phase, not always midday. The midday
+    // painting carries a painted sun in its top-right; using it as the base at
+    // night let that sun bleed through the overlays as a stray warm disc in the
+    // corner. Basing on the heaviest phase kills that whole class of artifact.
+    const basePlate = (() => {
+      if (!plate) return null;
+      const cands: [number, string][] = [
+        [tod.weights.day, 'map_island_plate'],
+        [tod.weights.dawn, 'map_island_plate_dawn'],
+        [effDusk, 'map_island_plate_dusk'],
+        [effNight, 'map_island_plate_night'],
+      ];
+      cands.sort((a, b) => b[0] - a[0]);
+      return this.sprite(cands[0]![1]) ?? plate;
+    })();
+    if (basePlate) {
+      ctx.drawImage(basePlate, 0, 0, W, H);
+      seaEdge(basePlate);
+    }
+    // Painted time-of-day plates (Map V2): when the art machine has generated a
+    // phase's plate, crossfade the whole ground to it by that phase's live
+    // weight — dawn melts to midday melts to dusk melts to night, hand-painted
+    // at every hour. Each seam stays dormant until its art lands.
+    if (plate) {
+      // No evening plate — evening = dusk plate + night plate at the blended
+      // weights (see phaseW), so it sits between the two rather than dark.
+      const phasePlates: ['dawn' | 'dusk' | 'night', string][] = [
+        ['dawn', 'map_island_plate_dawn'],
+        ['dusk', 'map_island_plate_dusk'],
+        ['night', 'map_island_plate_night'],
+      ];
+      for (const [wKey, id] of phasePlates) {
+        const w = phaseW(wKey);
+        // Each plate carries its own PAINTED sun (the dawn plate's is huge —
+        // ~0.82W, 0.14H). At a trace weight the plate adds nothing but that sun,
+        // which ghosts in as a stray warm disc in the corner of an otherwise dark
+        // sky. Require a real contribution before a plate is allowed in.
+        if (w <= 0.12) continue;
+        const img = this.sprite(id);
+        if (!img) continue;
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, w);
+        ctx.drawImage(img, 0, 0, W, H);
+        seaEdge(img);
+        ctx.restore();
+      }
+    }
 
     // --- sky by real time of day ---
     const hour = new Date().getHours();
@@ -1010,13 +1633,23 @@ export class MapView {
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, W, H * 0.45);
     }
-    // sun or moon
-    const night = hour >= 21 || hour < 5;
+    // sun or moon — real solar night: dark when it's actually dark where the
+    // player is (Open-Meteo is_day, else our solar-time model, else the clock).
+    // A hearthSky() inspection override outranks the real is_day flag, or a
+    // forced night would fight the live weather reading.
+    const night = getPhaseOverride()
+      ? tod.weights.night > 0.5
+      : this.weather?.isDay === false
+        ? true
+        : this.weather?.isDay === true
+          ? false
+          : tod.weights.night > 0.5;
     // The painted plate is a top-down island with NO sky, and the corner
     // time-of-day badge now shows the sun/moon — so the star field and the
     // celestial disc only run for the procedural fallback (no plate). Otherwise
     // a stray white disc floated over the sea and a rectangular sky-glow washed
     // the top of the map.
+    // (starfield now draws in nightAmbience, ABOVE the night grade)
     if (night && !plate) {
       const twinkle = 1 - mood.cloudCover * 0.7;
       for (let i = 0; i < 42; i++) {
@@ -1031,8 +1664,8 @@ export class MapView {
       ctx.globalAlpha = 1;
     }
     if (!plate) {
-      const sunX = W * 0.78;
-      const sunY = H * 0.14;
+      const sunX = SKY_ANCHORS.godRays.x * W;
+      const sunY = SKY_ANCHORS.godRays.y * H;
       if (night) {
         // a pale moon
         ctx.fillStyle = 'rgba(230,235,250,0.9)';
@@ -1383,6 +2016,8 @@ export class MapView {
       const h = w * (img.naturalHeight / img.naturalWidth);
       const bob = this.reduce ? 0 : Math.sin(t / (900 - mood.sea * 350) + b.x * 20) * (1.2 + mood.sea * 3.6);
       const tilt = this.reduce ? 0 : Math.sin(t / 1100 + b.x * 31) * mood.sea * 0.06;
+      // hulls sit ON the water: a darkened reflection grounds them (they had none)
+      this.drawWaterGrounding(ctx, b.x * W, b.y * H + bob - h * 0.04, w * 0.9, t);
       ctx.save();
       ctx.translate(b.x * W, b.y * H + bob);
       ctx.rotate(tilt);
@@ -1394,6 +2029,7 @@ export class MapView {
     // took stands as dark ruins, and each delivered order restores one
     // building to colour and life ---
     this.hitboxes = [];
+    this.glowSpots.length = 0;
     this.decorHit = [];
     interface ScenePiece {
       art: string;
@@ -1405,6 +2041,7 @@ export class MapView {
       decorId?: number;
       ruined?: boolean;
       ruinVariant?: number;
+      water?: true;
     }
     const decor: ScenePiece[] = this.game.snapshot.decor.map((d) => ({
       art: d.art,
@@ -1433,6 +2070,19 @@ export class MapView {
       .map((b) => b.unlockAt)
       .sort((a, b) => a - b);
     const nextUnlock = upcoming.length ? upcoming[0]! : -1; // the one being rebuilt now → scaffold
+    // Directional cast shadows from the REAL sun: long at dawn/dusk (pointing
+    // away from the sun's true side), short at noon, faint moon-shadows on
+    // bright nights, softened under cloud. The single strongest depth cue.
+    const castSun = this.sunKey();
+    const castLow = castSun?.lowness ?? 0.5;
+    const sunUp = tod.weights.day + tod.weights.dawn + tod.weights.dusk;
+    const castAlpha = Math.min(
+      0.5,
+      (0.26 + 0.24 * castLow) * sunUp * (1 - mood.cloudCover * 0.7) +
+        0.08 * illumination(Date.now()) * tod.weights.night,
+    );
+    const castShear = (castSun ? castSun.dx : -0.5) * (0.45 + castLow * 1.5);
+    const castSquash = 0.26 + castLow * 0.12;
     const pieces: ScenePiece[] = [
       ...TOWN_TERRAIN.filter((t) => !FLAT.has(t.art) && delivered >= t.unlockAt),
       ...TOWN_NATURE.filter(
@@ -1456,7 +2106,7 @@ export class MapView {
       if (!img) continue;
       // buildings read bigger against the detailed painted plate so the town
       // stands out from the landscape; props/nature keep their scale.
-      const w = p.w * W * (plate && BUILDING_INFO[p.art] ? 1.04 : 1);
+      const w = p.w * W * (plate && BUILDING_INFO[p.art] ? BUILDING_PLATE_SCALE : 1);
       const h = w * (img.naturalHeight / img.naturalWidth);
       if (p.decorId !== undefined) {
         this.decorHit.push({ x0: p.x * W - w / 2, y0: p.y * H - h, x1: p.x * W + w / 2, y1: p.y * H, id: p.decorId });
@@ -1502,11 +2152,22 @@ export class MapView {
         }
         const rimg = ruinArt ? this.sprite(ruinArt) : undefined;
         if (rimg) {
-          const rw = p.w * W * (plate && BUILDING_INFO[p.art] ? 1.04 : 1);
+          const rw = p.w * W * (plate && BUILDING_INFO[p.art] ? BUILDING_PLATE_SCALE : 1);
           const rh = rw * (rimg.naturalHeight / rimg.naturalWidth);
           ctx.save();
-          ctx.globalAlpha = p.unlockAt === nextUnlock ? 0.97 : 0.85; // distant ruins recede a touch
+          const ra = p.unlockAt === nextUnlock ? 0.97 : 0.85; // distant ruins recede a touch
+          ctx.globalAlpha = ra;
           ctx.drawImage(rimg, p.x * W - rw / 2, p.y * H - rh, rw, rh);
+          // ruins live in the day cycle too: painted _dawn/_dusk/_night ruin
+          // variants crossfade over, same seam as built states
+          for (const ph of ['dawn', 'dusk', 'night'] as const) {
+            const wgt = phaseW(ph);
+            if (wgt <= 0.05 || !ruinArt) continue;
+            const phased = this.sprite(`${ruinArt}_${ph}`);
+            if (!phased) continue;
+            ctx.globalAlpha = ra * Math.min(1, wgt);
+            ctx.drawImage(phased, p.x * W - rw / 2, p.y * H - rh, rw, rh);
+          }
           ctx.restore();
           continue;
         }
@@ -1527,38 +2188,89 @@ export class MapView {
           alpha = Math.min(1, age * 2);
         } else this.appeared.delete(p.art);
       }
-      // Ground the building into the meadow: a soft warm earth "pad" blends its
-      // footprint into the painted terrain (so it doesn't look pasted on), then a
-      // darker contact shadow sits it down. The pad is static (drawn even under
-      // reduced-motion, where it does the visual grounding); the shadow layers on.
+      // The building throws its shadow along the ground away from the real sun
+      // (drawn before the pad + sprite so the structure stands on top of it).
+      if (castAlpha > 0.02 && !p.water && (BUILDING_INFO[p.art] || artId.startsWith('tree_'))) {
+        const sil = this.silhouette(artId, img);
+        if (sil) {
+          ctx.save();
+          ctx.globalAlpha = castAlpha * (BUILDING_INFO[p.art] ? 1 : 0.7);
+          ctx.translate(p.x * W, p.y * H - h * 0.02);
+          ctx.transform(1, 0, castShear, castSquash, 0, 0);
+          ctx.drawImage(sil, -w / 2, -h, w, h);
+          ctx.restore();
+        }
+      }
+      // Ground the building into its terrain. On land: a soft warm earth "pad"
+      // blends the footprint into the painted meadow, then a darker contact
+      // shadow sits it down. Over water (pier, stilted hut): an earth blob would
+      // break the illusion — instead a darkened water reflection + a slow ripple
+      // ring, so stilts and decks read as truly standing in the bay. Both are
+      // static-safe (the grounding draws even under reduced-motion).
       if (BUILDING_INFO[p.art]) {
         const bx = p.x * W;
         const by = p.y * H - h * 0.02;
-        // warm groomed-earth pad — wide + whisper-subtle so it only softens the
-        // seam between building and painted ground, never reads as a dirt blob
-        const pad = ctx.createRadialGradient(bx, by, 2, bx, by, w * 0.66);
-        pad.addColorStop(0, 'rgba(150, 128, 78, 0.14)');
-        pad.addColorStop(0.6, 'rgba(150, 128, 78, 0.07)');
-        pad.addColorStop(1, 'rgba(150, 128, 78, 0)');
-        ctx.save();
-        ctx.translate(bx, by);
-        ctx.scale(1, 0.32);
-        ctx.fillStyle = pad;
-        ctx.beginPath();
-        ctx.arc(0, 0, w * 0.68, 0, Math.PI * 2);
-        ctx.fill();
-        // darker contact shadow, tighter under the base
-        const sh = ctx.createRadialGradient(0, 0, 2, 0, 0, w * 0.5);
-        sh.addColorStop(0, 'rgba(18, 24, 14, 0.32)');
-        sh.addColorStop(1, 'rgba(18, 24, 14, 0)');
-        ctx.fillStyle = sh;
-        ctx.beginPath();
-        ctx.arc(0, 0, w * 0.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        if (p.water) {
+          this.drawWaterGrounding(ctx, bx, by, w, t);
+        } else {
+          // warm groomed-earth pad — wide + whisper-subtle so it only softens the
+          // seam between building and painted ground, never reads as a dirt blob.
+          // The warm amber fades out with the light and the pad cools/darkens, so
+          // plot edges melt into the night terrain instead of standing pale on it.
+          const padDim = 1 - effNight * 0.8;
+          const pad = ctx.createRadialGradient(bx, by, 2, bx, by, w * 0.66);
+          pad.addColorStop(0, `rgba(150, 128, 78, ${(0.14 * padDim).toFixed(3)})`);
+          pad.addColorStop(0.6, `rgba(150, 128, 78, ${(0.07 * padDim).toFixed(3)})`);
+          pad.addColorStop(1, 'rgba(150, 128, 78, 0)');
+          ctx.save();
+          ctx.translate(bx, by);
+          ctx.scale(1, 0.32);
+          ctx.fillStyle = pad;
+          ctx.beginPath();
+          ctx.arc(0, 0, w * 0.68, 0, Math.PI * 2);
+          ctx.fill();
+          // darker contact shadow, tighter under the base — deepens into night so
+          // buildings settle INTO the dark ground rather than floating on it
+          const sh = ctx.createRadialGradient(0, 0, 2, 0, 0, w * 0.5);
+          sh.addColorStop(0, `rgba(14, 18, 26, ${(0.32 + effNight * 0.16).toFixed(3)})`);
+          sh.addColorStop(1, 'rgba(14, 18, 26, 0)');
+          ctx.fillStyle = sh;
+          ctx.beginPath();
+          ctx.arc(0, 0, w * 0.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
       }
       ctx.globalAlpha = alpha;
       ctx.drawImage(img, p.x * W - (w * scale) / 2, p.y * H - h * scale, w * scale, h * scale);
+      // Time-of-day art seam: painted `<art>_dawn/_dusk/_night` variants (lit
+      // windows at night, warm-keyed at dusk — see docs/map-v2-naming.md)
+      // crossfade over the day sprite by the live phase weights. Works for any
+      // state on the ladder (ruin/wip/l1/l2/l3 all resolve through artId).
+      // Dormant per-building per-phase until each variant's art lands.
+      if (BUILDING_INFO[p.art]) {
+        for (const ph of ['dawn', 'dusk', 'night'] as const) {
+          const wgt = phaseW(ph);
+          if (wgt <= 0.05) continue;
+          const phased = this.sprite(`${artId}_${ph}`);
+          if (!phased) continue;
+          ctx.globalAlpha = alpha * Math.min(1, wgt);
+          ctx.drawImage(phased, p.x * W - (w * scale) / 2, p.y * H - h * scale, w * scale, h * scale);
+        }
+        // Settle buildings into the dark: the painted night art runs a touch
+        // hot, so lay a whisper of the building's own shadow back over it at
+        // deep night. The window glows are drawn AFTER this, so lit windows and
+        // lanterns still shine — only the walls dim.
+        if (effNight > 0.06) {
+          const sil = this.silhouette(artId, img);
+          if (sil) {
+            ctx.save();
+            ctx.globalAlpha = alpha * effNight * 0.18;
+            ctx.drawImage(sil, p.x * W - (w * scale) / 2, p.y * H - h * scale, w * scale, h * scale);
+            ctx.restore();
+          }
+        }
+      }
       ctx.globalAlpha = 1;
       // a brief flame flourish as a building first rises — Emberhollow rekindled
       if (born !== undefined && !this.reduce) {
@@ -1570,43 +2282,96 @@ export class MapView {
           ctx.restore();
         }
       }
-      const dusk = hour >= 17 && hour < 21;
-      const dawn = hour >= 5 && hour < 7;
+      const dusk = effDusk > 0.25;
+      const dawn = tod.weights.dawn > 0.25;
       const dim = night || dusk || dawn;
       // cosy warmth spills from the windows of restored homes once the light
-      // fails — the single biggest "someone lives here" cue.
-      if (dim && BUILDING_INFO[p.art] && !this.reduce) {
-        const cx = p.x * W;
-        const cy = p.y * H - h * 0.4;
-        // gentle candle-flicker, phase-varied per home so they don't pulse in sync
-        const k = (night ? 0.46 : dusk ? 0.32 : 0.2) * (0.93 + 0.07 * Math.sin(t / 820 + p.x * 40));
-        const warm = ctx.createRadialGradient(cx, cy, 1, cx, cy, w * 0.6);
-        warm.addColorStop(0, `rgba(255, 198, 120, ${k})`);
-        warm.addColorStop(1, 'rgba(255, 190, 110, 0)');
-        ctx.fillStyle = warm;
-        ctx.fillRect(cx - w * 0.7, cy - h * 0.55, w * 1.4, h * 1.05);
+      // fails — the single biggest "someone lives here" cue. Homes now light up
+      // ONE BY ONE across the real dusk→night window (a per-home offset), not all
+      // at once, and a little morning warmth lingers at dawn.
+      // Window jewels light every home at dusk/night. Kept ON under reduced
+      // motion (a lit town, just static — no candle flicker / forge flame).
+      if (BUILDING_INFO[p.art]) {
+        // A real-world walk brings the town home to its windows: villagersOut
+        // advances the evening curve, so more homes glow sooner (figure-free
+        // life — the walk reaction after the people pass).
+        const evening = Math.min(1, (effDusk * 0.7 + effNight) * (1 + mood.villagersOut * 0.35)); // 0 day → 1 deep night (evening folds in)
+        const off = (((Math.sin(p.x * 127.1 + p.y * 311.7) * 43758.5453) % 1) + 1) % 1; // stable 0..1 per home
+        const lit = evening > off * 0.55 ? (evening - off * 0.55) / (1 - off * 0.55) : 0; // ramps once past its hour
+        const glow = Math.max(lit, tod.weights.dawn * 0.45); // homes still cosy at first light
+        if (glow > 0.02) {
+          // Glows land ONLY on the painted lights — one small jewel per measured
+          // warm cluster (each lit window / lantern) in the night art. No painted
+          // light, no glow: unlit walls stay dark instead of wearing a guessed
+          // halo. (The old single averaged centroid put one big orb on the dark
+          // wall BETWEEN a building's windows.)
+          const clusters = this.glowAnchor(artId);
+          const flick = this.reduce ? 1 : 0.93 + 0.07 * Math.sin(t / 820 + p.x * 40); // gentle candle-flicker
+          const k = glow * 0.4 * flick;
+          if (clusters) {
+            const total = clusters.reduce((sum, cl) => sum + cl.wt, 0) || 1;
+            for (const cl of clusters) {
+              const cx = p.x * W + (cl.fx - 0.5) * w * scale;
+              const cy = p.y * H - h * scale * (1 - cl.fy);
+              // bigger painted lights glow a touch more; every jewel stays small
+              const wgtK = k * (0.55 + 0.45 * Math.min(1, (cl.wt / total) * clusters.length));
+              const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, w * 0.09);
+              core.addColorStop(0, `rgba(255, 205, 110, ${Math.min(0.55, wgtK * 1.3).toFixed(3)})`);
+              core.addColorStop(1, 'rgba(255, 190, 90, 0)');
+              ctx.fillStyle = core;
+              ctx.fillRect(cx - w * 0.12, cy - w * 0.12, w * 0.24, w * 0.24);
+              // re-emit over the night grade: a small jewel + a tight halo
+              this.glowSpots.push({ x: cx, y: cy, r: w * 0.07, a: wgtK * 0.8 });
+              this.glowSpots.push({ x: cx, y: cy, r: w * 0.16, a: wgtK * 0.18 });
+            }
+          }
+          // (No separate forge flame: the blacksmith sprite already paints its
+          // own forge fire, and a per-light cluster above lands a glow on that hot
+          // mouth. An extra fx_flame_forge in the yard read as a stray broken fire.)
+        }
       }
-      // street lamps cast a warm pool on the ground + a glowing head at dusk/night
-      if (dim && p.art === 'prop_lamp' && !this.reduce) {
+      // Street lamps: a live flame in the glass, a glowing head, and a warm
+      // ground pool at dusk/night. They ignite ONE BY ONE across the dusk->night
+      // window (per-lamp offset), like the homes. Reduced motion keeps a static
+      // lit lamp (no flame strip / flicker) rather than going dark.
+      if (dim && p.art === 'prop_lamp') {
         const lx = p.x * W;
         const ly = p.y * H;
-        const lampFlick = 0.82 + 0.18 * Math.abs(Math.sin(t / 118 + p.x * 25));
-        const pool = ctx.createRadialGradient(lx, ly, 1, lx, ly, w * 2.6);
-        pool.addColorStop(0, `rgba(255, 210, 130, ${0.32 * (0.9 + (0.1 * (lampFlick - 0.82)) / 0.18)})`);
-        pool.addColorStop(1, 'rgba(255, 200, 120, 0)');
-        ctx.fillStyle = pool;
-        ctx.save();
-        ctx.translate(lx, ly);
-        ctx.scale(1, 0.42);
-        ctx.beginPath();
-        ctx.arc(0, 0, w * 2.6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-        const head = ctx.createRadialGradient(lx, ly - h * 0.82, 0, lx, ly - h * 0.82, w * 0.9);
-        head.addColorStop(0, `rgba(255, 226, 150, ${0.6 * lampFlick})`);
-        head.addColorStop(1, 'rgba(255, 226, 150, 0)');
-        ctx.fillStyle = head;
-        ctx.fillRect(lx - w, ly - h * 0.82 - w, w * 2, w * 2);
+        const headY = ly - h * 0.82;
+        const toNight = Math.min(1, effDusk * 0.5 + effNight);
+        const off = (((Math.sin(p.x * 91.7 + p.y * 47.3) * 43758.5453) % 1) + 1) % 1; // stable per lamp
+        const litL = toNight > off * 0.5 ? (toNight - off * 0.5) / (1 - off * 0.5) : 0;
+        if (litL > 0.02) {
+          const flick = this.reduce ? 1 : 0.85 + 0.15 * Math.abs(Math.sin(t / 118 + p.x * 25));
+          const k = litL * flick;
+          // elliptical ground pool
+          ctx.save();
+          ctx.translate(lx, ly);
+          ctx.scale(1, 0.42);
+          this.stampGlow(ctx, 0, 0, w * 1.8, 0.22 * k);
+          ctx.restore();
+          // a real flame flickering in the lantern glass (art-gated → the head
+          // glow below stands in until fx_flame_lantern is present)
+          if (!this.reduce) this.drawFlame(ctx, 'fx_flame_lantern', lx, headY + h * 0.16, w * 0.7, t);
+          this.stampGlow(ctx, lx, headY, w * 0.6, 0.4 * k);
+          // jewel re-emit over the night grade — small points, not orbs
+          this.glowSpots.push({ x: lx, y: headY, r: w * 0.3, a: 0.6 * k });
+          this.glowSpots.push({ x: lx, y: headY, r: w * 0.7, a: 0.15 * k });
+          this.glowSpots.push({ x: lx, y: ly, r: w * 1.0, a: 0.08 * litL });
+        }
+      }
+      // A walked day opens the market: a warm ember glow under the awning by
+      // daylight — trade and bustle without a single drawn figure. Static, so it
+      // grounds the reaction under reduced-motion too.
+      if (p.art === 'town_market' && !p.ruined && mood.villagersOut > 0 && !night) {
+        const mx = p.x * W;
+        const my = p.y * H - h * 0.32;
+        const a = 0.1 + mood.villagersOut * 0.1;
+        const awn = ctx.createRadialGradient(mx, my, 2, mx, my, w * 0.55);
+        awn.addColorStop(0, `rgba(244, 166, 59, ${a.toFixed(3)})`);
+        awn.addColorStop(1, 'rgba(244, 166, 59, 0)');
+        ctx.fillStyle = awn;
+        ctx.fillRect(mx - w * 0.6, my - h * 0.4, w * 1.2, h * 0.8);
       }
       // a fully-upgraded (Beloved) building gets a soft golden aura of pride;
       // the L2/L3 detail now lives in the painted sprite itself
@@ -1620,13 +2385,17 @@ export class MapView {
         ctx.fillStyle = aura;
         ctx.fillRect(cx - w * 0.75, cy - h * 0.6, w * 1.5, h * 1.2);
       }
-      // cosy chimney smoke once the village is warm again
+      // cosy chimney smoke once the village is warm again — busier hearths (a
+      // richer, longer plume) on the days the player really walked
       if (p.smoke && stage >= 3 && !this.reduce) {
         const sx = p.x * W + p.smoke.dx * w;
         const sy = p.y * H - h + p.smoke.dy * h * 0.2;
-        for (let i = 0; i < 3; i++) {
+        const puffs = 3 + Math.round(mood.villagersOut * 2);
+        // moonlit smoke reads silver-blue, daylight smoke warm cream
+        const smokeTint = night ? '190, 205, 230' : '232, 225, 210';
+        for (let i = 0; i < puffs; i++) {
           const puffY = sy - i * 7 - ((t / 260 + i * 3) % 8);
-          ctx.fillStyle = `rgba(232, 225, 210, ${0.22 - i * 0.06})`;
+          ctx.fillStyle = `rgba(${smokeTint}, ${Math.max(0.04, 0.22 + mood.villagersOut * 0.05 - i * 0.06).toFixed(3)})`;
           ctx.beginPath();
           // the real wind carries the smoke sideways
           ctx.arc(
@@ -1641,142 +2410,13 @@ export class MapView {
       }
     }
 
-    // --- villagers amble their rounds once their stories are told ---
-    for (const wk of TOWN_WALKERS) {
-      if (delivered < wk.unlockAt) continue;
-      const img = this.sprite(wk.art);
-      if (!img || wk.path.length < 2) continue;
-      // ping-pong along the waypoint list, phase-offset by art id hash
-      const total = wk.path.length - 1;
-      const phase = this.reduce ? 0.5 : ((t / 1000 + wk.art.length * 3.7) / wk.period) % 2;
-      const u = phase < 1 ? phase : 2 - phase; // 0..1..0
-      const seg = Math.min(total - 1, Math.floor(u * total));
-      const local = u * total - seg;
-      const a = wk.path[seg]!;
-      const b = wk.path[seg + 1]!;
-      const x = (a.x + (b.x - a.x) * local) * W;
-      const y = (a.y + (b.y - a.y) * local) * H;
-      // map-scale people: ~a quarter of a cottage's height, like the reference
-      const w = 0.027 * W;
-      const h = w * (img.naturalHeight / img.naturalWidth);
-      const facingLeft = b.x < a.x !== phase >= 1;
-      // a soft shadow so villagers stand on the ground, not float above it
-      if (!this.reduce) {
-        ctx.fillStyle = 'rgba(20, 26, 16, 0.22)';
-        ctx.beginPath();
-        ctx.ellipse(x, y - 1, w * 0.4, w * 0.14, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.save();
-      if (facingLeft) {
-        ctx.translate(x, 0);
-        ctx.scale(-1, 1);
-        ctx.drawImage(img, -w / 2, y - h, w, h);
-      } else {
-        ctx.drawImage(img, x - w / 2, y - h, w, h);
-      }
-      ctx.restore();
-    }
-
-    // --- the village dog trots its rounds near the heart of town ---
-    {
-      const dog = this.sprite('animal_dog');
-      if (dog && delivered >= 6) {
-        const path = [
-          [0.34, 0.63],
-          [0.46, 0.665],
-          [0.4, 0.705],
-          [0.3, 0.67],
-        ] as const;
-        const total = path.length - 1;
-        const phase = this.reduce ? 0.3 : (t / 1000 / 12) % 2;
-        const u = phase < 1 ? phase : 2 - phase;
-        const seg = Math.min(total - 1, Math.floor(u * total));
-        const local = u * total - seg;
-        const a = path[seg]!;
-        const b = path[seg + 1]!;
-        const dx = (a[0] + (b[0] - a[0]) * local) * W;
-        const dy = (a[1] + (b[1] - a[1]) * local) * H;
-        const dw = 0.03 * W;
-        const dh = dw * (dog.naturalHeight / dog.naturalWidth);
-        const left = b[0] < a[0] !== phase >= 1;
-        if (!this.reduce) {
-          ctx.fillStyle = 'rgba(20, 26, 16, 0.22)';
-          ctx.beginPath();
-          ctx.ellipse(dx, dy - 1, dw * 0.42, dw * 0.14, 0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.save();
-        if (left) {
-          ctx.translate(dx, 0);
-          ctx.scale(-1, 1);
-          ctx.drawImage(dog, -dw / 2, dy - dh, dw, dh);
-        } else {
-          ctx.drawImage(dog, dx - dw / 2, dy - dh, dw, dh);
-        }
-        ctx.restore();
-      }
-    }
-
-    // --- laundry sways between the homes once the village warms (Codex: "the
-    // world quietly lives... laundry sways") — cloth catching the sea breeze ---
-    if (stage >= 2 && !this.reduce) {
-      const lines: [number, number, number, number][] = [
-        [0.2, 0.5, 0.3, 0.5], // by the cottage
-        [0.06, 0.61, 0.15, 0.6], // by the farm
-      ];
-      const cloths = ['#f0e6d2', '#a8c8e0', '#e6a8b8', '#bcd0a0'];
-      for (const [x1n, y1n, x2n, y2n] of lines) {
-        const x1 = x1n * W;
-        const y1 = y1n * H;
-        const x2 = x2n * W;
-        const y2 = y2n * H;
-        const sag = (x2 - x1) * 0.12;
-        ctx.strokeStyle = 'rgba(60, 48, 32, 0.5)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.quadraticCurveTo((x1 + x2) / 2, (y1 + y2) / 2 + sag, x2, y2);
-        ctx.stroke();
-        const n = 3;
-        for (let i = 0; i < n; i++) {
-          const f = (i + 1) / (n + 1);
-          const hx = x1 + (x2 - x1) * f;
-          const hy = y1 + (y2 - y1) * f + sag * (1 - (2 * f - 1) * (2 * f - 1));
-          const cw = (x2 - x1) * 0.16;
-          const ch = cw * 1.5;
-          const sway = Math.sin(t / 700 + i * 1.3 + x1) * (0.12 + mood.wind * 0.25);
-          ctx.save();
-          ctx.translate(hx, hy);
-          ctx.rotate(sway);
-          ctx.fillStyle = cloths[i % cloths.length]!;
-          ctx.fillRect(-cw / 2, 0, cw, ch);
-          ctx.fillStyle = 'rgba(60, 48, 32, 0.7)';
-          ctx.fillRect(-1, -1, 2, 3);
-          ctx.restore();
-        }
-      }
-    }
-
-    // --- small lives: gulls always wheel over the harbour; the cat later ---
-    if (stage >= 3) {
-      const cat = this.sprite('animal_cat');
-      if (cat) {
-        const w = 0.032 * W;
-        ctx.drawImage(
-          cat,
-          W * 0.545,
-          H * 0.665 - w * (cat.naturalHeight / cat.naturalWidth),
-          w,
-          w * (cat.naturalHeight / cat.naturalWidth),
-        );
-      }
-    }
+    // --- gulls wheel over the harbour: distant scenery birds, not figures ---
     {
       const gull = this.sprite('animal_gull');
       if (gull && !this.reduce) {
         const gustiness = 1 + mood.wind * 1.4;
-        const flock = 2 + (stage >= 3 ? 1 : 0);
+        // a walked day brings one more bird to the harbour — life, not figures
+        const flock = 2 + (stage >= 3 ? 1 : 0) + (mood.villagersOut > 0 ? 1 : 0);
         for (let g = 0; g < flock; g++) {
           const gx = W * (0.5 + 0.34 * Math.sin((t * gustiness) / 2600 + g * 2.1));
           const gy = H * (0.14 + 0.06 * Math.cos((t * gustiness) / 2100 + g * 1.7) + g * 0.03);
@@ -1788,43 +2428,10 @@ export class MapView {
       }
     }
 
-    // --- a gathering hearth-fire warms the town square once the plaza returns ---
-    if (delivered >= 6) {
-      const fx = W * 0.46;
-      const fy = H * 0.715;
-      // the gathering fire grows as Emberhollow heals: a spark, then a hearth, then a bonfire
-      const fireArt = delivered >= 16 ? 'fx_flame_large' : delivered >= 10 ? 'fx_flame_medium' : 'fx_flame_small';
-      const fw = W * (delivered >= 16 ? 0.084 : delivered >= 10 ? 0.07 : 0.056);
-      // warm, flattened ground glow pooling under the fire
-      const flicker = this.reduce ? 1 : 0.85 + 0.15 * Math.sin(t / 110);
-      const glow = ctx.createRadialGradient(fx, fy, 2, fx, fy, fw * 1.6);
-      glow.addColorStop(0, `rgba(255, 178, 92, ${0.5 * flicker})`);
-      glow.addColorStop(1, 'rgba(255, 168, 80, 0)');
-      ctx.save();
-      ctx.translate(fx, fy);
-      ctx.scale(1, 0.4);
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(0, 0, fw * 1.6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-      this.drawFlame(ctx, fireArt, fx, fy, fw, t);
-    }
-
-    // --- the forge burns once the blacksmith is raised (a working fire, day + night) ---
-    if (delivered >= 21) {
-      const gx = W * 0.45; // tracks the blacksmith's map position (town-layout)
-      const gy = H * 0.86;
-      const fl = this.reduce ? 1 : 0.78 + 0.22 * Math.abs(Math.sin(t / 95));
-      const r = W * 0.052;
-      const fg = ctx.createRadialGradient(gx, gy, 1, gx, gy, r);
-      fg.addColorStop(0, `rgba(255, 150, 60, ${0.55 * fl})`);
-      fg.addColorStop(1, 'rgba(255, 128, 48, 0)');
-      ctx.fillStyle = fg;
-      ctx.beginPath();
-      ctx.arc(gx, gy, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // The town-square gathering fire and the free-standing forge glow were
+    // retired in the environment pass (they floated as hardcoded flames unmoored
+    // from any building). The forge's warmth still reads through the blacksmith's
+    // window glow and chimney smoke; the lighthouse beacon below keeps its flame.
 
     // --- the painted lighthouse keeps its watch from the eastern rock point ---
     {
@@ -1833,25 +2440,40 @@ export class MapView {
       // a flourishing keeper's lighthouse once the town is well restored.
       const lit = delivered >= 9; // the beacon story beat
       const artId =
-        delivered >= 20
-          ? 'prop_lighthouse_l2'
-          : delivered >= 9
-            ? 'prop_lighthouse'
-            : delivered === 8
-              ? 'prop_lighthouse_wip'
-              : 'prop_lighthouse_ruin';
+        delivered >= RESTORE_ORDERS
+          ? 'prop_lighthouse_l3'
+          : delivered >= 20
+            ? 'prop_lighthouse_l2'
+            : delivered >= 9
+              ? 'prop_lighthouse'
+              : delivered === 8
+                ? 'prop_lighthouse_wip'
+                : 'prop_lighthouse_ruin';
       const img = this.sprite(artId) ?? this.sprite('prop_lighthouse');
       // Off the east point, standing in the sea clear of the fisher hut — its
       // own rock base sits over open water, not up on the green land plate.
       // Sprites are mirrored on disk so the keeper's door faces the land.
-      const lx = W * 0.94;
-      const baseY = H * 0.59;
+      const lx = LIGHTHOUSE_ANCHOR.x * W;
+      const baseY = LIGHTHOUSE_ANCHOR.y * H;
       if (img) {
         // the new painted lighthouse is a tall portrait sprite with its own rock
         // base, so it's narrower than the old near-square art (0.23 dwarfed the map).
-        const lw = W * 0.15;
+        const lw = LIGHTHOUSE_ANCHOR.w * W;
         const lh = lw * (img.naturalHeight / img.naturalWidth);
         ctx.drawImage(img, lx - lw / 2, baseY - lh, lw, lh);
+        // the lighthouse lives the same day cycle as the town: painted
+        // _dawn/_dusk/_night variants crossfade over the day sprite (same seam
+        // as the buildings — see the phase-overlay loop in the pieces pass)
+        for (const ph of ['dawn', 'dusk', 'night'] as const) {
+          const wgt = tod.weights[ph];
+          if (wgt <= 0.05) continue;
+          const phased = this.sprite(`${artId}_${ph}`);
+          if (!phased) continue;
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, wgt);
+          ctx.drawImage(phased, lx - lw / 2, baseY - lh, lw, lh);
+          ctx.restore();
+        }
         // Tappable once the beacon is lit — opens The Lighthouse card (Beacon Drop).
         this.hitboxes.push({
           x0: lx - lw / 2,
@@ -1862,105 +2484,149 @@ export class MapView {
           unlockAt: lit ? 9 : -9,
         });
         // the lantern room's height differs per state (measured from the art)
-        const lanternFrac = artId === 'prop_lighthouse_l2' ? 0.81 : 0.88;
-        const oy = baseY - lh * lanternFrac;
-        if (lit) {
-          // the beacon fire itself, burning in the lantern room
-          this.drawFlame(ctx, 'fx_flame_beacon', lx, oy + lh * 0.09, lw * 0.5, t);
-          // warm lantern-room bloom
-          const g = ctx.createRadialGradient(lx, oy, 2, lx, oy, lw * 0.55);
-          // the beacon burns, not just glows — a gentle fire flicker on the bloom
-          const bFlick = this.reduce ? 1 : 0.78 + 0.22 * Math.abs(Math.sin(t / 130));
-          g.addColorStop(0, `rgba(255, 232, 168, ${0.8 * bFlick})`);
-          g.addColorStop(1, 'rgba(255, 232, 168, 0)');
-          ctx.fillStyle = g;
-          ctx.beginPath();
-          ctx.arc(lx, oy, lw * 0.55, 0, Math.PI * 2);
-          ctx.fill();
-          // sweeping beam
-          if (!this.reduce) {
-            const ang = Math.sin(t / 1500) * 0.5 - 0.25;
-            const beam = ctx.createLinearGradient(lx, oy, lx - 170 * Math.cos(ang), oy - 90 * Math.sin(ang));
-            beam.addColorStop(0, 'rgba(255, 232, 168, 0.42)');
-            beam.addColorStop(1, 'rgba(255, 232, 168, 0)');
-            ctx.fillStyle = beam;
+        // measured lantern height in the painted art (from the base): L1/L2 sit
+        // at ~0.67, the taller L3 at ~0.64 — so the beacon glow lands ON the glass
+        // Put the beacon exactly on the painted lantern glass: measured from the
+        // art itself (same rule every other building's glow now uses), with the
+        // old hand-measured fraction as the fallback until the sprite loads.
+        // the LARGEST warm cluster is the lantern room (smaller ones are the
+        // keeper's windows on the tower)
+        const la = this.glowAnchor(artId)?.[0] ?? null;
+        const lanternFrac = artId === 'prop_lighthouse_l3' ? 0.64 : 0.67;
+        const oy = la ? baseY - lh * (1 - la.fy) : baseY - lh * lanternFrac;
+        const gx = la ? lx + (la.fx - 0.5) * lw : lx;
+        const beaconOnScreen = gx > -lw && gx < W + lw && oy > -lh && oy < H;
+        if (lit && beaconOnScreen) {
+          const TAU = Math.PI * 2;
+          // The beacon barely shows by day and owns the dark — its whole
+          // intensity ramps with how dark it actually is, so it never blows out
+          // the painted lantern in daylight (the light should reveal the
+          // lighthouse, not hide it).
+          const dark = Math.max(0, Math.min(1, tod.weights.night + tod.weights.evening * 0.9 + tod.weights.dusk * 0.5));
+          if (dark > 0.02) {
+            // at night the crown light lifts above the grade as a soft halo
+            if (night) {
+              // one tight jewel — no wide outer ring (it read as an outline glow)
+              this.glowSpots.push({ x: gx, y: oy, r: lw * 0.2, a: 0.4 });
+            }
+            const pulse = this.reduce ? 1 : 0.88 + 0.12 * Math.sin(t / 1100);
+            const k = dark * pulse;
+            // warm lens bloom — soft + compact so it haloes the lantern glass
+            // rather than swallowing the tower
+            const bloom = ctx.createRadialGradient(gx, oy, 1, gx, oy, lw * 0.3);
+            bloom.addColorStop(0, `rgba(255, 240, 196, ${0.4 * k})`);
+            bloom.addColorStop(0.5, `rgba(255, 216, 140, ${0.16 * k})`);
+            bloom.addColorStop(1, 'rgba(255, 212, 132, 0)');
+            ctx.fillStyle = bloom;
             ctx.beginPath();
-            ctx.moveTo(lx, oy);
-            ctx.lineTo(lx - 180 * Math.cos(ang - 0.11), oy - 110 * Math.sin(ang - 0.11));
-            ctx.lineTo(lx - 180 * Math.cos(ang + 0.11), oy - 110 * Math.sin(ang + 0.11));
-            ctx.closePath();
+            ctx.arc(gx, oy, lw * 0.3, 0, TAU);
             ctx.fill();
+            ctx.fillStyle = `rgba(255, 250, 228, ${0.6 * k})`;
+            ctx.beginPath();
+            ctx.arc(gx, oy, lw * 0.038, 0, TAU);
+            ctx.fill();
+            // A slow rotating beacon sweep: two opposed soft cones turning around
+            // the lens — longest + brightest facing the viewer, fading as they
+            // turn away, so on the flat iso map it reads as a 3D rake. The cone
+            // foot rides an ellipse to sit in the painted perspective.
+            if (!this.reduce) {
+              const rot = t / 2800;
+              for (const off of [0, Math.PI]) {
+                const a = rot + off;
+                const face = (Math.sin(a) + 1) / 2; // 1 = toward viewer, 0 = behind
+                if (face < 0.03) continue;
+                const len = lw * (1.2 + 2.2 * face);
+                const spread = 0.13;
+                const foot = (ang: number): [number, number] => [
+                  gx + Math.cos(ang) * len,
+                  oy + (Math.sin(ang) * 0.5 + 0.12) * len,
+                ];
+                const [ex, ey] = foot(a);
+                const beam = ctx.createLinearGradient(gx, oy, ex, ey);
+                beam.addColorStop(0, `rgba(255, 240, 190, ${0.34 * face * dark})`);
+                beam.addColorStop(1, 'rgba(255, 240, 190, 0)');
+                ctx.fillStyle = beam;
+                ctx.beginPath();
+                ctx.moveTo(gx, oy);
+                const [lxo, lyo] = foot(a - spread);
+                const [rxo, ryo] = foot(a + spread);
+                ctx.lineTo(lxo, lyo);
+                ctx.lineTo(rxo, ryo);
+                ctx.closePath();
+                ctx.fill();
+              }
+              // a soft lens flash each time a beam rakes past the viewer
+              const flash = Math.max(0, Math.sin(rot));
+              if (flash > 0) {
+                ctx.fillStyle = `rgba(255, 251, 232, ${0.3 * flash * flash * dark})`;
+                ctx.beginPath();
+                ctx.arc(gx, oy, lw * 0.09, 0, TAU);
+                ctx.fill();
+              }
+            }
           }
         }
       }
     }
 
-    // --- sea shimmer at the shore: the water carries the day's mood ---
-    if (!this.reduce) {
-      const amp = 1.0 + mood.sea * 3.4;
-      const pace = 620 - mood.sea * 320;
-      ctx.strokeStyle = night ? 'rgba(180, 200, 255, 0.12)' : 'rgba(255,220,150,0.16)';
-      ctx.lineWidth = 1;
-      for (let y = H * 0.9; y < H; y += 8) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        for (let x = 0; x <= W; x += 22) ctx.lineTo(x, y + Math.sin(x / 26 + t / pace + y) * amp);
-        ctx.stroke();
-      }
-      // whitecaps once the water is truly restless
-      if (mood.sea > 0.55) {
-        ctx.strokeStyle = 'rgba(235, 240, 248, 0.4)';
-        ctx.lineWidth = 1.4;
-        for (let i = 0; i < 7; i++) {
-          const wx = (((i * 137 + Math.floor(t / 1400) * 41) % 100) / 100) * W;
-          const wy = H * (0.9 + ((i * 53) % 10) / 110);
-          ctx.beginPath();
-          ctx.moveTo(wx, wy);
-          ctx.lineTo(wx + 7 + mood.sea * 6, wy);
-          ctx.stroke();
-        }
-      }
-      // a quiet mind stills the water: a soft moon-path glint on calm days
-      if (mood.calm && mood.sea < 0.3) {
-        const glint = ctx.createLinearGradient(0, H * 0.9, 0, H);
-        glint.addColorStop(0, 'rgba(255, 236, 190, 0.10)');
-        glint.addColorStop(1, 'rgba(255, 236, 190, 0)');
-        ctx.fillStyle = glint;
-        ctx.fillRect(W * 0.6, H * 0.88, W * 0.4, H * 0.12);
-      }
-    }
+    // (sea shimmer / whitecaps moved OUT of the town pass — they were painted
+    //  here and then multiplied dark by the night grade. See drawShoreShimmer(),
+    //  now called from draw() after applyTimeLight so they sit above the grade.)
 
     // --- weather falls over everything ---
     if (mood.weather === 'fog') {
+      // A mid-height veil, plus low coastal banks that drift with the real wind
+      // and hug the shore — sea fog rolling in, not a flat grey stripe.
       const fog = ctx.createLinearGradient(0, H * 0.3, 0, H * 0.62);
       fog.addColorStop(0, 'rgba(205, 214, 228, 0)');
-      fog.addColorStop(0.5, 'rgba(205, 214, 228, 0.30)');
+      fog.addColorStop(0.5, 'rgba(205, 214, 228, 0.3)');
       fog.addColorStop(1, 'rgba(205, 214, 228, 0)');
       ctx.fillStyle = fog;
       ctx.fillRect(0, H * 0.28, W, H * 0.36);
+      if (!this.reduce) {
+        const windX = this.windX();
+        const drift = ((t * 0.006 * windX) % (W * 0.5)) + W * 0.5;
+        ctx.fillStyle = 'rgba(214, 222, 234, 0.16)';
+        for (let i = 0; i < 4; i++) {
+          const bx = (((i * W) / 3 + drift) % (W * 1.4)) - W * 0.2;
+          const by = H * (0.62 + (i % 2) * 0.06);
+          ctx.beginPath();
+          ctx.ellipse(bx, by, W * 0.34, H * 0.05, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
     }
     if (mood.precip > 0 && !this.reduce) {
       const snow = mood.weather === 'snow';
       const n = Math.round(24 + mood.precip * (snow ? 30 : 60));
+      const windX = this.windX(); // real wind direction drives the slant/drift
       if (snow) {
         ctx.fillStyle = 'rgba(240, 244, 252, 0.8)';
+        const driftX = windX * (0.006 + mood.wind * 0.02); // flakes carried by the wind
         for (let i = 0; i < n; i++) {
-          const px = (((i * 97 + t * 0.012 * (1 + mood.wind)) % W) + W) % W;
+          const px = (((i * 97 + t * driftX * 60) % W) + W) % W;
           const py = (((i * 61 + t * (0.02 + mood.precip * 0.015)) % H) + H) % H;
           ctx.beginPath();
-          ctx.arc(px + Math.sin(t / 900 + i) * 4, py, 1.3 + (i % 3) * 0.4, 0, Math.PI * 2);
+          ctx.arc(
+            px + Math.sin(t / 900 + i) * 4 + windX * (2 + mood.wind * 6),
+            py,
+            1.3 + (i % 3) * 0.4,
+            0,
+            Math.PI * 2,
+          );
           ctx.fill();
         }
       } else {
         ctx.strokeStyle = 'rgba(190, 210, 235, 0.4)';
         ctx.lineWidth = 1;
-        const slant = mood.wind * 4;
+        // Heavier rain slants harder and falls faster (continuous intensity).
+        const slant = (2 + mood.wind * 6) * windX;
         for (let i = 0; i < n; i++) {
           const px = (((i * 83 + t * 0.05) % W) + W) % W;
           const py = (((i * 47 + t * (0.14 + mood.precip * 0.1)) % H) + H) % H;
           ctx.beginPath();
           ctx.moveTo(px, py);
-          ctx.lineTo(px - slant, py + 7 + mood.precip * 4);
+          ctx.lineTo(px + slant, py + 7 + mood.precip * 4);
           ctx.stroke();
         }
       }
@@ -1989,6 +2655,748 @@ export class MapView {
    * never cooler or darker (pillar: reflect, never punish). Static, so reduced-
    * motion is unaffected. Drawn outside the camera transform to cover the viewport.
    */
+  /**
+   * Time-of-day island lighting over the painted plate, matching the Style-Lock
+   * lighting reference (Morning / Golden Hour / Night + Lantern Light). Driven by
+   * the SAME phaseForHour() the corner time badge reads, so the whole island's
+   * ambience and the medallion always agree. The painted plate is a bright,
+   * top-down daytime island; these washes recolour it for each phase (a warm key
+   * with a cool opposite shadow gives a sense of low-sun direction), and the
+   * existing per-lamp pools (prop_lamp) add local lantern light on top at night.
+   */
+  private applyTimeLight(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, mood?: WorldMood): void {
+    // Blend the lighting by the player's REAL solar position, so the island
+    // glows gold at their true sunset and darkens to night when it is actually
+    // dark where they are — with smooth crossfades, never hard bands.
+    // The depth pass grades LAND and SEA separately (each phase lives in its
+    // water: dawn rose, noon cyan sparkle, a molten dusk sun-path, a night
+    // moon-path on ink). Falls back to the whole-frame washes when the plate
+    // mask isn't available (procedural fallback island).
+    const { weights } = phaseForTime(Date.now(), this.sunTimesFromWeather());
+    const sun = this.sunKey();
+    const m = this.masks(W, H);
+    // heavy cloud mutes direct-sun theatrics (paths, glare) — honest weather
+    const clear = 1 - (mood?.cloudCover ?? 0.2) * 0.85;
+    // when a painted phase plate is carrying the mood, that phase's procedural
+    // grade steps back so code stops fighting art
+    const damp: PhaseScales = {
+      dawn: this.sprite('map_island_plate_dawn') ? 0.35 : 1,
+      dusk: this.sprite('map_island_plate_dusk') ? 0.35 : 1,
+      night: this.sprite('map_island_plate_night') ? 0.35 : 1,
+    };
+    ctx.save();
+    if (m) {
+      this.gradeSea(ctx, W, H, t, weights, sun, m.sea, clear, damp);
+      this.drawSeaWaves(ctx, W, H, t, mood, weights, m.sea);
+      this.gradeLand(ctx, W, H, t, weights, sun, m.land, damp);
+    } else {
+      // Order matters for the composited crossfade: darken first, then warm/cool.
+      if (weights.night > 0.001) this.washNight(ctx, W, H, t, weights.night);
+      if (weights.dawn > 0.001) this.washDawn(ctx, W, H, weights.dawn, sun);
+      if (weights.day > 0.001) this.washDay(ctx, W, H, weights.day);
+      if (weights.dusk > 0.001) this.washDusk(ctx, W, H, weights.dusk, sun);
+    }
+    // A warm rim of light hugging the sun-facing edge when the sun is low — the
+    // "backlight" beat that makes golden hour feel like it comes from somewhere.
+    if ((weights.dawn > 0.001 || weights.dusk > 0.001) && sun) {
+      this.washRimLight(ctx, W, H, sun, Math.max(weights.dawn, weights.dusk) * clear);
+    }
+    ctx.restore();
+  }
+
+  /**
+   * The water carries the sky. Each phase grades the sea region alone:
+   * dawn — rose-gold from the sun's side over pastel water;
+   * day — a vivid clean turquoise (saturation-true, not a tint);
+   * dusk — deepened blue-violet with a MOLTEN SUN-PATH lying along the water
+   *        from the real sun's edge (the golden-hour money shot);
+   * night — ink navy, desaturated, with a silver moon-path scaled by the real
+   *         moon's illumination tonight.
+   */
+  private gradeSea(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    t: number,
+    w: PhaseWeights,
+    sun: SunKey,
+    sea: HTMLCanvasElement,
+    clear: number,
+    damp: PhaseScales = { dawn: 1, dusk: 1, night: 1 },
+  ): void {
+    const [kx, ky] = sun ? MapView.edgePoint(W, H, sun.dx, sun.dy, 1) : [0, H * 0.7];
+    // an elongated glare lying ALONG the water from the sun's edge toward centre
+    const sunPath = (colour: string, alpha: number, len: number): void => {
+      if (alpha < 0.01) return;
+      this.maskedGrade(ctx, W, H, sea, 'lighter', (s) => {
+        s.save();
+        s.translate(kx, ky);
+        s.rotate(Math.atan2(H * 0.55 - ky, W * 0.5 - kx));
+        s.scale(1, 0.2); // squash into a path hugging the water
+        const g = s.createRadialGradient(0, 0, 0, 0, 0, len);
+        g.addColorStop(0, colour.replace('A)', `${alpha.toFixed(3)})`));
+        g.addColorStop(1, colour.replace('A)', '0)'));
+        s.fillStyle = g;
+        s.fillRect(-len, -len * 3, len * 2.2, len * 6);
+        s.restore();
+      });
+    };
+
+    if (w.dawn > 0.001) {
+      const k = w.dawn * damp.dawn;
+      // pastel rose spilling across the water from the sun's side
+      this.maskedGrade(ctx, W, H, sea, 'screen', (s) => {
+        const g = s.createLinearGradient(kx, ky, W - kx, H - ky);
+        g.addColorStop(0, `rgba(255, 172, 138, ${(0.34 * k * clear).toFixed(3)})`);
+        g.addColorStop(0.6, `rgba(255, 195, 170, ${(0.1 * k * clear).toFixed(3)})`);
+        g.addColorStop(1, 'rgba(255, 195, 170, 0)');
+        s.fillStyle = g;
+        s.fillRect(0, 0, W, H);
+      });
+      // and a soft pastel lift — dawn water is milkier, less saturated
+      this.maskedGrade(ctx, W, H, sea, 'saturation', (s) => {
+        s.fillStyle = `rgba(128, 128, 128, ${(0.28 * k).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+      sunPath('rgba(255, 190, 150, A)', 0.3 * k * clear, W * 0.5);
+    }
+    if (w.day > 0.001) {
+      const k = w.day;
+      // true saturation push toward vivid clean turquoise (not a paint-over)
+      this.maskedGrade(ctx, W, H, sea, 'color', (s) => {
+        s.fillStyle = `rgba(38, 178, 200, ${(0.2 * k).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, sea, 'screen', (s) => {
+        s.fillStyle = `rgba(140, 225, 235, ${(0.07 * k * clear).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+      // noon sparkle field: deterministic glint scatter over open water
+      if (clear > 0.4) {
+        this.maskedGrade(ctx, W, H, sea, 'lighter', (s) => {
+          s.fillStyle = `rgba(235, 250, 255, ${(0.5 * k * clear).toFixed(3)})`;
+          for (let i = 0; i < 46; i++) {
+            const px = ((Math.sin(i * 12.9898) * 43758.5453) % 1) * 0.5 + 0.5;
+            const py = ((Math.sin(i * 78.233) * 12578.1459) % 1) * 0.5 + 0.5;
+            const tw = this.reduce ? 0.7 : 0.4 + 0.6 * Math.abs(Math.sin(t / 640 + i * 1.7));
+            const r = (0.5 + (i % 3) * 0.35) * tw;
+            s.fillRect(px * W - r, py * H - r * 0.4, r * 2, r * 0.8);
+          }
+        });
+      }
+    }
+    if (w.dusk > 0.001) {
+      const k = w.dusk * damp.dusk;
+      // the sea leaves daytime cyan behind: hue toward dusk blue-violet…
+      this.maskedGrade(ctx, W, H, sea, 'color', (s) => {
+        s.fillStyle = `rgba(84, 92, 168, ${(0.34 * k).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+      // …and deepens
+      this.maskedGrade(ctx, W, H, sea, 'multiply', (s) => {
+        const g = s.createLinearGradient(kx, ky, W - kx, H - ky);
+        g.addColorStop(0, `rgba(235, 190, 160, ${(0.25 * k).toFixed(3)})`);
+        g.addColorStop(1, `rgba(140, 135, 185, ${(0.4 * k).toFixed(3)})`);
+        s.fillStyle = g;
+        s.fillRect(0, 0, W, H);
+      });
+      // the molten sun-path — golden hour's signature on the water
+      sunPath('rgba(255, 168, 78, A)', 0.62 * k * clear, W * 0.62);
+    }
+    if (w.night > 0.001) {
+      const k = w.night * damp.night;
+      const moon = illumination(Date.now());
+      // ink-blue water: hue swings toward deep night blue, then darkens HARD —
+      // colour kept (moonlit sea is blue, never grey)
+      this.maskedGrade(ctx, W, H, sea, 'color', (s) => {
+        s.fillStyle = `rgba(46, 74, 150, ${(0.35 * k).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, sea, 'multiply', (s) => {
+        s.fillStyle = `rgba(28, 40, 84, ${(0.85 * k).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+      // a silver moon-path on the bay, honest to tonight's real moon
+      if (moon > 0.15) {
+        this.maskedGrade(ctx, W, H, sea, 'lighter', (s) => {
+          s.save();
+          s.translate(W * 0.62, H * 0.08);
+          s.rotate(Math.PI / 2.6);
+          s.scale(1, 0.16);
+          const g = s.createRadialGradient(0, 0, 0, 0, 0, W * 0.55);
+          g.addColorStop(0, `rgba(196, 212, 238, ${(0.3 * k * moon * clear).toFixed(3)})`);
+          g.addColorStop(1, 'rgba(196, 212, 238, 0)');
+          s.fillStyle = g;
+          s.fillRect(-W, -W, W * 2, W * 2);
+          s.restore();
+        });
+      }
+    }
+  }
+
+  /**
+   * The land grades with REAL colour ops, not tints: dawn is pastel and cool,
+   * noon is saturated and clean, dusk hue-warms toward amber with the key from
+   * the real sun's side, night truly desaturates to moonlit grey-blue then
+   * deepens navy with a vignette. The window/lamp glows blaze on top.
+   */
+  private gradeLand(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    t: number,
+    w: PhaseWeights,
+    sun: SunKey,
+    land: HTMLCanvasElement,
+    damp: PhaseScales = { dawn: 1, dusk: 1, night: 1 },
+  ): void {
+    const [kx, ky, sx, sy] = sun
+      ? [...MapView.edgePoint(W, H, sun.dx, sun.dy, 1), ...MapView.edgePoint(W, H, sun.dx, sun.dy, -1)]
+      : [0, H, W, 0];
+
+    if (w.dawn > 0.001) {
+      const k = w.dawn * damp.dawn;
+      this.maskedGrade(ctx, W, H, land, 'saturation', (s) => {
+        s.fillStyle = `rgba(128, 128, 128, ${(0.3 * k).toFixed(3)})`; // pastel morning
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, land, 'multiply', (s) => {
+        s.fillStyle = `rgba(206, 214, 240, ${(0.32 * k).toFixed(3)})`; // cool blue hour
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, land, 'screen', (s) => {
+        const g = s.createLinearGradient(kx, ky, sx, sy);
+        g.addColorStop(0, `rgba(255, 194, 160, ${(0.22 * k).toFixed(3)})`); // rose key
+        g.addColorStop(0.55, 'rgba(255, 194, 160, 0)');
+        s.fillStyle = g;
+        s.fillRect(0, 0, W, H);
+      });
+    }
+    if (w.day > 0.001) {
+      const k = w.day;
+      // noon identity is CLARITY: a genuine saturation lift and a clean warm kiss
+      this.maskedGrade(ctx, W, H, land, 'saturation', (s) => {
+        s.fillStyle = `rgba(255, 0, 0, ${(0.1 * k).toFixed(3)})`; // fully-saturated source = sat boost
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, land, 'soft-light', (s) => {
+        s.fillStyle = `rgba(255, 250, 232, ${(0.12 * k).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+    }
+    if (w.dusk > 0.001) {
+      const k = w.dusk * damp.dusk;
+      // hue genuinely swings amber (color op), key from the real sun's side
+      this.maskedGrade(ctx, W, H, land, 'color', (s) => {
+        const g = s.createLinearGradient(kx, ky, sx, sy);
+        g.addColorStop(0, `rgba(232, 148, 72, ${(0.34 * k).toFixed(3)})`);
+        g.addColorStop(1, `rgba(180, 120, 130, ${(0.22 * k).toFixed(3)})`);
+        s.fillStyle = g;
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, land, 'multiply', (s) => {
+        const g = s.createLinearGradient(kx, ky, sx, sy);
+        g.addColorStop(0, `rgba(255, 206, 140, ${(0.3 * k).toFixed(3)})`);
+        g.addColorStop(1, `rgba(190, 150, 160, ${(0.34 * k).toFixed(3)})`);
+        s.fillStyle = g;
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, land, 'screen', (s) => {
+        const bloom = s.createRadialGradient(kx, ky, 0, kx, ky, Math.max(W, H) * 0.5);
+        bloom.addColorStop(0, `rgba(255, 184, 100, ${(0.22 * k).toFixed(3)})`);
+        bloom.addColorStop(1, 'rgba(255, 184, 100, 0)');
+        s.fillStyle = bloom;
+        s.fillRect(0, 0, W, H);
+      });
+    }
+    if (w.night > 0.001) {
+      const k = w.night * damp.night;
+      const moon = illumination(Date.now());
+      const darkenScale = 1 - 0.15 * moon; // a full moon lifts the night
+      // Moonlight is BLUE, not grey (the swamp lesson): keep most of the
+      // village's colour, swing hues cool, then darken hard so the warm lights
+      // have real dark to burn against.
+      this.maskedGrade(ctx, W, H, land, 'saturation', (s) => {
+        s.fillStyle = `rgba(128, 128, 128, ${(0.12 * k).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, land, 'color', (s) => {
+        s.fillStyle = `rgba(64, 96, 176, ${(0.38 * k).toFixed(3)})`;
+        s.fillRect(0, 0, W, H);
+      });
+      this.maskedGrade(ctx, W, H, land, 'multiply', (s) => {
+        const g = s.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, `rgba(52, 70, 132, ${(0.72 * k * darkenScale).toFixed(3)})`);
+        g.addColorStop(1, `rgba(34, 46, 100, ${(0.8 * k * darkenScale).toFixed(3)})`);
+        s.fillStyle = g;
+        s.fillRect(0, 0, W, H);
+      });
+      // directional MOONLIGHT key from the moon's sky side (upper-right, where
+      // the moon-path anchors) — night gets a key light, like dusk has the sun
+      this.maskedGrade(ctx, W, H, land, 'screen', (s) => {
+        const g = s.createLinearGradient(W * 0.72, 0, W * 0.2, H);
+        g.addColorStop(0, `rgba(140, 168, 225, ${(0.1 * k * (0.35 + 0.65 * moon)).toFixed(3)})`);
+        g.addColorStop(0.55, 'rgba(140, 168, 225, 0)');
+        s.fillStyle = g;
+        s.fillRect(0, 0, W, H);
+      });
+      // vignette: deep BLUE dark drawing in from the edges — it frames the lit
+      // town and sinks the outer ground/paths into the dark so they stop reading
+      // as bright tiles. Starts closer in + deeper than before. The window, lamp
+      // and beacon glows re-emit AFTER this, so the lights still blaze on top.
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      const v = ctx.createRadialGradient(W * 0.5, H * 0.46, H * 0.38, W * 0.5, H * 0.46, H * 1.05);
+      v.addColorStop(0, 'rgba(255,255,255,0)');
+      v.addColorStop(0.6, `rgba(42, 54, 98, ${(0.2 * k).toFixed(3)})`);
+      v.addColorStop(1, `rgba(26, 36, 74, ${(0.72 * k).toFixed(3)})`);
+      ctx.fillStyle = v;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+      // (the old plaza-wide hearth glow is gone — it read as smoke; the plaza's
+      // warmth now comes from the actual lamps and windows re-emitted above the
+      // grade, each a tight bright jewel)
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Region masks: the depth pass grades LAND and SEA separately (a real dusk
+  // lives in its water — a molten sun-path — while the land warms differently).
+  // The sea mask is classified from the painted plate itself: teal/blue-dominant
+  // pixels are water. Built once per canvas size, feathered, cached.
+  // ---------------------------------------------------------------------------
+  private maskCache: { W: number; H: number; sea: HTMLCanvasElement; land: HTMLCanvasElement } | null = null;
+  private gradeScratch: HTMLCanvasElement | null = null;
+
+  private masks(W: number, H: number): { sea: HTMLCanvasElement; land: HTMLCanvasElement } | null {
+    if (this.maskCache && this.maskCache.W === W && this.maskCache.H === H) return this.maskCache;
+    const plate = this.sprite('map_island_plate');
+    if (!plate || !plate.naturalWidth) return null;
+    // classify at low res (fast + naturally smooths speckle), then blur-upscale
+    const mw = 128;
+    const mh = Math.max(16, Math.round((mw * H) / W));
+    const cls = document.createElement('canvas');
+    cls.width = mw;
+    cls.height = mh;
+    const cctx = cls.getContext('2d', { willReadFrequently: true });
+    if (!cctx) return null;
+    cctx.drawImage(plate, 0, 0, mw, mh);
+    let frac = 0;
+    try {
+      const img = cctx.getImageData(0, 0, mw, mh);
+      const d = img.data;
+      let seaCount = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i]!;
+        const g = d[i + 1]!;
+        const b = d[i + 2]!;
+        // water on the plate is teal→deep blue: blue beats red clearly, and is
+        // bright enough not to be a rock shadow
+        const sea = b > r * 1.12 && b > 70 && b + g > r * 1.9;
+        if (sea) {
+          seaCount++;
+          d[i] = 255;
+          d[i + 1] = 255;
+          d[i + 2] = 255;
+          d[i + 3] = 255;
+        } else {
+          d[i + 3] = 0;
+        }
+      }
+      frac = seaCount / (mw * mh);
+      cctx.putImageData(img, 0, 0);
+    } catch {
+      return null; // canvas tainted or unavailable — grade falls back to washes
+    }
+    if (frac < 0.15 || frac > 0.75) {
+      // classification clearly failed on this plate — fall back to the authored
+      // coastline ring as a rough sea region
+      cctx.clearRect(0, 0, mw, mh);
+      cctx.fillStyle = '#fff';
+      cctx.fillRect(0, 0, mw, mh);
+      cctx.globalCompositeOperation = 'destination-out';
+      cctx.beginPath();
+      COASTLINE.forEach(([px, py], i) => {
+        if (i === 0) cctx.moveTo(px * mw, py * mh);
+        else cctx.lineTo(px * mw, py * mh);
+      });
+      cctx.closePath();
+      cctx.fill();
+      cctx.globalCompositeOperation = 'source-over';
+    }
+    const sea = document.createElement('canvas');
+    sea.width = W;
+    sea.height = H;
+    const sctx = sea.getContext('2d');
+    if (!sctx) return null;
+    sctx.filter = 'blur(3px)';
+    sctx.drawImage(cls, 0, 0, W, H);
+    sctx.filter = 'none';
+    const land = document.createElement('canvas');
+    land.width = W;
+    land.height = H;
+    const lctx = land.getContext('2d');
+    if (!lctx) return null;
+    lctx.fillStyle = '#fff';
+    lctx.fillRect(0, 0, W, H);
+    lctx.globalCompositeOperation = 'destination-out';
+    lctx.drawImage(sea, 0, 0);
+    lctx.globalCompositeOperation = 'source-over';
+    this.maskCache = { W, H, sea, land };
+    return this.maskCache;
+  }
+
+  /**
+   * Apply one grading layer to the frame through a region mask: build the tint
+   * in a scratch canvas, keep only the masked region, then composite onto the
+   * frame with the requested blend op. Because transparent scratch pixels leave
+   * the frame untouched under every op, this works for multiply / saturation /
+   * color / screen / lighter alike — true region-clipped colour grading.
+   */
+  /**
+   * Shore shimmer + whitecaps along the near water. Drawn AFTER the time-of-day
+   * grade (the night pass multiplies the sea toward ink; painting these before it
+   * simply crushed them dark), and mapped through the camera + island shift so
+   * they track pan/zoom like the re-emitted lights do.
+   */
+  private drawShoreShimmer(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    t: number,
+    mood: WorldMood,
+    night: boolean,
+  ): void {
+    if (this.reduce) return;
+    const { zoom, panX, panY } = this.cam;
+    const mx = (x: number): number => (x - this.mapShiftX) * zoom + panX;
+    const my = (y: number): number => y * zoom + panY;
+    const amp = (1.0 + mood.sea * 3.4) * zoom;
+    const pace = 620 - mood.sea * 320;
+    ctx.save();
+    ctx.strokeStyle = night ? 'rgba(180, 200, 255, 0.18)' : 'rgba(255, 220, 150, 0.2)';
+    ctx.lineWidth = 1;
+    for (let y = H * 0.9; y < H; y += 8) {
+      ctx.beginPath();
+      ctx.moveTo(mx(0), my(y));
+      for (let x = 0; x <= W; x += 22) ctx.lineTo(mx(x), my(y) + Math.sin(x / 26 + t / pace + y) * amp);
+      ctx.stroke();
+    }
+    // whitecaps once the water is truly restless
+    if (mood.sea > 0.55) {
+      ctx.strokeStyle = 'rgba(235, 240, 248, 0.45)';
+      ctx.lineWidth = 1.4;
+      for (let i = 0; i < 7; i++) {
+        const wx = (((i * 137 + Math.floor(t / 1400) * 41) % 100) / 100) * W;
+        const wy = H * (0.9 + ((i * 53) % 10) / 110);
+        ctx.beginPath();
+        ctx.moveTo(mx(wx), my(wy));
+        ctx.lineTo(mx(wx + 7 + mood.sea * 6), my(wy));
+        ctx.stroke();
+      }
+    }
+    // a quiet mind stills the water: a soft moon-path glint on calm days
+    if (mood.calm && mood.sea < 0.3) {
+      const glint = ctx.createLinearGradient(0, my(H * 0.9), 0, my(H));
+      glint.addColorStop(0, 'rgba(255, 236, 190, 0.10)');
+      glint.addColorStop(1, 'rgba(255, 236, 190, 0)');
+      ctx.fillStyle = glint;
+      ctx.fillRect(mx(W * 0.6), my(H * 0.88), W * 0.4 * zoom, H * 0.12 * zoom);
+    }
+    ctx.restore();
+  }
+
+  /**
+   * Dynamic waves over the painted sea — drifting swell lines that answer the
+   * real weather (calm ripples → storm swell), clipped to the sea mask so they
+   * never touch land. Amplitude/speed scale with mood.sea, drift follows
+   * mood.wind, and everything cools + fades at night. When the painted wave
+   * strips land (fx_wave_swell_a/_b) they tile over this as an upgrade; until
+   * then the procedural crests carry the motion. Reduced-motion holds one still
+   * frame (no drift).
+   */
+  private drawSeaWaves(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    t: number,
+    mood: WorldMood | undefined,
+    weights: PhaseWeights,
+    seaMask: HTMLCanvasElement,
+  ): void {
+    const sea = mood?.sea ?? 0.2;
+    const windDir = (mood?.wind ?? 0) >= 0 ? 1 : -1;
+    const nightAmt = Math.min(1, weights.night + weights.evening * 0.5 + weights.dusk * 0.2);
+    const drift = this.reduce ? 12000 : t; // fixed phase when still
+    const amp = 1.2 + sea * 5.2; // calm swells ~1px, storm ~6px
+    const pace = 4200 - sea * 2600; // faster when rough
+    // Visible, not shy: at ~3% these were mathematically drawn but invisible on
+    // the ink-graded night sea. Calm day ~0.14, calm night ~0.10 reads as real
+    // moving water while staying under the painted plate's own detail.
+    const alpha = (0.14 + sea * 0.14) * (1 - nightAmt * 0.35);
+    if (alpha < 0.03) return;
+    // crest highlight cools toward silver at night, warm-teal by day
+    const crest = nightAmt > 0.45 ? '150, 178, 224' : '206, 234, 244';
+    const shade = nightAmt > 0.45 ? '30, 46, 86' : '70, 132, 170';
+    this.maskedGrade(ctx, W, H, seaMask, 'source-over', (s) => {
+      // WORLD space: the crest lines ride the same camera transform the terrain
+      // uses, so waves lock to the sea under pan/pinch instead of floating in
+      // viewport space (the mask blit in maskedGrade is transformed to match).
+      s.translate(this.cam.panX, this.cam.panY);
+      s.scale(this.cam.zoom, this.cam.zoom);
+      s.translate(-this.mapShiftX, 0);
+      s.lineWidth = 1.6;
+      // The blue-dominance sea mask also flags the SKY (it is, after all, blue),
+      // so waves must start below the painted horizon (~0.15H) or they march up
+      // into the clouds. Ease them in over a short band so there's no hard line.
+      const horizon = H * 0.17;
+      for (let y = horizon; y <= H; y += 22) {
+        const fade = Math.min(1, (y - horizon) / (H * 0.1));
+        if (fade <= 0.02) continue;
+        const ph = y * 0.045;
+        const xoff = windDir * ((drift / 90) % 46);
+        s.beginPath();
+        for (let x = -12; x <= W + 12; x += 12) {
+          const u = x + xoff;
+          const yy =
+            y + Math.sin(u / 46 + drift / pace + ph) * amp + Math.sin(u / 118 - drift / (pace * 1.8) + ph) * amp * 0.5;
+          if (x === -12) s.moveTo(x, yy);
+          else s.lineTo(x, yy);
+        }
+        s.strokeStyle = `rgba(${crest}, ${(alpha * fade).toFixed(3)})`;
+        s.stroke();
+        // a faint trough shadow just below each crest gives the swell body
+        s.strokeStyle = `rgba(${shade}, ${(alpha * fade * 0.6).toFixed(3)})`;
+        s.beginPath();
+        for (let x = -12; x <= W + 12; x += 12) {
+          const u = x + xoff;
+          const yy = y + 2 + Math.sin(u / 46 + drift / pace + ph) * amp;
+          if (x === -12) s.moveTo(x, yy);
+          else s.lineTo(x, yy);
+        }
+        s.stroke();
+      }
+    });
+  }
+
+  private maskedGrade(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    mask: HTMLCanvasElement,
+    op: GlobalCompositeOperation,
+    build: (s: CanvasRenderingContext2D) => void,
+  ): void {
+    if (!this.gradeScratch || this.gradeScratch.width !== W || this.gradeScratch.height !== H) {
+      this.gradeScratch = document.createElement('canvas');
+      this.gradeScratch.width = W;
+      this.gradeScratch.height = H;
+    }
+    const s = this.gradeScratch.getContext('2d');
+    if (!s) return;
+    s.save();
+    s.globalCompositeOperation = 'source-over';
+    s.clearRect(0, 0, W, H);
+    build(s);
+    s.globalCompositeOperation = 'destination-in';
+    // The sea/land masks are built from the un-zoomed plate; blit them through
+    // the live camera so the clip region tracks the terrain under pan/pinch —
+    // otherwise grades and waves land on the wrong ground when zoomed in.
+    s.translate(this.cam.panX, this.cam.panY);
+    s.scale(this.cam.zoom, this.cam.zoom);
+    s.translate(-this.mapShiftX, 0);
+    s.drawImage(mask, 0, 0);
+    s.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = op;
+    ctx.drawImage(this.gradeScratch, 0, 0);
+    ctx.restore();
+  }
+
+  /**
+   * The sun's real bearing translated to the painted scene: a unit vector toward
+   * where the light comes FROM (east = right, west = left, south = toward the
+   * viewer) and `lowness` 0..1 that peaks when the sun is on the horizon. Null
+   * when we have no location — callers then fall back to the authored directions.
+   */
+  private sunKey(): { dx: number; dy: number; lowness: number } | null {
+    // Inspection override (hearthSky): drive a synthetic sun for the forced
+    // phase so the directional light AND the cast shadows swing with it — a low
+    // eastern sun at dawn, high overhead at noon, low western at dusk. Otherwise
+    // a forced dusk would show amber colour with the real clock's noon shadows.
+    const forced = getPhaseOverride();
+    if (forced) {
+      if (forced === 'sunrise') return { dx: 0.94, dy: 0.18, lowness: 0.9 }; // low, east
+      if (forced === 'midday') return { dx: 0.12, dy: 0.62, lowness: 0.08 }; // high, short shadows
+      if (forced === 'sunset') return { dx: -0.94, dy: 0.18, lowness: 0.9 }; // low, west
+      return { dx: -0.5, dy: 0.3, lowness: 0.55 }; // night — sun down; shadows fade via castAlpha
+    }
+    const coords = latestCoords();
+    if (!coords) return null;
+    const { azimuth, altitude } = sunPosition(Date.now(), coords);
+    // SunCalc azimuth: 0 = south, +π/2 = west, −π/2 = east. Screen: west is left.
+    const dx = -Math.sin(azimuth);
+    const dy = Math.cos(azimuth); // south → +y (down, toward the viewer)
+    const lowness = Math.max(0, Math.min(1, 1 - Math.sin(Math.max(0, altitude)) / 0.5));
+    return { dx, dy, lowness };
+  }
+
+  /** A corner point on the viewport in the direction (dx,dy) from centre. */
+  private static edgePoint(W: number, H: number, dx: number, dy: number, sign: number): [number, number] {
+    return [W * (0.5 + sign * dx * 0.5), H * (0.5 + sign * dy * 0.5)];
+  }
+
+  /** Morning: cool, soft, hazy — warm key from the real sun, cool shadow opposite. */
+  private washDawn(ctx: CanvasRenderingContext2D, W: number, H: number, k: number, sun: SunKey): void {
+    const [kx, ky, sx, sy] = sun
+      ? [...MapView.edgePoint(W, H, sun.dx, sun.dy, 1), ...MapView.edgePoint(W, H, sun.dx, sun.dy, -1)]
+      : [0, 0, W, H]; // fallback: authored top-left key
+    const contrast = sun ? 0.22 + 0.12 * sun.lowness : 0.24;
+    const g = ctx.createLinearGradient(kx, ky, sx, sy);
+    g.addColorStop(0, `rgba(255, 214, 170, ${(contrast * k).toFixed(3)})`); // rose-gold key
+    g.addColorStop(1, `rgba(140, 170, 220, ${(0.3 * k).toFixed(3)})`); // cool dawn shadow
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    // The felt part: a cool pastel morning haze over the whole scene (multiply
+    // reads far stronger than soft-light), plus a faint milky lift low down.
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = `rgba(196, 210, 238, ${(0.3 * k).toFixed(3)})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'screen';
+    const mist = ctx.createLinearGradient(0, H * 0.45, 0, H);
+    mist.addColorStop(0, 'rgba(215, 225, 245, 0)');
+    mist.addColorStop(1, `rgba(215, 225, 245, ${(0.16 * k).toFixed(3)})`);
+    ctx.fillStyle = mist;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  /** Brightest, near-neutral daylight with a clean warm lift. */
+  private washDay(ctx: CanvasRenderingContext2D, W: number, H: number, k: number): void {
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = `rgba(255, 250, 232, ${(0.12 * k).toFixed(3)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  /** Golden hour: amber wash, warm key from the real sun's side (its true azimuth). */
+  private washDusk(ctx: CanvasRenderingContext2D, W: number, H: number, k: number, sun: SunKey): void {
+    const [kx, ky, sx, sy] = sun
+      ? [...MapView.edgePoint(W, H, sun.dx, sun.dy, 1), ...MapView.edgePoint(W, H, sun.dx, sun.dy, -1)]
+      : [0, H, W, 0]; // fallback: authored lower-left (west) key
+    const amber = sun ? 0.34 + 0.14 * sun.lowness : 0.38;
+    const g = ctx.createLinearGradient(kx, ky, sx, sy);
+    g.addColorStop(0, `rgba(255, 146, 66, ${(amber * k).toFixed(3)})`); // amber, sun side
+    g.addColorStop(1, `rgba(214, 107, 107, ${(0.16 * k).toFixed(3)})`); // dusky rose, shadow
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    // The felt part: bathe the whole frame in golden-hour amber (multiply carries
+    // it) with the glow strongest from the sun's side.
+    ctx.globalCompositeOperation = 'multiply';
+    const gold = ctx.createLinearGradient(kx, ky, sx, sy);
+    gold.addColorStop(0, `rgba(255, 196, 120, ${(0.34 * k).toFixed(3)})`);
+    gold.addColorStop(1, `rgba(235, 168, 120, ${(0.22 * k).toFixed(3)})`);
+    ctx.fillStyle = gold;
+    ctx.fillRect(0, 0, W, H);
+    // and a warm bloom right at the sun's edge
+    ctx.globalCompositeOperation = 'screen';
+    const bloom = ctx.createRadialGradient(kx, ky, 0, kx, ky, Math.max(W, H) * 0.55);
+    bloom.addColorStop(0, `rgba(255, 190, 110, ${(0.2 * k).toFixed(3)})`);
+    bloom.addColorStop(1, 'rgba(255, 190, 110, 0)');
+    ctx.fillStyle = bloom;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  /** A warm backlight rim on the sun-facing edge, strongest with a low sun. */
+  private washRimLight(ctx: CanvasRenderingContext2D, W: number, H: number, sun: NonNullable<SunKey>, k: number): void {
+    const [kx, ky] = MapView.edgePoint(W, H, sun.dx, sun.dy, 1);
+    const r = ctx.createRadialGradient(kx, ky, 0, kx, ky, Math.max(W, H) * 0.7);
+    const a = 0.16 * k * sun.lowness;
+    if (a < 0.004) return;
+    r.addColorStop(0, `rgba(255, 214, 150, ${a.toFixed(3)})`);
+    r.addColorStop(1, 'rgba(255, 214, 150, 0)');
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = r;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  /** Night: deep-blue darken, then a warm hearth lift at the town centre. */
+  private washNight(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, k: number): void {
+    // Real moonlight: a full moon lifts the night a touch (less dark, faint
+    // silver), a new moon leaves it darkest — the sky is brighter when the moon
+    // really is full tonight.
+    const moon = illumination(Date.now()); // 0 new .. 1 full
+    const darkenScale = 1 - 0.18 * moon; // full moon → up to 18% less darkening
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, `rgba(26, 34, 74, ${(0.6 * k * darkenScale).toFixed(3)})`); // night blue (palette)
+    g.addColorStop(1, `rgba(12, 18, 44, ${(0.72 * k * darkenScale).toFixed(3)})`);
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'screen';
+    if (moon > 0.5) {
+      // a cool silver wash on bright-moon nights
+      ctx.fillStyle = `rgba(150, 165, 205, ${(0.06 * (moon - 0.5) * 2 * k).toFixed(3)})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+    // halved — the town's warmth should come from the individual jewels/lanterns,
+    // not a broad orange haze over the plaza
+    const warm = (0.05 + (this.reduce ? 0 : 0.01 * Math.sin(t / 1400))) * k;
+    const hx = PLAZA.x * W;
+    const hy = PLAZA.y * H - H * 0.08;
+    const hearth = ctx.createRadialGradient(hx, hy, 10, hx, hy, W * 0.55);
+    hearth.addColorStop(0, `rgba(255, 184, 96, ${warm.toFixed(3)})`);
+    hearth.addColorStop(1, 'rgba(255, 184, 96, 0)');
+    ctx.fillStyle = hearth;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  /**
+   * Storm atmosphere over the whole viewport (outside the camera): a gentle,
+   * DISTANT lightning glow — a soft blue-white bloom that swells and fades, with
+   * a small after-flicker — never a harsh strike (cozy-but-legible). Plus a
+   * faint wet sheen while rain falls. Deterministic from `t` so it doesn't
+   * flicker frame-to-frame; caller gates on reduced-motion.
+   */
+  private applyStormFx(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, mood: WorldMood): void {
+    ctx.save();
+    if (mood.weather === 'storm') {
+      const period = 10_000; // ~10s between flashes
+      const local = t % period;
+      const dur = 340;
+      // One thunder roll per flash, phase-locked: fire as the period rolls over
+      // (feedback.thunder delays the sound so it trails the light, like distance).
+      const cycle = Math.floor(t / period);
+      if (cycle !== this.lastThunderCycle) {
+        this.lastThunderCycle = cycle;
+        feedback.thunder();
+      }
+      if (local < dur) {
+        const x = local / dur; // 0..1 through the flash
+        const k = Math.max(0, Math.sin(x * Math.PI)) * (x < 0.4 ? 1 : 0.55); // main + after-flicker
+        ctx.globalCompositeOperation = 'lighter';
+        const g = ctx.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, `rgba(214, 226, 255, ${(0.26 * k).toFixed(3)})`); // brightest at the sky
+        g.addColorStop(0.55, `rgba(200, 214, 246, ${(0.12 * k).toFixed(3)})`);
+        g.addColorStop(1, 'rgba(200, 214, 246, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+      }
+    }
+    // Wet sheen: a faint cool specular lift on the lower island/sea while rain
+    // falls, so the ground reads as glistening-wet, not just dotted with lines.
+    if ((mood.weather === 'rain' || mood.weather === 'storm') && mood.precip > 0.05) {
+      ctx.globalCompositeOperation = 'soft-light';
+      const sheen = ctx.createLinearGradient(0, H * 0.5, 0, H);
+      const a = Math.min(0.1, 0.04 + mood.precip * 0.08);
+      sheen.addColorStop(0, 'rgba(190, 208, 236, 0)');
+      sheen.addColorStop(1, `rgba(190, 208, 236, ${a.toFixed(3)})`);
+      ctx.fillStyle = sheen;
+      ctx.fillRect(0, 0, W, H);
+    }
+    ctx.restore();
+  }
+
   private applyColourGrade(ctx: CanvasRenderingContext2D, W: number, H: number, mood: WorldMood): void {
     const warmth = Math.max(0, mood.glow - 0.25); // 0 until a restful day earns it
     if (warmth <= 0.001) return;
@@ -2059,9 +3467,10 @@ export class MapView {
 
     // Water + stretch → the gardens green up: a soft vitality over the meadow
     // and a few flowers by the garden plot once it's been restored.
-    if (mood.gardenLush > 0) {
-      const gx = W * 0.63; // the garden's live map position (town-layout)
-      const gy = H * 0.57;
+    const garden = anchorOf('town_garden');
+    if (mood.gardenLush > 0 && garden) {
+      const gx = garden.x * W; // tracks the garden wherever the layout puts it
+      const gy = (garden.y + 0.05) * H;
       const gr = W * 0.16;
       const g = ctx.createRadialGradient(gx, gy - gr * 0.25, gr * 0.15, gx, gy - gr * 0.25, gr);
       g.addColorStop(0, `rgba(126, 196, 106, ${(0.08 + mood.gardenLush * 0.14).toFixed(3)})`);
@@ -2070,37 +3479,15 @@ export class MapView {
       ctx.fillRect(gx - gr, gy - gr, gr * 2, gr * 1.5);
     }
 
-    // Nature photo + water → flowers bloom, a richer band the more you tend.
-    if (mood.bloom > 0) {
-      const n = 3 + Math.round(mood.bloom * 7);
-      for (let i = 0; i < n; i++) {
-        const f = i / Math.max(1, n - 1);
-        // scatter organically along the shore, not in a tidy fence line
-        const jitterX = Math.sin(i * 12.9898) * 0.025;
-        const jitterY = (Math.sin(i * 78.233) * 0.5 + 0.5) * 0.05;
-        const x = W * (0.24 + f * 0.52 + jitterX);
-        const y = H * (0.83 + jitterY);
-        const size = 2.4 + mood.bloom * 1.4 + (i % 3) * 0.5;
-        drawFlower(ctx, x, y, size, FLOWER_COLOURS[i % FLOWER_COLOURS.length]!);
-      }
-      // a small cluster nestles by the garden plot when it exists
-      if (delivered >= 10) {
-        for (let i = 0; i < 3; i++) {
-          drawFlower(
-            ctx,
-            W * (0.6 + i * 0.03),
-            H * (0.55 + (i % 2) * 0.015),
-            2.6,
-            FLOWER_COLOURS[(i + 2) % FLOWER_COLOURS.length]!,
-          );
-        }
-      }
-    }
+    // (The nature-photo flower scatter was retired: painted vector flowers on
+    // top of the painted plate read as stickers, not garden. The reaction lives
+    // on through the garden's green lush wash above + the butterflies below.)
 
     // Drink water → the well sparkles and its plaza feels fresh.
-    if (mood.wellSparkle && delivered >= 6) {
-      const wx = W * 0.5; // the well's live map position (town-layout)
-      const wy = H * 0.6 - H * 0.05;
+    const well = anchorOf('prop_well');
+    if (mood.wellSparkle && delivered >= 6 && well) {
+      const wx = well.x * W; // tracks the well wherever the layout puts it
+      const wy = (well.y - 0.05) * H;
       const count = this.reduce ? 3 : 6;
       for (let i = 0; i < count; i++) {
         const seed = i * 1.7;
@@ -2109,21 +3496,6 @@ export class MapView {
         const sy = wy - rise;
         const k = this.reduce ? 0.8 : 0.45 + 0.5 * Math.sin(t / 200 + seed);
         drawSparkle(ctx, sx, sy, 2.0 + (i % 2) * 0.8, k);
-      }
-    }
-
-    // A walk → the roads are busier: a couple of painted townsfolk take a turn
-    // along the shore path (silhouettes, so no unmet villager is spoiled).
-    if (mood.villagersOut > 0) {
-      const extra = mood.villagersOut >= 0.9 ? 2 : 1;
-      const cloaks = ['#8a5a3c', '#5a6e88', '#7a4a5e'];
-      for (let i = 0; i < extra; i++) {
-        const span = 0.18 + i * 0.02;
-        const base = 0.24 + i * 0.34;
-        const sweep = this.reduce ? 0.5 : (Math.sin(t / (4200 + i * 900)) + 1) / 2;
-        const x = W * (base + span * sweep);
-        const y = H * (0.72 + i * 0.055);
-        drawStroller(ctx, x, y, H * 0.05, cloaks[i % cloaks.length]!);
       }
     }
 
@@ -2153,8 +3525,8 @@ export class MapView {
 
     // Stargaze after dark → a small constellation lights over the bay.
     if (mood.stargazed && night) {
-      const cx = W * 0.8;
-      const cy = H * 0.16;
+      const cx = SKY_ANCHORS.stargaze.x * W;
+      const cy = SKY_ANCHORS.stargaze.y * H;
       const stars = [
         [0, 0],
         [0.05, -0.03],
@@ -2182,45 +3554,144 @@ export class MapView {
       ctx.restore();
     }
 
-    // Real rain outside → the town stays cosy, never gloomy: a villager or two
-    // takes a turn under an umbrella, and puddles catch the light on the paths.
-    if (mood.precip > 0) {
-      const brollies = mood.precip >= 0.4 ? 2 : 1;
-      const cloaks = ['#5a6e88', '#7a4a5e'];
-      for (let i = 0; i < brollies; i++) {
-        const sweep = this.reduce ? 0.4 : (Math.sin(t / (5200 + i * 1100)) + 1) / 2;
-        const x = W * (0.3 + i * 0.3 + 0.12 * sweep);
-        const y = H * (0.74 + i * 0.05);
-        drawStroller(ctx, x, y, H * 0.05, cloaks[i % cloaks.length]!);
-        // a simple umbrella dome over them
-        ctx.save();
-        ctx.fillStyle = i === 0 ? '#c0563f' : '#3f6f6a';
+    // Weather's *memory*: puddles that linger after the rain, snow that settled
+    // over a cold day, a frost sheen at a freezing dawn. All from the reading log
+    // (core/weather-history) — the "it rained here earlier" that makes it real.
+    this.drawAccumulation(ctx, W, H, t, mood);
+  }
+
+  /**
+   * Ground traces the weather leaves behind — driven by the derived depths on the
+   * mood (wetness / snowDepth / frost), not the instantaneous reading, so they
+   * persist and fade on their own clock: puddles keep glinting after the shower
+   * passes, snow deepens through a cold day then thaws, frost silvers a hard dawn.
+   */
+  private drawAccumulation(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, mood: WorldMood): void {
+    // --- lying snow: a blanket over the rooftops and ground, deeper as it snows on ---
+    if (mood.snowDepth > 0.02) {
+      const d = mood.snowDepth;
+      ctx.save();
+      // A pale settle spanning the town — faint over the rooftops, banking thick
+      // toward the ground. Reads as "snow lying across the whole island".
+      const bandTop = H * 0.36;
+      const g = ctx.createLinearGradient(0, bandTop, 0, H * 0.86);
+      g.addColorStop(0, 'rgba(236, 244, 252, 0)');
+      g.addColorStop(0.55, `rgba(240, 247, 253, ${(0.28 * d).toFixed(3)})`);
+      g.addColorStop(1, `rgba(244, 249, 254, ${(0.62 * d).toFixed(3)})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, bandTop, W, H * 0.5);
+      // Rounded drifts catching along the paths.
+      ctx.fillStyle = `rgba(246, 250, 255, ${(0.4 + 0.4 * d).toFixed(3)})`;
+      const drifts = this.reduce ? 4 : 7;
+      const db = GROUND_BANDS.snowDrifts;
+      for (let i = 0; i < drifts; i++) {
+        const dx = W * (db.x0 + (i / drifts) * (db.x1 - db.x0));
+        const dy = H * (db.y0 + (db.y1 - db.y0) * (i % 2));
         ctx.beginPath();
-        ctx.ellipse(x, y - H * 0.058, H * 0.03, H * 0.017, 0, Math.PI, 0);
+        ctx.ellipse(dx, dy, W * (0.055 + 0.035 * d), H * (0.014 + 0.022 * d), 0, Math.PI, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(40,30,24,0.6)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x, y - H * 0.058);
-        ctx.lineTo(x, y - H * 0.02);
-        ctx.stroke();
-        ctx.restore();
       }
-      // puddles glinting on the plaza
-      const puddles = this.reduce ? 2 : 3;
+      // The whole scene lifts brighter and cooler under snow cover.
+      ctx.globalAlpha = 0.16 * d;
+      ctx.fillStyle = 'rgba(228, 239, 250, 1)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
+    // --- wet ground: a sheen + puddles that outlast the rain that made them ---
+    if (mood.wetness > 0.06 && mood.snowDepth < 0.35) {
+      const wet = mood.wetness;
+      ctx.save();
+      // A reflective sheen washed across the paths.
+      ctx.globalAlpha = 0.16 * wet;
+      const sheen = ctx.createLinearGradient(0, H * 0.6, 0, H * 0.85);
+      sheen.addColorStop(0, 'rgba(150, 185, 210, 0)');
+      sheen.addColorStop(1, 'rgba(175, 205, 228, 0.9)');
+      ctx.fillStyle = sheen;
+      ctx.fillRect(0, H * 0.6, W, H * 0.26);
+      // Puddles: more of them, and glossier, the wetter it is.
+      const puddles = Math.round((this.reduce ? 3 : 4) + wet * 4);
       for (let i = 0; i < puddles; i++) {
-        const px = W * (0.4 + i * 0.11);
-        const py = H * (0.7 + (i % 2) * 0.03);
-        const k = this.reduce ? 0.5 : 0.35 + 0.35 * Math.abs(Math.sin(t / 600 + i));
-        ctx.save();
-        ctx.globalAlpha = 0.4 * k;
-        ctx.fillStyle = 'rgba(180, 210, 230, 0.6)';
+        const pb = GROUND_BANDS.puddles;
+        const px = W * (pb.x0 + ((i * 0.13) % (pb.x1 - pb.x0)));
+        const py = H * (pb.y0 + ((i % 3) * (pb.y1 - pb.y0)) / 2);
+        const shimmer = this.reduce ? 0.6 : 0.4 + 0.35 * Math.abs(Math.sin(t / 620 + i * 1.3));
+        const r = W * (0.02 + 0.016 * wet);
+        ctx.globalAlpha = 0.5 * wet * shimmer;
+        // A cool sky-lit pool with a brighter reflection strip across it.
+        ctx.fillStyle = 'rgba(185, 214, 233, 0.7)';
         ctx.beginPath();
-        ctx.ellipse(px, py, W * 0.02, H * 0.008, 0, 0, Math.PI * 2);
+        ctx.ellipse(px, py, r, H * 0.009, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.globalAlpha = 0.55 * wet * shimmer;
+        ctx.fillStyle = 'rgba(238, 247, 253, 0.85)';
+        ctx.beginPath();
+        ctx.ellipse(px, py, r * 0.55, H * 0.003, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // --- frost: a silver sheen on a freezing dawn (fades as the sun climbs) ---
+    if (mood.frost > 0.15 && mood.snowDepth < 0.5) {
+      const { weights } = phaseForTime(Date.now(), this.sunTimesFromWeather());
+      const dawnLit = Math.max(weights.dawn, weights.night * 0.4); // strongest at first light
+      const f = mood.frost * dawnLit;
+      if (f > 0.05) {
+        ctx.save();
+        ctx.globalAlpha = 0.22 * f;
+        ctx.fillStyle = 'rgba(216, 234, 247, 1)';
+        ctx.fillRect(0, H * 0.5, W, H * 0.4);
+        // A scatter of cold glints on the rimed ground.
+        if (!this.reduce) {
+          const glints = 18;
+          for (let i = 0; i < glints; i++) {
+            const gx = W * (0.08 + ((i * 0.113) % 0.84));
+            const gy = H * (0.62 + ((i * 0.041) % 0.26));
+            const tw = 0.4 + 0.6 * Math.abs(Math.sin(t / 500 + i * 2.1));
+            drawSparkle(ctx, gx, gy, 1.9, f * tw);
+          }
+        }
         ctx.restore();
       }
     }
+  }
+
+  /**
+   * A rainbow when the rain eases and the sun returns (wet ground, no downpour,
+   * daylight): the little gift the sky gives after a shower. Drawn in viewport
+   * space (it's sky, not ground) — 0 when the conditions aren't met.
+   */
+  private rainbowStrength(mood: WorldMood): number {
+    const easing = mood.weather !== 'storm' && mood.weather !== 'snow' && mood.weather !== 'fog';
+    if (mood.wetness <= 0.4 || mood.precip >= 0.18 || !easing) return 0;
+    const { weights } = phaseForTime(Date.now(), this.sunTimesFromWeather());
+    const daylight = weights.day + 0.6 * (weights.dawn + weights.dusk);
+    const s = Math.min(1, (mood.wetness - 0.4) / 0.35) * Math.min(1, daylight);
+    return s > 0.08 ? s : 0;
+  }
+
+  /** A soft seven-band arc bowing over the bay. Static (reduced-motion safe). */
+  private drawRainbow(ctx: CanvasRenderingContext2D, W: number, H: number, strength: number): void {
+    // Rainbows sit opposite the sun; nudge the arc's centre toward the sun's side
+    // so it bows away from the real light. Anchored low so the crown reaches the
+    // sky over the bay in the upper third of the scene.
+    const sun = this.sunKey();
+    const cx = W * (0.5 + (sun ? sun.dx * 0.16 : 0));
+    const cy = H * 0.94;
+    const baseR = H * 0.66; // crown sits around the upper quarter
+    const bands = ['#e0736b', '#e8a765', '#e9d06a', '#8fc47f', '#79a8d8', '#8f88d6', '#b07fc9'];
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineWidth = Math.max(2, H * 0.009);
+    bands.forEach((col, i) => {
+      ctx.globalAlpha = 0.3 * strength;
+      ctx.strokeStyle = col;
+      ctx.beginPath();
+      ctx.arc(cx, cy, baseR + i * ctx.lineWidth, Math.PI * 1.14, Math.PI * 1.86);
+      ctx.stroke();
+    });
+    ctx.restore();
   }
 
   /**
@@ -2239,64 +3710,78 @@ export class MapView {
     stage: number,
   ): void {
     this.drawSeason(ctx, W, H, t, night);
-    // God-rays fanning from the low sun on clear-ish days.
-    if (!night && mood.cloudCover < 0.55) {
-      const sx = W * 0.78;
-      const sy = H * 0.14;
+    // Dawn owns the mist: low white banks clinging to the coast that burn off
+    // as the sun climbs, and dew glinting in the meadows at first light.
+    const dawnW = phaseForTime(Date.now(), this.sunTimesFromWeather()).weights.dawn;
+    if (dawnW > 0.05) {
       ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < 5; i++) {
-        const a = 0.9 + i * 0.34 + Math.sin(t / 5000 + i) * 0.05;
-        const len = H * 0.7;
-        const spread = 0.05;
-        const g = ctx.createLinearGradient(sx, sy, sx + Math.cos(a) * len, sy + Math.sin(a) * len);
-        g.addColorStop(0, `rgba(255, 232, 175, ${(0.06 * (1 - mood.cloudCover)).toFixed(3)})`);
-        g.addColorStop(1, 'rgba(255, 232, 175, 0)');
-        ctx.fillStyle = g;
+      const banks: [number, number, number][] = [
+        [0.16, 0.8, 0.2],
+        [0.52, 0.87, 0.26],
+        [0.8, 0.72, 0.17],
+      ];
+      for (let i = 0; i < banks.length; i++) {
+        const [bx0, by0, bw] = banks[i]!;
+        const driftX = this.reduce ? 0 : Math.sin(t / (9000 + i * 2600)) * W * 0.015;
+        const mg = ctx.createRadialGradient(bx0 * W + driftX, by0 * H, 2, bx0 * W + driftX, by0 * H, bw * W);
+        mg.addColorStop(0, `rgba(228, 236, 248, ${(0.2 * dawnW).toFixed(3)})`);
+        mg.addColorStop(1, 'rgba(228, 236, 248, 0)');
+        ctx.fillStyle = mg;
+        ctx.save();
+        ctx.translate(bx0 * W + driftX, by0 * H);
+        ctx.scale(1, 0.24);
         ctx.beginPath();
-        ctx.moveTo(sx, sy);
-        ctx.lineTo(sx + Math.cos(a - spread) * len, sy + Math.sin(a - spread) * len);
-        ctx.lineTo(sx + Math.cos(a + spread) * len, sy + Math.sin(a + spread) * len);
-        ctx.closePath();
+        ctx.arc(0, 0, bw * W, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
+      }
+      // dew catching first light across the meadow band
+      const dews = this.reduce ? 5 : 10;
+      for (let i = 0; i < dews; i++) {
+        const dx = W * (0.2 + ((i * 0.083) % 0.6));
+        const dy = H * (0.42 + ((i * 0.047) % 0.3));
+        const tw = this.reduce ? 0.6 : 0.3 + 0.7 * Math.abs(Math.sin(t / 560 + i * 2.3));
+        drawSparkle(ctx, dx, dy, 1.4, 0.55 * dawnW * tw);
       }
       ctx.restore();
     }
+    // God-rays fan (removed): it was anchored at a fixed SKY_ANCHORS.godRays
+    // point regardless of the actual time of day, so dawn/midday/dusk all
+    // showed the identical ray fan in the identical spot on the painted plate
+    // — which has no sun lines painted into it at all. Reported as a visible
+    // bug; the painted plates already carry their own light, so this
+    // procedural overlay was pure redundancy, not a fix for a missing one.
 
-    // Soft cloud shadows sliding across the island ground.
-    if (!night) {
-      const nsh = Math.max(1, Math.round(mood.cloudCover * 3));
-      ctx.fillStyle = 'rgba(20, 30, 20, 0.05)';
+    // Soft parallax cloud shadows drifting across the island in the REAL wind
+    // direction — a whole layer of dappled light moving the way the wind blows.
+    if (!night && mood.cloudCover > 0.05) {
+      const windX = this.windX();
+      const nsh = Math.max(1, Math.round(mood.cloudCover * 4));
+      const speed = 0.5 + mood.wind * 1.8;
+      const a = 0.045 + mood.cloudCover * 0.07;
       for (let i = 0; i < nsh; i++) {
-        const drift = (t / (40000 / (0.5 + mood.wind * 1.4))) % 1.4;
-        const sx = (((i * 0.4 + drift) % 1.4) - 0.2) * W;
-        const sy = H * (0.55 + (i % 2) * 0.14);
+        const drift = (t / (52000 / speed)) * windX + i * 0.37;
+        const sx = ((((drift % 1.7) + 1.7) % 1.7) - 0.35) * W;
+        const sy = H * (0.48 + (i % 3) * 0.13);
+        const rw = W * (0.17 + (i % 2) * 0.06);
+        const rh = H * 0.06;
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.scale(1, rh / rw);
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rw);
+        g.addColorStop(0, `rgba(18, 28, 20, ${a.toFixed(3)})`);
+        g.addColorStop(1, 'rgba(18, 28, 20, 0)');
+        ctx.fillStyle = g;
         ctx.beginPath();
-        ctx.ellipse(sx, sy, W * 0.14, H * 0.05, 0, 0, Math.PI * 2);
+        ctx.arc(0, 0, rw, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
       }
     }
 
-    if (night) {
-      // Fireflies wander the meadow, twinkling warm.
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const n = 14;
-      for (let i = 0; i < n; i++) {
-        const fx = W * (0.12 + 0.76 * ((i / n + Math.sin(t / 3200 + i * 1.7) * 0.06 + 1) % 1));
-        const fy = H * (0.5 + 0.34 * (0.5 + Math.cos(t / 2600 + i * 2.3) * 0.5));
-        const tw = 0.35 + 0.65 * Math.abs(Math.sin(t / 700 + i * 2.1));
-        const r = 3.2;
-        const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, r);
-        g.addColorStop(0, `rgba(200, 240, 150, ${(0.55 * tw).toFixed(3)})`);
-        g.addColorStop(1, 'rgba(200, 240, 150, 0)');
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(fx, fy, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    } else {
+    if (!night) {
+      // (Fireflies moved to nightAmbience — drawn ABOVE the night grade so they
+      // glow instead of being multiplied into the dark.)
       // Pollen / dust motes and the odd leaf drift on the breeze by day.
       const drift = 0.4 + mood.wind * 2.2;
       ctx.fillStyle = 'rgba(255, 245, 210, 0.5)';
@@ -2336,7 +3821,7 @@ export class MapView {
    * in. Caller already guards reduced motion.
    */
   private drawSeason(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, night: boolean): void {
-    const season = seasonForMonth(new Date().getMonth());
+    const season = seasonForMonth(new Date().getMonth(), this.weather?.southern ?? false);
     // Summer's twinkle is the night fireflies already drawn — keep day light.
     const n = season === 'winter' ? 30 : season === 'summer' ? 12 : 18;
     const fallMs = season === 'winter' ? 11000 : season === 'autumn' ? 7500 : 13000;
@@ -2518,14 +4003,11 @@ export class MapView {
     }
   }
 
-  private updateBar(prog: number, stage: number, mood?: WorldMood): void {
-    const fill = document.getElementById('map-bar-fill');
-    if (fill) fill.style.width = `${Math.round(prog * 100)}%`;
-    const label = document.getElementById('map-progress');
-    const scene = mood ? moodCaption(mood) : '';
-    if (label)
-      label.textContent = `${STAGE_NAMES[stage]} · ${Math.round(prog * 100)}% restored${scene ? ` · ${scene}` : ''}`;
-  }
+  // updateBar previously drove a coloured progress rail + status line under
+  // the map. Both moved into the under-map HUD (home.ts owns the clock, the
+  // restored %, and the live sky); the method is kept as a documented no-op
+  // seam rather than ripped out of every call site.
+  private updateBar(_prog: number, _stage: number, _mood?: WorldMood): void {}
 
   private renderList(): void {
     const host = document.getElementById('map-body');

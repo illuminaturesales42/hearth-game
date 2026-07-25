@@ -178,5 +178,5 @@ export function appendEntry(entries: readonly ChronicleEntry[], entry: Chronicle
 
 export function rolloverStats(stats: StatsState, todayKey: string): StatsState {
   if (stats.day === todayKey) return stats;
-  return { ...stats, day: todayKey, dayMerges: 0, dayDelivers: 0, dayActions: 0 };
+  return { ...stats, day: todayKey, dayMerges: 0, dayDelivers: 0, dayActions: 0, dayDuelWins: 0 };
 }

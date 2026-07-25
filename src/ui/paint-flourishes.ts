@@ -81,29 +81,3 @@ export function drawButterfly(
   ctx.stroke();
   ctx.restore();
 }
-
-/** A small cloaked townsperson in the distance — a painted silhouette, not a
- *  named villager, so a busier road never spoils who you've yet to meet. */
-export function drawStroller(ctx: CanvasRenderingContext2D, x: number, y: number, h: number, cloak: string): void {
-  ctx.save();
-  // soft ground shadow
-  ctx.fillStyle = 'rgba(30, 24, 18, 0.18)';
-  ctx.beginPath();
-  ctx.ellipse(x, y, h * 0.28, h * 0.09, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // cloak body
-  ctx.fillStyle = cloak;
-  ctx.beginPath();
-  ctx.moveTo(x, y - h);
-  ctx.quadraticCurveTo(x - h * 0.34, y - h * 0.4, x - h * 0.3, y);
-  ctx.lineTo(x + h * 0.3, y);
-  ctx.quadraticCurveTo(x + h * 0.34, y - h * 0.4, x, y - h);
-  ctx.closePath();
-  ctx.fill();
-  // head
-  ctx.fillStyle = '#e8c69a';
-  ctx.beginPath();
-  ctx.arc(x, y - h, h * 0.2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-}
