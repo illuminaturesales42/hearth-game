@@ -6405,4 +6405,147 @@ body.reduce-motion .glow-dot {
 .home-avatar .avatar-portrait {
   width: 100%;
   height: 100%;
+/* --- Festivals: what Emberhollow is celebrating ------------------------------ */
+.festival-card {
+  position: relative;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 210, 122, 0.34);
+  background: linear-gradient(180deg, rgba(255, 210, 122, 0.16), rgba(255, 210, 122, 0.05));
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+/* With a painted banner behind it, the text needs its own scrim to stay legible. */
+.festival-card.has-art::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(12, 10, 18, 0.35), rgba(12, 10, 18, 0.78));
+}
+.festival-card > * {
+  position: relative;
+}
+.festival-eyebrow {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffd27a;
+  margin-bottom: 2px;
+}
+.festival-name {
+  display: block;
+  font-size: 1.15rem;
+  color: #ffe6bd;
+}
+.festival-blurb {
+  margin: 4px 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--ink, #f3e7cf);
+}
+.festival-soon {
+  margin-bottom: 10px;
+}
+
+/* --- The Proving (bakery minigame) ------------------------------------------ */
+.mg-bake {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 260px;
+  padding: 16px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(90, 52, 28, 0.5), rgba(48, 28, 16, 0.6));
+}
+.mg-bake.has-art {
+  background-size: cover;
+  background-position: center;
+}
+.mg-bake-tray {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.mg-loaf {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 84px;
+  padding: 10px 6px;
+  border-radius: 14px;
+  border: 2px solid rgba(255, 210, 122, 0.28);
+  background: rgba(30, 18, 10, 0.55);
+  cursor: pointer;
+  color: var(--ink, #f3e7cf);
+  /* Colour is the signal; the border/label carry it too, so this never relies
+     on hue alone (colour-blind safe). */
+  transition: border-color 160ms ease, background 160ms ease;
+}
+body.reduce-motion .mg-loaf {
+  transition: none;
+}
+.mg-loaf-art {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+}
+.mg-loaf-ico {
+  font-size: 2rem;
+  line-height: 1;
+  filter: saturate(0.7) brightness(0.85);
+}
+.mg-loaf.is-golden {
+  border-color: #ffd27a;
+  background: rgba(255, 196, 92, 0.24);
+  box-shadow: 0 0 0 3px rgba(255, 210, 122, 0.28);
+}
+.mg-loaf.is-golden .mg-loaf-ico {
+  filter: none;
+}
+.mg-loaf.is-dark {
+  border-color: rgba(120, 80, 50, 0.5);
+  background: rgba(24, 14, 8, 0.7);
+}
+.mg-loaf.is-dark .mg-loaf-ico {
+  filter: brightness(0.55) saturate(0.5);
+}
+.mg-loaf-meter {
+  display: block;
+  width: 100%;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+.mg-loaf-meter i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #b07a45, #ffd27a);
+}
+.mg-loaf-tag {
+  font-size: 0.72rem;
+  min-height: 1em;
+  color: var(--muted, #cbb790);
+}
+.mg-loaf.done {
+  opacity: 0.9;
+  cursor: default;
+}
+.mg-loaf.g-golden .mg-loaf-tag {
+  color: #ffd27a;
+  font-weight: 600;
+}
+.mg-bake-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted, #cbb790);
+  text-align: center;
 }

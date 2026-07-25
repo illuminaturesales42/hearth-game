@@ -730,3 +730,85 @@ export function sawmillReward(hits: number, perfects: number, count: number, bes
             : 'The flume ran on; the timber still stacks.',
   };
 }
+
+// ---------- 8) The Proving (bakery) — three loaves, three peaks ----------
+// Bran's oven. Three loaves prove at their own seeded rates; each passes
+// through pale → golden → dark. Pull a loaf at its golden moment and it's a
+// good bake. The tension is watching three at once, not reflexes — every loaf
+// still comes out of the oven, so a distracted round still feeds the village.
+
+export const BAKE_LOAVES = 3;
+export const BAKE_DURATION_MS = 22_000;
+
+export type BakeGrade = 'pale' | 'golden' | 'dark';
+
+export interface BakeLoaf {
+  /** When this loaf reaches its golden centre. */
+  peakMs: number;
+  /** Half-width of the golden window: golden is peakMs ± this. */
+  windowMs: number;
+}
+
+/**
+ * A deterministic proving schedule. The loaves are staggered so their golden
+ * moments never collide — the player is always able to catch all three, which
+ * keeps this a game of attention rather than of impossible choices.
+ */
+export function bakeSchedule(seed: number, loaves = BAKE_LOAVES, durationMs = BAKE_DURATION_MS): BakeLoaf[] {
+  const rand = lcg(seed);
+  const out: BakeLoaf[] = [];
+  // Evenly spaced peaks across the middle of the round, with a little jitter so
+  // no two runs feel identical, then a gap guarantee so windows never overlap.
+  const first = durationMs * 0.26;
+  const gap = (durationMs * 0.62) / Math.max(1, loaves - 1);
+  for (let i = 0; i < loaves; i++) {
+    const jitter = (rand() - 0.5) * gap * 0.3;
+    const peakMs = Math.round(first + i * gap + jitter);
+    // Later loaves are a touch tighter — the oven gets hotter as it goes.
+    const windowMs = Math.round(1100 - i * 130 + rand() * 180); // ~1.1s → ~0.85s
+    out.push({ peakMs, windowMs });
+  }
+  return out.sort((a, b) => a.peakMs - b.peakMs);
+}
+
+/** How a loaf turned out, given when it was pulled. Never pulled = left to darken. */
+export function bakeGrade(loaf: BakeLoaf, pullMs: number | null): BakeGrade {
+  if (pullMs === null) return 'dark'; // forgotten in the oven — still bread
+  if (pullMs < loaf.peakMs - loaf.windowMs) return 'pale';
+  if (pullMs > loaf.peakMs + loaf.windowMs) return 'dark';
+  return 'golden';
+}
+
+/**
+ * No-fail reward: every loaf bakes into something. Goldens set the coins and
+ * lift the harvest chain; a full tray of goldens is the baker's best.
+ */
+export function bakeReward(grades: readonly BakeGrade[]): MgReward {
+  const golden = grades.filter((g) => g === 'golden').length;
+  const pale = grades.filter((g) => g === 'pale').length;
+  const total = Math.max(1, grades.length);
+  const coins = 6 + golden * 6 + pale * 2; // 6..24 for a three-loaf tray
+  const items: { chain: ChainId; level: number }[] = [{ chain: 'harvest', level: 1 }];
+  if (golden >= 1) items.push({ chain: 'harvest', level: 2 });
+  if (golden >= total) items.push({ chain: 'harvest', level: 3 }); // the perfect tray
+  else if (golden >= 2) items.push({ chain: 'harvest', level: 2 });
+  const ember = golden >= 2 ? 2 : 1;
+  return {
+    coins,
+    items,
+    ember,
+    heart:
+      golden >= total
+        ? 'Three golden loaves — Bran will want the recipe.'
+        : golden >= 2
+          ? 'A good bake; the shop will smell wonderful.'
+          : golden === 1
+            ? 'One came out golden — a fair morning’s baking.'
+            : 'Rustic, honest bread. It all gets eaten.',
+  };
+}
+
+/** Personal best: goldens weigh most, pale loaves still count for something. */
+export function bakeScore(grades: readonly BakeGrade[]): number {
+  return grades.reduce((n, g) => n + (g === 'golden' ? 10 : g === 'pale' ? 3 : 1), 0);
+}

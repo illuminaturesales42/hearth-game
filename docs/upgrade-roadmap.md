@@ -2,7 +2,7 @@
 
 Index of the six upgrade tracks scoped for Hearth beyond the avatar/identity system.
 Each track has its own spec document with concrete asset lists and a code sketch.
-**Status: design/specs only — none of these are implemented yet.**
+**Status: partially built** — see the status column and "Built so far" below. Everything built is art-gated, so it works today and upgrades when art lands.
 
 ---
 
@@ -20,14 +20,20 @@ Every track follows the pattern proven by the avatar work:
 
 ## The tracks
 
-| # | Track | Doc | Impact | Effort | New assets | Risk |
+| # | Track | Doc | Impact | Effort | New assets | Status |
 |---|---|---|---|---|---|---|
-| **A** | Visual polish (M2 art pass) | [`art-m2-pass-spec.md`](./art-m2-pass-spec.md) | High (consistency) | **Low** | Few (much is wiring only) | Very low |
-| **B** | Photo / Share upgrade | [`photo-share-spec.md`](./photo-share-spec.md) | High (growth) | Low–Med | Frames/backdrops | Low |
-| **C** | Festivals & seasons | [`festivals-spec.md`](./festivals-spec.md) | High | Medium | Banners, dressing | Medium |
-| **D** | New minigames | [`minigames-new-spec.md`](./minigames-new-spec.md) | Medium–High | **High** | Per-game art | Medium |
-| **E** | Audio (M2 audio pass) | [`audio-m2-spec.md`](./audio-m2-spec.md) | Medium–High | Medium | **All audio** | Medium (payload) |
-| **F** | Real multiplayer/social | [`multiplayer-spec.md`](./multiplayer-spec.md) | Highest | **Highest** | Few | High (backend, abuse) |
+| **A** | Visual polish (M2 art pass) | [`art-m2-pass-spec.md`](./art-m2-pass-spec.md) | High (consistency) | **Low** | Few (much is wiring only) | 🟡 **Part 1 DONE** (currency wired); rest art-blocked |
+| **B** | Photo / Share upgrade | [`photo-share-spec.md`](./photo-share-spec.md) | High (growth) | Low–Med | Frames/backdrops | ⬜ Waits on avatar branch + frame art |
+| **C** | Festivals & seasons | [`festivals-spec.md`](./festivals-spec.md) | High | Medium | Banners, dressing | 🟢 **CORE DONE** (art-gated); banners/dressing pending |
+| **D** | New minigames | [`minigames-new-spec.md`](./minigames-new-spec.md) | Medium–High | **High** | Per-game art | 🟡 **1 of 2 built** (Bakery); Post Office pending |
+| **E** | Audio (M2 audio pass) | [`audio-m2-spec.md`](./audio-m2-spec.md) | Medium–High | Medium | **All audio** | ⬜ Spec only |
+| **F** | Real multiplayer/social | [`multiplayer-spec.md`](./multiplayer-spec.md) | Highest | **Highest** | Few | ⬜ Spec only (do last) |
+
+### Built so far (branch `feature/hearth-upgrades`)
+
+- **Track A Part 1** — `currencyIcon()` / `uiIcon()` in `src/ui/art.ts`; painted `res_coin`/`res_energy` now render at 10 innerHTML sites. Toast and `.textContent` sites deliberately keep emoji (HTML would leak as literal text there). Chrome icons intentionally left until `icon_decorate`/`icon_workshop` exist, so the app doesn't end up half-painted.
+- **Track D — The Proving (bakery)** — the 8th minigame, first for a building that had none. Seeded, no-fail, reduced-motion-playable, 15 tests. Emoji fallback today; `mg_bg_bakery`/`mg_bake_loaf` slot in later.
+- **Track C core** — `src/data/festivals.ts` + `src/core/festivals.ts` (pure, hemisphere-aware, 14 tests) and the festival card + "returning soon" list on the Collect screen. **Fully working with no art**; banners slot in when painted.
 
 ### Recommended order
 
@@ -61,7 +67,7 @@ F  Multiplayer          — largest; needs a backend
 
 What the surveys found, so future sessions don't re-research it:
 
-**Real and well-built:** villager bonds/memories/greetings, town requests, the 7 minigames (all substantial, seeded, no-fail), true lunar phase (`src/data/moon.ts`), real geolocation-derived season/daylight (`src/ui/weather.ts`), day-spanning weather memory with wetness/snow accumulation (`src/core/weather-history.ts`), the local hot-seat Bonfire Duel, and the share-card composer.
+**Real and well-built:** villager bonds/memories/greetings, town requests, the minigames (8 now, all substantial, seeded, no-fail), true lunar phase (`src/data/moon.ts`), real geolocation-derived season/daylight (`src/ui/weather.ts`), day-spanning weather memory with wetness/snow accumulation (`src/core/weather-history.ts`), the local hot-seat Bonfire Duel, and the share-card composer.
 
 **Stubbed / simulated (labelled as such in-code):**
 - Multiplayer/social — client-side simulation; "They joined" is a tester-gated free-energy faucet (`src/core/social.ts:2`, `src/ui/social-screen.ts:47`).
@@ -70,7 +76,7 @@ What the surveys found, so future sessions don't re-research it:
 - Analytics sink (above).
 - Some item art still emoji (`src/core/types.ts:31`).
 
-**Missing entirely:** any festival/seasonal-event system (`src/data/world.ts:313` has only daily + weekly rhythms).
+**Was missing entirely, now built:** the festival/seasonal-event system — `src/data/world.ts:313` still holds only the daily + weekly rhythms, with festivals living in `src/data/festivals.ts` + `src/core/festivals.ts`.
 
 **Not a gap (verified):** decor pieces and shop skins are intentional — all 11 decor entries map to existing `prop_*`/`tree_*`/`terrain_*` art, and board/town skins are deliberate CSS colour washes, not missing sprites.
 

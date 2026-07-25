@@ -1,7 +1,8 @@
 /**
  * Village Life catalogue: which building opens which mini-game, and the pool of
  * villager wishes the Wishing Well surfaces. Data only — the engine lives in
- * ../core/minigames. Wave 1 ships three; the rest follow one building at a time.
+ * ../core/minigames. Seven games ship today, one per building; further buildings
+ * gain their own over time (concepts in docs/minigames-new-spec.md).
  */
 
 export interface MinigameDef {
@@ -76,6 +77,15 @@ export const MINIGAMES: readonly MinigameDef[] = [
     verb: 'Start the saw',
     blurb:
       'Logs ride the flume — saw each one as it crosses the blade line. A missed log just drifts on; the timber still stacks.',
+    unlock: 'l2',
+  },
+  {
+    id: 'bakery-proving',
+    buildingArt: 'town_bakery',
+    title: 'The Proving',
+    verb: 'Mind the oven',
+    blurb:
+      'Three loaves rise at their own pace. Pull each one at its golden moment — and whatever you forget still comes out as honest bread.',
     unlock: 'l2',
   },
 ];

@@ -66,4 +66,29 @@ export function itemIconInline(chain: ChainId, level: number): string {
   return `<span class="inline-glyph">${chainDef(chain).levels[level] ?? '❔'}</span>`;
 }
 
+/** Painted art for the two currencies, with their historical emoji as fallback. */
+const CURRENCY_ART = { coin: 'res_coin', energy: 'res_energy' } as const;
+const CURRENCY_GLYPH = { coin: '🪙', energy: '🔥' } as const;
+
+/**
+ * Inline currency glyph (coins, hearth energy) for reward lines and prices.
+ * Painted `res_*` sprite where sliced, the old emoji otherwise — currency shows
+ * up on nearly every screen, so this is the widest-reaching art upgrade.
+ */
+export function currencyIcon(kind: 'coin' | 'energy'): string {
+  const url = artUrl(CURRENCY_ART[kind]);
+  if (url) return `<img class="inline-ico" src="${url}" alt="" />`;
+  return `<span class="inline-glyph">${CURRENCY_GLYPH[kind]}</span>`;
+}
+
+/**
+ * Painted UI chrome glyph (close, zoom, quest markers…), falling back to the
+ * text/emoji character the button used before its sprite existed.
+ */
+export function uiIcon(id: string, fallback: string, cls = 'ui-ico'): string {
+  const url = artUrl(id);
+  if (url) return `<img class="${cls}" src="${url}" alt="" />`;
+  return `<span class="${cls}">${fallback}</span>`;
+}
+
 export { artUrl };
