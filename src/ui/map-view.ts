@@ -31,7 +31,7 @@ import {
 import { computeMood, earnedFlourishes, meditatedToday, moodCaption, seasonForMonth } from '../core/world-mood';
 import type { WeatherNow, WorldMood } from '../core/world-mood';
 import { stemLevels, type StemLevels } from '../core/stem-levels';
-import { illumination, phaseName } from '../data/moon';
+import { illumination } from '../data/moon';
 import { clampCamera, screenToWorld, zoomAt, type Camera } from '../core/map-camera';
 import { getPhaseOverride, phaseForTime, type PhaseWeights, type SunTimes } from '../core/time-of-day';
 import { ReactionOnsets, type OnsetKind } from './world-reactions';
@@ -4033,35 +4033,13 @@ export class MapView {
   private updateBar(prog: number, stage: number, mood?: WorldMood): void {
     const fill = document.getElementById('map-bar-fill');
     if (fill) fill.style.width = `${Math.round(prog * 100)}%`;
+    // The status LINE moved into the under-map HUD (home.ts), which now owns
+    // the clock, the restored %, and the live sky. This keeps only the bar.
     const label = document.getElementById('map-progress');
-    const scene = mood ? moodCaption(mood) : '';
-    // A legible "your sky" readout so the player *feels* the link to their real
-    // world: local temperature + their own sunset time, from live data.
-    const sky = this.localSkyReadout();
-    if (label)
-      label.textContent =
-        `${STAGE_NAMES[stage]} · ${Math.round(prog * 100)}% restored` +
-        `${scene ? ` · ${scene}` : ''}${sky ? ` · ${sky}` : ''}`;
-  }
-
-  /** "12° · sunset 8:41pm" from the live reading, or '' when we have no data. */
-  private localSkyReadout(): string {
-    const w = this.weather;
-    if (!w) return '';
-    const parts: string[] = [];
-    if (typeof w.tempC === 'number') parts.push(`${Math.round(w.tempC)}°`);
-    if (typeof w.sunsetMs === 'number' && typeof w.sunriseMs === 'number') {
-      // Show the next solar event the player is heading toward.
-      const now = Date.now();
-      const upcomingSunset = now < w.sunsetMs;
-      const at = upcomingSunset ? w.sunsetMs : w.sunriseMs;
-      const label = upcomingSunset ? 'sunset' : 'sunrise';
-      const time = new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-      parts.push(`${label} ${time}`);
+    if (label) {
+      const scene = mood ? moodCaption(mood) : '';
+      label.textContent = `${STAGE_NAMES[stage]} · ${Math.round(prog * 100)}% restored${scene ? ` · ${scene}` : ''}`;
     }
-    // On a real night, name the moon phase — a full moon over the bay is a beat.
-    if (w.isDay === false) parts.push(phaseName(Date.now()).toLowerCase());
-    return parts.join(' · ');
   }
 
   private renderList(): void {

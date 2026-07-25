@@ -9,7 +9,7 @@ import { avatarPortraitHTML } from './avatar-render';
 import { openAvatarCreator } from './avatar-creator';
 import { effectiveWeather, latestSunTimes, latestWeather } from './weather';
 import type { WeatherKind } from '../core/world-mood';
-import { ORDERS, ZONE_STAGES } from '../data/economy';
+import { ORDERS, RESTORE_ORDERS, ZONE_STAGES } from '../data/economy';
 import { orderAt } from '../data/endless';
 import { feedback } from './feedback';
 import { toast } from './toast';
@@ -236,8 +236,14 @@ export class Home {
       if (Math.abs(now - sun.sunriseMs) < near) [part, badge] = ['sunrise', 'time_badge_sunrise'];
       else if (Math.abs(now - sun.sunsetMs) < near) [part, badge] = ['sunset', 'time_badge_sunset'];
     }
-    const dayPart = document.getElementById('hud-daypart');
-    if (dayPart) dayPart.textContent = part;
+    // The stage of restoration now lives here — it is the map's headline stat.
+    const restored = document.getElementById('hud-restored');
+    if (restored) {
+      const pct = Math.min(100, Math.round((this.game.snapshot.orderIndex / RESTORE_ORDERS) * 100));
+      restored.textContent = `${pct}% restored`;
+    }
+    const ico0 = document.getElementById('hud-weather-ico');
+    if (ico0) ico0.title = part; // day-part survives as the medallion's tooltip
 
     const ico = document.getElementById('hud-weather-ico');
     if (ico) {
