@@ -3748,29 +3748,12 @@ export class MapView {
       }
       ctx.restore();
     }
-    // God-rays fanning from the low sun on clear-ish days.
-    if (!night && mood.cloudCover < 0.55) {
-      const sx = SKY_ANCHORS.godRays.x * W;
-      const sy = SKY_ANCHORS.godRays.y * H;
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < 5; i++) {
-        const a = 0.9 + i * 0.34 + Math.sin(t / 5000 + i) * 0.05;
-        const len = H * 0.7;
-        const spread = 0.05;
-        const g = ctx.createLinearGradient(sx, sy, sx + Math.cos(a) * len, sy + Math.sin(a) * len);
-        g.addColorStop(0, `rgba(255, 232, 175, ${(0.06 * (1 - mood.cloudCover)).toFixed(3)})`);
-        g.addColorStop(1, 'rgba(255, 232, 175, 0)');
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.moveTo(sx, sy);
-        ctx.lineTo(sx + Math.cos(a - spread) * len, sy + Math.sin(a - spread) * len);
-        ctx.lineTo(sx + Math.cos(a + spread) * len, sy + Math.sin(a + spread) * len);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.restore();
-    }
+    // God-rays fan (removed): it was anchored at a fixed SKY_ANCHORS.godRays
+    // point regardless of the actual time of day, so dawn/midday/dusk all
+    // showed the identical ray fan in the identical spot on the painted plate
+    // — which has no sun lines painted into it at all. Reported as a visible
+    // bug; the painted plates already carry their own light, so this
+    // procedural overlay was pure redundancy, not a fix for a missing one.
 
     // Soft parallax cloud shadows drifting across the island in the REAL wind
     // direction — a whole layer of dappled light moving the way the wind blows.
