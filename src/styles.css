@@ -6405,6 +6405,8 @@ body.reduce-motion .glow-dot {
 .home-avatar .avatar-portrait {
   width: 100%;
   height: 100%;
+}
+
 /* --- Festivals: what Emberhollow is celebrating ------------------------------ */
 .festival-card {
   position: relative;
