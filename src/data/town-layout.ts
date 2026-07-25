@@ -138,7 +138,12 @@ const TOWN_BUILDINGS_V2_BASE: readonly TownPiece[] = [
   // The Quarry — cut into the island's rocky western rim, where the boulders
   // meet the lanes. Its own painted ruin/wip art carries the pre-restore states
   // (ruinVariant is only the "show it before it's rebuilt" flag).
-  { art: 'town_quarry', x: 0.18, y: 0.46, w: 0.12, unlockAt: 19, ruinVariant: 1 },
+  // Nudged right (was x:0.18) so the quarry's right edge sits over the
+  // terrain_trees_s cluster (see its own comment below, nudged to meet it).
+  // x:0.185 is the practical ceiling: town_townhall (x:0.3, w:0.14) is the
+  // binding landmark-spacing constraint at this row, tighter than the Old
+  // Cottage's — tests/town-layout.test.ts enforces the minimum gap.
+  { art: 'town_quarry', x: 0.185, y: 0.46, w: 0.12, unlockAt: 19, ruinVariant: 1 },
 ] as const;
 
 /**
@@ -309,7 +314,10 @@ export const TOWN_TERRAIN_V1: readonly TownPiece[] = [
   // wooded edges — y positions follow the COASTLINE headlands (map-view.ts)
   // so every copse stands on land, never in the sky or the sea
   { art: 'terrain_trees_l', x: 0.1, y: 0.48, w: 0.1, unlockAt: 0 },
-  { art: 'terrain_trees_s', x: 0.235, y: 0.465, w: 0.085, unlockAt: 0 },
+  // Nudged left from x:0.235 to sit fully under the Quarry's right edge
+  // (terrain pieces aren't landmark-spacing-checked, so this side moved
+  // instead of pushing the Quarry into town_townhall's minimum gap).
+  { art: 'terrain_trees_s', x: 0.195, y: 0.465, w: 0.085, unlockAt: 0 },
   { art: 'terrain_trees_l', x: 0.615, y: 0.41, w: 0.095, unlockAt: 0 },
   { art: 'terrain_trees_s', x: 0.735, y: 0.425, w: 0.08, unlockAt: 0 },
   { art: 'terrain_trees_l', x: 0.93, y: 0.5, w: 0.09, unlockAt: 0 },
