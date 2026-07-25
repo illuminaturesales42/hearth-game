@@ -833,9 +833,13 @@ body {
   transform-origin: center;
   opacity: 0;
   /* soft ember core → warm halo, with a hearth-heart glyph riding on top */
-  background:
-    radial-gradient(circle at 50% 46%, rgba(255, 252, 238, 0.95) 0%, rgba(255, 214, 120, 0.85) 26%,
-      rgba(255, 150, 60, 0.5) 52%, rgba(255, 120, 40, 0) 72%);
+  background: radial-gradient(
+    circle at 50% 46%,
+    rgba(255, 252, 238, 0.95) 0%,
+    rgba(255, 214, 120, 0.85) 26%,
+    rgba(255, 150, 60, 0.5) 52%,
+    rgba(255, 120, 40, 0) 72%
+  );
   animation: fxBloom 0.56s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 .fx-bloom::after {
@@ -849,11 +853,23 @@ body {
   opacity: 0.9;
 }
 @keyframes fxBloom {
-  0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
-  35% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(1.7); opacity: 0; }
+  0% {
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 0;
+  }
+  35% {
+    transform: translate(-50%, -50%) scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.7);
+    opacity: 0;
+  }
 }
-body.reduce-motion .fx-bloom { animation: none; opacity: 0; }
+body.reduce-motion .fx-bloom {
+  animation: none;
+  opacity: 0;
+}
 /* Heartfire merge bloom: a 7-frame sprite strip (176px cell, 1232px strip) played
    with steps(); the JS only mounts it when motion is allowed. */
 .fx-heart {
@@ -6466,7 +6482,9 @@ body.reduce-motion .glow-dot {
   color: var(--ink, #f3e7cf);
   /* Colour is the signal; the border/label carry it too, so this never relies
      on hue alone (colour-blind safe). */
-  transition: border-color 160ms ease, background 160ms ease;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
 }
 body.reduce-motion .mg-loaf {
   transition: none;

@@ -1845,7 +1845,9 @@ export class MinigameUI {
     const bg = artUrl('mg_bg_bakery');
     const loafArt = artUrl('mg_bake_loaf');
     const face = (): string =>
-      loafArt ? `<img class="mg-loaf-art" src="${loafArt}" alt="" draggable="false" />` : `<span class="mg-loaf-ico">🍞</span>`;
+      loafArt
+        ? `<img class="mg-loaf-art" src="${loafArt}" alt="" draggable="false" />`
+        : `<span class="mg-loaf-ico">🍞</span>`;
 
     stage.innerHTML =
       `<div class="mg-bake${bg ? ' has-art' : ''}"${bg ? ` style="background-image:url(${bg})"` : ''}>` +

@@ -2,7 +2,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Game } from '../src/core/game';
 import { CURRENT_VERSION, migrateState, saveState, loadState } from '../src/core/save';
 import { defaultAvatar, normalizeAvatar } from '../src/core/avatar';
-import { PORTRAITS, availablePortraits, defaultPortraitId, isPortraitId, portraitArt } from '../src/data/avatar-portraits';
+import {
+  PORTRAITS,
+  availablePortraits,
+  defaultPortraitId,
+  isPortraitId,
+  portraitArt,
+} from '../src/data/avatar-portraits';
 
 // Minimal in-memory localStorage shim (vitest node env has none).
 const store = new Map<string, string>();

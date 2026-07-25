@@ -790,7 +790,8 @@ export function bakeReward(grades: readonly BakeGrade[]): MgReward {
   const coins = 6 + golden * 6 + pale * 2; // 6..24 for a three-loaf tray
   const items: { chain: ChainId; level: number }[] = [{ chain: 'harvest', level: 1 }];
   if (golden >= 1) items.push({ chain: 'harvest', level: 2 });
-  if (golden >= total) items.push({ chain: 'harvest', level: 3 }); // the perfect tray
+  if (golden >= total)
+    items.push({ chain: 'harvest', level: 3 }); // the perfect tray
   else if (golden >= 2) items.push({ chain: 'harvest', level: 2 });
   const ember = golden >= 2 ? 2 : 1;
   return {

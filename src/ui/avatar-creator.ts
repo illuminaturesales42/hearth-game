@@ -33,7 +33,10 @@ export function maybeNudgeAvatar(game: Game): void {
     return; // storage unavailable — skip quietly rather than nag every boot
   }
   // A beat after load so it doesn't collide with the sunrise/new-day panel.
-  setTimeout(() => toast('A looking-glass washed up with the tide — choose your look under Villagers, or in Settings.'), 2600);
+  setTimeout(
+    () => toast('A looking-glass washed up with the tide — choose your look under Villagers, or in Settings.'),
+    2600,
+  );
 }
 
 /**

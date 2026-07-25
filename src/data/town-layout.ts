@@ -118,7 +118,7 @@ const TOWN_BUILDINGS_V2_BASE: readonly TownPiece[] = [
   // ruinVariant marks the well for placement pre-restore (shows its own painted
   // prop_well_ruin/_wip storm art); it lives the day cycle via prop_well_dawn/_dusk/_night.
   { art: 'prop_well', x: 0.615, y: 0.508, w: 0.08, unlockAt: 6, ruinVariant: 4 },
-  { art: 'town_market', x: 0.70, y: 0.615, w: 0.115, unlockAt: 8, ruinVariant: 7 },
+  { art: 'town_market', x: 0.7, y: 0.615, w: 0.115, unlockAt: 8, ruinVariant: 7 },
   { art: 'town_garden', x: 0.55, y: 0.42, w: 0.135, unlockAt: 10, ruinVariant: 4 },
   { art: 'town_townhall', x: 0.3, y: 0.407, w: 0.14, unlockAt: 12, ruinVariant: 3 },
   // The Post Office — Wren the postmistress's home, referenced from the very first
@@ -238,8 +238,7 @@ export const TOWN_BOATS_V1: readonly BoatPiece[] = [
 /** V2: the painted plates already carry the working harbour (the dock sprite
  * ships with its own moored boat), so the free-floating boat props are retired
  * for the V2 world — they read as clutter on the open sea. */
-export const TOWN_BOATS_V2: readonly BoatPiece[] = [
-] as const;
+export const TOWN_BOATS_V2: readonly BoatPiece[] = [] as const;
 export const TOWN_BOATS: readonly BoatPiece[] = MAP_V2 ? TOWN_BOATS_V2 : TOWN_BOATS_V1;
 
 /**

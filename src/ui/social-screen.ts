@@ -26,7 +26,10 @@ export class SocialScreen {
     private onDuel: () => void = () => undefined,
   ) {
     game.subscribe((ev) => {
-      if ((ev.type === 'social' || ev.type === 'duelEnd' || ev.type === 'bond' || ev.type === 'avatar') && this.isVisible())
+      if (
+        (ev.type === 'social' || ev.type === 'duelEnd' || ev.type === 'bond' || ev.type === 'avatar') &&
+        this.isVisible()
+      )
         this.render();
     });
   }

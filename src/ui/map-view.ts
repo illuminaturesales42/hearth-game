@@ -62,7 +62,6 @@ import { feedback } from './feedback';
 import { minigameCta } from './minigame-cta';
 import { tomorrowLine } from './tease';
 
-
 /**
  * Emberhollow's coastline, clockwise from the west edge — hand-laid headlands
  * and coves (normalized coords) so the island reads as a real shore the sea
@@ -3160,9 +3159,7 @@ export class MapView {
         for (let x = -12; x <= W + 12; x += 12) {
           const u = x + xoff;
           const yy =
-            y +
-            Math.sin(u / 46 + drift / pace + ph) * amp +
-            Math.sin(u / 118 - drift / (pace * 1.8) + ph) * amp * 0.5;
+            y + Math.sin(u / 46 + drift / pace + ph) * amp + Math.sin(u / 118 - drift / (pace * 1.8) + ph) * amp * 0.5;
           if (x === -12) s.moveTo(x, yy);
           else s.lineTo(x, yy);
         }

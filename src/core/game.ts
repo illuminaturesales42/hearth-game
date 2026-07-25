@@ -1404,7 +1404,12 @@ export class Game {
       itemCount: reward.items.length,
       ...(wish ? { wish: `${wish.who} ${wish.text}` } : {}),
     });
-    return { isBest, best: this.state.minigames.bests?.[id] ?? null, discovered: stamped.discovered, emberGranted: em.granted };
+    return {
+      isBest,
+      best: this.state.minigames.bests?.[id] ?? null,
+      discovered: stamped.discovered,
+      emberGranted: em.granted,
+    };
   }
 
   /** The player's personal best for a mini-game, or null if never played. */

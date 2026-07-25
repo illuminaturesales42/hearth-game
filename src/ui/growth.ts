@@ -189,8 +189,7 @@ export class GrowthUI {
     const exportStale = Date.now() - lastExport > 5 * DAY;
 
     const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent);
-    const isMobile =
-      isIos || /Android/i.test(navigator.userAgent) || window.matchMedia('(pointer: coarse)').matches;
+    const isMobile = isIos || /Android/i.test(navigator.userAgent) || window.matchMedia('(pointer: coarse)').matches;
     const needsInstall = !standalone && (isIos || this.installEvt !== null);
     // On mobile, surface the "install the app" prompt straight away (testers land
     // on the web link and should be offered the installed app immediately); the
