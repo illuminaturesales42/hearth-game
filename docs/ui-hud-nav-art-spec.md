@@ -74,19 +74,44 @@ Wiring note for later: prefer `wx_<kind>` and fall back to `time_badge_*`.
 
 ---
 
-## P4 — `wordmark_hearth` high-res re-export (splash/header text)
+## P4 — `wordmark_hearth` full re-do (splash/header text) — pixel-patching has hit its ceiling
 
-**The bug it fixes:** the splash-screen wordmark reads soft/blurry. The source file is only **304×94px**, but the splash CSS displayed it up to 380px wide — a ~1.25x upscale of a small raster, which softens the thin lettering. (A stray 1–2px vertical line baked into the old file's right edge has already been cleaned directly in `public/art/wordmark_hearth.png` — not an asset request, just noted for history.) As an interim fix, the splash CSS cap was reduced to the source's native 300px so nothing is currently upscaled — this re-export is what lets that cap go back up.
+**Status: patched twice already; the remaining problems need a proper regeneration, not another patch.** Two rounds of pixel-level cleanup have landed directly in `public/art/wordmark_hearth.png` (documented below for history — no action needed on these), but the source asset has more problems than can be safely fixed without redrawing it:
+
+*Already fixed in-place:*
+- A stray 1–2px vertical line baked into the old file's right edge (isolated, asymmetric — cleaned).
+- **The A, R and O counters were filled solid opaque black instead of being cut transparent** — i.e. the enclosed hole inside those letterforms showed as a harsh black wedge instead of revealing the background through it. Confirmed via a connected-component scan of opaque near-black pixels, then cleared. This was the "letters haven't been alpha'd" defect.
+- The splash CSS was upscaling the (only 304×94px) source by ~1.25x, softening the lettering. Capped to native 300px as an interim fix — see below.
+
+*Can't be safely fixed with more pixel-patching — needs a real re-export:*
+- **Resolution.** 304×94px natively is just too small; even at the reduced 300px display cap it's at the edge of native, with zero headroom for retina/larger display.
+- **The flame emblem's base.** Below the round flame medallion (which sits above the A) there's a blobby, uneven black shape connecting it down toward the letters — reads like a matting/compositing artifact rather than an intentional design element, but it's ambiguous enough (could be a stylised candle-base silhouette) that clearing it by pixel-editing risked leaving an ugly abrupt flame-bottom. Left untouched; needs an artist's eye.
+- **Left/right asymmetry** in the leaf flourish (noted previously, still true).
 
 | Field | Value |
 |---|---|
 | File | `wordmark_hearth.png` (replaces the existing file — same id, same aspect ratio ~3.23:1) |
-| Canvas | **at least 608 × 188** (2x the current native size — 3x/912×282 preferred for retina headroom), transparent, RGBA |
-| Content | Exactly the current lockup — "HEARTH" lettering, ember flame mark above the A, "MERGE · CARE · RESTORE" subline, leaf sprigs both sides — just re-exported sharp at higher resolution. No redesign needed |
-| Symmetry | Keep the leaf flourish genuinely mirrored left/right — the current file reads slightly asymmetric even after cleanup |
-| Used at | Splash screen (`.splash-wordmark`, up to 300px today, could return to ~380px+ once re-exported) and the in-app header (`.brand-wordmark`, 32px tall — already comfortably sharp, unaffected either way) |
+| Canvas | **at least 900 × 280** (3x the old native size), transparent, RGBA |
+| Content | Same lockup — "HEARTH" lettering, ember flame mark above the A, "MERGE · CARE · RESTORE" subline, leaf sprigs both sides — redrawn clean, not just upscaled |
+| Letterforms | **Every enclosed counter (A, R, O, and any other closed letterform) must be genuinely transparent**, not a dark fill — check by placing the export over a light background before finalising, since a fill that reads fine on black hides exactly this bug |
+| Flame emblem | A clean, deliberate base/connector to the letters below — no soft/blobby matting edges |
+| Symmetry | Leaf flourish genuinely mirrored left/right |
+| Used at | Splash screen (`.splash-wordmark`, up to 300px today, can go back up to ~380px+ once re-exported) and the in-app header (`.brand-wordmark`, 32px tall — already comfortably sharp, unaffected either way) |
 
 **Pipeline:** drop the replacement PNG at `public/art/wordmark_hearth.png` (same filename — no manifest change needed, it's referenced directly in `index.html`, not via `artUrl`). Once it lands, raise `.splash-wordmark`'s `width: min(76vw, 300px)` back up in `src/styles.css`.
+
+## P5 — `app_icon` needs more top padding (splash + PWA icon)
+
+**The bug:** the cottage roof's ornamental ridge cap sits right up against the icon's rounded top corner, with almost no breathing room — reads as "cut off at the top" even though nothing is technically clipped by CSS (confirmed: the container's `border-radius: 22px` isn't cutting into the art; the tight composition is baked into the 512×512 source itself).
+
+**Why this can't be pixel-patched:** fixing it means shrinking the house illustration and re-centring it with headroom, which would leave a mismatched gap between the smaller content and the icon's own rounded-square frame (the frame and the illustration are flattened into one image, not separate layers) — a real redraw, not a crop.
+
+| Field | Value |
+|---|---|
+| File | `app_icon.png` (replaces the existing file — same id, square) |
+| Canvas | 512×512 (or larger, downscales fine — it's already comfortably sharp today) |
+| Change | Same cottage-window illustration, just composed with **~10% safe-area padding on all sides** so the roof peak/ridge ornament doesn't crowd the rounded corner |
+| Used at | Splash screen (`.splash-emblem`, 176px) and the PWA install icon manifest — same file serves both, so extra padding here also benefits how the icon looks on a phone home screen |
 
 ## Pipeline
 Drop the PNG in `public/art/` → regenerate the manifest (`python tools/import_map_v2.py --manifest-only`, or the relevant slicer) → reload. No code changes.
@@ -96,3 +121,6 @@ Drop the PNG in `public/art/` → regenerate the manifest (`python tools/import_
 - [ ] It sits consistently beside the other four medallions
 - [ ] Delete-art test: removing it falls back to the lifted hammer, no errors
 - [ ] `wordmark_hearth` reads crisp on the splash screen at its full display size
+- [ ] `wordmark_hearth` re-export: every letter counter (A/R/O) is genuinely transparent when checked over a light background, not just "looks fine on black"
+- [ ] `wordmark_hearth` re-export: flame emblem has a clean base, no soft/blobby matting
+- [ ] `app_icon` re-export: roof ridge ornament has visible breathing room from the rounded top corner
