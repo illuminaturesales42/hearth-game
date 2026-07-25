@@ -80,6 +80,9 @@ export const TOWN_BUILDINGS_V1: readonly TownPiece[] = [
   // the plate's bay, not the grass
   { art: 'town_dock', x: 0.665, y: 0.685, w: 0.126, unlockAt: 22, ruinVariant: 5, water: true },
   { art: 'town_library', x: 0.225, y: 0.59, w: 0.148, unlockAt: 23, ruinVariant: 3 },
+  // The Quarry — where Emberhollow's stone comes from. Cut into open ground
+  // east of the well, clear of the garden's plot.
+  { art: 'town_quarry', x: 0.65, y: 0.46, w: 0.12, unlockAt: 19, ruinVariant: 1 },
 ] as const;
 
 /**
@@ -132,6 +135,10 @@ const TOWN_BUILDINGS_V2_BASE: readonly TownPiece[] = [
   // the jetty runs from the SE point out into the bay
   { art: 'town_dock', x: 0.85, y: 0.71, w: 0.152, unlockAt: 22, ruinVariant: 5, water: true },
   { art: 'town_library', x: 0.39, y: 0.66, w: 0.13, unlockAt: 23, ruinVariant: 3 },
+  // The Quarry — cut into the island's rocky western rim, where the boulders
+  // meet the lanes. Its own painted ruin/wip art carries the pre-restore states
+  // (ruinVariant is only the "show it before it's rebuilt" flag).
+  { art: 'town_quarry', x: 0.18, y: 0.46, w: 0.12, unlockAt: 19, ruinVariant: 1 },
 ] as const;
 
 /**
@@ -191,6 +198,7 @@ export const BUILDING_INFO: Record<string, string> = {
   town_blacksmith: 'The Forge',
   town_dock: 'North Docks',
   town_library: 'The Library',
+  town_quarry: 'The Quarry',
   town_tailor: 'The Tailor’s Cottage',
   prop_lighthouse: 'The Lighthouse',
 };

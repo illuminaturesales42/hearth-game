@@ -92,6 +92,7 @@ CANON: dict[str, str] = {
     "blacksmith": "town_blacksmith", "dock": "town_dock", "library": "town_library",
     "well": "prop_well", "sign": "prop_sign", "lighthouse": "prop_lighthouse",
     "postoffice": "town_postoffice",
+    "quarry": "town_quarry",
 }
 ALIASES: dict[str, str] = {
     "church": "townhall", "chapel": "townhall", "hall": "townhall",
