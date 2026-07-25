@@ -78,8 +78,10 @@ const STEPS: Step[] = [
     waitFor: 'action',
   },
   {
-    text: 'The rest is yours to discover — the Journal writes your days, the villagers remember, and the mystery waits. Welcome home.',
-    button: 'Welcome home',
+    text: 'The rest is yours to discover — the Journal writes your days, the villagers remember, and the mystery waits. Your town is on the map, waiting for you. Welcome home.',
+    button: 'Start restoring Emberhollow',
+    screen: 'home',
+    highlight: '.nav-btn[data-screen="home"]',
   },
 ];
 
@@ -125,8 +127,12 @@ export class FtueUI {
       btn.onclick =
         s.action === 'avatar'
           ? () => {
-              // Open the picker; advance whether they pick or close it (the
-              // default look stands, and the mirror stays open forever).
+              // The FTUE overlay sits at a higher z-index than the picker modal
+              // (it has to, to float over the rest of the game) — left visible,
+              // its card physically covers the picker's name field and submit
+              // button, so nothing could ever be chosen or saved. Hide it while
+              // the picker is open; advance()'s show()/finish() unhides it.
+              overlay.hidden = true;
               void openAvatarCreator(this.game).then(() => this.advance());
             }
           : () => this.advance();

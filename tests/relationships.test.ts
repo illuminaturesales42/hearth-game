@@ -57,6 +57,16 @@ describe('relationships core (Codex Book III)', () => {
     expect(warm).toContain('They remember');
   });
 
+  it("a max-hearts villager uses the player's name if one is set; a stranger does not", () => {
+    let s = initialRelationships();
+    for (let i = 0; i < 12; i++) s = recordMemory(s, 'sorin', deliveryMemory('2026-07-07', 'Sorin', 'Keepsake'));
+    expect(greetingFor(s, 'sorin', 'Wren')).toContain('Wren');
+    expect(greetingFor(s, 'sorin')).not.toContain('Wren');
+    // Not yet close: even with a name set, a stranger-tier greeting stays impersonal.
+    const cold = greetingFor(initialRelationships(), 'sorin', 'Wren');
+    expect(cold).not.toContain('Wren');
+  });
+
   it('maps order givers to villager ids', () => {
     expect(villagerIdFor('Bran the baker')).toBe('bran');
     expect(villagerIdFor('Fisher Joss')).toBe('joss');
