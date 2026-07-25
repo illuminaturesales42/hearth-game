@@ -72,6 +72,22 @@ Wiring note for later: prefer `wx_<kind>` and fall back to `time_badge_*`.
 - Light/warm subjects on transparency — everything sits on dark chrome.
 - PNG RGBA, transparent, no baked background or frame unless stated.
 
+---
+
+## P4 — `wordmark_hearth` high-res re-export (splash/header text)
+
+**The bug it fixes:** the splash-screen wordmark reads soft/blurry. The source file is only **304×94px**, but the splash CSS displayed it up to 380px wide — a ~1.25x upscale of a small raster, which softens the thin lettering. (A stray 1–2px vertical line baked into the old file's right edge has already been cleaned directly in `public/art/wordmark_hearth.png` — not an asset request, just noted for history.) As an interim fix, the splash CSS cap was reduced to the source's native 300px so nothing is currently upscaled — this re-export is what lets that cap go back up.
+
+| Field | Value |
+|---|---|
+| File | `wordmark_hearth.png` (replaces the existing file — same id, same aspect ratio ~3.23:1) |
+| Canvas | **at least 608 × 188** (2x the current native size — 3x/912×282 preferred for retina headroom), transparent, RGBA |
+| Content | Exactly the current lockup — "HEARTH" lettering, ember flame mark above the A, "MERGE · CARE · RESTORE" subline, leaf sprigs both sides — just re-exported sharp at higher resolution. No redesign needed |
+| Symmetry | Keep the leaf flourish genuinely mirrored left/right — the current file reads slightly asymmetric even after cleanup |
+| Used at | Splash screen (`.splash-wordmark`, up to 300px today, could return to ~380px+ once re-exported) and the in-app header (`.brand-wordmark`, 32px tall — already comfortably sharp, unaffected either way) |
+
+**Pipeline:** drop the replacement PNG at `public/art/wordmark_hearth.png` (same filename — no manifest change needed, it's referenced directly in `index.html`, not via `artUrl`). Once it lands, raise `.splash-wordmark`'s `width: min(76vw, 300px)` back up in `src/styles.css`.
+
 ## Pipeline
 Drop the PNG in `public/art/` → regenerate the manifest (`python tools/import_map_v2.py --manifest-only`, or the relevant slicer) → reload. No code changes.
 
@@ -79,3 +95,4 @@ Drop the PNG in `public/art/` → regenerate the manifest (`python tools/import_
 - [ ] `nav_create` reads clearly at 26px on the dark bar, active and inactive
 - [ ] It sits consistently beside the other four medallions
 - [ ] Delete-art test: removing it falls back to the lifted hammer, no errors
+- [ ] `wordmark_hearth` reads crisp on the splash screen at its full display size
