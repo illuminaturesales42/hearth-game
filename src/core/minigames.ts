@@ -19,7 +19,7 @@ export const MINIGAME_BASE_TOKENS = 3;
 /** Attempts never bank higher than this — a gentle daily ceiling. */
 export const MINIGAME_MAX_TOKENS = 6;
 /** Energy a day of mini-games can pay out, so play never out-earns real life. */
-export const MINIGAME_EMBER_CAP = 5;
+export const MINIGAME_EMBER_CAP = 15;
 
 function lcg(seed: number): () => number {
   let s = seed >>> 0 || 1;
@@ -160,7 +160,10 @@ export function wishingWellReward(slots: readonly number[], seed: number, wishCo
   const base = clamped.reduce((n, s) => n + WELL_COINS[s]!, 0);
   const coins = Math.max(6, Math.round(base * mult));
   const items: { chain: ChainId; level: number }[] = [
-    { chain: 'seeds', level: centres >= 3 ? 3 : centres === 2 ? 2 : centres === 1 ? (rand() < 0.5 ? 2 : 1) : rand() < 0.4 ? 1 : 0 },
+    {
+      chain: 'seeds',
+      level: centres >= 3 ? 3 : centres === 2 ? 2 : centres === 1 ? (rand() < 0.5 ? 2 : 1) : rand() < 0.4 ? 1 : 0,
+    },
   ];
   if (centres >= 2) items.push({ chain: 'seeds', level: 1 });
   const ember = centres >= 1 ? 2 : 1;
@@ -264,60 +267,78 @@ export interface BeaconPeg {
 export const BEACON_EMBER_R = 0.027;
 
 /**
- * A seeded, varied pegfield (no uniform pyramid): staggered rows with jittered
- * positions, a couple of round BUMPERS (bigger, bouncier), one GOLDEN beacon
- * peg (bonus when struck), one MOVER (the UI swings it side to side), and 1–2
- * open channels so every run reads differently. Deterministic per seed.
+ * A seeded, MIRROR-SYMMETRIC pegfield: a clean quincunx (staggered rows,
+ * left-right symmetric about the centre line) rather than a jittered scatter,
+ * with a symmetric PAIR of round BUMPERS, one centred MOVER (the UI swings it
+ * side to side), and one centred GOLDEN beacon peg (bonus when struck). The seed
+ * tunes spacing / row-count / quincunx phase so replays still differ, but every
+ * board reads as a balanced, symmetric arrangement. Deterministic per seed.
  * Invariants (tested): spacing ≥ ember-diameter × 1.6 between peg surfaces,
- * everything inside [0.06, 0.94] × [0, 1].
+ * everything inside [0.06, 0.94] × [0, 1], exactly one golden, ≥2 bumpers.
  */
 export function beaconPegField(seed: number): BeaconPeg[] {
   const rand = lcg(seed);
-  const pegs: BeaconPeg[] = [];
+  let pegs: BeaconPeg[] = [];
   const PEG_R = 0.018;
   const clearance = BEACON_EMBER_R * 2 * 1.6;
-  const fits = (x: number, y: number, r: number): boolean =>
-    pegs.every((p) => Math.hypot(p.x - x, (p.y - y) * 1.15, 0) - (p.r + r) >= clearance);
-  const rows = 7;
-  // 1-2 open channels — columns the row generator leaves sparse this run
-  const chan1 = 0.12 + rand() * 0.76;
-  const chan2 = rand() < 0.5 ? 0.12 + rand() * 0.76 : -1;
+  const clashes = (x: number, y: number, r: number): boolean =>
+    pegs.some((p) => Math.hypot(p.x - x, (p.y - y) * 1.15) - (p.r + r) < clearance);
+  const add = (x: number, y: number, r: number, kind: BeaconPeg['kind']): void => {
+    if (!clashes(x, y, r)) pegs.push({ x, y, r, kind });
+  };
+  // clear a symmetric slot for a special peg, then it always fits
+  const clearAround = (x: number, y: number, r: number): void => {
+    pegs = pegs.filter((p) => Math.hypot(p.x - x, (p.y - y) * 1.15) - (p.r + r) >= clearance);
+  };
+
+  // Seed-tuned but symmetric: spacing, row count, and which rows carry a centre peg.
+  const rows = rand() < 0.5 ? 7 : 8;
+  const gap = 0.14 + rand() * 0.02; // horizontal peg spacing (≥ min clearance)
+  const phase = rand() < 0.5 ? 0 : 1;
+  const half = 0.42; // pegs within 0.5 ± 0.42 → x ∈ [0.08, 0.92]
+
   for (let row = 0; row < rows; row++) {
-    const y = (row + 0.5) / rows;
-    const count = 4 + Math.floor(rand() * 3); // 4-6 per row
-    const stagger = (row % 2) * (0.5 / count) + (rand() - 0.5) * 0.06;
-    for (let c = 0; c < count; c++) {
-      const x = 0.08 + ((c + 0.5) / count) * 0.84 + stagger + (rand() - 0.5) * 0.05;
-      const jy = y + (rand() - 0.5) * 0.05;
-      if (x < 0.06 || x > 0.94) continue;
-      if (Math.abs(x - chan1) < 0.07 || (chan2 >= 0 && Math.abs(x - chan2) < 0.07)) continue; // the channel stays open
-      if (!fits(x, jy, PEG_R)) continue;
-      pegs.push({ x, y: Math.max(0.02, Math.min(0.98, jy)), r: PEG_R, kind: 'peg' });
+    const y = (row + 0.6) / (rows + 0.4);
+    const centred = (row + phase) % 2 === 0;
+    if (centred) {
+      add(0.5, y, PEG_R, 'peg');
+      for (let k = 1; k * gap <= half + 1e-9; k++) {
+        add(0.5 - k * gap, y, PEG_R, 'peg');
+        add(0.5 + k * gap, y, PEG_R, 'peg');
+      }
+    } else {
+      for (let k = 0; (k + 0.5) * gap <= half + 1e-9; k++) {
+        add(0.5 - (k + 0.5) * gap, y, PEG_R, 'peg');
+        add(0.5 + (k + 0.5) * gap, y, PEG_R, 'peg');
+      }
     }
   }
-  // 2-3 round bumpers, mid-board, roomier
-  const nBump = 2 + (rand() < 0.5 ? 1 : 0);
-  for (let b = 0, tries = 0; b < nBump && tries < 40; tries++) {
-    const x = 0.14 + rand() * 0.72;
-    const y = 0.25 + rand() * 0.5;
-    if (!fits(x, y, 0.045)) continue;
-    pegs.push({ x, y, r: 0.045, kind: 'bumper' });
-    b++;
+
+  // A symmetric PAIR of bumpers, mid-board, off the centre line.
+  const bumpY = 0.42 + rand() * 0.1;
+  const bumpX = 0.24 + rand() * 0.06;
+  for (const bx of [0.5 - bumpX, 0.5 + bumpX]) {
+    clearAround(bx, bumpY, 0.045);
+    pegs.push({ x: bx, y: bumpY, r: 0.045, kind: 'bumper' });
   }
-  // one mover, upper-mid — the UI swings it; physics reads its live position
-  for (let tries = 0; tries < 30; tries++) {
-    const x = 0.3 + rand() * 0.4;
-    const y = 0.15 + rand() * 0.25;
-    if (!fits(x, y, 0.026)) continue;
-    pegs.push({ x, y, r: 0.026, kind: 'mover' });
-    break;
-  }
-  // one golden beacon peg — promote a mid-board peg so it's genuinely reachable
-  const candidates = pegs.filter((p) => p.kind === 'peg' && p.y > 0.3 && p.y < 0.8);
-  if (candidates.length) {
-    const pick = candidates[Math.floor(rand() * candidates.length)]!;
+
+  // one centred mover, upper-mid — the UI swings it; physics reads its live position
+  const movY = 0.16 + rand() * 0.08;
+  clearAround(0.5, movY, 0.026);
+  pegs.push({ x: 0.5, y: movY, r: 0.026, kind: 'mover' });
+
+  // one centred golden beacon peg — promote the centre peg nearest mid-board,
+  // or plant one on the axis if this run's mid rows are offset.
+  const centreCandidates = pegs
+    .filter((p) => p.kind === 'peg' && Math.abs(p.x - 0.5) < 1e-6 && p.y > 0.35 && p.y < 0.78)
+    .sort((a, b) => Math.abs(a.y - 0.56) - Math.abs(b.y - 0.56));
+  if (centreCandidates.length) {
+    const pick = centreCandidates[0]!;
     pick.kind = 'golden';
     pick.r = 0.024;
+  } else {
+    clearAround(0.5, 0.56, 0.024);
+    pegs.push({ x: 0.5, y: 0.56, r: 0.024, kind: 'golden' });
   }
   return pegs;
 }
@@ -413,17 +434,39 @@ export function fishBite(seed: number): { delayMs: number; windowMs: number } {
 /** The reel stage: a perfect-zone drifts across a bar for ~2s after the strike. */
 export const CATCH_REEL_MS = 2000;
 export const CATCH_REEL_ZONE = 0.22; // the zone's width as a fraction of the bar
+export const CATCH_REEL_PERFECT = 0.07; // the smaller inner band → the prize catch
 
 /**
  * quality 0..1 = the strike; reelQuality 0..1 = the reel stage. The catch is
- * their blend — both perfect surfaces the rare deep fish. Always lands
- * *something* (no-fail); skill triples the ceiling.
+ * their blend. A dead-centre reel (the inner band, `bullseye`) hauls up a prize.
+ * A botched catch pays NO coin — just seaweed, a usable item for later — so a
+ * loss still gives something, but not money.
  */
-export function catchReward(quality: number, reelQuality = 0): MgReward {
+export function catchReward(quality: number, reelQuality = 0, bullseye = false): MgReward {
   const q = Math.max(0, Math.min(1, quality));
   const r = Math.max(0, Math.min(1, reelQuality));
   const blend = q * 0.55 + r * 0.45;
-  const level = q >= 0.75 && r >= 0.75 ? 3 : blend >= 0.6 ? 2 : blend >= 0.3 ? 1 : 0;
+  // A loss (both stages poor, and not a bullseye): seaweed instead of coins.
+  if (blend < 0.3 && !bullseye) {
+    return {
+      coins: 0,
+      items: [{ chain: 'seaweed', level: 0 }],
+      ember: 1,
+      heart: 'The line comes up with only a tangle of seaweed — good for the pot later.',
+    };
+  }
+  if (bullseye) {
+    return {
+      coins: 16 + Math.round(blend * 18), // a premium purse
+      items: [
+        { chain: 'fish', level: 3 },
+        { chain: 'fish', level: 2 },
+      ],
+      ember: 3,
+      heart: 'Dead-centre on the golden water — Joss hauls up a prize catch!',
+    };
+  }
+  const level = q >= 0.75 && r >= 0.75 ? 3 : blend >= 0.6 ? 2 : 1;
   return {
     coins: 6 + Math.round(blend * 18), // 6..24
     items: [{ chain: 'fish', level }],
@@ -432,10 +475,8 @@ export function catchReward(quality: number, reelQuality = 0): MgReward {
       level === 3
         ? 'A deep-water rarity — Joss will talk about this one.'
         : level === 2
-        ? 'A fine fish, landed clean.'
-        : level === 1
-          ? 'A good catch off Joss’s line.'
-          : 'A nibble — enough for the pot.',
+          ? 'A fine fish, landed clean.'
+          : 'A good catch off Joss’s line.',
   };
 }
 
@@ -688,4 +729,87 @@ export function sawmillReward(hits: number, perfects: number, count: number, bes
             ? 'A good day’s milling — the stack grows.'
             : 'The flume ran on; the timber still stacks.',
   };
+}
+
+// ---------- 8) The Proving (bakery) — three loaves, three peaks ----------
+// Bran's oven. Three loaves prove at their own seeded rates; each passes
+// through pale → golden → dark. Pull a loaf at its golden moment and it's a
+// good bake. The tension is watching three at once, not reflexes — every loaf
+// still comes out of the oven, so a distracted round still feeds the village.
+
+export const BAKE_LOAVES = 3;
+export const BAKE_DURATION_MS = 22_000;
+
+export type BakeGrade = 'pale' | 'golden' | 'dark';
+
+export interface BakeLoaf {
+  /** When this loaf reaches its golden centre. */
+  peakMs: number;
+  /** Half-width of the golden window: golden is peakMs ± this. */
+  windowMs: number;
+}
+
+/**
+ * A deterministic proving schedule. The loaves are staggered so their golden
+ * moments never collide — the player is always able to catch all three, which
+ * keeps this a game of attention rather than of impossible choices.
+ */
+export function bakeSchedule(seed: number, loaves = BAKE_LOAVES, durationMs = BAKE_DURATION_MS): BakeLoaf[] {
+  const rand = lcg(seed);
+  const out: BakeLoaf[] = [];
+  // Evenly spaced peaks across the middle of the round, with a little jitter so
+  // no two runs feel identical, then a gap guarantee so windows never overlap.
+  const first = durationMs * 0.26;
+  const gap = (durationMs * 0.62) / Math.max(1, loaves - 1);
+  for (let i = 0; i < loaves; i++) {
+    const jitter = (rand() - 0.5) * gap * 0.3;
+    const peakMs = Math.round(first + i * gap + jitter);
+    // Later loaves are a touch tighter — the oven gets hotter as it goes.
+    const windowMs = Math.round(1100 - i * 130 + rand() * 180); // ~1.1s → ~0.85s
+    out.push({ peakMs, windowMs });
+  }
+  return out.sort((a, b) => a.peakMs - b.peakMs);
+}
+
+/** How a loaf turned out, given when it was pulled. Never pulled = left to darken. */
+export function bakeGrade(loaf: BakeLoaf, pullMs: number | null): BakeGrade {
+  if (pullMs === null) return 'dark'; // forgotten in the oven — still bread
+  if (pullMs < loaf.peakMs - loaf.windowMs) return 'pale';
+  if (pullMs > loaf.peakMs + loaf.windowMs) return 'dark';
+  return 'golden';
+}
+
+/**
+ * No-fail reward: every loaf bakes into something. Goldens set the coins and
+ * lift the harvest chain; a full tray of goldens is the baker's best.
+ */
+export function bakeReward(grades: readonly BakeGrade[]): MgReward {
+  const golden = grades.filter((g) => g === 'golden').length;
+  const pale = grades.filter((g) => g === 'pale').length;
+  const total = Math.max(1, grades.length);
+  const coins = 6 + golden * 6 + pale * 2; // 6..24 for a three-loaf tray
+  const items: { chain: ChainId; level: number }[] = [{ chain: 'harvest', level: 1 }];
+  if (golden >= 1) items.push({ chain: 'harvest', level: 2 });
+  if (golden >= total)
+    items.push({ chain: 'harvest', level: 3 }); // the perfect tray
+  else if (golden >= 2) items.push({ chain: 'harvest', level: 2 });
+  const ember = golden >= 2 ? 2 : 1;
+  return {
+    coins,
+    items,
+    ember,
+    heart:
+      golden >= total
+        ? 'Three golden loaves — Bran will want the recipe.'
+        : golden >= 2
+          ? 'A good bake; the shop will smell wonderful.'
+          : golden === 1
+            ? 'One came out golden — a fair morning’s baking.'
+            : 'Rustic, honest bread. It all gets eaten.',
+  };
+}
+
+/** Personal best: goldens weigh most, pale loaves still count for something. */
+export function bakeScore(grades: readonly BakeGrade[]): number {
+  return grades.reduce((n, g) => n + (g === 'golden' ? 10 : g === 'pale' ? 3 : 1), 0);
 }

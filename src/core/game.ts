@@ -2,7 +2,7 @@
  * Game orchestrator: owns GameState, exposes actions, notifies subscribers.
  * UI layers subscribe; core stays DOM-free.
  */
-import type { GameState, Item } from './types';
+import type { GameState, Item, StatsState } from './types';
 import {
   chainDef,
   createBoard,
@@ -42,6 +42,7 @@ import { questMultiplier, questsForDay } from '../data/daily-quests';
 import { newMilestones } from '../data/milestones';
 import { requestsForDay, type TownRequest } from '../data/town-requests';
 import { CURRENT_VERSION, defaultPrefs, loadState, saveState } from './save';
+import { defaultAvatar, normalizeAvatar, type AvatarConfig } from './avatar';
 import { applySnapshot, initialLedger } from '../health/health-energy';
 import type { HealthSnapshot } from '../health/health-provider';
 import {
@@ -152,6 +153,7 @@ export type GameEvent =
   | { type: 'upgrade'; art: string; tier: number; coins: number }
   | { type: 'decor' }
   | { type: 'settings' }
+  | { type: 'avatar'; created: boolean }
   | { type: 'duelEnd'; won: boolean; streak: number; multiplier: number; coins: number; itemCount: number }
   | { type: 'minigameUnlocked'; id: string; title: string }
   | { type: 'minigameEnd'; id: string; title: string; coins: number; ember: number; itemCount: number; wish?: string }
@@ -159,6 +161,9 @@ export type GameEvent =
   | { type: 'chapterComplete'; chapter: number; title: string; cliffhanger: string; hasNext: boolean };
 
 type Listener = (ev: GameEvent) => void;
+
+/** Duel wins per day that pay out. Further wins still count for streak/stats. */
+const DUEL_DAILY_REWARD_CAP = 3;
 
 export class Game {
   private state: GameState;
@@ -194,6 +199,7 @@ export class Game {
     for (const s of seeds) board = withItem(board, s.i, { chain: s.chain, level: s.level, uid: uid++ });
     return {
       version: CURRENT_VERSION,
+      avatar: defaultAvatar(),
       board,
       energy: initialEnergy(now),
       actions: initialActionState(now),
@@ -210,6 +216,7 @@ export class Game {
         dayMerges: 0,
         dayDelivers: 0,
         dayActions: 0,
+        dayDuelWins: 0,
       },
       achievements: [],
       questsClaimed: [],
@@ -302,7 +309,7 @@ export class Game {
     const res = takeGift(this.state.social, giftId);
     const index = empties[0]!;
     const item: Item = { chain: gift.chain, level: gift.level, uid: this.state.nextUid };
-    this.undoBoard = null;
+    this.undoSnapshot = null;
     this.state = {
       ...this.state,
       social: res.state,
@@ -415,13 +422,24 @@ export class Game {
       this.emit({ type: 'chronicle', day: entry.day });
     }
     if (this.state.stats.day !== today) {
+      // A live day-turn (the app sat open past 4am): roll EVERY daily system,
+      // including the action counts and the health ledger, so the Energy panel's
+      // done/available state refreshes without waiting for the next tap or reload.
+      const ledger = this.state.healthLedger;
       this.state = {
         ...this.state,
         stats: rolloverStats(this.state.stats, today),
         questsClaimed: [],
         requestsFilled: [],
         minigames: rolloverMinigames(this.state.minigames, today),
+        actions: rolloverActions(this.state.actions, now),
       };
+      // Reset the sensor ledger on the same turn (its granted flags drive the
+      // "Auto" done-state), but only when it exists and is stale.
+      if (ledger && ledger.day !== today) {
+        this.state = { ...this.state, healthLedger: initialLedger(now) };
+      }
+      this.emit({ type: 'state' }); // repaint the open Energy panel at the turn
     }
   }
 
@@ -454,7 +472,7 @@ export class Game {
     const chain = pickSpawnChain(Math.random, table);
     const index = empties[Math.floor(Math.random() * empties.length)]!;
     const item: Item = { chain, level: 0, uid: this.state.nextUid };
-    this.undoBoard = null;
+    this.undoSnapshot = null;
     this.state = {
       ...this.state,
       energy: spend(this.state.energy, ENERGY.spawnCost),
@@ -519,7 +537,7 @@ export class Game {
       }
       return c;
     });
-    this.undoBoard = null;
+    this.undoSnapshot = null;
     this.state = {
       ...this.state,
       board: { ...this.state.board, cells },
@@ -535,14 +553,25 @@ export class Game {
     const it = itemAt(this.state.board, index);
     if (!it || it.locked) return 0;
     const coins = sellValue(it.chain, it.level);
-    this.undoBoard = null;
+    this.undoSnapshot = null;
     this.state = { ...this.state, coins: this.state.coins + coins, board: withEmpty(this.state.board, index) };
     this.emit({ type: 'sold', coins });
     return coins;
   }
 
-  /** Session-only snapshot for single-step merge undo (never saved). */
-  private undoBoard: GameState['board'] | null = null;
+  /**
+   * Session-only snapshot for single-step merge undo (never saved). Captures
+   * every field a merge mutates — not just the board — so undo also rolls back
+   * xp, merge stats, and maxTier. Restoring only the board let a drop→undo loop
+   * farm currency, daily quests, achievements, and collection mastery for free.
+   */
+  private undoSnapshot: {
+    board: GameState['board'];
+    nextUid: number;
+    xp: number;
+    stats: StatsState;
+    maxTier: Record<string, number>;
+  } | null = null;
 
   drop(from: number, to: number): void {
     this.beginDay(Date.now());
@@ -552,7 +581,19 @@ export class Game {
       this.emit({ type: 'reject', index: to, reason: 'invalid' });
       return;
     }
-    this.undoBoard = res.merged ? before : null;
+    // Snapshot the pre-merge values a merge is about to change. state updates
+    // below are immutable (spread), so holding references here is safe.
+    this.undoSnapshot = res.merged
+      ? {
+          board: before,
+          nextUid: this.state.nextUid,
+          xp: this.state.xp,
+          stats: this.state.stats,
+          // undefined and {} are equivalent everywhere maxTier is read; normalise
+          // so the snapshot type stays a plain Record (exactOptionalPropertyTypes).
+          maxTier: this.state.maxTier ?? {},
+        }
+      : null;
     const tierPatch =
       res.merged && res.result
         ? {
@@ -577,28 +618,30 @@ export class Game {
   }
 
   canUndoMerge(): boolean {
-    return this.undoBoard !== null;
+    return this.undoSnapshot !== null;
   }
 
   /** Take back the last merge (one step; cleared by any other board change). */
   undoLastMerge(): void {
-    if (!this.undoBoard) return;
-    this.state = { ...this.state, board: this.undoBoard };
-    this.undoBoard = null;
+    if (!this.undoSnapshot) return;
+    // Roll back board AND the merge's rewards (xp/stats/maxTier), so undo can't
+    // be looped to farm stat-gated quests, achievements, or collections.
+    this.state = { ...this.state, ...this.undoSnapshot };
+    this.undoSnapshot = null;
     this.emit({ type: 'state' });
   }
 
   /** Remove an item from the board (confirmed in the UI). No refunds, no drama. */
   trashItem(index: number): void {
     if (!itemAt(this.state.board, index)) return;
-    this.undoBoard = null;
+    this.undoSnapshot = null;
     this.state = { ...this.state, board: withEmpty(this.state.board, index) };
     this.emit({ type: 'state' });
   }
 
   /** Compact + group the board so it reads tidy. */
   tidy(): void {
-    this.undoBoard = null;
+    this.undoSnapshot = null;
     this.state = { ...this.state, board: tidyBoard(this.state.board) };
     this.emit({ type: 'state' });
   }
@@ -613,7 +656,7 @@ export class Game {
   clearMatching(chain: ChainId, maxLvl: number): number {
     const res = trashMatching(this.state.board, chain, maxLvl);
     if (res.cleared === 0) return 0;
-    this.undoBoard = null;
+    this.undoSnapshot = null;
     this.state = { ...this.state, board: res.board };
     this.emit({ type: 'state' });
     return res.cleared;
@@ -634,7 +677,7 @@ export class Game {
       return;
     }
     this.bumpStat({ dayDelivers: this.state.stats.dayDelivers + 1 });
-    this.undoBoard = null; // undoing across a delivery would duplicate items
+    this.undoSnapshot = null; // undoing across a delivery would duplicate items
     this.state = {
       ...this.state,
       board: withEmpty(this.state.board, idx),
@@ -783,11 +826,16 @@ export class Game {
    * Grants energy, advances streak, and opens a chest every few active days.
    */
   completeAction(actionId: string, now = Date.now()): void {
+    // Write yesterday's Chronicle BEFORE recordAction rolls actions.day. If an
+    // action is the first call after midnight, skipping this lost the day's
+    // entry (beginDay would later see actions.day already == today).
+    this.beginDay(now);
     this.applyRecord(recordAction(this.state.actions, actionId, now), actionId);
   }
 
   /** Log a meditation the player did outside a guided session. Once per day, capped. */
   logMeditation(minutes: number, now = Date.now()): void {
+    this.beginDay(now); // close yesterday's Chronicle before actions.day rolls
     const energy = loggedMinutesToEnergy(minutes);
     this.applyRecord(recordAction(this.state.actions, LOG_MEDITATION.id, now, energy), LOG_MEDITATION.id);
   }
@@ -796,6 +844,7 @@ export class Game {
   logRecovery(activityId: string, minutes: number, now = Date.now()): void {
     const activity = findRecovery(activityId);
     if (!activity) return;
+    this.beginDay(now); // close yesterday's Chronicle before actions.day rolls
     this.applyRecord(recordAction(this.state.actions, activityId, now, recoveryEnergy(activity, minutes)), activityId);
   }
 
@@ -1016,6 +1065,21 @@ export class Game {
     this.emit({ type: 'settings' });
   }
 
+  /** The player's avatar, always normalised (never null — old saves get the
+   *  neutral default). Read this everywhere the player's look is rendered. */
+  get avatar(): AvatarConfig {
+    return normalizeAvatar(this.state.avatar);
+  }
+
+  /** Persist a new avatar look. Pass the full config; the creator builds it and
+   *  flips `created` to true on first completion. Cosmetic only — never touches
+   *  energy, coins or progression. Emits so busts/profile repaint. */
+  setAvatar(cfg: AvatarConfig): void {
+    const avatar = normalizeAvatar(cfg);
+    this.state = { ...this.state, avatar };
+    this.emit({ type: 'avatar', created: avatar.created });
+  }
+
   /** Whether any mergeable pair currently exists on the board. */
   hasMergePair(): boolean {
     return findMergePair(this.state.board) !== null;
@@ -1083,17 +1147,24 @@ export class Game {
   finishDuel(playerWon: boolean, spoils: readonly { chain: ChainId; level: number }[], score: number): void {
     this.beginDay(Date.now());
     if (playerWon) {
-      this.bumpStat({ duelWins: this.state.stats.duelWins + 1 });
+      // Duels have no entry cost and an instant rematch, so without a cap they
+      // are an unbounded coin/item printer. Beyond DUEL_DAILY_REWARD_CAP wins a
+      // day, a win still counts for stats/streak but pays no coins and banks no
+      // spoils — the mechanic stays fun, the faucet stops.
+      const dayWins = this.state.stats.dayDuelWins ?? 0;
+      const rewarded = dayWins < DUEL_DAILY_REWARD_CAP;
+      this.bumpStat({ duelWins: this.state.stats.duelWins + 1, dayDuelWins: dayWins + 1 });
       const streak = this.state.duelStreak + 1;
       const mult = duelMultiplier(streak);
-      const coins = Math.round(score * mult);
+      const coins = rewarded ? Math.round(score * mult) : 0;
+      const banked = rewarded ? spoils : [];
       this.state = {
         ...this.state,
-        repository: addToRepository(this.state.repository, spoils),
+        repository: addToRepository(this.state.repository, banked),
         duelStreak: streak,
         coins: this.state.coins + coins,
       };
-      this.emit({ type: 'duelEnd', won: true, streak, multiplier: mult, coins, itemCount: spoils.length });
+      this.emit({ type: 'duelEnd', won: true, streak, multiplier: mult, coins, itemCount: banked.length });
     } else {
       this.state = { ...this.state, duelStreak: 0 };
       this.emit({ type: 'duelEnd', won: false, streak: 0, multiplier: 1, coins: 0, itemCount: 0 });
@@ -1120,7 +1191,7 @@ export class Game {
       return;
     }
     this.bumpStat({ dayDelivers: this.state.stats.dayDelivers + 1 });
-    this.undoBoard = null; // deliveries close the undo window, wherever they come from
+    this.undoSnapshot = null; // deliveries close the undo window, wherever they come from
     const repository = this.state.repository
       .map((r, i) => (i === idx ? { ...r, count: r.count - 1 } : r))
       .filter((r) => r.count > 0);
@@ -1291,9 +1362,9 @@ export class Game {
     reward: MgReward,
     wish?: { who: string; text: string },
     score?: number,
-  ): { isBest: boolean; best: number | null; discovered: AlmanacPage[] } {
+  ): { isBest: boolean; best: number | null; discovered: AlmanacPage[]; emberGranted: number } {
     const def = MINIGAME_BY_ID[id];
-    if (!def) return { isBest: false, best: null, discovered: [] };
+    if (!def) return { isBest: false, best: null, discovered: [], emberGranted: 0 };
     const em = addEmber(this.state.minigames, reward.ember);
     let minigames = em.state;
     if (wish) {
@@ -1333,7 +1404,12 @@ export class Game {
       itemCount: reward.items.length,
       ...(wish ? { wish: `${wish.who} ${wish.text}` } : {}),
     });
-    return { isBest, best: this.state.minigames.bests?.[id] ?? null, discovered: stamped.discovered };
+    return {
+      isBest,
+      best: this.state.minigames.bests?.[id] ?? null,
+      discovered: stamped.discovered,
+      emberGranted: em.granted,
+    };
   }
 
   /** The player's personal best for a mini-game, or null if never played. */
@@ -1465,6 +1541,7 @@ export class Game {
 
   reset(now = Date.now()): void {
     this.state = Game.freshState(now);
+    this.undoSnapshot = null; // else undo could resurrect the pre-reset board
     this.emit({ type: 'state' });
   }
 }

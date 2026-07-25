@@ -85,6 +85,20 @@ describe('duel → repository → story', () => {
     expect(g.snapshot.coins).toBe(coinsBefore + Math.round(100 * duelMultiplier(1)) + firstWin);
   });
 
+  it('rewards are capped per day so the instant-rematch loop is not an infinite faucet', () => {
+    const g = new Game(1000);
+    // Three wins pay out (coins climb, spoils bank).
+    for (let i = 0; i < 3; i++) g.finishDuel(true, [{ chain: 'wood', level: 0 }], 40);
+    const coinsAfter3 = g.snapshot.coins;
+    const itemsAfter3 = g.repository.reduce((n, r) => n + r.count, 0);
+    // The 4th and 5th wins still count for the streak but pay nothing.
+    g.finishDuel(true, [{ chain: 'wood', level: 0 }], 40);
+    g.finishDuel(true, [{ chain: 'wood', level: 0 }], 40);
+    expect(g.snapshot.coins).toBe(coinsAfter3); // no more coins past the daily cap
+    expect(g.repository.reduce((n, r) => n + r.count, 0)).toBe(itemsAfter3); // no more spoils
+    expect(g.duelStreak).toBe(5); // ...but the mechanic still feels alive
+  });
+
   it('a loss resets the streak with no other penalty', () => {
     const g = new Game(1000);
     g.finishDuel(true, [{ chain: 'wood', level: 1 }], 50);

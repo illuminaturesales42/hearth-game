@@ -151,8 +151,10 @@ describe('minigame engines are deterministic', () => {
     expect(fishBite(4)).toEqual(fishBite(4)); // seeded bite timing
     expect(catchReward(1, 1).items[0]).toEqual({ chain: 'fish', level: 3 }); // both perfect: the rarity
     expect(catchReward(1, 0.3).items[0]!.level).toBe(2);
-    expect(catchReward(0, 0).items[0]!.chain).toBe('fish'); // no-fail: still a fish
-    expect(catchReward(0, 0).items[0]!.level).toBe(0);
+    expect(catchReward(0, 0).items[0]!.chain).toBe('seaweed'); // a loss yields seaweed…
+    expect(catchReward(0, 0).coins).toBe(0); // …and no coins
+    expect(catchReward(1, 1, true).items[0]!.level).toBe(3); // bullseye: the prize catch
+    expect(catchReward(0, 0, true).coins).toBeGreaterThan(0); // bullseye overrides a poor blend
     expect(catchReward(1, 1).coins).toBeGreaterThan(catchReward(0.5, 0.3).coins);
   });
 
@@ -228,7 +230,8 @@ describe('minigame unlock, tokens and embers (pure)', () => {
     expect(s.tokens).toBe(0);
     const e1 = addEmber(s, 3);
     expect(e1.granted).toBe(3);
-    const e2 = addEmber(e1.state, 10);
+    // request more than the day's remaining pool — grant clamps to the cap
+    const e2 = addEmber(e1.state, MINIGAME_EMBER_CAP + 5);
     expect(e2.granted).toBe(MINIGAME_EMBER_CAP - 3);
     expect(e2.state.emberToday).toBe(MINIGAME_EMBER_CAP);
     // a new day refills tokens and clears embers

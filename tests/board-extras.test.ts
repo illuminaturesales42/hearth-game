@@ -19,6 +19,22 @@ describe('board QoL: undo + trash', () => {
     expect(g.canUndoMerge()).toBe(false);
   });
 
+  it('undo rolls back the merge rewards too, so drop→undo cannot farm stats/quests', () => {
+    const g = new Game(1000);
+    const merges0 = g.snapshot.stats.merges;
+    const dayMerges0 = g.snapshot.stats.dayMerges;
+    const xp0 = g.snapshot.xp;
+    const pair = findMergePair(g.snapshot.board)!;
+    g.drop(pair[0], pair[1]);
+    expect(g.snapshot.stats.merges).toBe(merges0 + 1); // the merge counted...
+    g.undoLastMerge();
+    // ...and undo rolls ALL of it back, not just the board — closing the loop
+    // that farmed daily quests / achievements / collections for free.
+    expect(g.snapshot.stats.merges).toBe(merges0);
+    expect(g.snapshot.stats.dayMerges).toBe(dayMerges0);
+    expect(g.snapshot.xp).toBe(xp0);
+  });
+
   it('delivery clears the undo snapshot (no duplication exploit)', () => {
     const g = new Game(1000);
     g.finishDuel(true, [{ chain: 'wood', level: 2 }], 10);

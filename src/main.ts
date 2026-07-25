@@ -1,5 +1,6 @@
 import { Game } from './core/game';
 import { clearSave } from './core/save';
+import { setPhaseOverride } from './core/time-of-day';
 import { stageFor } from './data/economy';
 import { feedback } from './ui/feedback';
 import { toast } from './ui/toast';
@@ -7,13 +8,13 @@ import { AppShell } from './ui/app-shell';
 import { MinigameUI } from './ui/minigames';
 import { confirmDialog } from './ui/confirm-modal';
 import { initNetStatus } from './ui/net-status';
-import { initTimeBadge } from './ui/time-badge';
+import { initEnvironmentController } from './ui/environment-controller';
 import { pickNotificationProvider, DAILY_NOTIF_BODY, DEFAULT_NOTIF_HOUR } from './platform/notification-provider';
 import { recentEvents, setSink, track } from './analytics';
-import { createNetworkSink } from './platform/analytics-sink';
+import { createNetworkSink, stableAnonId } from './platform/analytics-sink';
 import type { HealthSnapshot } from './health/health-provider';
 import { pickHealthProvider } from './platform/providers';
-import { HttpSyncProvider, LocalMirrorSyncProvider } from './platform/sync-provider';
+import { HttpSyncProvider, LocalMirrorSyncProvider, deviceKey } from './platform/sync-provider';
 import { SyncController } from './platform/sync-controller';
 import { Metrics, exposeMetricsConsole } from './platform/metrics';
 import { computeMood, meditatedToday } from './core/world-mood';
@@ -34,9 +35,8 @@ new AppShell(game, metrics);
 // 'hearth:play-minigame' event (unlock at story-complete; attempts from living well).
 new MinigameUI(game);
 
-// The corner time-of-day badge on the Home map (reflects the real clock; the
-// map's own lighting turns with the same phase).
-initTimeBadge();
+// The interface breathes with the day: push the live environment to CSS vars.
+initEnvironmentController();
 
 // If the player opted into the daily hearth reminder, re-affirm the schedule on
 // boot (native only; the web/no-op paths do nothing). Never prompts — permission
@@ -128,7 +128,9 @@ setInterval(() => {
 // an endpoint, or in dev, everything stays in the local in-memory buffer.
 const analyticsEndpoint = (import.meta.env.VITE_ANALYTICS_ENDPOINT as string | undefined)?.trim();
 if (import.meta.env.PROD && analyticsEndpoint) {
-  const { sink, flush } = createNetworkSink(analyticsEndpoint);
+  // A stable pseudonymous id (hashed device key, never the key itself) lets the
+  // backend compute cohort retention across sessions — the soft-launch gates.
+  const { sink, flush } = createNetworkSink(analyticsEndpoint, { distinctId: stableAnonId(deviceKey()) });
   setSink(sink);
   // A closing/backgrounded tab still reports its last events.
   window.addEventListener('pagehide', flush);
@@ -276,6 +278,7 @@ declare global {
     hearthSeeTown: (orders?: number) => void;
     hearthTestGames: () => void;
     hearthMood: () => unknown;
+    hearthSky: (mode?: string) => void;
   }
 }
 // Tester hooks (hearthSeeTown, hearthReset, …). Always on in dev; in the
@@ -336,6 +339,38 @@ if (testerMode) {
     game.devUnlockMinigames();
     document.querySelector<HTMLButtonElement>('.nav-btn[data-screen="home"]')?.click();
     console.info('Village Life ready — tap the well, lighthouse, blacksmith, fisher hut, garden, or library.');
+  };
+  // Force any time-of-day look for visual inspection: hearthSky('night').
+  // hearthSky('real') (or no argument) returns to the real solar clock; a
+  // reload always returns to real. Weather is inspected separately via
+  // Settings → "Pick your sky" — the two combine.
+  window.hearthSky = (mode?: string) => {
+    const phases = ['dawn', 'midday', 'dusk', 'evening', 'night'] as const;
+    const named: Record<string, 'sunrise' | 'midday' | 'sunset' | 'evening' | 'night'> = {
+      dawn: 'sunrise',
+      sunrise: 'sunrise',
+      midday: 'midday',
+      day: 'midday',
+      noon: 'midday',
+      dusk: 'sunset',
+      sunset: 'sunset',
+      evening: 'evening',
+      twilight: 'evening',
+      night: 'night',
+    };
+    const pick = mode ? named[mode.toLowerCase()] : undefined;
+    if (mode && mode !== 'real' && !pick) {
+      console.info(`hearthSky: unknown mode '${mode}'. Use: ${phases.join(' / ')} — or 'real' to follow your sun.`);
+      return;
+    }
+    setPhaseOverride(pick ?? null);
+    document.dispatchEvent(new CustomEvent('hearth:sky-updated'));
+    document.querySelector<HTMLButtonElement>('.nav-btn[data-screen="home"]')?.click();
+    console.info(
+      pick
+        ? `Sky forced to ${mode?.toUpperCase()} — light, shadows and colour all swing to it. hearthSky('real') to return.`
+        : 'Sky following your real sun again.',
+    );
   };
   window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {
     const snap: HealthSnapshot = {

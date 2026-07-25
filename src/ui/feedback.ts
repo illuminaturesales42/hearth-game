@@ -100,7 +100,8 @@ function buildMusic(ac: AudioContext): void {
  * (110/165.4) and the music pad layers (110/165), so nothing beats or clashes;
  * it is also ducked to silence while the drone itself plays.
  */
-type StemName = 'calmPad' | 'rain' | 'chatter';
+type StemName = 'calmPad' | 'rain' | 'chatter' | 'wind' | 'surf' | 'birds' | 'crickets';
+const STEM_NAMES: readonly StemName[] = ['calmPad', 'rain', 'chatter', 'wind', 'surf', 'birds', 'crickets'];
 interface Stem {
   gain: GainNode;
   /** ceiling for this stem at level 1 (before musicVol) — deliberately quiet */
@@ -108,7 +109,15 @@ interface Stem {
 }
 let stems: Record<StemName, Stem> | null = null;
 /** last requested level per stem (0..1), so volume changes + drone ducking can re-apply */
-const stemLevel: Record<StemName, number> = { calmPad: 0, rain: 0, chatter: 0 };
+const stemLevel: Record<StemName, number> = {
+  calmPad: 0,
+  rain: 0,
+  chatter: 0,
+  wind: 0,
+  surf: 0,
+  birds: 0,
+  crickets: 0,
+};
 
 function noiseBuffer(ac: AudioContext, seconds = 2): AudioBuffer {
   const buf = ac.createBuffer(1, Math.floor(ac.sampleRate * seconds), ac.sampleRate);
@@ -162,7 +171,109 @@ function buildStems(ac: AudioContext): void {
   chLfo.start();
   chSrc.connect(chBp).connect(chSwell).connect(chatter.gain);
   chSrc.start();
-  stems = { calmPad, rain, chatter };
+  // wind — airy band of noise with slow gusts (an LFO swelling the level)
+  const wind = make(0.02);
+  const wSrc = ac.createBufferSource();
+  wSrc.buffer = noiseBuffer(ac);
+  wSrc.loop = true;
+  const wHp = ac.createBiquadFilter();
+  wHp.type = 'highpass';
+  wHp.frequency.value = 380;
+  const wLp = ac.createBiquadFilter();
+  wLp.type = 'lowpass';
+  wLp.frequency.value = 1800;
+  const wSwell = ac.createGain();
+  wSwell.gain.value = 0.7;
+  const wLfo = ac.createOscillator();
+  const wLfoGain = ac.createGain();
+  wLfo.frequency.value = 0.08; // long, slow gusts
+  wLfoGain.gain.value = 0.35;
+  wLfo.connect(wLfoGain).connect(wSwell.gain);
+  wLfo.start();
+  wSrc.connect(wHp).connect(wLp).connect(wSwell).connect(wind.gain);
+  wSrc.start();
+  // surf — deep, slow wave sets (low noise with a ~0.1Hz swell)
+  const surf = make(0.026);
+  const sSrc = ac.createBufferSource();
+  sSrc.buffer = noiseBuffer(ac);
+  sSrc.loop = true;
+  const sLp = ac.createBiquadFilter();
+  sLp.type = 'lowpass';
+  sLp.frequency.value = 420;
+  const sSwell = ac.createGain();
+  sSwell.gain.value = 0.6;
+  const sLfo = ac.createOscillator();
+  const sLfoGain = ac.createGain();
+  sLfo.frequency.value = 0.1; // wave rhythm
+  sLfoGain.gain.value = 0.4;
+  sLfo.connect(sLfoGain).connect(sSwell.gain);
+  sLfo.start();
+  sSrc.connect(sLp).connect(sSwell).connect(surf.gain);
+  sSrc.start();
+  // birds — a bright morning shimmer (high band of noise, quick warble)
+  const birds = make(0.01);
+  const bSrc = ac.createBufferSource();
+  bSrc.buffer = noiseBuffer(ac);
+  bSrc.loop = true;
+  const bBp = ac.createBiquadFilter();
+  bBp.type = 'bandpass';
+  bBp.frequency.value = 3600;
+  bBp.Q.value = 3;
+  const bTrem = ac.createGain();
+  bTrem.gain.value = 0.5;
+  const bLfo = ac.createOscillator();
+  const bLfoGain = ac.createGain();
+  bLfo.frequency.value = 6; // chirpy warble
+  bLfoGain.gain.value = 0.45;
+  bLfo.connect(bLfoGain).connect(bTrem.gain);
+  bLfo.start();
+  bSrc.connect(bBp).connect(bTrem).connect(birds.gain);
+  bSrc.start();
+  // crickets — a fine high pulse, the night's quiet bed
+  const crickets = make(0.009);
+  const cSrc = ac.createBufferSource();
+  cSrc.buffer = noiseBuffer(ac);
+  cSrc.loop = true;
+  const cBp = ac.createBiquadFilter();
+  cBp.type = 'bandpass';
+  cBp.frequency.value = 5200;
+  cBp.Q.value = 6;
+  const cTrem = ac.createGain();
+  cTrem.gain.value = 0.5;
+  const cLfo = ac.createOscillator();
+  const cLfoGain = ac.createGain();
+  cLfo.frequency.value = 11; // rapid cricket pulse
+  cLfoGain.gain.value = 0.5;
+  cLfo.connect(cLfoGain).connect(cTrem.gain);
+  cLfo.start();
+  cSrc.connect(cBp).connect(cTrem).connect(crickets.gain);
+  cSrc.start();
+  stems = { calmPad, rain, chatter, wind, surf, birds, crickets };
+}
+
+/**
+ * A soft, DISTANT thunder roll — a filtered noise burst that sweeps low and
+ * decays, started a beat after the caller's lightning flash so it reads as far
+ * off (cozy, never a sharp crack). No-op without an audio context or when muted.
+ */
+function rollThunder(): void {
+  const ac = audio();
+  if (!ac || muted) return;
+  const t0 = ac.currentTime + 0.8 + Math.random() * 0.6; // distance delay
+  const src = ac.createBufferSource();
+  src.buffer = noiseBuffer(ac, 3);
+  const lp = ac.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(420, t0);
+  lp.frequency.exponentialRampToValueAtTime(80, t0 + 1.8); // rumble settling low
+  const g = ac.createGain();
+  const peak = 0.05 * musicVol; // deliberately quiet
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t0 + 0.25);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.4);
+  src.connect(lp).connect(g).connect(ac.destination);
+  src.start(t0);
+  src.stop(t0 + 2.6);
 }
 
 /** Ramp a stem's gain to its effective level (respects musicVol + drone ducking). */
@@ -190,7 +301,7 @@ export const feedback = {
       }
       if (music && ctx) music.master.gain.linearRampToValueAtTime(Math.max(0.0001, musicVol), ctx.currentTime + 0.3);
       // the settings slider updates live ambience too
-      if (stems) (['calmPad', 'rain', 'chatter'] as const).forEach((n) => applyStem(n, 0.3));
+      if (stems) STEM_NAMES.forEach((n) => applyStem(n, 0.3));
     }
   },
   /**
@@ -198,16 +309,20 @@ export const feedback = {
    * existing AudioContext (i.e. after the first user gesture, same rule as
    * startMusic). Levels come from core/stem-levels.ts, keyed to the world mood.
    */
-  setStem(name: 'calmPad' | 'rain' | 'chatter', level: number): void {
+  setStem(name: StemName, level: number): void {
     stemLevel[name] = Math.max(0, Math.min(1, level));
     const ac = audio();
     if (!ac) return;
     if (!stems) buildStems(ac);
     applyStem(name, 2.5);
   },
+  /** A soft distant thunder roll, phase-locked by the caller to a lightning flash. */
+  thunder(): void {
+    rollThunder();
+  },
   /** Fade every ambient stem out (leaving the map, etc.). Levels are forgotten. */
   stopStems(): void {
-    (['calmPad', 'rain', 'chatter'] as const).forEach((n) => {
+    STEM_NAMES.forEach((n) => {
       stemLevel[n] = 0;
       applyStem(n, 1.2);
     });

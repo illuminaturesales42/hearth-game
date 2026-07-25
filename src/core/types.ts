@@ -13,6 +13,7 @@ export type ChainId =
   | 'water'
   | 'copper'
   | 'fish'
+  | 'seaweed'
   | 'honey'
   | 'herbs'
   | 'wool'
@@ -61,14 +62,6 @@ export interface OrderDef {
   resolution: string;
   rewardEnergy: number;
   rewardCoins: number;
-}
-
-export interface LifeQuestDef {
-  id: 'steps' | 'sleep' | 'water';
-  label: string;
-  energy: number;
-  /** How the grant is sourced in production. Self-report in M1. */
-  source: 'healthkit' | 'self-report';
 }
 
 export interface EnergyState {
@@ -203,6 +196,9 @@ export interface StatsState {
   dayMerges: number;
   dayDelivers: number;
   dayActions: number;
+  /** Rewarded duel wins today (caps the duel coin/spoil faucet). Optional so
+   *  older saves load without a migration; absent reads as 0. */
+  dayDuelWins?: number;
 }
 
 export interface FlagsState {
@@ -274,8 +270,24 @@ export interface DecorPiece {
   y: number;
 }
 
+/** Player avatar block stored on the save (v19). Portrait-first: the player picks
+ *  a painted bust (see data/avatar-portraits) that fits Emberhollow's style.
+ *  `created` stays false until the picker is used once, so existing players carry
+ *  a neutral traveller portrait until they choose to become themselves. */
+export interface AvatarConfig {
+  created: boolean;
+  name?: string;
+  pronouns?: string;
+  /** Portrait def id (data/avatar-portraits). */
+  portrait: string;
+}
+
 export interface GameState {
   version: number;
+  /** Player avatar / identity (save v19). Optional: absent on pre-v19 saves and
+   *  seeded neutral by migration, so the presence guard deliberately skips it.
+   *  Distinct from Friend.avatar (a 1-6 palette index) — this is the player. */
+  avatar?: AvatarConfig;
   healthLedger?: HealthLedgerState;
   chronicle: ChronicleState;
   stats: StatsState;

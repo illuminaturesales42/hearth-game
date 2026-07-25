@@ -5,10 +5,46 @@
 import type { Game } from '../core/game';
 import { chainDef } from '../core/board';
 import { artUrl, portraitFor, itemIconInline } from './art';
-import { ORDERS, ZONE_STAGES } from '../data/economy';
+import { avatarPortraitHTML } from './avatar-render';
+import { openAvatarCreator } from './avatar-creator';
+import { effectiveWeather, latestSunTimes, latestWeather } from './weather';
+import type { WeatherKind } from '../core/world-mood';
+import { PHASE_META, phaseForTime, type TimeOfDay } from '../core/time-of-day';
+import { ORDERS, RESTORE_ORDERS, ZONE_STAGES } from '../data/economy';
 import { orderAt } from '../data/endless';
 import { feedback } from './feedback';
 import { toast } from './toast';
+
+/** Plain-language sky, for the under-map HUD. */
+/** Emoji fallback for the medallion when no time_badge_* art is sliced. */
+const PHASE_FALLBACK: Record<TimeOfDay, string> = {
+  sunrise: '🌅',
+  midday: '☀️',
+  sunset: '🌇',
+  evening: '🌆',
+  night: '🌙',
+};
+
+/** A small glyph beside the sky word — faster to read than text alone. */
+const SKY_GLYPH: Record<WeatherKind, string> = {
+  clear: '☀️',
+  clouds: '⛅',
+  overcast: '☁️',
+  fog: '🌫️',
+  rain: '🌧️',
+  storm: '⛈️',
+  snow: '❄️',
+};
+
+const SKY_WORD: Record<WeatherKind, string> = {
+  clear: 'clear',
+  clouds: 'cloudy',
+  overcast: 'overcast',
+  fog: 'foggy',
+  rain: 'rain',
+  storm: 'storm',
+  snow: 'snow',
+};
 
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
@@ -22,6 +58,9 @@ export class Home {
       switch (ev.type) {
         case 'state':
           this.render();
+          break;
+        case 'avatar':
+          this.renderAvatar();
           break;
         case 'merge':
           feedback.merge(ev.item.level);
@@ -178,9 +217,71 @@ export class Home {
       if (m) m.hidden = true;
     });
     this.render();
+    // The clock/weather block owns its own slow tick: nothing else emits an
+    // event when a minute passes. 30s keeps the displayed minute honest and is
+    // far too slow to matter for battery.
+    window.setInterval(() => this.renderHud(), 30_000);
+  }
+
+  /** The player's face, watching over their town — a quiet identity cameo on the
+   *  home map. Tap to change. Painted portrait, so it fits beside the buildings. */
+  private renderAvatar(): void {
+    const host = document.getElementById('hud-portrait');
+    if (!host) return;
+    host.innerHTML = avatarPortraitHTML(this.game.avatar.portrait, { framed: true, label: 'your look' });
+    host.onclick = () => void openAvatarCreator(this.game);
+  }
+
+  /**
+   * The under-map HUD: your face, your local clock, your real weather. It is
+   * the smallest, most constant reminder that Emberhollow runs on the player's
+   * actual day — the same live reading that tints the town also prints here.
+   *
+   * Everything degrades: no weather reading yet → the weather block simply
+   * hides rather than showing placeholder nonsense.
+   */
+  private renderHud(): void {
+    const now = Date.now();
+    const clock = document.getElementById('hud-clock');
+    if (clock) clock.textContent = new Date(now).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+    // The medallion's TIME-OF-DAY face uses the exact same model the map's own
+    // sky reads (core/time-of-day: "the single source of truth… so the little
+    // badge and the whole scene always agree") — five real phases from the
+    // player's true sun times, not an ad-hoc day/night guess.
+    const sun = latestSunTimes();
+    const { phase } = phaseForTime(now, sun);
+    const meta = PHASE_META[phase];
+    const restored = document.getElementById('hud-restored');
+    if (restored) {
+      const pct = Math.min(100, Math.round((this.game.snapshot.orderIndex / RESTORE_ORDERS) * 100));
+      restored.textContent = `${pct}% restored`;
+    }
+
+    const ico = document.getElementById('hud-weather-ico');
+    if (ico) {
+      ico.title = meta.label;
+      const url = artUrl(meta.art);
+      ico.style.backgroundImage = url ? `url(${url})` : '';
+      ico.classList.toggle('has-art', Boolean(url));
+      ico.textContent = url ? '' : PHASE_FALLBACK[phase];
+    }
+
+    const w = effectiveWeather(latestWeather());
+    const block = document.querySelector<HTMLElement>('.hud-weather');
+    if (block) block.hidden = !w;
+    if (!w) return;
+    const temp = document.getElementById('hud-temp');
+    if (temp) temp.textContent = typeof w.tempC === 'number' ? `${Math.round(w.tempC)}°` : '';
+    const sky = document.getElementById('hud-sky');
+    // A small weather glyph reads faster than the word alone, and still shows
+    // the real sky even for a player who never opens the reactive-world panel.
+    if (sky) sky.textContent = `${SKY_GLYPH[w.kind] ?? ''} ${SKY_WORD[w.kind] ?? ''}`.trim();
   }
 
   render(): void {
+    this.renderAvatar();
+    this.renderHud();
     const s = this.game.snapshot;
     $('hud-coins').textContent = String(s.coins);
     $('hud-energy').textContent = String(s.energy.current);

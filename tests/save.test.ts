@@ -176,8 +176,8 @@ describe('beginDay chronicle gate (audit C4)', () => {
     const g = new Game(t0);
     const events: string[] = [];
     g.subscribe((ev) => events.push(ev.type));
-    const nextDay = new Date('2026-07-08T00:00:30').getTime();
-    g.tick(nextDay); // first tick after midnight: chronicle written once
+    const nextDay = new Date('2026-07-08T04:00:30').getTime(); // the day turns at 4am
+    g.tick(nextDay); // first tick after the 4am turn: chronicle written once
     const chronicles1 = events.filter((e) => e === 'chronicle').length;
     expect(chronicles1).toBe(1);
     const before = events.length;

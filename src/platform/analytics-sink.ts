@@ -59,13 +59,36 @@ export interface WireEvent {
   props: Props;
   at: number;
   session: string;
+  /** Stable pseudonymous device id — present only when configured. Lets the
+   *  backend compute cohort retention (D1/D7/D30) across sessions. Never the
+   *  raw device key (see stableAnonId). */
+  distinct?: string;
+}
+
+/**
+ * A stable, one-way pseudonymous id derived from a seed (the device key). It is
+ * deliberately NOT the raw device key — that key is the cloud-save credential,
+ * and it must never reach a third-party analytics backend. Two mixed 32-bit
+ * FNV-style hashes give ~64 bits, stable per device, non-reversible.
+ */
+export function stableAnonId(seed: string): string {
+  let h1 = 0x811c9dc5;
+  let h2 = 0x1000193;
+  for (let i = 0; i < seed.length; i++) {
+    const c = seed.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
+    h2 = Math.imul(h2 ^ c, 0x85ebca77) >>> 0;
+  }
+  return 'd-' + h1.toString(36) + h2.toString(36);
 }
 
 export interface NetworkSinkOptions {
   /** Flush once this many events are queued. */
   batchSize?: number;
-  /** Anonymous per-load session id (no device/user identity). */
+  /** Anonymous per-load session id. */
   session?: string;
+  /** Stable pseudonymous device id (from stableAnonId) for cohort retention. */
+  distinctId?: string;
   /** Transport seam (defaults to sendBeacon → fetch). Injectable for tests. */
   send?: (endpoint: string, batch: WireEvent[]) => void;
 }
@@ -95,6 +118,7 @@ function defaultSend(endpoint: string, batch: WireEvent[]): void {
 export function createNetworkSink(endpoint: string, opts: NetworkSinkOptions = {}) {
   const batchSize = opts.batchSize ?? 12;
   const session = opts.session ?? 's-' + Math.random().toString(36).slice(2, 10);
+  const distinctId = opts.distinctId;
   const send = opts.send ?? defaultSend;
   let queue: WireEvent[] = [];
 
@@ -106,7 +130,9 @@ export function createNetworkSink(endpoint: string, opts: NetworkSinkOptions = {
   };
 
   const sink = (ev: AnalyticsEvent): void => {
-    queue.push({ name: ev.name, props: stripHealthValues(ev.props), at: ev.at, session });
+    const wire: WireEvent = { name: ev.name, props: stripHealthValues(ev.props), at: ev.at, session };
+    if (distinctId) wire.distinct = distinctId; // omit the key entirely when unconfigured
+    queue.push(wire);
     if (queue.length >= batchSize) flush();
   };
 

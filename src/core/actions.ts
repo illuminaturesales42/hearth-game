@@ -114,6 +114,10 @@ export function advanceDay(state: ActionState, now: number): DayAdvance {
   const today = localDayKey(now);
   if (s.lastActiveDay === today) return { state: s, dailyBonus: 0, chestCoins: 0, advanced: false, usedFreeze: false };
   const gap = s.lastActiveDay === null ? 1 : dayGap(s.lastActiveDay, today);
+  // A backwards day change (clock rolled back, or westward travel) must not
+  // count as a new active day — otherwise flipping the device clock farms the
+  // daily bonus, chest, and hearthstones. Same-day is already handled above.
+  if (gap <= 0) return { state: s, dailyBonus: 0, chestCoins: 0, advanced: false, usedFreeze: false };
   let freezes = s.freezes ?? 0;
   let usedFreeze = false;
   let streak: number;

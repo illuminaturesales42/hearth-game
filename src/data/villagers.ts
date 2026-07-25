@@ -21,7 +21,7 @@ export const VILLAGER_DEFS: readonly VillagerDef[] = [
     id: 'wren',
     name: 'Wren',
     role: 'Postmistress',
-    home: 'town_market',
+    home: 'town_postoffice',
     trait: 'reads every letter twice',
     favouritePlace: 'the notice board',
   },
