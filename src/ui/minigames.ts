@@ -1535,7 +1535,7 @@ export class MinigameUI {
     // alike), part and tilt away, with a bright sawn-seam flash + sawdust down the
     // cut line so the split reads as real feedback.
     const sawInHalf = (host: HTMLElement, log: HTMLElement, big = false): void => {
-      const body = (log.querySelector('.mg-log-body') as HTMLElement | null) ?? log;
+      const body = log.querySelector('.mg-log-body') ?? log;
       const br = body.getBoundingClientRect();
       const hr = host.getBoundingClientRect();
       const html = body.outerHTML;

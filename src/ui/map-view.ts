@@ -56,7 +56,7 @@ import { esc } from './esc';
 import { ALMANAC_PAGES, ALMANAC_SECTIONS, almanacProgress } from '../core/almanac';
 import { VILLAGER_DEFS } from '../data/villagers';
 import { bondFor, greetingFor, hearts, HEARTS_MAX } from '../core/relationships';
-import { drawButterfly, drawFlower, drawSparkle } from './paint-flourishes';
+import { drawButterfly, drawSparkle } from './paint-flourishes';
 import { toast } from './toast';
 import { feedback } from './feedback';
 import { minigameCta } from './minigame-cta';
