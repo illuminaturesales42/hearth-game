@@ -3469,7 +3469,11 @@ body.reduce-motion *::after {
 .splash-wordmark {
   position: relative;
   z-index: 1;
-  width: min(76vw, 380px);
+  /* wordmark_hearth.png is a small source (304x94) — capping at its native
+     width keeps the lettering crisp; the old 380px cap stretched it ~1.25x
+     and read as soft/blurry text. Swap this for a higher-res export (see
+     docs/ui-hud-nav-art-spec.md) to safely raise the cap again. */
+  width: min(76vw, 300px);
   height: auto;
   filter: drop-shadow(0 6px 30px var(--ember-35));
 }
