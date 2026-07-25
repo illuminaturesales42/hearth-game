@@ -62,11 +62,23 @@
           <section class="home-map" aria-label="Your Emberhollow, growing as you play">
             <canvas id="map-canvas" class="map-canvas" role="img" aria-label="Your harbour town"></canvas>
             <div class="home-map-overlay">
-              <button id="home-avatar" class="home-avatar" aria-label="Your look" title="Your look"></button>
               <span id="map-progress" class="map-progress"></span>
               <div class="map-bar"><i id="map-bar-fill"></i></div>
             </div>
           </section>
+          <!-- Under-map HUD: who you are, your local time, your real weather. -->
+          <div id="home-hud" class="home-hud">
+            <button id="hud-portrait" class="hud-portrait" aria-label="Your look" title="Your look"></button>
+            <div class="hud-block hud-time">
+              <b id="hud-clock">—</b>
+              <span id="hud-daypart" class="hud-sub"></span>
+            </div>
+            <span class="hud-sep" aria-hidden="true"></span>
+            <div class="hud-block hud-weather">
+              <span id="hud-weather-ico" class="hud-wx-ico" aria-hidden="true"></span>
+              <span class="hud-wx-text"><b id="hud-temp">—</b><span id="hud-sky" class="hud-sub"></span></span>
+            </div>
+          </div>
           <div class="map-actions">
             <button id="map-zoom-btn" class="tool-btn" aria-pressed="false">🔍 Zoom in</button>
             <button id="decor-btn" class="tool-btn">🪴 Decorate</button>

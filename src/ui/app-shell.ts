@@ -71,12 +71,17 @@ export class AppShell {
       btn.addEventListener('click', () => this.go((btn.dataset.screen as ScreenId) ?? 'home'));
       // Painted nav medallions where sliced art exists (Create reuses the hammer).
       const screen = btn.dataset.screen ?? '';
-      const art = artUrl(screen === 'create' ? 'item_wood_3' : `nav_${screen}`);
+      // Create has no painted medallion yet: prefer nav_create the moment it
+      // lands, and meanwhile borrow the hammer tile (a merge sprite, so it
+      // needs the contrast lift in .nav-art-fallback to read at 26px).
+      const fallbackArt = screen === 'create' ? artUrl('item_wood_3') : null;
+      const art = artUrl(`nav_${screen}`) ?? fallbackArt;
       const ico = btn.querySelector('span');
       if (art && ico) {
         ico.textContent = '';
         ico.style.backgroundImage = `url(${art})`;
         ico.classList.add('nav-art');
+        if (art === fallbackArt) ico.classList.add('nav-art-fallback');
       }
     });
     // Currency/energy pips get their painted tokens — the energy is the
