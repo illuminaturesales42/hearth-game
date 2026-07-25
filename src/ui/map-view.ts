@@ -1046,7 +1046,7 @@ export class MapView {
     const bond = bondFor(this.game.snapshot.relationships, villager.id);
     const filled = hearts(bond.points);
     const heartRow = '♥'.repeat(filled) + '♡'.repeat(Math.max(0, HEARTS_MAX - filled));
-    const greet = greetingFor(this.game.snapshot.relationships, villager.id);
+    const greet = greetingFor(this.game.snapshot.relationships, villager.id, this.game.avatar.name);
     const bust = portraitFor(villager.name);
     host.hidden = false;
     host.innerHTML =

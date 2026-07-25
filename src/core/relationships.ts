@@ -55,14 +55,20 @@ export function recordMemory(state: RelationshipState, id: string, memory: Memor
  * A greeting that reflects the bond and resurfaces the latest memory
  * ("Memories should appear naturally in future conversations" — Book III).
  */
-export function greetingFor(state: RelationshipState, id: string): string {
+export function greetingFor(state: RelationshipState, id: string, playerName?: string): string {
   const def = villagerDef(id);
   const name = def?.name ?? 'They';
   const bond = bondFor(state, id);
   const h = hearts(bond.points);
+  // The player's own name is a bond-deepening payoff, not a constant refrain:
+  // only a villager who has really come to know you (max hearts) uses it, so
+  // hearing your name said back to you means something the first time it lands.
+  const you = playerName?.trim();
   const tier =
     h >= HEARTS_MAX
-      ? `${name} lights up the moment you appear.`
+      ? you
+        ? `${name} lights up the moment you appear, ${you}.`
+        : `${name} lights up the moment you appear.`
       : h >= 3
         ? `${name} greets you like an old friend.`
         : h >= 1
