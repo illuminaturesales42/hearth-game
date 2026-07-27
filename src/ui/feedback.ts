@@ -100,8 +100,19 @@ function buildMusic(ac: AudioContext): void {
  * (110/165.4) and the music pad layers (110/165), so nothing beats or clashes;
  * it is also ducked to silence while the drone itself plays.
  */
-type StemName = 'calmPad' | 'rain' | 'chatter' | 'wind' | 'surf' | 'birds' | 'crickets';
-const STEM_NAMES: readonly StemName[] = ['calmPad', 'rain', 'chatter', 'wind', 'surf', 'birds', 'crickets'];
+type StemName = 'calmPad' | 'rain' | 'chatter' | 'wind' | 'surf' | 'birds' | 'crickets' | 'frogs' | 'roofRain' | 'fireplace';
+const STEM_NAMES: readonly StemName[] = [
+  'calmPad',
+  'rain',
+  'chatter',
+  'wind',
+  'surf',
+  'birds',
+  'crickets',
+  'frogs',
+  'roofRain',
+  'fireplace',
+];
 interface Stem {
   gain: GainNode;
   /** ceiling for this stem at level 1 (before musicVol) — deliberately quiet */
@@ -117,6 +128,9 @@ const stemLevel: Record<StemName, number> = {
   surf: 0,
   birds: 0,
   crickets: 0,
+  frogs: 0,
+  roofRain: 0,
+  fireplace: 0,
 };
 
 function noiseBuffer(ac: AudioContext, seconds = 2): AudioBuffer {
@@ -248,7 +262,64 @@ function buildStems(ac: AudioContext): void {
   cLfo.start();
   cSrc.connect(cBp).connect(cTrem).connect(crickets.gain);
   cSrc.start();
-  stems = { calmPad, rain, chatter, wind, surf, birds, crickets };
+  // frogs — a pulsed mid-band croak: band-passed noise gated by a slow, deep
+  // tremolo so it reads as a chorus answering the wet ground, not a texture
+  const frogs = make(0.012);
+  const fSrc = ac.createBufferSource();
+  fSrc.buffer = noiseBuffer(ac);
+  fSrc.loop = true;
+  const fBp = ac.createBiquadFilter();
+  fBp.type = 'bandpass';
+  fBp.frequency.value = 950;
+  fBp.Q.value = 5;
+  const fTrem = ac.createGain();
+  fTrem.gain.value = 0.35;
+  const fLfo = ac.createOscillator();
+  const fLfoGain = ac.createGain();
+  fLfo.frequency.value = 2.3; // croak grouping
+  fLfoGain.gain.value = 0.6; // deep gating — near-silent between croaks
+  fLfo.connect(fLfoGain).connect(fTrem.gain);
+  fLfo.start();
+  fSrc.connect(fBp).connect(fTrem).connect(frogs.gain);
+  fSrc.start();
+  // roof rain — a brighter, faster patter band layered over the low rain bed
+  const roofRain = make(0.018);
+  const rrSrc = ac.createBufferSource();
+  rrSrc.buffer = noiseBuffer(ac);
+  rrSrc.loop = true;
+  const rrBp = ac.createBiquadFilter();
+  rrBp.type = 'bandpass';
+  rrBp.frequency.value = 2600;
+  rrBp.Q.value = 1.4;
+  const rrTrem = ac.createGain();
+  rrTrem.gain.value = 0.65;
+  const rrLfo = ac.createOscillator();
+  const rrLfoGain = ac.createGain();
+  rrLfo.frequency.value = 9; // busy drip rhythm
+  rrLfoGain.gain.value = 0.3;
+  rrLfo.connect(rrLfoGain).connect(rrTrem.gain);
+  rrLfo.start();
+  rrSrc.connect(rrBp).connect(rrTrem).connect(roofRain.gain);
+  rrSrc.start();
+  // fireplace — warm low crackle: lowpassed noise with a quick uneven flicker
+  const fireplace = make(0.016);
+  const fpSrc = ac.createBufferSource();
+  fpSrc.buffer = noiseBuffer(ac);
+  fpSrc.loop = true;
+  const fpLp = ac.createBiquadFilter();
+  fpLp.type = 'lowpass';
+  fpLp.frequency.value = 520;
+  const fpTrem = ac.createGain();
+  fpTrem.gain.value = 0.5;
+  const fpLfo = ac.createOscillator();
+  const fpLfoGain = ac.createGain();
+  fpLfo.frequency.value = 7.3; // flame flicker
+  fpLfoGain.gain.value = 0.45;
+  fpLfo.connect(fpLfoGain).connect(fpTrem.gain);
+  fpLfo.start();
+  fpSrc.connect(fpLp).connect(fpTrem).connect(fireplace.gain);
+  fpSrc.start();
+  stems = { calmPad, rain, chatter, wind, surf, birds, crickets, frogs, roofRain, fireplace };
 }
 
 /**
@@ -274,6 +345,40 @@ function rollThunder(): void {
   src.connect(lp).connect(g).connect(ac.destination);
   src.start(t0);
   src.stop(t0 + 2.6);
+}
+
+/**
+ * The village bell marking the hour — two soft struck tones from across the
+ * rooftops (Living Weather spec §7). Struck partials with a long decay, quiet
+ * and distant; the caller owns the schedule (daytime hours only, never in a
+ * storm). No-op without an audio context or when muted.
+ */
+function bellHour(): void {
+  const ac = audio();
+  if (!ac || muted) return;
+  const strike = (at: number) => {
+    // a bell is an inharmonic stack — hum, prime and a minor-third partial
+    for (const [f, amp] of [
+      [392, 1],
+      [587, 0.45],
+      [988, 0.2],
+    ] as const) {
+      const osc = ac.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = f;
+      const g = ac.createGain();
+      const peak = 0.028 * amp * musicVol; // distant, never insistent
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), at + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + 2.8);
+      osc.connect(g).connect(ac.destination);
+      osc.start(at);
+      osc.stop(at + 3);
+    }
+  };
+  const t0 = ac.currentTime + 0.05;
+  strike(t0);
+  strike(t0 + 1.4);
 }
 
 /** Ramp a stem's gain to its effective level (respects musicVol + drone ducking). */
@@ -319,6 +424,10 @@ export const feedback = {
   /** A soft distant thunder roll, phase-locked by the caller to a lightning flash. */
   thunder(): void {
     rollThunder();
+  },
+  /** The village bell marking the hour — the caller owns the schedule. */
+  bell(): void {
+    bellHour();
   },
   /** Fade every ambient stem out (leaving the map, etc.). Levels are forgotten. */
   stopStems(): void {

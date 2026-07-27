@@ -162,7 +162,8 @@ export class SettingsUI {
   }
 
   private static readonly SKY_NOTE: Record<SkyPref, string> = {
-    real: 'Following your real sky. Prefer a mood? Choose one — the day’s light still tracks your true sunrise.',
+    interpret: 'Emberhollow feels your weather, and always finds the beauty in it.',
+    real: 'Emberhollow shares your sky, exactly as it is. The day’s light tracks your true sunrise.',
     clear: 'Clear skies over Emberhollow, whatever it’s doing outside. Your daylight still follows your real sun.',
     rain: 'A cosy rain settles over the island. Your daylight still follows your real sun.',
     snow: 'A soft snowfall blankets the island. Your daylight still follows your real sun.',

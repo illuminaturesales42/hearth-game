@@ -41,10 +41,12 @@ import {
   effectiveWeather,
   presetAccumulation,
   getSkyPref,
+  isLiveSky,
   latestCoords,
 } from './weather';
 import { sunPosition } from '../core/sun';
 import { computeEnvironment, type WorldEnvironment } from '../core/environment';
+import { EnvironmentDamper } from '../core/environment-damper';
 
 /** The sun's screen-side key for the lighting washes, or null with no location. */
 type SunKey = { dx: number; dy: number; lowness: number } | null;
@@ -411,12 +413,13 @@ export class MapView {
 
   private mood(): WorldMood {
     const s = this.game.snapshot;
-    // "Pick your sky": a chosen mood overrides the real weather (opt-out for
-    // grey-climate players) while the solar clock still tracks the real sunrise.
+    // Mirror / Interpret / Sanctuary: the live modes render the real reading
+    // (Interpret softly capped); a Sanctuary preset paints a chosen sky. The
+    // solar clock always tracks the real sunrise either way.
     const pref = getSkyPref();
     const weather = effectiveWeather(this.weather, pref);
-    const accumulation = pref === 'real' ? this.accumulation() : presetAccumulation(pref);
-    return computeMood({
+    const accumulation = isLiveSky(pref) ? this.accumulation() : presetAccumulation(pref);
+    const raw = computeMood({
       weather,
       meditatedToday: meditatedToday(s.actions.counts),
       lastCalmDay: s.wellbeing.lastCalmDay,
@@ -427,6 +430,38 @@ export class MapView {
       streak: s.actions.streak,
       accumulation,
     });
+    return this.dampMood(raw, weather);
+  }
+
+  /** The transition engine (Living Weather spec §4.2): weather refreshes set
+   *  TARGETS; the damper eases the rendered channels toward them, so rain
+   *  arrives over ~12s and leaves over ~25s instead of popping every 30 min.
+   *  Reduced motion snaps — its single static frame is already correct. */
+  private damper = new EnvironmentDamper();
+  private lastDampAt = 0;
+  private dampMood(raw: WorldMood, weather: WeatherNow | null): WorldMood {
+    const now = Date.now();
+    const dt = this.lastDampAt ? Math.min(2, (now - this.lastDampAt) / 1000) : 0;
+    this.lastDampAt = now;
+    const targets = {
+      cloudCover: raw.cloudCover,
+      windKph: Math.max(0, weather?.windKph ?? 6),
+      windDeg: (((weather?.windDir ?? 0) % 360) + 360) % 360,
+      precip: raw.precip,
+      fog: raw.weather === 'fog' ? 1 : 0,
+      thunderRisk: raw.weather === 'storm' ? 1 : 0,
+      wetness: raw.wetness,
+      snowDepth: raw.snowDepth,
+    };
+    const d = this.reduce || dt === 0 ? this.damper.snap(targets) : this.damper.advance(targets, dt);
+    return {
+      ...raw,
+      cloudCover: d.cloudCover,
+      precip: d.precip,
+      wind: Math.min(1, Math.max(0, d.windKph / 40)),
+      wetness: d.wetness,
+      snowDepth: d.snowDepth,
+    };
   }
 
   /**
@@ -456,7 +491,7 @@ export class MapView {
     if (this.envCache && now - this.envCache.at < 1000) return this.envCache.value;
     const pref = getSkyPref();
     const weather = effectiveWeather(this.weather, pref);
-    const accumulation = pref === 'real' ? this.accumulation() : presetAccumulation(pref);
+    const accumulation = isLiveSky(pref) ? this.accumulation() : presetAccumulation(pref);
     const value = computeEnvironment(now, this.sunTimesFromWeather(), weather, {
       coords: latestCoords(),
       accumulation,
@@ -669,7 +704,9 @@ export class MapView {
     if (!this.visible) return;
     this.stemsCheckedAt = Date.now();
     const { weights } = phaseForTime(Date.now(), this.sunTimesFromWeather());
-    const levels = stemLevels(this.mood(), weights);
+    const mood = this.mood();
+    this.maybeRingBell(mood);
+    const levels = stemLevels(mood, weights);
     const last = this.lastStems;
     const same =
       last &&
@@ -679,7 +716,10 @@ export class MapView {
       last.wind === levels.wind &&
       last.surf === levels.surf &&
       last.birds === levels.birds &&
-      last.crickets === levels.crickets;
+      last.crickets === levels.crickets &&
+      last.frogs === levels.frogs &&
+      last.roofRain === levels.roofRain &&
+      last.fireplace === levels.fireplace;
     if (same) return;
     this.lastStems = levels;
     feedback.setStem('calmPad', levels.calmPad);
@@ -689,6 +729,25 @@ export class MapView {
     feedback.setStem('surf', levels.surf);
     feedback.setStem('birds', levels.birds);
     feedback.setStem('crickets', levels.crickets);
+    feedback.setStem('frogs', levels.frogs);
+    feedback.setStem('roofRain', levels.roofRain);
+    feedback.setStem('fireplace', levels.fireplace);
+  }
+
+  private lastBellHour = -1;
+  /**
+   * The village bell marks the daytime hours (08:00–20:00 local), skipped in a
+   * storm — thunder owns that sky (Living Weather spec §7). At most one ring
+   * per hour, and only while the map is actually being watched.
+   */
+  private maybeRingBell(mood: WorldMood): void {
+    const hour = new Date().getHours();
+    if (hour === this.lastBellHour) return;
+    const wasFirst = this.lastBellHour === -1;
+    this.lastBellHour = hour;
+    if (wasFirst) return; // never ring just because the map opened
+    if (hour < 8 || hour > 20 || mood.weather === 'storm') return;
+    feedback.bell();
   }
 
   /**
