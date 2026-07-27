@@ -281,6 +281,7 @@ declare global {
     hearthMood: () => unknown;
     hearthSky: (mode?: string) => void;
     hearthEnv: (opts?: { phase?: string; mood?: string } | string) => void;
+    hearthGl: () => Promise<unknown>;
   }
 }
 // Tester hooks (hearthSeeTown, hearthReset, …). Always on in dev; in the
@@ -400,6 +401,20 @@ if (testerMode) {
     }
     if (o.phase) window.hearthSky(o.phase);
     else document.dispatchEvent(new CustomEvent('hearth:sky-updated'));
+  };
+  // WebGL compositor diagnosis: hearthGl() → alive/degraded/frames/cost, and
+  // WHY it retired to the 2D map if it did. For remote bug reports.
+  window.hearthGl = async () => {
+    try {
+      const mod = await import('./render/compositor');
+      const info = mod.lastCompositor?.info ?? 'compositor never created (no WebGL2, or map not opened yet)';
+      console.info(info);
+      return info;
+    } catch (err: unknown) {
+      const msg = `compositor module failed to load: ${err instanceof Error ? err.message : String(err)}`;
+      console.info(msg);
+      return msg;
+    }
   };
   window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {
     const snap: HealthSnapshot = {

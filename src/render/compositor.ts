@@ -182,9 +182,16 @@ export class Compositor {
   private lastMs = 0;
   /** rolling render-cost average (ms) for the quality watchdog */
   private avgCost = 0;
+  /** honest (non-warmup, non-check) frames measured since the last tier change */
+  private counted = 0;
   /** Tier B: bloom/rays off after sustained slowness; Tier C: retired. */
   private degraded = false;
   private dead = false;
+  private frames = 0;
+  /** output proven sane by the readback self-check — checks stop after this */
+  private proven = false;
+  /** why the compositor retired (hearthGl() diagnosis), '' while alive */
+  private retiredBecause = '';
 
   private constructor(
     gl: WebGL2RenderingContext,
@@ -211,8 +218,12 @@ export class Compositor {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    // Seed level 0 so the texture is NEVER incomplete — ES3 samples an
+    // incomplete texture as opaque black, which would paint the whole map
+    // black on any device where a canvas upload silently fails.
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
 
-    glCanvas.addEventListener('webglcontextlost', () => this.retire(), { once: true });
+    glCanvas.addEventListener('webglcontextlost', () => this.retire('context lost'), { once: true });
   }
 
   /**
@@ -243,6 +254,7 @@ export class Compositor {
       host.appendChild(glCanvas);
       const c = new Compositor(gl, glCanvas, source, { bright, blur, final });
       c.resize();
+      trackCompositor(c);
       return c;
     } catch {
       return null;
@@ -284,7 +296,7 @@ export class Compositor {
     this.bright = this.makeTarget(hw, hh);
     this.blurA = this.makeTarget(hw, hh);
     this.blurB = this.makeTarget(hw, hh);
-    if (!this.bright || !this.blurA || !this.blurB) this.retire();
+    if (!this.bright || !this.blurA || !this.blurB) this.retire('framebuffer allocation failed');
   }
 
   /** Compose one frame. Call after the 2D scene has fully drawn. */
@@ -356,26 +368,117 @@ export class Compositor {
       gl.uniform2f(u('uSun'), env.sunX, 1 - env.sunY);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     } catch {
-      this.retire();
+      this.retire('render threw');
       return;
     }
 
-    // quality watchdog (spec §3.2): JS-side cost incl. the scene upload.
+    // Output self-check (the Tier-C contract: NEVER worse than the 2D map).
+    // Some mobile drivers compose a black or blank frame while every GL call
+    // "succeeds" — so on early frames we read a few pixels back and compare
+    // against the 2D source; a bad frame retires the compositor on the spot.
+    this.frames += 1;
+    const checkFrame = this.frames === 1 || this.frames === 30;
+    if (!this.proven && checkFrame) this.selfCheck();
+
+    // Quality watchdog (spec §3.2): JS-side cost incl. the scene upload.
+    // Warmup frames (pipeline compile) and self-check frames (readPixels
+    // forces a GPU sync) are NOT evidence of a slow device — skip them, and
+    // only judge a rolling average once a dozen honest frames are in.
     // Sustained >12ms → drop bloom/rays; still >20ms → retire to Tier C.
-    const cost = performance.now() - started;
-    this.avgCost = this.avgCost === 0 ? cost : this.avgCost * 0.95 + cost * 0.05;
-    if (!this.degraded && this.avgCost > 12) this.degraded = true;
-    else if (this.degraded && this.avgCost > 20) this.retire();
+    if (this.frames > 3 && !checkFrame) {
+      const cost = performance.now() - started;
+      this.counted += 1;
+      this.avgCost = this.avgCost === 0 ? cost : this.avgCost * 0.9 + cost * 0.1;
+      if (this.counted >= 12) {
+        if (!this.degraded && this.avgCost > 12) {
+          this.degraded = true;
+          this.counted = 0; // give Tier B its own dozen frames to prove itself
+        } else if (this.degraded && this.avgCost > 20) {
+          this.retire('sustained slow frames');
+        }
+      }
+    }
+  }
+
+  /** Read sparse output pixels and compare with the 2D source's brightness. */
+  private selfCheck(): void {
+    const gl = this.gl;
+    try {
+      const w = this.glCanvas.width;
+      const h = this.glCanvas.height;
+      const px = new Uint8Array(4);
+      let lum = 0;
+      let alpha = 0;
+      let n = 0;
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          gl.readPixels(
+            Math.floor(w * (0.2 + 0.3 * i)),
+            Math.floor(h * (0.2 + 0.3 * j)),
+            1,
+            1,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            px,
+          );
+          lum += (px[0]! + px[1]! + px[2]!) / 3;
+          alpha += px[3]!;
+          n++;
+        }
+      }
+      lum /= n;
+      alpha /= n;
+      // the 2D source's own brightness, downsampled tiny (cheap, twice ever)
+      let srcLum = 0;
+      const c = document.createElement('canvas');
+      c.width = 8;
+      c.height = 8;
+      const g = c.getContext('2d');
+      if (!g) return;
+      g.drawImage(this.source, 0, 0, 8, 8);
+      const d = g.getImageData(0, 0, 8, 8).data;
+      for (let i = 0; i < d.length; i += 4) srcLum += (d[i]! + d[i + 1]! + d[i + 2]!) / 3;
+      srcLum /= 64;
+      const blackedOut = alpha > 200 && srcLum > 8 && lum < Math.min(3, srcLum * 0.15);
+      const vanished = alpha < 10 && srcLum > 8;
+      if (blackedOut || vanished) {
+        this.retire(blackedOut ? 'self-check: opaque black output' : 'self-check: blank output');
+        return;
+      }
+      if (this.frames >= 30) this.proven = true;
+    } catch {
+      // a failing CHECK never kills a working picture — only a failing frame does
+    }
+  }
+
+  /** State for the hearthGl() console helper — remote diagnosis. */
+  get info(): { alive: boolean; degraded: boolean; proven: boolean; frames: number; avgCostMs: number; retiredBecause: string } {
+    return {
+      alive: !this.dead,
+      degraded: this.degraded,
+      proven: this.proven,
+      frames: this.frames,
+      avgCostMs: Math.round(this.avgCost * 100) / 100,
+      retiredBecause: this.retiredBecause,
+    };
   }
 
   /** Tier C: hide + stop. The 2D pipeline underneath is already complete. */
-  private retire(): void {
+  private retire(reason: string): void {
     if (this.dead) return;
     this.dead = true;
+    this.retiredBecause = reason;
     this.glCanvas.remove();
   }
 
   dispose(): void {
-    this.retire();
+    this.retire('disposed');
   }
+}
+
+/** The most recent compositor (or null) — for the hearthGl() debug helper. */
+export let lastCompositor: Compositor | null = null;
+
+export function trackCompositor(c: Compositor | null): void {
+  lastCompositor = c;
 }
