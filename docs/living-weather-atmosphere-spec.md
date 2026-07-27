@@ -552,6 +552,14 @@ one-time toast explains), presets → Sanctuary. Existing `effectiveWeather()` /
 
 ## 11. Implementation roadmap
 
+> **Status (2026-07-28):** W1, W2 and W4 are implemented and live; W5's no-art
+> scope (live medallion, mood captions, QA scrubber) is in. **W3 + all art-
+> gated work is deliberately deferred to the art session** — and note the art
+> plan has grown: the v3 island plate will be **larger than the current map**,
+> making room for the quarry and a new **animal shelter** building (both also
+> entering the story), so §2.2's geography freeze is superseded by a planned
+> layout migration (`town-layout.ts` anchors + collision tests + story content).
+
 | Phase | Scope | Success criterion |
 |---|---|---|
 | **W1 — Environment core** | EnvironmentState v2, mood resolver + hysteresis, damper, `hearthEnv` scrubber, tests. No visual change | All moods resolvable + damped in tests; scrubber drives existing pipeline |

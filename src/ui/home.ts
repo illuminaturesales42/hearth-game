@@ -7,9 +7,11 @@ import { chainDef } from '../core/board';
 import { artUrl, portraitFor, itemIconInline } from './art';
 import { avatarPortraitHTML } from './avatar-render';
 import { openAvatarCreator } from './avatar-creator';
-import { effectiveWeather, latestSunTimes, latestWeather } from './weather';
+import { effectiveWeather, getSkyPref, isLiveSky, latestAccumulation, latestSunTimes, latestWeather, presetAccumulation } from './weather';
 import type { WeatherKind } from '../core/world-mood';
-import { PHASE_META, phaseForTime, type TimeOfDay } from '../core/time-of-day';
+import { computeEnvironment } from '../core/environment';
+import { MOOD_CAPTION } from '../core/weather-mood';
+import { PHASE_META, phaseForTime, type PhaseWeights, type TimeOfDay } from '../core/time-of-day';
 import { ORDERS, RESTORE_ORDERS, ZONE_STAGES } from '../data/economy';
 import { orderAt } from '../data/endless';
 import { feedback } from './feedback';
@@ -221,6 +223,11 @@ export class Home {
     // event when a minute passes. 30s keeps the displayed minute honest and is
     // far too slow to matter for battery.
     window.setInterval(() => this.renderHud(), 30_000);
+    // …and the medallion answers a sky/location change (or the hearthEnv()/
+    // hearthSky() scrubber) instantly, on the same triggers the environment
+    // controller uses — the badge and the whole scene always agree.
+    document.addEventListener('hearth:sky-updated', () => this.renderHud());
+    document.addEventListener('hearth:location-changed', () => this.renderHud());
   }
 
   /** The player's face, watching over their town — a quiet identity cameo on the
@@ -258,16 +265,15 @@ export class Home {
       restored.textContent = `${pct}% restored`;
     }
 
-    const ico = document.getElementById('hud-weather-ico');
-    if (ico) {
-      ico.title = meta.label;
-      const url = artUrl(meta.art);
-      ico.style.backgroundImage = url ? `url(${url})` : '';
-      ico.classList.toggle('has-art', Boolean(url));
-      ico.textContent = url ? '' : PHASE_FALLBACK[phase];
-    }
-
     const w = effectiveWeather(latestWeather());
+    const pref = getSkyPref();
+    const env = computeEnvironment(now, sun, w, {
+      accumulation: isLiveSky(pref) ? latestAccumulation(now) : presetAccumulation(pref),
+    });
+
+    const ico = document.getElementById('hud-weather-ico');
+    if (ico) this.renderMedallion(ico, now, sun, phase, env.moonAmount, env.mood, meta.label);
+
     const block = document.querySelector<HTMLElement>('.hud-weather');
     if (block) block.hidden = !w;
     if (!w) return;
@@ -277,6 +283,97 @@ export class Home {
     // A small weather glyph reads faster than the word alone, and still shows
     // the real sky even for a player who never opens the reactive-world panel.
     if (sky) sky.textContent = `${SKY_GLYPH[w.kind] ?? ''} ${SKY_WORD[w.kind] ?? ''}`.trim();
+  }
+
+  /** Badge art per crossfade channel (evening reuses sunset until bespoke). */
+  private static readonly BADGE_BY_CHANNEL: Record<keyof PhaseWeights, string> = {
+    dawn: 'time_badge_sunrise',
+    day: 'time_badge_midday',
+    dusk: 'time_badge_sunset',
+    evening: 'time_badge_sunset',
+    night: 'time_badge_night',
+  };
+
+  private wxLayers: { a: HTMLElement; b: HTMLElement; dot: HTMLElement; fx: HTMLElement } | null = null;
+
+  /**
+   * The time medallion as a LIVE VIEWPORT (Living Weather spec §9): the four
+   * painted badges cross-fade by the same phase weights the map's sky reads,
+   * the real sun/moon travels its little arc, and a micro weather overlay
+   * (rain streaks / snow / fog veil) answers the mood. The whole system in
+   * miniature — the first thing that says "Hearth knows".
+   */
+  private renderMedallion(
+    ico: HTMLElement,
+    now: number,
+    sun: { sunriseMs: number; sunsetMs: number } | null,
+    phase: TimeOfDay,
+    moonAmount: number,
+    mood: string,
+    label: string,
+  ): void {
+    const caption = (MOOD_CAPTION as Record<string, string>)[mood] ?? label;
+    ico.title = caption;
+    ico.setAttribute('role', 'img');
+    ico.setAttribute('aria-label', caption);
+
+    const { weights } = phaseForTime(now, sun);
+    // the two heaviest channels carry the crossfade
+    const entries = (Object.keys(weights) as (keyof PhaseWeights)[])
+      .map((k) => ({ k, w: weights[k] }))
+      .sort((x, y) => y.w - x.w);
+    const top = entries[0]!;
+    const second = entries[1]!;
+    const urlA = artUrl(Home.BADGE_BY_CHANNEL[top.k]);
+    if (!urlA) {
+      // art-less fallback: the plain emoji face, exactly as before
+      ico.classList.remove('has-art');
+      ico.textContent = PHASE_FALLBACK[phase];
+      return;
+    }
+    ico.classList.add('has-art');
+    if (!this.wxLayers) {
+      ico.textContent = '';
+      const mk = (cls: string): HTMLElement => {
+        const d = document.createElement('div');
+        d.className = cls;
+        ico.appendChild(d);
+        return d;
+      };
+      this.wxLayers = { a: mk('wx-layer'), b: mk('wx-layer'), dot: mk('wx-dot'), fx: mk('wx-fx') };
+    }
+    const L = this.wxLayers;
+    const total = top.w + second.w || 1;
+    L.a.style.backgroundImage = `url(${urlA})`;
+    L.a.style.opacity = '1';
+    const urlB = artUrl(Home.BADGE_BY_CHANNEL[second.k]);
+    const crossfade = urlB && urlB !== urlA ? second.w / total : 0;
+    L.b.style.backgroundImage = urlB ? `url(${urlB})` : '';
+    L.b.style.opacity = crossfade.toFixed(3);
+
+    // the real sun (or moon) on its little arc across the badge face
+    let dotShown = false;
+    if (sun && sun.sunsetMs > sun.sunriseMs) {
+      const DAY = 86_400_000;
+      const u = (now - sun.sunriseMs) / (sun.sunsetMs - sun.sunriseMs);
+      const daytime = u >= 0 && u <= 1;
+      const since = now > sun.sunsetMs ? now - sun.sunsetMs : now + DAY - sun.sunsetMs;
+      const v = Math.min(1, since / (DAY - (sun.sunsetMs - sun.sunriseMs)));
+      const p = daytime ? u : v;
+      const x = 18 + p * 64; // % across the inner face
+      const y = 62 - Math.sin(p * Math.PI) * 34; // % down (arc peak at centre-top)
+      L.dot.style.left = `${x.toFixed(1)}%`;
+      L.dot.style.top = `${y.toFixed(1)}%`;
+      L.dot.classList.toggle('wx-moon', !daytime);
+      L.dot.style.opacity = daytime ? '1' : (0.3 + 0.7 * moonAmount).toFixed(2);
+      dotShown = true;
+    }
+    L.dot.style.display = dotShown ? '' : 'none';
+
+    // micro weather overlay by mood
+    const fx =
+      mood === 'storm-watch' || mood === 'cosy-rain' ? 'rain' : mood === 'snow-glow' ? 'snow' : mood === 'misty' ? 'fog' : '';
+    L.fx.className = `wx-fx${fx ? ` wx-fx-${fx}` : ''}`;
   }
 
   render(): void {
