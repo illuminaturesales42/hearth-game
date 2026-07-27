@@ -44,6 +44,7 @@ import {
   latestCoords,
 } from './weather';
 import { sunPosition } from '../core/sun';
+import { computeEnvironment, type WorldEnvironment } from '../core/environment';
 
 /** The sun's screen-side key for the lighting washes, or null with no location. */
 type SunKey = { dx: number; dy: number; lowness: number } | null;
@@ -126,6 +127,11 @@ export class MapView {
   /** Real weather outside the window (best-effort; null renders clear). */
   private weather: WeatherNow | null = null;
   private weatherAskedAt = 0;
+  /** The WebGL compositing pass (Living Weather spec §3) — null on Tier C. */
+  private compositor: import('../render/compositor').Compositor | null = null;
+  private compositorTried = false;
+  /** computeEnvironment cached ~1s — the compositor reads it every frame. */
+  private envCache: { at: number; value: WorldEnvironment } | null = null;
   /** Decorate mode: pick a piece from the tray, tap the town to place it. */
   private decorMode = false;
   private decorPick: string | null = null;
@@ -423,6 +429,42 @@ export class MapView {
     });
   }
 
+  /**
+   * Mount the WebGL compositing pass (lazy: Tier C never downloads the module).
+   * Any failure — no WebGL2, shader trouble, later context loss — leaves the 2D
+   * pipeline exactly as shipped; the pass is pure enhancement.
+   */
+  private async ensureCompositor(): Promise<void> {
+    if (this.compositorTried || !this.canvas) return;
+    this.compositorTried = true;
+    try {
+      const { Compositor } = await import('../render/compositor');
+      this.compositor = Compositor.create(this.canvas);
+      if (this.compositor && this.reduce && this.visible) this.draw(0); // first static frame gets composed too
+    } catch {
+      this.compositor = null;
+    }
+  }
+
+  /**
+   * The live WorldEnvironment for the compositor (mood, night, golden hour) —
+   * same "pick your sky" override path as mood(), cached ~1s so the 30fps loop
+   * isn't recomputing solar blends every frame.
+   */
+  private liveEnvironment(): WorldEnvironment {
+    const now = Date.now();
+    if (this.envCache && now - this.envCache.at < 1000) return this.envCache.value;
+    const pref = getSkyPref();
+    const weather = effectiveWeather(this.weather, pref);
+    const accumulation = pref === 'real' ? this.accumulation() : presetAccumulation(pref);
+    const value = computeEnvironment(now, this.sunTimesFromWeather(), weather, {
+      coords: latestCoords(),
+      accumulation,
+    });
+    this.envCache = { at: now, value };
+    return value;
+  }
+
   private accumCache: { at: number; value: ReturnType<typeof latestAccumulation> } | null = null;
   /**
    * Weather's memory changes on an hourly / slow-decay clock, so it's wasteful to
@@ -463,6 +505,7 @@ export class MapView {
       this.refreshWeather();
       this.renderList();
       this.resize();
+      void this.ensureCompositor();
       if (this.reduce) this.draw(0);
       else this.loop();
       this.maybeShowRecap();
@@ -1152,6 +1195,7 @@ export class MapView {
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(h * dpr);
     this.ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.compositor?.resize();
     this.clampCam();
   }
 
@@ -1376,6 +1420,23 @@ export class MapView {
       const rainbow = this.rainbowStrength(mood);
       if (rainbow > 0) this.drawRainbow(ctx, W, H, rainbow);
       if (!this.reduce) this.applyStormFx(ctx, W, H, t, mood);
+      // The WebGL pass composes the finished 2D frame: mood grade, window/lantern
+      // bloom, golden-hour god rays, vignette + grain. Driven from here so it
+      // inherits the 30fps cap, hidden-tab pause, and reduce-motion's single
+      // static frame. Tier C (no compositor) simply shows this canvas as-is.
+      if (this.compositor?.active) {
+        const env = this.liveEnvironment();
+        this.compositor.render({
+          mood: env.mood,
+          nightAmount: env.nightAmount,
+          goldenHour: env.goldenHour,
+          cloudFlat: env.cloudFlat,
+          sunX: SKY_ANCHORS.godRays.x,
+          sunY: SKY_ANCHORS.godRays.y,
+          reduced: this.reduce,
+          timeMs: t,
+        });
+      }
       this.updateBar(prog, stage, mood);
       return;
     }

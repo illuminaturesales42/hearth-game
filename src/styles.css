@@ -1149,6 +1149,17 @@ body.reduce-motion .fx-bloom {
   height: 315px;
   display: block;
 }
+/* The WebGL compositing pass (render/compositor) — a click-transparent twin
+   stacked exactly over the 2D map. When WebGL is unavailable it simply never
+   mounts and the 2D canvas below IS the picture (Tier C). */
+.map-composite {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 315px;
+  display: block;
+  pointer-events: none;
+}
 /* current challenge card on the town map */
 .map-challenge {
   display: flex;
