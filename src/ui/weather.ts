@@ -189,7 +189,7 @@ export async function currentWeather(): Promise<WeatherNow | null> {
     // Attribution: weather data by Open-Meteo.com (CC BY 4.0).
     const url =
       `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat.toFixed(3)}&longitude=${coords.lng.toFixed(3)}` +
-      `&current=weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,precipitation,is_day,temperature_2m,apparent_temperature` +
+      `&current=weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,precipitation,is_day,temperature_2m,apparent_temperature,relative_humidity_2m` +
       `&daily=sunrise,sunset&timezone=auto&timeformat=unixtime&wind_speed_unit=kmh`;
     const res = await fetch(url);
     if (!res.ok) return cached;
@@ -203,6 +203,7 @@ export async function currentWeather(): Promise<WeatherNow | null> {
         is_day?: number;
         temperature_2m?: number;
         apparent_temperature?: number;
+        relative_humidity_2m?: number;
       };
       daily?: { sunrise?: number[]; sunset?: number[] };
     };
@@ -217,6 +218,7 @@ export async function currentWeather(): Promise<WeatherNow | null> {
     if (typeof c.wind_direction_10m === 'number') extra.windDir = c.wind_direction_10m;
     if (typeof c.temperature_2m === 'number') extra.tempC = c.temperature_2m;
     if (typeof c.apparent_temperature === 'number') extra.feelsLikeC = c.apparent_temperature;
+    if (typeof c.relative_humidity_2m === 'number') extra.humidity = c.relative_humidity_2m / 100;
     extra.southern = coords.lat < 0; // hemisphere bit only — flips the seasons
     const now = weatherFromWmo(
       c.weather_code,

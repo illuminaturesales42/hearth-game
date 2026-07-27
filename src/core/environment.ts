@@ -11,7 +11,10 @@
  */
 import { phaseForTime, type PhaseWeights, type SunTimes, type TimeOfDay } from './time-of-day';
 import { illumination } from '../data/moon';
-import type { WeatherNow } from './world-mood';
+import { seasonForMonth, type Season, type WeatherNow } from './world-mood';
+import { resolveMood, type WeatherMood } from './weather-mood';
+import { sunPosition } from './sun';
+import type { Accumulation } from './weather-history';
 
 export interface WorldEnvironment {
   /** dominant phase label — for the badge aria + debugging */
@@ -34,6 +37,41 @@ export interface WorldEnvironment {
   ambient: string;
   /** how much cloud flattens the look, 0..1 */
   cloudFlat: number;
+  // ——— v2 (Living Weather spec §4.1) ———
+  /** real sun altitude, radians (proxy when no coords) — god rays, keys */
+  sunAltitude: number;
+  /** real sun azimuth, radians, SunCalc convention (0 = S, +π/2 = W) */
+  sunAzimuth: number;
+  /** wind speed, kph */
+  windKph: number;
+  /** wind direction, meteorological degrees (comes FROM) */
+  windDeg: number;
+  /** 0..1 continuous precipitation intensity (never binary) */
+  precip: number;
+  /** 0..1 chance the sky is about to speak */
+  thunderRisk: number;
+  /** 0..1 how far the eye reaches (fog/rain shorten it) */
+  visibility: number;
+  /** 0..1 air moisture estimate — glass condensation, haze */
+  humidity: number;
+  /** the art-directed mood every renderer/audio consumer keys off */
+  mood: WeatherMood;
+  /** 0..1 wet-ground memory (from the reading log) */
+  wetness: number;
+  /** 0..1 lying-snow memory */
+  snowDepth: number;
+  /** 0..1 cold bite near/below freezing */
+  frost: number;
+  /** the player's real local season (hemisphere-aware) */
+  season: Season;
+}
+
+/** Optional extras for the v2 pass — everything degrades gracefully without. */
+export interface EnvironmentExtra {
+  /** player coords → real sun altitude/azimuth (else a phase-weight proxy) */
+  coords?: { lat: number; lng: number } | null;
+  /** weather memory (ui/weather latestAccumulation / presetAccumulation) */
+  accumulation?: Accumulation | null;
 }
 
 interface Stop {
@@ -107,11 +145,39 @@ function parseHex(s: string): [number, number, number] {
   return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
 }
 
+/** 0..1 visibility from the weather kind + intensity (fog shortens the world). */
+function visibilityFor(weather: WeatherNow | null, precip: number): number {
+  const kind = weather?.kind ?? 'clear';
+  if (kind === 'fog') return 0.25;
+  if (kind === 'storm') return 0.55;
+  if (kind === 'snow') return clamp01(0.75 - precip * 0.2);
+  if (kind === 'rain') return clamp01(0.85 - precip * 0.25);
+  return clamp01(1 - (weather?.cloudCover ?? 0) * 0.1);
+}
+
+/** 0..1 humidity estimate until the fetch carries the real reading — fog and
+ *  rain days feel damp, clear days dry. Good enough for glass/haze cues. */
+function humidityFor(weather: WeatherNow | null): number {
+  if (typeof weather?.humidity === 'number') return clamp01(weather.humidity);
+  const kind = weather?.kind ?? 'clear';
+  if (kind === 'fog') return 0.95;
+  if (kind === 'rain' || kind === 'storm') return 0.9;
+  if (kind === 'snow') return 0.8;
+  if (kind === 'overcast') return 0.7;
+  return 0.5;
+}
+
 /**
  * The whole environment for `now`. `sun` null → the solar model falls back to
- * clock bands; `weather` null → clear (no flattening).
+ * clock bands; `weather` null → clear (no flattening); `extra` optional — no
+ * coords means a phase-weight sun proxy, no accumulation means dry ground.
  */
-export function computeEnvironment(now: number, sun: SunTimes | null, weather: WeatherNow | null): WorldEnvironment {
+export function computeEnvironment(
+  now: number,
+  sun: SunTimes | null,
+  weather: WeatherNow | null,
+  extra?: EnvironmentExtra,
+): WorldEnvironment {
   const { phase, weights } = phaseForTime(now, sun);
   const nightAmount = clamp01(weights.night);
   const cloudFlat = clamp01((weather?.cloudCover ?? 0) * 0.6);
@@ -126,6 +192,31 @@ export function computeEnvironment(now: number, sun: SunTimes | null, weather: W
     light[2] + (NEUTRAL[2] - light[2]) * cloudFlat,
   ];
 
+  const moonAmount = clamp01(nightAmount * illumination(now));
+
+  // Real sun when we know where the player is; otherwise a smooth proxy from
+  // the phase weights (altitude tracks day−night; azimuth swings E→W with the
+  // falling side of the day) so consumers never need a null branch.
+  let sunAltitude: number;
+  let sunAzimuth: number;
+  if (extra?.coords) {
+    const p = sunPosition(now, extra.coords);
+    sunAltitude = p.altitude;
+    sunAzimuth = p.azimuth;
+  } else {
+    sunAltitude = (clamp01(weights.day) - nightAmount) * (Math.PI / 3);
+    const falling = weights.dusk + weights.evening > weights.dawn;
+    sunAzimuth = falling ? 0.9 : -0.9; // west of south pm, east of south am
+  }
+
+  const precip = clamp01((weather?.precipMm ?? 0) / 4);
+  const kind = weather?.kind ?? 'clear';
+  const thunderRisk = kind === 'storm' ? 1 : kind === 'rain' && precip >= 0.7 ? 0.35 : 0;
+  const wetness = clamp01(extra?.accumulation?.wetness ?? 0);
+  const snowDepth = clamp01(extra?.accumulation?.snowDepth ?? 0);
+  const frost = typeof weather?.tempC === 'number' ? clamp01((2 - weather.tempC) / 6) : 0;
+  const month = new Date(now).getMonth();
+
   return {
     phase,
     weights,
@@ -133,9 +224,22 @@ export function computeEnvironment(now: number, sun: SunTimes | null, weather: W
     nightAmount,
     goldenHour: clamp01(Math.max(weights.dawn, weights.dusk)),
     warmth: clamp01(blendChannel(weights, (s) => s.warmth)),
-    moonAmount: clamp01(nightAmount * illumination(now)),
+    moonAmount,
     light: hex(light),
     ambient: hex(ambient),
     cloudFlat,
+    sunAltitude,
+    sunAzimuth,
+    windKph: Math.max(0, weather?.windKph ?? 0),
+    windDeg: ((weather?.windDir ?? 0) % 360 + 360) % 360,
+    precip,
+    thunderRisk,
+    visibility: visibilityFor(weather, precip),
+    humidity: humidityFor(weather),
+    mood: resolveMood({ weather, weights, moonAmount, snowDepth, frost }),
+    wetness,
+    snowDepth,
+    frost,
+    season: seasonForMonth(month, weather?.southern === true),
   };
 }

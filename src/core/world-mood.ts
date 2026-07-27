@@ -28,6 +28,8 @@ export interface WeatherNow {
   /** Current temperature °C, and the "feels like" apparent temperature °C. */
   tempC?: number;
   feelsLikeC?: number;
+  /** Relative humidity 0..1 — glass condensation, haze cues. */
+  humidity?: number;
   /** Southern hemisphere (latitude < 0) — flips the seasons. */
   southern?: boolean;
 }
@@ -40,6 +42,7 @@ export interface WeatherExtra {
   windDir?: number;
   tempC?: number;
   feelsLikeC?: number;
+  humidity?: number;
   southern?: boolean;
 }
 
@@ -72,6 +75,7 @@ export function weatherFromWmo(
   if (extra?.windDir !== undefined) now.windDir = extra.windDir;
   if (extra?.tempC !== undefined) now.tempC = extra.tempC;
   if (extra?.feelsLikeC !== undefined) now.feelsLikeC = extra.feelsLikeC;
+  if (extra?.humidity !== undefined) now.humidity = extra.humidity;
   if (extra?.southern !== undefined) now.southern = extra.southern;
   return now;
 }
