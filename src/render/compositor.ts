@@ -31,6 +31,13 @@ export interface CompositeEnv {
   /** freeze time-driven texture (grain) — reduce-motion */
   reduced: boolean;
   timeMs: number;
+  /** raw 0..1 cloud cover — drives the travelling cloud shadows */
+  cloudCover: number;
+  /** 1 − night; shadows need a sun to cast them */
+  daylight: number;
+  /** real wind, for the direction and pace the shadows travel */
+  windKph: number;
+  windDeg: number;
 }
 
 const VERT = `#version 300 es
@@ -89,8 +96,27 @@ uniform sampler2D uBloom;
 uniform float uExposure, uSaturation, uTemp, uContrast;
 uniform float uBloomAmt, uRays, uVignette, uGrain, uTime;
 uniform vec2 uSun;
+uniform float uCloudShadow;
+uniform vec2 uCloudOffset;
+uniform vec2 uWindDir;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+
+// Lattice-tiling hash: wrapping the lattice at 64 makes the noise periodic, so
+// the JS-side drift offset can wrap at 64 with no visible jump however long a
+// session runs (an unwrapped offset eventually loses float precision).
+float hashT(vec2 p) { return hash(mod(p, 64.0)); }
+
+float vnoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = hashT(i);
+  float b = hashT(i + vec2(1.0, 0.0));
+  float c = hashT(i + vec2(0.0, 1.0));
+  float d = hashT(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
 
 void main() {
   vec4 scene = texture(uScene, vUv);
@@ -103,6 +129,24 @@ void main() {
   float lum = dot(c, vec3(0.299, 0.587, 0.114));
   c = mix(vec3(lum), c, uSaturation);
   c = (c - 0.5 * scene.a) * uContrast + 0.5 * scene.a; // pivot respects premultiplied alpha
+
+  // Travelling cloud shadows — the effect that makes the island feel alive:
+  // sunlight visibly comes and goes as cloud crosses it. Elongated across the
+  // wind direction and drifting along it, so shadow motion agrees with the
+  // rain slant and the cloud pace the 2D layer already draws.
+  // Screen-space (not world-locked): at fit zoom — what almost everyone sees —
+  // there is no pan, and while panning a 20% darkening reads as light, not as
+  // a texture. World-locking waits for the depth mask in the art pass.
+  if (uCloudShadow > 0.001) {
+    mat2 alignWind = mat2(uWindDir.x, -uWindDir.y, uWindDir.y, uWindDir.x);
+    vec2 q = alignWind * vUv * vec2(2.4, 5.0) + uCloudOffset; // stretched into bands
+    float n = vnoise(q) * 0.62 + vnoise(q * 2.1 + 3.7) * 0.38;
+    float shade = smoothstep(0.44, 0.78, n);
+    // Sky must not catch ground shadows. Without the depth mask this is a
+    // fixed upper band — replace with the real mask when the v3 art lands.
+    shade *= 1.0 - smoothstep(0.68, 0.88, vUv.y);
+    c *= 1.0 - shade * uCloudShadow * scene.a;
+  }
 
   // bloom (additive, already blurred at half res)
   c += texture(uBloom, vUv).rgb * uBloomAmt;
@@ -188,6 +232,8 @@ export class Compositor {
   private degraded = false;
   private dead = false;
   private frames = 0;
+  /** cloud-shadow drift, wrapped at the noise's 64-unit tiling period */
+  private cloudDrift: [number, number] = [0, 0];
   /** output proven sane by the readback self-check — checks stop after this */
   private proven = false;
   /** why the compositor retired (hearthGl() diagnosis), '' while alive */
@@ -366,6 +412,26 @@ export class Compositor {
       gl.uniform1f(u('uTime'), env.reduced ? 0 : (env.timeMs % 4000) / 4000);
       // callers pass canvas UV (y down); GL UV is y up after the FLIP_Y upload
       gl.uniform2f(u('uSun'), env.sunX, 1 - env.sunY);
+
+      // Cloud shadows peak at BROKEN cloud and vanish at both extremes: a clear
+      // sky has nothing to cast, and full overcast casts no distinct shadow —
+      // it only flattens the light, which the mood grade already does.
+      const cover = Math.max(0, Math.min(1, env.cloudCover));
+      const broken = 4 * cover * (1 - cover); // bell curve, 1.0 at half cover
+      const shadow = 0.3 * broken * Math.max(0, Math.min(1, env.daylight));
+      // Meteorological degrees say where wind comes FROM; shadows travel TO.
+      const windRad = ((env.windDeg + 180) * Math.PI) / 180;
+      const wx = Math.sin(windRad);
+      const wy = -Math.cos(windRad); // UV y is up after the flip
+      if (!env.reduced && shadow > 0.001) {
+        // a fresh breeze walks shadows across the frame in about a minute
+        const pace = (0.03 + (Math.min(60, env.windKph) / 60) * 0.25) * dt;
+        this.cloudDrift[0] = (this.cloudDrift[0] + wx * pace) % 64;
+        this.cloudDrift[1] = (this.cloudDrift[1] + wy * pace) % 64;
+      }
+      gl.uniform1f(u('uCloudShadow'), shadow);
+      gl.uniform2f(u('uCloudOffset'), this.cloudDrift[0], this.cloudDrift[1]);
+      gl.uniform2f(u('uWindDir'), wx, wy);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     } catch {
       this.retire('render threw');

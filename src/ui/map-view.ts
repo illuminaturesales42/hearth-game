@@ -1494,6 +1494,10 @@ export class MapView {
           sunY: SKY_ANCHORS.godRays.y,
           reduced: this.reduce,
           timeMs: t,
+          cloudCover: mood.cloudCover,
+          daylight: env.daylight,
+          windKph: env.windKph,
+          windDeg: env.windDeg,
         });
       }
       this.updateBar(prog, stage, mood);
