@@ -124,7 +124,7 @@ def debug_overlay(im: Image.Image, dest: Path) -> None:
     ov.save(dest)
 
 
-def compare_sheet(im: Image.Image, tag: str, dest: Path) -> None:
+def compare_sheet(im: Image.Image, tag: str, dest: Path, village: bool = False) -> None:
     """Guide's own progression row above, ours below, states column-aligned.
 
     The only honest way to judge 'does this match the guide' — same order, same
@@ -151,7 +151,7 @@ def compare_sheet(im: Image.Image, tag: str, dest: Path) -> None:
         draw.text((col * cell + 8, cell + 4), f"GUIDE  {state}", fill=(180, 200, 255), font=font)
         # row 1 — ours
         y0 = cell + label_h
-        src = prog / f"forge_{state}_ident_{tag}.png"
+        src = (OUT / "village" / f"{tag}_{state}.png") if village else (prog / f"forge_{state}_ident_{tag}.png")
         if src.exists():
             ours = Image.open(src).convert("RGB")
             ours.thumbnail((cell - 12, cell - 12), Image.LANCZOS)
@@ -166,7 +166,16 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--debug", action="store_true", help="only write the crop overlay")
     ap.add_argument("--compare", metavar="TAG", help="build the guide-vs-ours progression sheet for this run tag")
+    ap.add_argument("--compare-village", metavar="BUILDING", help="guide row vs a comfy_village.py progression")
     args = ap.parse_args()
+
+    if args.compare_village:
+        OUT.mkdir(parents=True, exist_ok=True)
+        im = Image.open(GUIDE).convert("RGB")
+        dest = OUT / f"_guide_vs_{args.compare_village}.png"
+        compare_sheet(im, args.compare_village, dest, village=True)
+        print(f"comparison: {dest}")
+        return
 
     if args.compare:
         OUT.mkdir(parents=True, exist_ok=True)
