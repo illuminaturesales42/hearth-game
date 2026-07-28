@@ -265,8 +265,9 @@ def queue_and_wait(graph: dict, save_node: str = "20", timeout: int = 900) -> by
 
 
 # -------------------------------------------------------------------- the graph
-def build_graph(ckpt: str, positive: str, ipa, ref_name: str, board_name: str, size) -> dict:
+def build_graph(ckpt: str, positive: str, ipa, ref_name: str, board_name: str, size, negative: str | None = None) -> dict:
     w, h = size
+    negative = negative or NEGATIVE
     g: dict = {
         "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": ckpt}},
         "2": {"class_type": "LoadImage", "inputs": {"image": ref_name}},
@@ -281,7 +282,7 @@ def build_graph(ckpt: str, positive: str, ipa, ref_name: str, board_name: str, s
         },
         "4": {"class_type": "ControlNetLoader", "inputs": {"control_net_name": CN_MODEL}},
         "5": {"class_type": "CLIPTextEncode", "inputs": {"text": positive, "clip": ["1", 1]}},
-        "6": {"class_type": "CLIPTextEncode", "inputs": {"text": NEGATIVE, "clip": ["1", 1]}},
+        "6": {"class_type": "CLIPTextEncode", "inputs": {"text": negative, "clip": ["1", 1]}},
         "7": {
             "class_type": "ControlNetApplyAdvanced",
             "inputs": {

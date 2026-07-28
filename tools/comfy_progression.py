@@ -56,9 +56,23 @@ from comfy_dialin import (  # noqa: E402 — sibling tool, path set above
 
 OUT_DIR = REPO / "tools" / "comfy_out" / "progression"
 
+# Ruin and wip kept rendering their interior ground as warm timber decking.
+# The first fix attempt put "NO wooden floor, NOT orange" in the POSITIVE
+# prompt and changed nothing — CLIP has no notion of negation, so those tokens
+# read as "wooden floor, orange" and reinforced the very thing they forbade.
+# Unwanted content belongs in the negative; the positive only ever states what
+# IS wanted. Applied per state, because L1-L3 have a warm wooden deck by design
+# and a global ban would wreck them.
+GROUND_NEG = (
+    "orange floor, terracotta floor tiles, red clay paving, warm orange ground, "
+    "wooden floor, timber decking, wooden planks on the ground, polished wood, "
+    "warm brown floorboards"
+)
+
 # Worksheet §4 — condition and material only. No size language, no weights:
 # the edge map already carries size, layout and roof integrity, and the old
 # weighted comparatives ("visibly bigger than level 1") fought each other.
+# Fifth field: extra negative terms for that state (None = the shared one).
 STATES = [
     (
         "ruin",
@@ -66,8 +80,9 @@ STATES = [
         (1024, 840),
         "derelict and long abandoned, crumbling bare stone, weathered and mossy, "
         "weeds growing through the rubble, empty dark openings with no glass, "
-        "(the ground within the walls is bare aged grey stone flagging and rubble, "
-        "cold weathered grey, NO wooden floor, NO timber decking, NOT orange:1.4)",
+        "(the ground inside the walls is cold grey weathered flagstone, ashen "
+        "slate-grey paving, lichen and dust, desaturated cool stone:1.45)",
+        GROUND_NEG,
     ),
     (
         "wip",
@@ -75,8 +90,9 @@ STATES = [
         (1024, 832),
         "under active reconstruction, fresh pale new-cut timber scaffolding and "
         "ladders, raw unfinished stonework, building materials stacked about, "
-        "(the ground within the walls is bare aged grey stone flagging and dust, "
-        "cold weathered grey, NO wooden floor, NO timber decking, NOT orange:1.4)",
+        "(the ground inside the walls is cold grey weathered flagstone, ashen "
+        "slate-grey paving, rubble and dust, desaturated cool stone:1.45)",
+        GROUND_NEG,
     ),
     (
         "l1",
@@ -84,6 +100,7 @@ STATES = [
         (1024, 848),
         "newly rebuilt, clean plain honest stonework, simple sound roof, one "
         "window warmly lit, modest and bare but cared for",
+        None,
     ),
     (
         "l2",
@@ -91,6 +108,7 @@ STATES = [
         (1024, 808),
         "established and well kept, flower boxes and a tidy garden, several "
         "windows warmly lit, chimney smoke, lived-in and welcoming",
+        None,
     ),
     (
         "l3",
@@ -99,6 +117,7 @@ STATES = [
         "grand and prosperous, richly finished with fine detailing, festival "
         "bunting along the eaves, every window glowing warm, immaculate and "
         "thriving",
+        None,
     ),
 ]
 
@@ -159,7 +178,7 @@ def main() -> None:
         identity_name = upload_image(anchor, IDENTITY_REF_NAME)
         print(f"identity anchor: {anchor.name} -> {identity_name}")
 
-        for state, cell, size, clause in states:
+        for state, cell, size, clause, extra_neg in states:
             ref_name = upload_image(find_refcell(cell), f"_prog_{cell}")
             # shape from Canny · materials from MATERIALS · condition from the clause
             body = f"{subject['clause']}, {materials}" if materials else subject["clause"]
@@ -171,7 +190,8 @@ def main() -> None:
                     continue
                 # L1 is the anchor itself — never re-derive its identity from itself.
                 ipa = None if (variant == "plain" or state == "l1") else (args.weight, "style transfer")
-                graph = build_graph(ckpt, positive, ipa, ref_name, identity_name, size)
+                negative = f"{NEGATIVE}, {extra_neg}" if extra_neg else NEGATIVE
+                graph = build_graph(ckpt, positive, ipa, ref_name, identity_name, size, negative)
                 try:
                     dest.write_bytes(queue_and_wait(graph))
                     print(f"  {dest.name}")
@@ -181,7 +201,7 @@ def main() -> None:
     # Sheet laid in upgrade order so the progression is judgeable at a glance.
     for variant in variants:
         cells = []
-        for state, _, _, _ in states:
+        for state, *_ in states:
             p = OUT_DIR / f"{args.subject}_{state}_{variant}{tag}.png"
             if p.exists():
                 cells.append((f"{state}  ({variant})", p))
@@ -196,7 +216,7 @@ def main() -> None:
         cut_dir = REPO / "tools" / "comfy_out" / "cutout"
         cut_dir.mkdir(parents=True, exist_ok=True)
         cut_cells = []
-        for state, _, _, _ in states:
+        for state, *_ in states:
             p = OUT_DIR / f"{args.subject}_{state}_{variants[0]}{tag}.png"
             if not p.exists():
                 continue
