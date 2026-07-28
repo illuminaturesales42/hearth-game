@@ -30,6 +30,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from comfy_dialin import (  # noqa: E402 — sibling tool, path set above
     CHECKPOINTS,
+    LOCKED_CHECKPOINT,
+    LOCKED_IPA_TYPE,
+    LOCKED_IPA_WEIGHT,
     MATERIALS,
     MOSS_GREEN,
     NEGATIVE,
@@ -48,7 +51,7 @@ from comfy_progression import FLOWER_NEG_STATES, STATE_CLAUSES  # noqa: E402
 
 OUT_DIR = REPO / "tools" / "comfy_out" / "village"
 GUIDE_BOARD = REPO / "tools" / "comfy_out" / "_guide_board_prog.png"
-IPA_WEIGHT = 0.45  # the sweep-2 winner
+IPA_WEIGHT = LOCKED_IPA_WEIGHT  # from the locked recipe in comfy_dialin
 
 
 def render(building: str, state: str, board_name: str, force: bool = False) -> Path | None:
@@ -76,7 +79,7 @@ def render(building: str, state: str, board_name: str, force: bool = False) -> P
 
     ref_name = upload_image(cell_path, f"_village_{cell}")
     graph = build_graph(
-        CHECKPOINTS["realvis"], positive, (IPA_WEIGHT, "style transfer"), ref_name, board_name, size
+        CHECKPOINTS[LOCKED_CHECKPOINT], positive, (IPA_WEIGHT, LOCKED_IPA_TYPE), ref_name, board_name, size
     )
     try:
         dest.write_bytes(queue_and_wait(graph))

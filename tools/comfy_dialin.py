@@ -272,7 +272,21 @@ STYLE_BOARD = "_dialin_style_board.png"
 # weights it invented cloud blobs and sat the building on a wooden plank
 # surface — the 'photographed miniature' failure the worksheet warned about.
 # Only the no-adapter column renders on a plain backdrop that keys cleanly.
-WINNER = "realvis_paint_noipa"
+# SUPERSEDED by the Building Style Guide pass — kept for provenance.
+WINNER_SWEEP1 = "realvis_paint_noipa"
+
+# ============================ LOCKED PRODUCTION RECIPE ======================
+# Approved 2026-07-28 against `Graphics and UI/New  Style.png`.
+#   RealVisXL_V5.0 + PROMPT_GUIDE (the guide's own words + its sampled palette)
+#   + the guide style board via IPAdapter at 0.45 "style transfer"
+#   + the Canny spine (strength 0.95, released 0.72, seed 777777, denoise 1.0)
+# Everything the catalogue renders goes through tools/comfy_village.py, which
+# reads these. Change them here, nowhere else.
+WINNER = "g2_realvis_guide_gb045"
+LOCKED_CHECKPOINT = "realvis"
+LOCKED_PROMPT = "guide"
+LOCKED_IPA_WEIGHT = 0.45
+LOCKED_IPA_TYPE = "style transfer"
 
 
 # ------------------------------------------------------------------ comfy http

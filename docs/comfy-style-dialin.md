@@ -33,7 +33,54 @@ composited from four real portraits** out of the catalogue.
 
 ---
 
-## VERDICT (2026-07-28) — `realvis_paint_noipa`
+## CURRENT VERDICT (2026-07-28, sweep 2) — `g2_realvis_guide_gb045`
+
+Supersedes the sweep-1 verdict below. Dialled against the **Building Style
+Guide** (`Graphics and UI/New  Style.png`), which is now the authority.
+
+**RealVisXL_V5.0 · the guide's own prompt vocabulary and sampled palette ·
+guide-board IPAdapter at 0.45 · the Canny spine (0.95 strength, released at
+0.72, seed 777777, denoise 1.0).**
+
+### The IPAdapter earned its place this time
+
+Sweep 1 rejected it because a board of *portraits* transferred their cream
+parchment background instead of their brushwork. Sweep 2's board is different
+in the way that matters: it is **buildings matted onto the render backdrop
+grey** (`comfy_style_guide.matte_panel`), so the background signal it carries
+is the one we want. At 0.45 it adds the warmth and lived-in density that
+prompt-alone lacks — compare `g2_realvis_guide_noipa`, which came out dark and
+moody. Juggernaut disqualified itself again: four of its six cells had
+parchment washes invading the backdrop.
+
+Lesson worth keeping: an IPAdapter transfers *everything* about its reference,
+background included. Judge the reference, not the technique.
+
+### The style contract (constrained)
+
+Defined once in `comfy_dialin.py` and shared by all 17 buildings, so a change
+moves the whole catalogue together:
+
+| Constant | Job |
+|---|---|
+| `GUIDE_ROOF` / `GUIDE_STONE` / `GUIDE_TIMBER` | the guide's sampled hexes. Roof and timber are **identical across every building** — that shared palette is what makes separate renders read as one village |
+| `STONE_FORWARD` | the first guide pass came out timber-forward (a framed workshop) where the guide leads with stonework and uses timber as trim |
+| `MOSS_GREEN` + `FLOWER_NEG` | our ruins grew yellow flowering scrub, because "mossy / weeds through the rubble" reads as wildflowers. Greens named, flowers negated |
+| `SUBJECT_CLAUSES` / `MATERIALS` | the only per-building variation |
+
+### Tooling
+
+| Tool | Job |
+|---|---|
+| `comfy_style_guide.py` | samples the guide's palette, builds the matted style boards + TARGET cell; `--compare TAG` lays the guide's progression row above ours |
+| `comfy_refcells.py` | cuts Canny reference cells for any building from the artist matrix sheets, reusing the importer's own grid detection |
+| `comfy_village.py` | renders many buildings on the locked recipe and sheets them together |
+| `comfy_progression.py` | the five-state upgrade path for one building |
+| `comfy_cutout.py` | render → transparent game sprite |
+
+---
+
+## Sweep 1 verdict (superseded) — `realvis_paint_noipa`
 
 **RealVisXL_V5.0 + the portrait-derived painterly dialect + no IPAdapter.**
 Locked as `WINNER` in `tools/comfy_dialin.py`.
