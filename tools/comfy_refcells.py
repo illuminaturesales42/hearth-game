@@ -44,6 +44,13 @@ from import_map_v2 import (  # noqa: E402 — repo tool, path set above
 )
 
 SHEETS = Path(r"C:\Users\illum\OneDrive\Desktop\Hearth\Graphics and UI\Core\Map\Full Building Final")
+
+# Buildings the production importer has no id for YET. Kept local on purpose:
+# adding an id to import_map_v2.CANON is a real content change (town-layout
+# anchors, collision tests, story/economy wiring) and shouldn't happen as a
+# side effect of cutting reference cells. This only lets us cut cells and test
+# the art; wiring the building into the game stays a deliberate separate step.
+EXTRA_BUILDINGS = {"animalshelter": "animalshelter"}
 OUT = REPO / "tools" / "comfy_out" / "refcells_canny"
 PAD_FRAC = 0.35
 LONG_EDGE = 1024
@@ -81,9 +88,10 @@ def extract(stem: str) -> dict[str, tuple[int, int]] | None:
         print(f"  {path.stem}: on the importer's skip list")
         return None
 
-    building = match_building(path.stem)
+    key = path.stem.lower().replace(" ", "")
+    building = EXTRA_BUILDINGS.get(key) or match_building(path.stem)
     if not building:
-        print(f"  {path.stem}: importer can't map this to a building id")
+        print(f"  {path.stem}: no building id (add it to EXTRA_BUILDINGS if this is a new building)")
         return None
 
     phases = ROW_PHASES.get(path.stem.lower().replace(" ", ""), DEFAULT_PHASES)

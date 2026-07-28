@@ -122,6 +122,10 @@ SUBJECT_CLAUSES = {
     "garden": "a walled garden building with a glasshouse roof, raised beds and climbing greenery",
     "well": "a round stone well with a timber winch roof, a bucket on a rope and a worn stone rim",
     "lighthouse": "a stone lighthouse tower with a glowing lamp room, a railed gallery and a keeper's door",
+    # New building for the expanded map — not wired into the game yet (no
+    # town-layout anchor, no story), but its reference cells are cut so the art
+    # can be developed alongside the rest of the catalogue.
+    "animalshelter": "a village animal shelter with a low stone barn, a timber pen fence, hay bales and a water trough",
 }
 
 # Materials per building, all drawn from the guide's sampled swatches. The roof
