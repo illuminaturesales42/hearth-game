@@ -44,6 +44,7 @@ from comfy_dialin import (  # noqa: E402 — sibling tool, path set above
     CHECKPOINTS,
     NEGATIVE,
     OUT_DIR as DIALIN_DIR,
+    PROMPT_GUIDE,
     PROMPT_PAINT,
     REPO,
     SUBJECTS,
@@ -165,6 +166,13 @@ def main() -> None:
     ap.add_argument("--no-materials", action="store_true", help="omit it (reproduces the roof-drift bug)")
     ap.add_argument("--tag", default="", help="suffix for output names, to keep a variant set side by side")
     ap.add_argument("--states", default=None, help="comma-separated subset, e.g. l2,l3")
+    ap.add_argument("--prompt", default="paint", choices=["paint", "guide"], help="style dialect")
+    ap.add_argument(
+        "--ipa-all",
+        action="store_true",
+        help="apply the IPAdapter to L1 too — correct when --anchor is an EXTERNAL style board "
+        "(the L1 exception only exists to stop a render referencing itself)",
+    )
     args = ap.parse_args()
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -190,14 +198,16 @@ def main() -> None:
             ref_name = upload_image(find_refcell(cell), f"_prog_{cell}")
             # shape from Canny · materials from MATERIALS · condition from the clause
             body = f"{subject['clause']}, {materials}" if materials else subject["clause"]
-            positive = PROMPT_PAINT.format(subject=f"{body} -- {clause}")
+            template = PROMPT_GUIDE if args.prompt == "guide" else PROMPT_PAINT
+            positive = template.format(subject=f"{body} -- {clause}")
             for variant in variants:
                 dest = OUT_DIR / f"{args.subject}_{state}_{variant}{tag}.png"
                 if dest.exists():
                     print(f"  {dest.name} exists, skipping")
                     continue
                 # L1 is the anchor itself — never re-derive its identity from itself.
-                ipa = None if (variant == "plain" or state == "l1") else (args.weight, "style transfer")
+                skip_l1 = state == "l1" and not args.ipa_all
+                ipa = None if (variant == "plain" or skip_l1) else (args.weight, "style transfer")
                 negative = f"{NEGATIVE}, {extra_neg}" if extra_neg else NEGATIVE
                 graph = build_graph(ckpt, positive, ipa, ref_name, identity_name, size, negative)
                 try:

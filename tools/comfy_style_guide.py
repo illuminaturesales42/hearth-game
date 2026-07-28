@@ -26,7 +26,7 @@ import argparse
 import json
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 GUIDE = Path(r"C:\Users\illum\OneDrive\Desktop\Hearth\Graphics and UI\New  Style.png")
 OUT = Path(__file__).resolve().parent / "comfy_out"
@@ -124,10 +124,57 @@ def debug_overlay(im: Image.Image, dest: Path) -> None:
     ov.save(dest)
 
 
+def compare_sheet(im: Image.Image, tag: str, dest: Path) -> None:
+    """Guide's own progression row above, ours below, states column-aligned.
+
+    The only honest way to judge 'does this match the guide' — same order, same
+    scale, adjacent. Missing states render as an empty cell rather than
+    shifting the columns out of alignment.
+    """
+    order = ["ruin", "wip", "l1", "l2", "l3"]
+    key = {"ruin": "ruined", "wip": "wip", "l1": "l1", "l2": "l2", "l3": "l3"}
+    prog = OUT / "progression"
+    cell = 420
+    label_h = 26
+    sheet = Image.new("RGB", (len(order) * cell, 2 * (cell + label_h)), (28, 32, 44))
+    draw = ImageDraw.Draw(sheet)
+    try:
+        font = ImageFont.truetype("arial.ttf", 17)
+    except OSError:
+        font = ImageFont.load_default()
+
+    for col, state in enumerate(order):
+        # row 0 — the guide
+        panel = crop_frac(im, PROGRESSION[key[state]])
+        panel.thumbnail((cell - 12, cell - 12), Image.LANCZOS)
+        sheet.paste(panel, (col * cell + (cell - panel.width) // 2, (cell - panel.height) // 2))
+        draw.text((col * cell + 8, cell + 4), f"GUIDE  {state}", fill=(180, 200, 255), font=font)
+        # row 1 — ours
+        y0 = cell + label_h
+        src = prog / f"forge_{state}_ident_{tag}.png"
+        if src.exists():
+            ours = Image.open(src).convert("RGB")
+            ours.thumbnail((cell - 12, cell - 12), Image.LANCZOS)
+            sheet.paste(ours, (col * cell + (cell - ours.width) // 2, y0 + (cell - ours.height) // 2))
+            draw.text((col * cell + 8, y0 + cell + 4), f"OURS  {state}", fill=(255, 214, 138), font=font)
+        else:
+            draw.text((col * cell + 8, y0 + cell // 2), "(not rendered)", fill=(120, 130, 150), font=font)
+    sheet.save(dest)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--debug", action="store_true", help="only write the crop overlay")
+    ap.add_argument("--compare", metavar="TAG", help="build the guide-vs-ours progression sheet for this run tag")
     args = ap.parse_args()
+
+    if args.compare:
+        OUT.mkdir(parents=True, exist_ok=True)
+        im = Image.open(GUIDE).convert("RGB")
+        dest = OUT / f"_guide_vs_ours_{args.compare}.png"
+        compare_sheet(im, args.compare, dest)
+        print(f"comparison: {dest}")
+        return
 
     OUT.mkdir(parents=True, exist_ok=True)
     im = Image.open(GUIDE).convert("RGB")
