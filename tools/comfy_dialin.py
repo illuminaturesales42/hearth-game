@@ -32,10 +32,17 @@ GET /view. It works against whichever ComfyUI is listening.
 
 Usage
 -----
-  python tools/comfy_dialin.py                 # the full sweep + contact sheet
-  python tools/comfy_dialin.py --sheet-only    # re-lay the sheet from existing PNGs
-  python tools/comfy_dialin.py --subject bakery --only realvis_paint_precise055
-      # once a winner is picked: re-run just that recipe on another building
+  python tools/comfy_dialin.py                    # the full sweep + contact sheet
+  python tools/comfy_dialin.py --sheet-only       # re-lay the sheet from existing PNGs
+
+Production, now that a recipe has been picked (see WINNER below). Use the
+ComfyUI venv interpreter so --cutout can reach rembg:
+
+  F:/sandbox/sulphur-2/ComfyUI/venv/Scripts/python.exe tools/comfy_dialin.py \
+      --subject bakery --winner --cutout
+
+...which renders with the approved recipe and writes a transparent, cropped,
+game-scale sprite to tools/comfy_out/cutout/ in the same pass.
 
 Nothing runs until you invoke this script yourself.
 """
@@ -176,6 +183,19 @@ IPA_SETTINGS = {
 IPA_MODEL = "ip-adapter-plus_sdxl_vit-h.safetensors"
 CLIP_VISION = "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
 STYLE_BOARD = "_dialin_style_board.png"
+
+# ---------------------------------------------------------------- THE WINNER
+# Picked from the 2026-07-28 sweep contact sheet. RealVisXL (the checkpoint the
+# 288 portraits were made on) + the portrait-derived painterly dialect + NO
+# IPAdapter.
+#
+# The sweep's clear finding: aiming an IPAdapter at a board of portraits
+# transfers their cream PARCHMENT BACKGROUND, not their brushwork. Every
+# adapter cell inherited paper texture, stains and a vignette; at the higher
+# weights it invented cloud blobs and sat the building on a wooden plank
+# surface — the 'photographed miniature' failure the worksheet warned about.
+# Only the no-adapter column renders on a plain backdrop that keys cleanly.
+WINNER = "realvis_paint_noipa"
 
 
 # ------------------------------------------------------------------ comfy http
@@ -384,9 +404,17 @@ def contact_sheet(paths: list[tuple[str, Path]], dest: Path, cols: int = 4) -> N
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--subject", default="forge", choices=sorted(SUBJECTS))
-    ap.add_argument("--only", default=None, help="run a single recipe id, e.g. realvis_paint_precise055")
+    ap.add_argument("--only", default=None, help=f"run a single recipe id (the picked one is {WINNER})")
+    ap.add_argument("--winner", action="store_true", help=f"shorthand for --only {WINNER}")
     ap.add_argument("--sheet-only", action="store_true", help="rebuild the contact sheet from existing PNGs")
+    ap.add_argument(
+        "--cutout",
+        action="store_true",
+        help="also write a transparent game-ready sprite per render (needs the ComfyUI venv interpreter)",
+    )
     args = ap.parse_args()
+    if args.winner:
+        args.only = WINNER
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     subject = SUBJECTS[args.subject]
@@ -427,6 +455,21 @@ def main() -> None:
 
     found = [(r[0], OUT_DIR / f"{prefix}{r[0]}.png") for r in recipes]
     found = [(lbl, p) for lbl, p in found if p.exists()]
+
+    if args.cutout:
+        # generate -> transparent sprite in one command. Imported lazily so a
+        # plain sweep never needs rembg.
+        from comfy_cutout import cutout  # noqa: PLC0415 — optional dependency
+
+        cut_dir = REPO / "tools" / "comfy_out" / "cutout"
+        cut_dir.mkdir(parents=True, exist_ok=True)
+        for lbl, p in found:
+            im, stats = cutout(p, 320, 6)
+            dest = cut_dir / f"{prefix}{lbl}.png"
+            im.save(dest)
+            ok = max(stats["corners"]) == 0
+            print(f"  cutout {dest.name}  {stats['size']}  corners {'clear' if ok else stats['corners']}")
+
     sheet = OUT_DIR / f"{prefix}contact_sheet.png"
     contact_sheet(found, sheet)
     print(f"\ncontact sheet: {sheet}  ({len(found)} cells)")

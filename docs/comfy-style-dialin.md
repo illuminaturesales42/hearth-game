@@ -31,6 +31,79 @@ composited from four real portraits** out of the catalogue.
 
 ---
 
+---
+
+## VERDICT (2026-07-28) — `realvis_paint_noipa`
+
+**RealVisXL_V5.0 + the portrait-derived painterly dialect + no IPAdapter.**
+Locked as `WINNER` in `tools/comfy_dialin.py`.
+
+### The sweep's real finding: the IPAdapter had to go
+
+Pointing an IPAdapter at a board of avatar portraits **transfers their cream
+parchment background, not their brushwork.** Every adapter cell inherited paper
+texture, stains and a vignette. At the higher weights it got actively
+destructive — cloud blobs in the corners, and in the Juggernaut rows the forge
+ended up sitting on a *wooden plank surface*, which is precisely the
+"photographed miniature on a table" failure `comfy-building-workflow.md`
+recorded months ago.
+
+Only the no-adapter column renders on a plain backdrop that keys cleanly. So
+the style match now comes entirely from the prompt dialect and the checkpoint.
+
+**Known gap:** the winner reads as polished game-asset illustration rather than
+the portraits' loose visible brushstrokes — the prompt closes maybe two-thirds
+of the distance. A style LoRA trained on the 288 portraits is the honest fix
+(see the escalation list at the bottom).
+
+---
+
+## Making it a game asset — the cutout stage
+
+SDXL can't emit alpha, so every render lands on a painted backdrop with a cast
+shadow. `tools/comfy_cutout.py` is the stage that fixes that:
+
+```
+rembg u2net   saliency alpha — correctly leaves the cast shadow behind
+halo kill     drop the semi-transparent low-saturation grey fringe the backdrop
+              bleeds into edge pixels (saturated warm windows survive)
+colour bleed  push solid colour outward into what fringe remains, so the sprite
+              reads on ANY background instead of ringing with the grey it was
+              cut from  <- this is what lets one sprite sit on the day plate
+              and the night plate without a visible seam
+despeckle     drop keyed islands far smaller than the sprite body
+autocrop      tight alpha bbox + a small even pad
+downscale     320 px long edge (matches the shipped town_* sprites)
+verify        assert all four corners are fully transparent
+```
+
+The halo/despeckle logic mirrors `tools/clean_building_edges.py`, which solves
+the same problem for the importer's near-white keying.
+
+**Interpreter matters:** rembg and the cached `u2net.onnx` live in the ComfyUI
+venv, not system Python. Render and cut in one pass with:
+
+```
+F:/sandbox/sulphur-2/ComfyUI/venv/Scripts/python.exe tools/comfy_dialin.py \
+    --subject bakery --winner --cutout
+```
+
+Standalone, on any existing render:
+
+```
+F:/sandbox/sulphur-2/ComfyUI/venv/Scripts/python.exe tools/comfy_cutout.py \
+    <png>... --out tools/comfy_out/cutout --contact
+```
+
+`--contact` writes a magenta-backed proof sheet — the fastest way to spot a
+grey halo, since grey rings scream against magenta.
+
+Measured on the approved forge: 320×234, corners fully clear, and the residual
+fringe carries the sprite's own dark stone colour (mean RGB 80/73/62) rather
+than the light backdrop it was cut from.
+
+---
+
 ## The sweep
 
 `python tools/comfy_dialin.py` — 16 renders (~4 min each, ~1 hour), subject is
@@ -105,8 +178,8 @@ Two gotchas it also handles:
 3. Generate **L1 first** for each building (identity anchor), approve it, then
    the other four states with that L1 as the IPAdapter identity reference —
    the generation order in worksheet §0 still applies.
-4. Cut out with `remove_bg_and_crop()` (rembg u2net, in `comfy_dropin_test.py`),
-   downscale to 320 px long edge, drop into `public/art/`, then
+4. Cut out with `tools/comfy_cutout.py` (or `--cutout` on the render), then
+   drop the result into `public/art/` and run
    `python tools/import_map_v2.py --manifest-only`.
 
 ## If the sweep isn't good enough
