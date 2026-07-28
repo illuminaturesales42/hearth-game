@@ -64,10 +64,14 @@ OUT_DIR = REPO / "tools" / "comfy_out" / "progression"
 # Unwanted content belongs in the negative; the positive only ever states what
 # IS wanted. Applied per state, because L1-L3 have a warm wooden deck by design
 # and a global ban would wreck them.
+FLOWER_NEG = (
+    "yellow flowers, flowering scrub, wildflowers, blossom, golden foliage, "
+    "autumn colours, orange shrubs, bright yellow"
+)
 GROUND_NEG = (
     "orange floor, terracotta floor tiles, red clay paving, warm orange ground, "
     "wooden floor, timber decking, wooden planks on the ground, polished wood, "
-    "warm brown floorboards"
+    "warm brown floorboards, " + FLOWER_NEG
 )
 
 # Worksheet §4 — condition and material only. No size language, no weights:
@@ -79,8 +83,9 @@ STATES = [
         "ruin",
         "forge_ref_ruin.png",
         (1024, 840),
-        "derelict and long abandoned, crumbling bare stone, weathered and mossy, "
-        "weeds growing through the rubble, empty dark openings with no glass, "
+        "derelict and long abandoned, crumbling bare stone, weathered, soft green "
+        "moss and grey lichen on the stone, muted sage green, empty dark openings "
+        "with no glass, "
         "(the ground inside the walls is cold grey weathered flagstone, ashen "
         "slate-grey paving, lichen and dust, desaturated cool stone:1.45)",
         GROUND_NEG,
@@ -121,6 +126,12 @@ STATES = [
         None,
     ),
 ]
+
+# Shared lookup for the multi-building runner (tools/comfy_village.py):
+# state -> (clause, extra negative). Derived from STATES so there is exactly
+# one definition of what each state means.
+STATE_CLAUSES = {name: (clause, neg) for name, _cell, _size, clause, neg in STATES}
+FLOWER_NEG_STATES = {"ruin", "wip"}
 
 IDENTITY_REF_NAME = "_prog_identity_l1.png"
 DEFAULT_IDENTITY_WEIGHT = 0.5  # worksheet §3

@@ -82,25 +82,83 @@ CN_STRENGTH = 0.95
 CN_END = 0.72
 CANNY_LOW, CANNY_HIGH, CANNY_RES = 100, 200, 1024
 
-# The subject under test: the Forge, level 1 (the identity anchor state).
-SUBJECTS = {
-    "forge": {
-        "cell": "forge_ref_l1.png",
-        "size": (1024, 848),
-        "clause": (
-            "a stone forge with a tall chimney, a glowing warm light from the "
-            "furnace opening, an anvil and tools just outside the door"
-        ),
-    },
-    "bakery": {
-        "cell": "bakery_ref_l1.png",
-        "size": (1024, 848),
-        "clause": (
-            "a village bakery with a domed stone oven and its own chimney, "
-            "a flour sack and a bread paddle by the door"
-        ),
-    },
+# ---------------------------------------------------------------- THE STYLE
+# Constrained after the Building Style Guide pass. These three strings are the
+# style contract every building shares — change them here and the whole
+# catalogue moves together. Only SUBJECT_CLAUSES below vary per building.
+#
+# STONE_FORWARD exists because the first guide pass came out timber-forward
+# (a framed workshop) while the guide leads with stonework and uses timber as
+# trim. Leading with the walls and demoting the beams pulls it back.
+STONE_FORWARD = (
+    "(walls are predominantly stone masonry, timber used only as trim, braces "
+    "and door frames:1.25)"
+)
+# The guide's ruins are restrained: grey stone, green moss. Ours grew yellow
+# flowering scrub because "mossy / weeds growing through the rubble" reads as
+# wildflowers. Named greens, and the flowers pushed to the negative.
+MOSS_GREEN = "soft green moss and grey lichen on the stone, muted sage green"
+FLOWER_NEG = (
+    "yellow flowers, flowering scrub, wildflowers, blossom, golden foliage, "
+    "autumn colours, orange shrubs, bright yellow"
+)
+
+# Per-building subject clause. The reference cell carries shape, so these say
+# only what the building IS and what identifies it at a glance.
+SUBJECT_CLAUSES = {
+    "blacksmith": "a stone forge with a tall chimney, a glowing warm light from the furnace opening, an anvil and tools by the door",
+    "bakery": "a village bakery with a domed stone oven and its own chimney, a flour sack and a bread paddle by the door",
+    "cottage": "a small stone cottage with a warm lit window, a low garden wall and a simple plank door",
+    "workshop": "a craftsman's workshop with a wide timber-braced work opening, a workbench and stacked tools",
+    "quarry": "a stone quarry works with a cut rock face, a timber winch frame and stacked dressed stone blocks",
+    "market": "an open market stall building with a striped awning, trestle tables and produce crates",
+    "library": "a village library with tall arched windows, a stone porch and a carved book sign",
+    "townhall": "a village town hall with a small bell tower, a wide stone stair and a banner over the door",
+    "postoffice": "a village post office with a letter slot, a hanging horn sign and a small counter window",
+    "farm": "a meadow farmhouse with a low stone barn, hay bales and a fenced paddock",
+    "fisherhut": "a fisher's hut on stone footings with hanging nets, floats and a drying rack",
+    "dock": "a stone and timber dock building with mooring posts, coiled rope and crates on the boards",
+    "sawmill": "a sawmill with a timber cutting frame, a stacked log pile and sawn planks",
+    "garden": "a walled garden building with a glasshouse roof, raised beds and climbing greenery",
+    "well": "a round stone well with a timber winch roof, a bucket on a rope and a worn stone rim",
+    "lighthouse": "a stone lighthouse tower with a glowing lamp room, a railed gallery and a keeper's door",
 }
+
+# Materials per building, all drawn from the guide's sampled swatches. The roof
+# and timber values are deliberately IDENTICAL across the catalogue — that
+# shared palette is what makes fourteen separate renders read as one village.
+GUIDE_ROOF = "teal slate roof tiles #45625e #355654"
+GUIDE_TIMBER = "rich brown timber trim #7b4a23 #be8551, copper accents"
+GUIDE_STONE = "warm grey-brown fieldstone walls #897153 #b1926b"
+MATERIALS = {
+    b: f"{GUIDE_ROOF}, {GUIDE_STONE}, {GUIDE_TIMBER}" for b in SUBJECT_CLAUSES
+}
+MATERIALS["bakery"] = f"{GUIDE_ROOF}, warm cream plaster over stone #c79867, {GUIDE_TIMBER}"
+MATERIALS["lighthouse"] = f"{GUIDE_ROOF}, pale whitewashed stone tower #c8bda6, {GUIDE_TIMBER}"
+MATERIALS["sawmill"] = f"{GUIDE_ROOF}, stone footings #897153 with plank cladding, {GUIDE_TIMBER}"
+
+
+def subject_spec(building: str) -> dict:
+    """Clause + reference cell + latent size for a building.
+
+    The latent MUST match the reference cell's aspect or the edge map gets
+    rescaled and the structure lock loosens — so the size is READ from the
+    cell on disk rather than hardcoded (cells differ per building).
+    """
+    if building not in SUBJECT_CLAUSES:
+        raise SystemExit(f"No subject clause for '{building}'. Known: {', '.join(sorted(SUBJECT_CLAUSES))}")
+    cell = f"{building}_ref_l1.png"
+    size = (1024, 848)
+    try:
+        with Image.open(find_refcell(cell)) as im:
+            size = im.size
+    except SystemExit:
+        pass  # caller will fail on the missing cell with a clearer message
+    return {"cell": cell, "size": size, "clause": SUBJECT_CLAUSES[building]}
+
+
+# Back-compat for callers that index SUBJECTS directly.
+SUBJECTS = {b: {"cell": f"{b}_ref_l1.png", "clause": c} for b, c in SUBJECT_CLAUSES.items()}
 STATE_L1 = (
     "newly rebuilt, clean plain honest stonework, simple sound roof, one "
     "window warmly lit, modest and bare but cared for"
