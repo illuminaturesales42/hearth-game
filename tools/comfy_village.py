@@ -33,17 +33,17 @@ from comfy_dialin import (  # noqa: E402 — sibling tool, path set above
     LOCKED_CHECKPOINT,
     LOCKED_IPA_TYPE,
     LOCKED_IPA_WEIGHT,
-    MATERIALS,
     MOSS_GREEN,
     NEGATIVE,
-    CANNY_RUIN,
     CN_END_RUIN,
     REPO,
     STONE_FORWARD,
     SUBJECT_CLAUSES,
     build_graph,
+    canny_for,
     contact_sheet,
     guide_prompt,
+    materials_for,
     find_refcell,
     queue_and_wait,
     subject_spec,
@@ -53,6 +53,9 @@ from comfy_progression import FLOWER_NEG_STATES, STATE_CLAUSES  # noqa: E402
 
 OUT_DIR = REPO / "tools" / "comfy_out" / "village"
 GUIDE_BOARD = REPO / "tools" / "comfy_out" / "_guide_board_prog.png"
+# Ruins reference the guide's own ruin panel — grey stone and green moss —
+# instead of the teal-roofed buildings board.
+RUIN_BOARD = REPO / "tools" / "comfy_out" / "_guide_board_ruin.png"
 IPA_WEIGHT = LOCKED_IPA_WEIGHT  # from the locked recipe in comfy_dialin
 
 # A ruin kept coming out as a tall intact archway with a pristine hinged door.
@@ -65,7 +68,7 @@ RUIN_NEG = (
 )
 
 
-def render(building: str, state: str, board_name: str, force: bool = False) -> Path | None:
+def render(building: str, state: str, board_name: str, ruin_board_name: str, force: bool = False) -> Path | None:
     spec = subject_spec(building)
     cell = f"{building}_ref_{state}.png"
     try:
@@ -84,7 +87,7 @@ def render(building: str, state: str, board_name: str, force: bool = False) -> P
         return dest
 
     clause, extra_neg = STATE_CLAUSES[state]
-    body = f"{spec['clause']}, {MATERIALS[building]}, {STONE_FORWARD}"
+    body = f"{spec['clause']}, {materials_for(building, state)}, {STONE_FORWARD}"
     positive = guide_prompt(f"{body} -- {clause}", state)
     negative = f"{NEGATIVE}, {extra_neg}" if extra_neg else NEGATIVE
     if state == "ruin":
@@ -92,10 +95,11 @@ def render(building: str, state: str, board_name: str, force: bool = False) -> P
 
     ref_name = upload_image(cell_path, f"_village_{cell}")
     graph = build_graph(
-        CHECKPOINTS[LOCKED_CHECKPOINT], positive, (IPA_WEIGHT, LOCKED_IPA_TYPE), ref_name, board_name, size,
+        CHECKPOINTS[LOCKED_CHECKPOINT], positive, (IPA_WEIGHT, LOCKED_IPA_TYPE), ref_name,
+        ruin_board_name if state == "ruin" else board_name, size,
         negative,
         CN_END_RUIN if state == "ruin" else None,
-        CANNY_RUIN if state == "ruin" else None,
+        canny_for(cell_path, state),
     )
     try:
         dest.write_bytes(queue_and_wait(graph))
@@ -124,12 +128,15 @@ def main() -> None:
     if not GUIDE_BOARD.exists():
         raise SystemExit("Guide board missing — run tools/comfy_style_guide.py first.")
     board_name = upload_image(GUIDE_BOARD, "_village_guide_board.png")
+    if not RUIN_BOARD.exists():
+        raise SystemExit("Ruin board missing — re-run tools/comfy_style_guide.py.")
+    ruin_board_name = upload_image(RUIN_BOARD, "_village_guide_board_ruin.png")
     print(f"style board: {board_name}   recipe: realvis + guide prompt + board@{IPA_WEIGHT}\n")
 
     made: list[tuple[str, Path]] = []
     for b in buildings:
         for s in states:
-            p = render(b, s, board_name, args.force)
+            p = render(b, s, board_name, ruin_board_name, args.force)
             if p:
                 made.append((f"{b} {s}" if len(states) > 1 else b, p))
 

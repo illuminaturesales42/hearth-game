@@ -216,6 +216,34 @@ FIX_CLAUSES = f"{FIX_DOORS}, {FIX_SOUND}, {FIX_2D}"  # built states
 FIX_CLAUSES_RUINED = f"{FIX_RUINED}, {FIX_2D}"  # ruin (and the shell of a wip)
 
 
+def materials_for(building: str, state: str) -> str:
+    """Materials for a state. A RUIN HAS NO ROOF — naming the teal roof tiles
+    there gave the model a teal it had to put somewhere, and it put it on the
+    stonework: the sawmill ruin came out uniformly teal-green. Ruins get bare
+    weathered stone and the timber that would actually survive, no roof colour.
+    """
+    if state != "ruin":
+        return MATERIALS[building]
+    return (
+        f"bare weathered {GUIDE_STONE.replace('walls', 'masonry')}, grey stone "
+        "with no roof remaining, weathered brown timber remnants"
+    )
+
+
+def canny_for(ref_path, state: str) -> tuple[int, int]:
+    """Lowered thresholds for ruins, default everywhere else.
+
+    Deliberately a flat rule. Two attempts at choosing per-reference — overall
+    edge density, then largest blank interior region — failed to separate the
+    bakery ruin (which needed the lower thresholds) from the sawmill ruin
+    (which looked over-detailed with them), so the heuristic was earning
+    nothing but complexity. The sawmill's real defect turned out to be the
+    roof-colour bleed that materials_for() now fixes; revisit this only if a
+    ruin still looks fussy after that.
+    """
+    return CANNY_RUIN if state == "ruin" else (CANNY_LOW, CANNY_HIGH)
+
+
 def fix_for(state: str) -> str:
     """The right structural clauses for a state — ruins need the opposite."""
     return FIX_CLAUSES_RUINED if state == "ruin" else FIX_CLAUSES
@@ -242,22 +270,39 @@ PROMPT_PAINT = (
 # (C) GUIDE — the Building Style Guide's own words (`New  Style.png`), with
 # hex values SAMPLED from its actual swatches (tools/comfy_style_guide.py;
 # parchment false-picks filtered out). This is the sheet speaking for itself.
-PROMPT_GUIDE = (
+# The style block, split so the ROOF language can be dropped. A ruin has no
+# roof, but the model still has to put the teal somewhere — with roof colour
+# named both here and in MATERIALS, the sawmill ruin came out as uniformly
+# mint-teal stonework. Removing it from MATERIALS alone changed nothing,
+# because this block was still shouting it.
+_GUIDE_HEAD = (
     "hand painted cosy warm inviting storybook game asset, soft visible brush "
     "strokes, warm highlights and cool shadows, gentle ambient occlusion, subtle "
     "colour variation, imperfections bring charm, warm light from the top right, "
+)
+_GUIDE_ROOFY = (
     "emissive warm window glow, teal slate roof tiles, rounded stone chimneys, "
     "timber braces, copper accents, flower boxes and greenery, warm lanterns, "
-    "roof palette #45625e #355654 #98472a, wood palette #7b4a23 #885425 #be8551 "
+    "roof palette #45625e #355654 #98472a, "
+)
+_GUIDE_RUINED = (
+    "rounded stone chimneys, timber braces, bare weathered grey stone masonry, "
+    "green moss and grey lichen, "
+)
+_GUIDE_TAIL = (
+    "wood palette #7b4a23 #885425 #be8551 "
     "#cf9e6b, stone palette #897153 #b1926b #c79867, accent palette #957a3e "
     "#db862f #718c84, lantern light #f9d09b #efae5b #e29330, "
-    + FRAMING + ", {fix}"
 )
+PROMPT_GUIDE = _GUIDE_HEAD + _GUIDE_ROOFY + _GUIDE_TAIL + FRAMING + ", {fix}"
+PROMPT_GUIDE_RUINED = _GUIDE_HEAD + _GUIDE_RUINED + _GUIDE_TAIL + FRAMING + ", {fix}"
 
 
 def guide_prompt(subject: str, state: str = "l1") -> str:
-    """The locked guide prompt with the structural clauses right for `state`."""
-    return PROMPT_GUIDE.format(subject=subject, fix=fix_for(state))
+    """The locked guide prompt, with roof language and structural clauses
+    appropriate to `state` — ruins drop both."""
+    tpl = PROMPT_GUIDE_RUINED if state == "ruin" else PROMPT_GUIDE
+    return tpl.format(subject=subject, fix=fix_for(state))
 
 # (B) CONTROL — the worksheet's current block, verbatim (§1).
 PROMPT_INK = (

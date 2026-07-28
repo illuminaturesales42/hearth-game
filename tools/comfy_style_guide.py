@@ -202,6 +202,12 @@ def main() -> None:
     board(prog, OUT / "_guide_board_prog.png")
     ex = [crop_frac(im, EXAMPLES[k]) for k in ("blacksmith", "cottage", "workshop", "lighthouse")]
     board(ex, OUT / "_guide_board_examples.png")
+    # A RUIN-ONLY board. The main board is four teal-roofed buildings, and an
+    # IPAdapter transfers everything it is shown — on a roofless ruin it had
+    # nowhere to put the teal but the stonework, which is why sawmill/bakery
+    # ruins came out mint-green no matter how the PROMPT was reworded.
+    ruin_panel = crop_frac(im, PROGRESSION["ruined"])
+    board([ruin_panel] * 4, OUT / "_guide_board_ruin.png")
     print(f"boards: {OUT / '_guide_board_prog.png'}, {OUT / '_guide_board_examples.png'}")
 
     target = crop_frac(im, PROGRESSION["l1"])
