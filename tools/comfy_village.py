@@ -58,6 +58,15 @@ GUIDE_BOARD = REPO / "tools" / "comfy_out" / "_guide_board_prog.png"
 RUIN_BOARD = REPO / "tools" / "comfy_out" / "_guide_board_ruin.png"
 WIP_BOARD = REPO / "tools" / "comfy_out" / "_guide_board_wip.png"
 IPA_WEIGHT = LOCKED_IPA_WEIGHT  # from the locked recipe in comfy_dialin
+# TESTED AND REJECTED: 0.3 for roofless states. The theory was that the ruin
+# and scaffolding boards, being desaturated, were washing warmth out — so a
+# weaker board would let the prompt's stone and timber colours through. It did
+# the opposite. At 0.3 all four test renders got GREYER and more photoreal, and
+# the bakery ruin lost its backdrop entirely (it split into a grey wall and
+# floor) — the board was supplying coherence, not stealing warmth. The
+# desaturation is in the guide's own ruin/wip panels, so the fix, if wanted, is
+# a warmer board, not a weaker one.
+ROOFLESS_IPA_WEIGHT = LOCKED_IPA_WEIGHT
 
 # A ruin kept coming out as a tall intact archway with a pristine hinged door.
 # The positive clauses now ask for broken stubs and empty openings; these push
@@ -96,7 +105,8 @@ def render(building: str, state: str, boards: dict[str, str], force: bool = Fals
 
     ref_name = upload_image(cell_path, f"_village_{cell}")
     graph = build_graph(
-        CHECKPOINTS[LOCKED_CHECKPOINT], positive, (IPA_WEIGHT, LOCKED_IPA_TYPE), ref_name,
+        CHECKPOINTS[LOCKED_CHECKPOINT], positive,
+        (ROOFLESS_IPA_WEIGHT if state in ("ruin", "wip") else IPA_WEIGHT, LOCKED_IPA_TYPE), ref_name,
         boards.get(state, boards["default"]), size,
         negative,
         CN_END_RUIN if state == "ruin" else None,
