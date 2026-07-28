@@ -155,7 +155,8 @@ def main() -> None:
 
     if made:
         cols = min(5, len(made))
-        sheet = OUT_DIR / f"village_{'_'.join(states)}.png"
+        stem = f"{buildings[0]}_" if len(buildings) == 1 else ""
+        sheet = OUT_DIR / f"village_{stem}{'_'.join(states)}.png"
         contact_sheet(made, sheet, cols=cols)
         print(f"\nsheet: {sheet}  ({len(made)} renders)")
 
@@ -172,8 +173,10 @@ def main() -> None:
             ok = max(stats["corners"]) == 0
             print(f"  cutout {d.name}  {stats['size']}  corners {'clear' if ok else stats['corners']}")
             cells.append((f"{label}  {stats['size']}", d))
-        contact_sheet(cells, cut_dir / f"village_cut_{'_'.join(states)}.png", cols=min(5, len(cells)))
-        print(f"cutout sheet: {cut_dir / f'village_cut_{chr(95).join(states)}.png'}")
+        stem = f"{buildings[0]}_" if len(buildings) == 1 else ""
+        cut_sheet = cut_dir / f"village_cut_{stem}{'_'.join(states)}.png"
+        contact_sheet(cells, cut_sheet, cols=min(5, len(cells)))
+        print(f"cutout sheet: {cut_sheet}")
 
 
 if __name__ == "__main__":
