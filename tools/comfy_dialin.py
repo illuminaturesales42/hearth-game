@@ -222,6 +222,11 @@ def materials_for(building: str, state: str) -> str:
     stonework: the sawmill ruin came out uniformly teal-green. Ruins get bare
     weathered stone and the timber that would actually survive, no roof colour.
     """
+    if state == "wip":
+        return (
+            "raw unfinished stonework, fresh pale new-cut timber scaffolding, "
+            f"{GUIDE_STONE}, no roof yet"
+        )
     if state != "ruin":
         return MATERIALS[building]
     return (
@@ -289,6 +294,10 @@ _GUIDE_RUINED = (
     "rounded stone chimneys, timber braces, bare weathered grey stone masonry, "
     "green moss and grey lichen, "
 )
+_GUIDE_WIP = (
+    "rounded stone chimneys, fresh pale new-cut timber scaffolding and ladders, "
+    "raw unfinished stonework, open roofless timber framing against open sky, "
+)
 _GUIDE_TAIL = (
     "wood palette #7b4a23 #885425 #be8551 "
     "#cf9e6b, stone palette #897153 #b1926b #c79867, accent palette #957a3e "
@@ -296,12 +305,17 @@ _GUIDE_TAIL = (
 )
 PROMPT_GUIDE = _GUIDE_HEAD + _GUIDE_ROOFY + _GUIDE_TAIL + FRAMING + ", {fix}"
 PROMPT_GUIDE_RUINED = _GUIDE_HEAD + _GUIDE_RUINED + _GUIDE_TAIL + FRAMING + ", {fix}"
+PROMPT_GUIDE_WIP = _GUIDE_HEAD + _GUIDE_WIP + _GUIDE_TAIL + FRAMING + ", {fix}"
+# Neither a ruin nor a half-built shell has a roof, so neither may be told
+# about roof colour — the model has to put that teal somewhere, and with no
+# roof it lands on stonework (ruin) or in the open bays (wip).
+ROOFLESS = {"ruin", "wip"}
 
 
 def guide_prompt(subject: str, state: str = "l1") -> str:
     """The locked guide prompt, with roof language and structural clauses
     appropriate to `state` — ruins drop both."""
-    tpl = PROMPT_GUIDE_RUINED if state == "ruin" else PROMPT_GUIDE
+    tpl = PROMPT_GUIDE_RUINED if state == "ruin" else PROMPT_GUIDE_WIP if state == "wip" else PROMPT_GUIDE
     return tpl.format(subject=subject, fix=fix_for(state))
 
 # (B) CONTROL — the worksheet's current block, verbatim (§1).

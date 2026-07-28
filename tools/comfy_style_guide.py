@@ -208,6 +208,12 @@ def main() -> None:
     # ruins came out mint-green no matter how the PROMPT was reworded.
     ruin_panel = crop_frac(im, PROGRESSION["ruined"])
     board([ruin_panel] * 4, OUT / "_guide_board_ruin.png")
+    # Same reasoning for the half-built state: the guide's scaffolding panel is
+    # fresh timber over raw stone with no roof, which is what a wip should
+    # inherit. Shown the teal-roofed board instead, the adapter dumped teal
+    # into the open bays and floor of the sawmill wip.
+    wip_panel = crop_frac(im, PROGRESSION["wip"])
+    board([wip_panel] * 4, OUT / "_guide_board_wip.png")
     print(f"boards: {OUT / '_guide_board_prog.png'}, {OUT / '_guide_board_examples.png'}")
 
     target = crop_frac(im, PROGRESSION["l1"])

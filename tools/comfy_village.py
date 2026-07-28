@@ -56,6 +56,7 @@ GUIDE_BOARD = REPO / "tools" / "comfy_out" / "_guide_board_prog.png"
 # Ruins reference the guide's own ruin panel — grey stone and green moss —
 # instead of the teal-roofed buildings board.
 RUIN_BOARD = REPO / "tools" / "comfy_out" / "_guide_board_ruin.png"
+WIP_BOARD = REPO / "tools" / "comfy_out" / "_guide_board_wip.png"
 IPA_WEIGHT = LOCKED_IPA_WEIGHT  # from the locked recipe in comfy_dialin
 
 # A ruin kept coming out as a tall intact archway with a pristine hinged door.
@@ -68,7 +69,7 @@ RUIN_NEG = (
 )
 
 
-def render(building: str, state: str, board_name: str, ruin_board_name: str, force: bool = False) -> Path | None:
+def render(building: str, state: str, boards: dict[str, str], force: bool = False) -> Path | None:
     spec = subject_spec(building)
     cell = f"{building}_ref_{state}.png"
     try:
@@ -96,7 +97,7 @@ def render(building: str, state: str, board_name: str, ruin_board_name: str, for
     ref_name = upload_image(cell_path, f"_village_{cell}")
     graph = build_graph(
         CHECKPOINTS[LOCKED_CHECKPOINT], positive, (IPA_WEIGHT, LOCKED_IPA_TYPE), ref_name,
-        ruin_board_name if state == "ruin" else board_name, size,
+        boards.get(state, boards["default"]), size,
         negative,
         CN_END_RUIN if state == "ruin" else None,
         canny_for(cell_path, state),
@@ -128,15 +129,17 @@ def main() -> None:
     if not GUIDE_BOARD.exists():
         raise SystemExit("Guide board missing — run tools/comfy_style_guide.py first.")
     board_name = upload_image(GUIDE_BOARD, "_village_guide_board.png")
-    if not RUIN_BOARD.exists():
-        raise SystemExit("Ruin board missing — re-run tools/comfy_style_guide.py.")
-    ruin_board_name = upload_image(RUIN_BOARD, "_village_guide_board_ruin.png")
+    boards = {"default": board_name}
+    for st, path in (("ruin", RUIN_BOARD), ("wip", WIP_BOARD)):
+        if not path.exists():
+            raise SystemExit(f"{st} board missing — re-run tools/comfy_style_guide.py.")
+        boards[st] = upload_image(path, f"_village_guide_board_{st}.png")
     print(f"style board: {board_name}   recipe: realvis + guide prompt + board@{IPA_WEIGHT}\n")
 
     made: list[tuple[str, Path]] = []
     for b in buildings:
         for s in states:
-            p = render(b, s, board_name, ruin_board_name, args.force)
+            p = render(b, s, boards, args.force)
             if p:
                 made.append((f"{b} {s}" if len(states) > 1 else b, p))
 
