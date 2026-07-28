@@ -139,6 +139,21 @@ PROMPT_PAINT = (
     "village, children's book illustration style, " + FRAMING + ", " + FIX_CLAUSES
 )
 
+# (C) GUIDE — the Building Style Guide's own words (`New  Style.png`), with
+# hex values SAMPLED from its actual swatches (tools/comfy_style_guide.py;
+# parchment false-picks filtered out). This is the sheet speaking for itself.
+PROMPT_GUIDE = (
+    "hand painted cosy warm inviting storybook game asset, soft visible brush "
+    "strokes, warm highlights and cool shadows, gentle ambient occlusion, subtle "
+    "colour variation, imperfections bring charm, warm light from the top right, "
+    "emissive warm window glow, teal slate roof tiles, rounded stone chimneys, "
+    "timber braces, copper accents, flower boxes and greenery, warm lanterns, "
+    "roof palette #45625e #355654 #98472a, wood palette #7b4a23 #885425 #be8551 "
+    "#cf9e6b, stone palette #897153 #b1926b #c79867, accent palette #957a3e "
+    "#db862f #718c84, lantern light #f9d09b #efae5b #e29330, "
+    + FRAMING + ", " + FIX_CLAUSES
+)
+
 # (B) CONTROL — the worksheet's current block, verbatim (§1).
 PROMPT_INK = (
     "game asset, warm hand-drawn storybook illustration, confident visible ink "
@@ -170,7 +185,7 @@ CHECKPOINTS = {
     "realvis": "RealVisXL_V5.0.safetensors",  # what the 288 portraits used
     "jugg": "Juggernaut-XL_v9.safetensors",  # what the buildings used
 }
-PROMPTS = {"paint": PROMPT_PAINT, "ink": PROMPT_INK}
+PROMPTS = {"paint": PROMPT_PAINT, "ink": PROMPT_INK, "guide": PROMPT_GUIDE}
 # label -> (weight, weight_type) or None for the no-adapter control.
 # Weight types are exactly those the installed ComfyUI_IPAdapter_plus exposes
 # (checked against /object_info — 'style transfer precise' is NOT in this build).
@@ -413,6 +428,11 @@ def main() -> None:
         action="store_true",
         help="also write a transparent game-ready sprite per render (needs the ComfyUI venv interpreter)",
     )
+    ap.add_argument(
+        "--sweep2",
+        action="store_true",
+        help="the Building Style Guide sweep: guide/paint prompts x guide-board IPAdapter, TARGET cell on the sheet",
+    )
     args = ap.parse_args()
     if args.winner:
         args.only = WINNER
@@ -421,12 +441,26 @@ def main() -> None:
     subject = SUBJECTS[args.subject]
     positive_subject = f"{subject['clause']} -- {STATE_L1}"
 
-    recipes = [
-        (f"{ck}_{pr}_{ia}", CHECKPOINTS[ck], PROMPTS[pr].format(subject=positive_subject), IPA_SETTINGS[ia])
-        for ck in CHECKPOINTS
-        for pr in PROMPTS
-        for ia in IPA_SETTINGS
-    ]
+    if args.sweep2:
+        # The Building Style Guide sweep. IPAdapter gets a second chance here
+        # on different evidence: the guide board is BUILDINGS-on-grey (see
+        # comfy_style_guide.matte_panel), so its background signal is the one
+        # we actually want — unlike the portrait board, whose parchment it
+        # faithfully reproduced.
+        combos = [("noipa", None), ("gb045", (0.45, "style transfer")), ("gb070", (0.70, "style transfer"))]
+        recipes = [
+            (f"g2_{ck}_{pr}_{ia}", CHECKPOINTS[ck], PROMPTS[pr].format(subject=positive_subject), ipa)
+            for ck in CHECKPOINTS
+            for pr in ("guide", "paint")
+            for ia, ipa in combos
+        ]
+    else:
+        recipes = [
+            (f"{ck}_{pr}_{ia}", CHECKPOINTS[ck], PROMPTS[pr].format(subject=positive_subject), IPA_SETTINGS[ia])
+            for ck in CHECKPOINTS
+            for pr in ("paint", "ink")
+            for ia in IPA_SETTINGS
+        ]
     if args.only:
         recipes = [r for r in recipes if r[0] == args.only]
         if not recipes:
@@ -435,7 +469,12 @@ def main() -> None:
     prefix = "" if args.subject == "forge" else f"{args.subject}_"
 
     if not args.sheet_only:
-        board_path = make_style_board(OUT_DIR / "_style_board.png")
+        if args.sweep2:
+            board_path = OUT_DIR.parent / "_guide_board_prog.png"
+            if not board_path.exists():
+                raise SystemExit("Guide board missing — run tools/comfy_style_guide.py first.")
+        else:
+            board_path = make_style_board(OUT_DIR / "_style_board.png")
         board_name = upload_image(board_path, STYLE_BOARD)
         ref_name = upload_image(find_refcell(subject["cell"]), f"_dialin_{subject['cell']}")
         print(f"staged refs: {ref_name}, {board_name}")
@@ -456,6 +495,10 @@ def main() -> None:
 
     found = [(r[0], OUT_DIR / f"{prefix}{r[0]}.png") for r in recipes]
     found = [(lbl, p) for lbl, p in found if p.exists()]
+    if args.sweep2:
+        target = OUT_DIR.parent / "_guide_target_l1.png"
+        if target.exists():
+            found.insert(0, ("TARGET — style guide L1", target))
 
     if args.cutout:
         # generate -> transparent sprite in one command. Imported lazily so a
@@ -465,13 +508,15 @@ def main() -> None:
         cut_dir = REPO / "tools" / "comfy_out" / "cutout"
         cut_dir.mkdir(parents=True, exist_ok=True)
         for lbl, p in found:
+            if lbl.startswith("TARGET"):
+                continue
             im, stats = cutout(p, 320, 6)
             dest = cut_dir / f"{prefix}{lbl}.png"
             im.save(dest)
             ok = max(stats["corners"]) == 0
             print(f"  cutout {dest.name}  {stats['size']}  corners {'clear' if ok else stats['corners']}")
 
-    sheet = OUT_DIR / f"{prefix}contact_sheet.png"
+    sheet = OUT_DIR / f"{prefix}{'g2_' if args.sweep2 else ''}contact_sheet.png"
     contact_sheet(found, sheet)
     print(f"\ncontact sheet: {sheet}  ({len(found)} cells)")
 

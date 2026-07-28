@@ -135,9 +135,17 @@ DEFAULT_IDENTITY_WEIGHT = 0.5  # worksheet §3
 # The reliable lock is to STATE the materials, in every state, exactly as the
 # state clauses state the condition. Shape from Canny, condition from the state
 # clause, materials from here.
+# Hexes sampled from the Building Style Guide's own swatches
+# (tools/comfy_style_guide.py -> tools/comfy_out/style_guide.json).
 MATERIALS = {
-    "forge": "sea-green slate roof tiles, pale grey fieldstone walls, warm honey-brown timber beams",
-    "bakery": "sea-green slate roof tiles, warm cream plaster walls, honey-brown timber beams",
+    "forge": (
+        "teal slate roof tiles #45625e #355654, warm grey-brown fieldstone walls "
+        "#897153 #b1926b, rich brown timber beams #7b4a23 #be8551, copper accents"
+    ),
+    "bakery": (
+        "teal slate roof tiles #45625e #355654, warm cream plaster over stone "
+        "#c79867, rich brown timber beams #7b4a23 #be8551, copper accents"
+    ),
 }
 
 
