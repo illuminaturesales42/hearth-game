@@ -36,12 +36,14 @@ from comfy_dialin import (  # noqa: E402 — sibling tool, path set above
     MATERIALS,
     MOSS_GREEN,
     NEGATIVE,
-    PROMPT_GUIDE,
+    CANNY_RUIN,
+    CN_END_RUIN,
     REPO,
     STONE_FORWARD,
     SUBJECT_CLAUSES,
     build_graph,
     contact_sheet,
+    guide_prompt,
     find_refcell,
     queue_and_wait,
     subject_spec,
@@ -52,6 +54,15 @@ from comfy_progression import FLOWER_NEG_STATES, STATE_CLAUSES  # noqa: E402
 OUT_DIR = REPO / "tools" / "comfy_out" / "village"
 GUIDE_BOARD = REPO / "tools" / "comfy_out" / "_guide_board_prog.png"
 IPA_WEIGHT = LOCKED_IPA_WEIGHT  # from the locked recipe in comfy_dialin
+
+# A ruin kept coming out as a tall intact archway with a pristine hinged door.
+# The positive clauses now ask for broken stubs and empty openings; these push
+# back on what it was reaching for instead.
+RUIN_NEG = (
+    "intact door, closed door, new door, hinged door leaf, glazed window, "
+    "tall archway, gothic arch, standing arch, complete arch, cathedral ruin, "
+    "romantic folly, intact roof, ivy-covered arch"
+)
 
 
 def render(building: str, state: str, board_name: str, force: bool = False) -> Path | None:
@@ -74,12 +85,17 @@ def render(building: str, state: str, board_name: str, force: bool = False) -> P
 
     clause, extra_neg = STATE_CLAUSES[state]
     body = f"{spec['clause']}, {MATERIALS[building]}, {STONE_FORWARD}"
-    positive = PROMPT_GUIDE.format(subject=f"{body} -- {clause}")
+    positive = guide_prompt(f"{body} -- {clause}", state)
     negative = f"{NEGATIVE}, {extra_neg}" if extra_neg else NEGATIVE
+    if state == "ruin":
+        negative += ", " + RUIN_NEG
 
     ref_name = upload_image(cell_path, f"_village_{cell}")
     graph = build_graph(
-        CHECKPOINTS[LOCKED_CHECKPOINT], positive, (IPA_WEIGHT, LOCKED_IPA_TYPE), ref_name, board_name, size
+        CHECKPOINTS[LOCKED_CHECKPOINT], positive, (IPA_WEIGHT, LOCKED_IPA_TYPE), ref_name, board_name, size,
+        negative,
+        CN_END_RUIN if state == "ruin" else None,
+        CANNY_RUIN if state == "ruin" else None,
     )
     try:
         dest.write_bytes(queue_and_wait(graph))

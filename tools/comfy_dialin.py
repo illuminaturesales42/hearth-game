@@ -80,7 +80,20 @@ SCHEDULER = "karras"
 CN_MODEL = "controlnet-canny-sdxl.safetensors"
 CN_STRENGTH = 0.95
 CN_END = 0.72
+# Released later for ruins. At 0.72 the model had enough freedom to replace
+# the artist's low broken wall stubs with a tall dramatic arch; 0.86 keeps the
+# silhouette honest. Built states keep 0.72 — they need the slack to resolve
+# door and window detail (worksheet §6).
+CN_END_RUIN = 0.86
 CANNY_LOW, CANNY_HIGH, CANNY_RES = 100, 200, 1024
+# Lower thresholds for ruins. At 100/200 a broken wall's INTERIOR comes out
+# blank — the edge map is an outline around an empty triangle, so the model
+# reasonably paints a void and invents an arch to frame it. At 30/90 the stone
+# coursing survives (3.2% -> 6.0% edge pixels) and the wall reads as solid
+# masonry. Built states keep 100/200: they have real openings, and extra edges
+# there just fight the door/window detail the release at 0.72 is meant to
+# resolve.
+CANNY_RUIN = (30, 90)
 
 # ---------------------------------------------------------------- THE STYLE
 # Constrained after the Building Style Guide pass. These three strings are the
@@ -172,15 +185,40 @@ STATE_L1 = (
 # Shared tail: the three clauses §1b added after the first pass found a
 # floating sign and a garbled door. They fixed real defects — keep in BOTH
 # dialects so the comparison isolates style, not glitch-proofing.
-FIX_CLAUSES = (
+# Split into parts because two of the three are WRONG for a ruin. Applying all
+# three to every state produced a bakery "ruin" with a pristine hinged door in
+# a tall intact arch — the door clause (1.35) and the soundness clause (1.3)
+# were doing exactly what they were told, on a state that needs the opposite.
+FIX_DOORS = (
     "(clearly defined wooden doors and windows with visible planks, iron hinges "
-    "and simple frames, set squarely inside their stone openings:1.35), "
-    "(structurally sound, every part properly joined and supported, signs and "
-    "brackets firmly bolted, nothing floating or detached:1.3), "
-    "(hand-drawn illustrated 2D game asset, flat isolated icon, NOT a photograph, "
-    "NOT a physical object, NOT a miniature, NOT sitting on a real surface, no "
-    "depth of field, no blur:1.4)"
+    "and simple frames, set squarely inside their stone openings:1.35)"
 )
+FIX_SOUND = (
+    "(structurally sound, every part properly joined and supported, signs and "
+    "brackets firmly bolted, nothing floating or detached:1.3)"
+)
+# This one applies everywhere — and is the lever against renders drifting
+# photoreal, which the ruin did badly.
+FIX_2D = (
+    "(hand-drawn illustrated 2D game asset, flat painted shapes, simplified "
+    "stylised stonework, NOT a photograph, NOT a physical object, NOT a "
+    "miniature, NOT sitting on a real surface, no photographic texture, no "
+    "depth of field, no blur:1.45)"
+)
+# What a ruin needs instead: openings that are genuinely empty, and a structure
+# that is genuinely broken and LOW rather than a dramatic standing arch.
+FIX_RUINED = (
+    "(doorways and windows are empty broken openings, no door leaf, no glass, "
+    "no intact joinery:1.4), (low broken-off wall stubs at varying heights, "
+    "collapsed and incomplete, rubble where walls have fallen:1.3)"
+)
+FIX_CLAUSES = f"{FIX_DOORS}, {FIX_SOUND}, {FIX_2D}"  # built states
+FIX_CLAUSES_RUINED = f"{FIX_RUINED}, {FIX_2D}"  # ruin (and the shell of a wip)
+
+
+def fix_for(state: str) -> str:
+    """The right structural clauses for a state — ruins need the opposite."""
+    return FIX_CLAUSES_RUINED if state == "ruin" else FIX_CLAUSES
 FRAMING = (
     "45-degree isometric view, {subject}, standing on its own small cobblestone "
     "plinth with a thin edge of moss and grass, (a plain uncluttered neutral grey "
@@ -213,8 +251,13 @@ PROMPT_GUIDE = (
     "roof palette #45625e #355654 #98472a, wood palette #7b4a23 #885425 #be8551 "
     "#cf9e6b, stone palette #897153 #b1926b #c79867, accent palette #957a3e "
     "#db862f #718c84, lantern light #f9d09b #efae5b #e29330, "
-    + FRAMING + ", " + FIX_CLAUSES
+    + FRAMING + ", {fix}"
 )
+
+
+def guide_prompt(subject: str, state: str = "l1") -> str:
+    """The locked guide prompt with the structural clauses right for `state`."""
+    return PROMPT_GUIDE.format(subject=subject, fix=fix_for(state))
 
 # (B) CONTROL — the worksheet's current block, verbatim (§1).
 PROMPT_INK = (
@@ -356,9 +399,15 @@ def queue_and_wait(graph: dict, save_node: str = "20", timeout: int = 900) -> by
 
 
 # -------------------------------------------------------------------- the graph
-def build_graph(ckpt: str, positive: str, ipa, ref_name: str, board_name: str, size, negative: str | None = None) -> dict:
+def build_graph(
+    ckpt: str, positive: str, ipa, ref_name: str, board_name: str, size,
+    negative: str | None = None, cn_end: float | None = None,
+    canny: tuple[int, int] | None = None,
+) -> dict:
     w, h = size
     negative = negative or NEGATIVE
+    cn_end = CN_END if cn_end is None else cn_end
+    c_lo, c_hi = canny or (CANNY_LOW, CANNY_HIGH)
     g: dict = {
         "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": ckpt}},
         "2": {"class_type": "LoadImage", "inputs": {"image": ref_name}},
@@ -366,8 +415,8 @@ def build_graph(ckpt: str, positive: str, ipa, ref_name: str, board_name: str, s
             "class_type": "CannyEdgePreprocessor",
             "inputs": {
                 "image": ["2", 0],
-                "low_threshold": CANNY_LOW,
-                "high_threshold": CANNY_HIGH,
+                "low_threshold": c_lo,
+                "high_threshold": c_hi,
                 "resolution": CANNY_RES,
             },
         },
@@ -383,7 +432,7 @@ def build_graph(ckpt: str, positive: str, ipa, ref_name: str, board_name: str, s
                 "image": ["3", 0],
                 "strength": CN_STRENGTH,
                 "start_percent": 0.0,
-                "end_percent": CN_END,
+                "end_percent": cn_end,
             },
         },
         "8": {"class_type": "EmptyLatentImage", "inputs": {"width": w, "height": h, "batch_size": 1}},
@@ -525,14 +574,14 @@ def main() -> None:
         # faithfully reproduced.
         combos = [("noipa", None), ("gb045", (0.45, "style transfer")), ("gb070", (0.70, "style transfer"))]
         recipes = [
-            (f"g2_{ck}_{pr}_{ia}", CHECKPOINTS[ck], PROMPTS[pr].format(subject=positive_subject), ipa)
+            (f"g2_{ck}_{pr}_{ia}", CHECKPOINTS[ck], (PROMPTS[pr].format(subject=positive_subject, fix=FIX_CLAUSES) if pr == "guide" else PROMPTS[pr].format(subject=positive_subject)), ipa)
             for ck in CHECKPOINTS
             for pr in ("guide", "paint")
             for ia, ipa in combos
         ]
     else:
         recipes = [
-            (f"{ck}_{pr}_{ia}", CHECKPOINTS[ck], PROMPTS[pr].format(subject=positive_subject), IPA_SETTINGS[ia])
+            (f"{ck}_{pr}_{ia}", CHECKPOINTS[ck], (PROMPTS[pr].format(subject=positive_subject, fix=FIX_CLAUSES) if pr == "guide" else PROMPTS[pr].format(subject=positive_subject)), IPA_SETTINGS[ia])
             for ck in CHECKPOINTS
             for pr in ("paint", "ink")
             for ia in IPA_SETTINGS

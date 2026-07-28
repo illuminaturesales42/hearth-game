@@ -46,6 +46,7 @@ from comfy_dialin import (  # noqa: E402 — sibling tool, path set above
     OUT_DIR as DIALIN_DIR,
     PROMPT_GUIDE,
     PROMPT_PAINT,
+    fix_for,
     REPO,
     SUBJECTS,
     build_graph,
@@ -210,7 +211,7 @@ def main() -> None:
             # shape from Canny · materials from MATERIALS · condition from the clause
             body = f"{subject['clause']}, {materials}" if materials else subject["clause"]
             template = PROMPT_GUIDE if args.prompt == "guide" else PROMPT_PAINT
-            positive = template.format(subject=f"{body} -- {clause}")
+            positive = template.format(subject=f"{body} -- {clause}", fix=fix_for(state)) if template is PROMPT_GUIDE else template.format(subject=f"{body} -- {clause}")
             for variant in variants:
                 dest = OUT_DIR / f"{args.subject}_{state}_{variant}{tag}.png"
                 if dest.exists():
