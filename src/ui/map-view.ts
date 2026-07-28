@@ -3829,7 +3829,7 @@ export class MapView {
     mood: WorldMood,
     stage: number,
   ): void {
-    this.drawSeason(ctx, W, H, t, night);
+    this.drawSeason(ctx, W, H, t, night, mood);
     // Dawn owns the mist: low white banks clinging to the coast that burn off
     // as the sun climbs, and dew glinting in the meadows at first light.
     const dawnW = phaseForTime(Date.now(), this.sunTimesFromWeather()).weights.dawn;
@@ -3940,8 +3940,12 @@ export class MapView {
    * winter. Emberhollow breathes with the season the player is actually living
    * in. Caller already guards reduced motion.
    */
-  private drawSeason(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, night: boolean): void {
+  private drawSeason(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, night: boolean, mood: WorldMood): void {
     const season = seasonForMonth(new Date().getMonth(), this.weather?.southern ?? false);
+    // Winter's white flecks only make sense when snow is actually falling —
+    // ambient snow under a clear winter sky read as mystery floating circles.
+    // (Real snowfall also draws the dedicated precip flakes; these just add body.)
+    if (season === 'winter' && !(mood.weather === 'snow' && mood.precip > 0.02)) return;
     // Summer's twinkle is the night fireflies already drawn — keep day light.
     const n = season === 'winter' ? 30 : season === 'summer' ? 12 : 18;
     const fallMs = season === 'winter' ? 11000 : season === 'autumn' ? 7500 : 13000;
