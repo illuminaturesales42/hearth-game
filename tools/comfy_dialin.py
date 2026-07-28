@@ -119,26 +119,37 @@ FLOWER_NEG = (
 # Per-building subject clause. The reference cell carries shape, so these say
 # only what the building IS and what identifies it at a glance.
 SUBJECT_CLAUSES = {
-    "blacksmith": "a stone forge with a tall chimney, a glowing warm light from the furnace opening, an anvil and tools by the door",
+    # Identifying props called out individually and positively — a blacksmith
+    # must read as a blacksmith at 320px. The hanging sign carries a HAMMER
+    # SYMBOL rather than a name: SDXL cannot write, and asking for lettering
+    # reliably produces the illegible scribble that spoiled the first bakery.
+    "blacksmith": (
+        "a village blacksmith's forge with a tall rounded stone chimney, a "
+        "glowing orange furnace opening, (a heavy dark iron anvil on a timber "
+        "block standing clear of the doorway:1.25), (a hanging wrought-iron "
+        "bracket sign bearing one bold simple hammer symbol, a plain pictogram "
+        "with no letters and no words:1.3), horseshoes and blacksmith tongs "
+        "hung on the wall, a water quenching barrel"
+    ),
     "bakery": "a village bakery with a domed stone oven and its own chimney, a flour sack and a bread paddle by the door",
-    "cottage": "a small stone cottage with a warm lit window, a low garden wall and a simple plank door",
-    "workshop": "a craftsman's workshop with a wide timber-braced work opening, a workbench and stacked tools",
-    "quarry": "a stone quarry works with a cut rock face, a timber winch frame and stacked dressed stone blocks",
-    "market": "an open market stall building with a striped awning, trestle tables and produce crates",
-    "library": "a village library with tall arched windows, a stone porch and a carved book sign",
-    "townhall": "a village town hall with a small bell tower, a wide stone stair and a banner over the door",
-    "postoffice": "a village post office with a letter slot, a hanging horn sign and a small counter window",
-    "farm": "a meadow farmhouse with a low stone barn, hay bales and a fenced paddock",
-    "fisherhut": "a fisher's hut on stone footings with hanging nets, floats and a drying rack",
-    "dock": "a stone and timber dock building with mooring posts, coiled rope and crates on the boards",
+    "cottage": "a small stone cottage with a warm lit window, (a low garden wall with flower boxes under the window:1.2), a plain plank door, a rounded stone chimney with curling smoke",
+    "workshop": "a craftsman's workshop with a wide timber-braced work opening, (a sturdy workbench with hand tools and curled wood shavings:1.25), (a hanging bracket sign bearing one bold saw pictogram, no letters and no words:1.3)",
+    "quarry": "a stone quarry works with a cut rock face, (a tall timber winch frame with rope and pulley over the cut:1.3), (stacked dressed stone blocks and a loaded hand cart:1.25), chisels and stone dust",
+    "market": "an open market stall building with (a striped awning over trestle tables:1.3), (crates of produce, hanging baskets and a barrel:1.25), a brass balance scale on the counter",
+    "library": "a village library with (tall arched windows with leaded panes:1.25), a stone entry porch, (a hanging bracket sign bearing one bold open-book pictogram, no letters and no words:1.3), ivy climbing the wall",
+    "townhall": "a village town hall with (a small bell tower with a visible bronze bell:1.3), (a wide stone stair with an iron railing:1.2), a hanging banner with a plain crest shape, no letters and no words",
+    "postoffice": "a village post office with (a hanging bracket sign bearing one bold post-horn pictogram, no letters and no words:1.3), (a brass letter slot and a small shuttered counter window:1.25), a canvas mail sack by the door",
+    "farm": "a meadow farmhouse with (a low stone barn with wide timber doors:1.25), (stacked hay bales and a post-and-rail paddock fence:1.25), a wooden water trough",
+    "fisherhut": "a fisher's hut on stone footings with (fishing nets and cork floats hung to dry:1.3), (a timber drying rack:1.2), crab pots and coiled rope",
+    "dock": "a stone and timber dock building on plank boards with (heavy mooring posts and coiled rope:1.3), (stacked cargo crates and barrels:1.25), a hanging harbour lantern",
     "sawmill": "a sawmill with a timber cutting frame, a stacked log pile and sawn planks",
-    "garden": "a walled garden building with a glasshouse roof, raised beds and climbing greenery",
-    "well": "a round stone well with a timber winch roof, a bucket on a rope and a worn stone rim",
-    "lighthouse": "a stone lighthouse tower with a glowing lamp room, a railed gallery and a keeper's door",
+    "garden": "a walled garden building with (a glasshouse roof of leaded glass panes:1.3), (raised planting beds with vegetables and climbing greenery:1.25), terracotta pots and a watering can",
+    "well": "a round stone well with (a timber winch roof on four posts:1.3), (a wooden bucket on a rope above the worn stone rim:1.3), a cobbled surround",
+    "lighthouse": "a stone lighthouse tower with (a glowing glazed lamp room at the top:1.35), (a railed iron gallery below the lamp:1.2), a keeper's door at the base, rocks at the footing",
     # New building for the expanded map — not wired into the game yet (no
     # town-layout anchor, no story), but its reference cells are cut so the art
     # can be developed alongside the rest of the catalogue.
-    "animalshelter": "a village animal shelter with a low stone barn, a timber pen fence, hay bales and a water trough",
+    "animalshelter": "a village animal shelter with (a low stone barn with a wide timber door:1.25), (a timber pen fence with hay bales and a water trough:1.3), a bell hung on a post",
 }
 
 # Materials per building, all drawn from the guide's sampled swatches. The roof
@@ -337,7 +348,7 @@ NEGATIVE = (
     "checkerboard, gradient background, vignette, ground plane, grass field, "
     "meadow, terrain, drop shadow, close-up, zoomed in, cut off, touching edge of "
     "frame, filling the frame, off-centre, text, watermark, signature, flat "
-    "cel-shaded anime, manga, floating objects, levitating, detached, disconnected, "
+    "cel-shaded anime, manga, lettering, written words, illegible text, scribbled writing, shop name, painted letters, floating objects, levitating, detached, disconnected, "
     "unsupported, hovering sign, broken geometry, warped, melted, impossible "
     "construction, misaligned door, duplicated door, malformed opening, smeared "
     "detail, mushy shapes, indistinct doorway, photo, wooden shelf, mantel, table "
