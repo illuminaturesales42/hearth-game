@@ -131,33 +131,26 @@ SUBJECT_CLAUSES = {
     # must read as a blacksmith at 320px. The hanging sign carries a HAMMER
     # SYMBOL rather than a name: SDXL cannot write, and asking for lettering
     # reliably produces the illegible scribble that spoiled the first bakery.
-    "blacksmith": (
-        "a village blacksmith's forge with a tall rounded stone chimney, a "
-        "glowing orange furnace opening, (a heavy dark iron anvil on a timber "
-        "block standing clear of the doorway:1.25), (a hanging wrought-iron "
-        "bracket sign bearing one bold simple hammer symbol, a plain pictogram "
-        "with no letters and no words:1.3), horseshoes and blacksmith tongs "
-        "hung on the wall, a water quenching barrel"
-    ),
-    "bakery": "a village bakery with a domed stone oven and its own chimney, a flour sack and a bread paddle by the door",
+    "blacksmith": "a village blacksmith's forge with a tall rounded stone chimney, a glowing orange furnace opening, (a heavy dark iron anvil on a timber block outside the door:1.3), (a hanging wrought-iron bracket sign painted with a bold crossed-hammers-and-anvil emblem, a simple flat pictogram of two hammers over an anvil, no letters and no words:1.45), horseshoes and tongs on the wall, a quenching barrel",
+    "bakery": "a village bakery, (a tall rounded stone chimney with white smoke curling from it:1.35), (a big domed outdoor stone bread oven beside the building with a warm glowing mouth and a long wooden bread paddle:1.35), racks of loaves, a flour sack by the door",
     "cottage": "a small stone cottage with a warm lit window, (a low garden wall with flower boxes under the window:1.2), a plain plank door, a rounded stone chimney with curling smoke",
-    "workshop": "a craftsman's workshop with a wide timber-braced work opening, (a sturdy workbench with hand tools and curled wood shavings:1.25), (a hanging bracket sign bearing one bold saw pictogram, no letters and no words:1.3)",
+    "workshop": "a craftsman's workshop with a wide timber-braced work opening, (a sturdy workbench with hand tools and curled wood shavings:1.25), (a hanging bracket sign bearing one bold saw pictogram, no letters and no words:1.3), a lumber rack and stacked timber",
     "quarry": "a stone quarry works with a cut rock face, (a tall timber winch frame with rope and pulley over the cut:1.3), (stacked dressed stone blocks and a loaded hand cart:1.25), chisels and stone dust",
-    "market": "an open market stall building with (a striped awning over trestle tables:1.3), (crates of produce, hanging baskets and a barrel:1.25), a brass balance scale on the counter",
+    "market": "an open market stall building with (a striped awning over trestle tables:1.3), (crates of fresh silver fish on ice and hanging dried fish, a fishmonger's slab:1.35), baskets of produce, a barrel, a brass balance scale",
     "library": "a village library with (tall arched windows with leaded panes:1.25), a stone entry porch, (a hanging bracket sign bearing one bold open-book pictogram, no letters and no words:1.3), ivy climbing the wall",
-    "townhall": "a village town hall with (a small bell tower with a visible bronze bell:1.3), (a wide stone stair with an iron railing:1.2), a hanging banner with a plain crest shape, no letters and no words",
-    "postoffice": "a village post office with (a hanging bracket sign bearing one bold post-horn pictogram, no letters and no words:1.3), (a brass letter slot and a small shuttered counter window:1.25), a canvas mail sack by the door",
-    "farm": "a meadow farmhouse with (a low stone barn with wide timber doors:1.25), (stacked hay bales and a post-and-rail paddock fence:1.25), a wooden water trough",
+    "townhall": "a grand village town hall, (a tall central clock and bell tower rising well above the roofline with a visible bronze bell:1.4), (a wide ceremonial stone stair with iron railings up to the main doors:1.3), tall arched windows, a hanging banner with a plain crest shape, no letters and no words",
+    "postoffice": "a village post office, (a hanging wooden bracket sign painted with one bold white envelope-and-letter emblem, a simple flat pictogram of a sealed envelope, no letters and no words:1.45), (a brass letter slot and a shuttered counter window:1.25), a canvas mail sack, a small postbox by the door",
+    "farm": "a meadow farmhouse with a low stone barn, (a fenced paddock with grazing animals, sheep and a cow and chickens pecking in the yard:1.4), stacked hay bales, a wooden water trough",
     "fisherhut": "a fisher's hut on stone footings with (fishing nets and cork floats hung to dry:1.3), (a timber drying rack:1.2), crab pots and coiled rope",
     "dock": "a stone and timber dock building on plank boards with (heavy mooring posts and coiled rope:1.3), (stacked cargo crates and barrels:1.25), a hanging harbour lantern",
-    "sawmill": "a sawmill with a timber cutting frame, a stacked log pile and sawn planks",
-    "garden": "a walled garden building with (a glasshouse roof of leaded glass panes:1.3), (raised planting beds with vegetables and climbing greenery:1.25), terracotta pots and a watering can",
-    "well": "a round stone well with (a timber winch roof on four posts:1.3), (a wooden bucket on a rope above the worn stone rim:1.3), a cobbled surround",
+    "sawmill": "a timber sawmill with (a large water wheel on the stone side wall:1.3), (a covered timber cutting frame with a big saw blade:1.3), a stacked log pile and sawn planks, a stone-footed workshop under a broad roof",
+    "garden": "a walled kitchen garden with (an intact complete stone archway entrance, a clean simple rounded arch with unbroken masonry:1.35), (a glasshouse with a leaded glass roof:1.3), raised planting beds with vegetables, terracotta pots, climbing greenery",
+    "well": "a round stone village well with (a simple timber winch roof on four plain posts:1.25), (a wooden bucket hanging on a rope over the worn stone rim:1.3), a cobbled surround",
     "lighthouse": "a stone lighthouse tower with (a glowing glazed lamp room at the top:1.35), (a railed iron gallery below the lamp:1.2), a keeper's door at the base, rocks at the footing",
     # New building for the expanded map — not wired into the game yet (no
     # town-layout anchor, no story), but its reference cells are cut so the art
     # can be developed alongside the rest of the catalogue.
-    "animalshelter": "a village animal shelter with (a low stone barn with a wide timber door:1.25), (a timber pen fence with hay bales and a water trough:1.3), a bell hung on a post",
+    "animalshelter": "a village animal rescue barn, (a large timber barn with wide double barn doors standing open and a hay loft above:1.35), (a fenced straw-bedded animal pen with a water trough and feed sacks:1.3), a bell on a post, sheltering and welcoming",
 }
 
 # Materials per building, all drawn from the guide's sampled swatches. The roof
@@ -172,10 +165,11 @@ MATERIALS = {
 MATERIALS["bakery"] = f"{GUIDE_ROOF}, warm cream plaster over stone #c79867, {GUIDE_TIMBER}"
 MATERIALS["lighthouse"] = f"{GUIDE_ROOF}, pale whitewashed stone tower #c8bda6, {GUIDE_TIMBER}"
 MATERIALS["quarry"] = (
-    "raw grey cut stone and rock faces #897153 #b1926b, bare timber winch frames "
-    "#7b4a23, (only the small shed has a teal roof, everything else is grey stone "
-    "and brown timber:1.3), warm dusty stone tones"
+    "(plain warm GREY cut stone and grey rock faces #897153 #b1926b, neutral "
+    "stone dust colours:1.4), bare brown timber winch frames #7b4a23, only the "
+    "one small shed roof is teal, everything else grey stone and brown timber"
 )
+QUARRY_NEG = "blue rock, blue stone, teal boulders, blue-green cliff, cyan rubble, blue gravel"
 MATERIALS["dock"] = (
     f"{GUIDE_ROOF}, weathered plank decking and timber posts #7b4a23 #be8551, "
     "stone footings #897153"
@@ -297,6 +291,11 @@ def canny_for(ref_path, state: str) -> tuple[int, int]:
 def fix_for(state: str) -> str:
     """The right structural clauses for a state — ruins need the opposite."""
     return FIX_CLAUSES_RUINED if state == "ruin" else FIX_CLAUSES
+CENTERED = (
+    "(the entire building including its base sits fully inside the frame with "
+    "clear empty margin on all four sides, centred, nothing touching or "
+    "crossing the edge of the image, comfortably zoomed out:1.4)"
+)
 BACKDROP = (
     "(isolated on a completely flat empty featureless neutral grey backdrop, "
     "one uniform background colour, no wall, no floor, no room, no horizon "
@@ -353,9 +352,9 @@ _GUIDE_TAIL = (
     "#cf9e6b, stone palette #897153 #b1926b #c79867, accent palette #957a3e "
     "#db862f #718c84, lantern light #f9d09b #efae5b #e29330, "
 )
-PROMPT_GUIDE = BACKDROP + ", " + _GUIDE_HEAD + _GUIDE_ROOFY + _GUIDE_TAIL + FRAMING + ", {fix}"
-PROMPT_GUIDE_RUINED = BACKDROP + ", " + _GUIDE_HEAD + _GUIDE_RUINED + _GUIDE_TAIL + FRAMING + ", {fix}"
-PROMPT_GUIDE_WIP = BACKDROP + ", " + _GUIDE_HEAD + _GUIDE_WIP + _GUIDE_TAIL + FRAMING + ", {fix}"
+PROMPT_GUIDE = CENTERED + ", " + BACKDROP + ", " + _GUIDE_HEAD + _GUIDE_ROOFY + _GUIDE_TAIL + FRAMING + ", {fix}"
+PROMPT_GUIDE_RUINED = CENTERED + ", " + BACKDROP + ", " + _GUIDE_HEAD + _GUIDE_RUINED + _GUIDE_TAIL + FRAMING + ", {fix}"
+PROMPT_GUIDE_WIP = CENTERED + ", " + BACKDROP + ", " + _GUIDE_HEAD + _GUIDE_WIP + _GUIDE_TAIL + FRAMING + ", {fix}"
 # Neither a ruin nor a half-built shell has a roof, so neither may be told
 # about roof colour — the model has to put that teal somewhere, and with no
 # roof it lands on stonework (ruin) or in the open bays (wip).

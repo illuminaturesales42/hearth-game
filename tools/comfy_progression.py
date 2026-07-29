@@ -105,17 +105,21 @@ STATES = [
         "l1",
         "forge_ref_l1.png",
         (1024, 848),
-        "newly rebuilt, clean plain honest stonework, simple sound roof, one "
-        "window warmly lit, modest and bare but cared for",
+        "(the FIRST and plainest restoration, the simplest and least decorated "
+        "version of this building, bare and minimal:1.35), clean plain honest "
+        "stonework, one simple sound roof, one window warmly lit, no ornament, "
+        "no extensions, no decoration, modest and sparse but cared for",
         None,
     ),
     (
         "l2",
         "forge_ref_l2.png",
         (1024, 808),
-        "comfortably established and well kept, a few flower boxes, a tidy "
-        "swept yard, some windows warmly lit, chimney smoke, modest but "
-        "cared for, still plain in its finishes",
+        "(the MIDDLE stage, clearly more developed than the first but clearly "
+        "NOT the final grandest version:1.3), comfortably established, a modest "
+        "side extension, a few flower boxes, a tidy swept yard, some windows "
+        "warmly lit, chimney smoke, still plain in its finishes, no bunting and "
+        "no gilding yet",
         None,
     ),
     (

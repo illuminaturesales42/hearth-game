@@ -38,6 +38,7 @@ from comfy_dialin import (  # noqa: E402 — sibling tool, path set above
     CN_END_L3,
     CN_END_RUIN,
     PLAIN_L1_NEG,
+    QUARRY_NEG,
     ROOF_NEG,
     REPO,
     STONE_FORWARD,
@@ -108,7 +109,9 @@ def render(building: str, state: str, boards: dict[str, str], force: bool = Fals
     if state in ("l1", "l2", "l3"):
         negative += ", " + ROOF_NEG  # a restored building is never see-through
     if state == "l1":
-        negative += ", " + PLAIN_L1_NEG  # leave L2/L3 somewhere to grow to
+        negative += ", " + PLAIN_L1_NEG
+    if building == "quarry":
+        negative += ", " + QUARRY_NEG  # its rock kept coming out blue  # leave L2/L3 somewhere to grow to
 
     ref_name = upload_image(cell_path, f"_village_{cell}")
     graph = build_graph(
