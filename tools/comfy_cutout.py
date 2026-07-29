@@ -96,6 +96,15 @@ def _fix_colour_bleed(a: np.ndarray, rounds: int = 3) -> np.ndarray:
     return a
 
 
+# NOTE — a "_drop_backdrop_slabs" pass was written here and REMOVED. The idea
+# was to detect the wall-and-floor slabs rembg keeps when a render has a
+# structured background, by finding border-touching regions of near-uniform
+# colour. It found nothing: those backdrops are PAINTED, so their local
+# variance is nowhere near flat enough to threshold against, and the recut
+# output was pixel-identical. A render containing a painted wall cannot be
+# reliably rescued in post — the fix is the BACKDROP clause in the prompt,
+# which asks for a flat featureless field so there is no wall to keep.
+
 def _despeckle(a: np.ndarray) -> np.ndarray:
     mask = a[:, :, 3] > 20
     lbl, n = ndimage.label(mask)

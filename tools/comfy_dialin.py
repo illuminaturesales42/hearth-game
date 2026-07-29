@@ -223,7 +223,19 @@ FIX_RUINED = (
     "no intact joinery:1.4), (low broken-off wall stubs at varying heights, "
     "collapsed and incomplete, rubble where walls have fallen:1.3)"
 )
-FIX_CLAUSES = f"{FIX_DOORS}, {FIX_SOUND}, {FIX_2D}"  # built states
+# A restored building must not be see-through. The market L2 came out with a
+# slatted roof you could read the background through, which is fine for a
+# half-built shell and wrong for a prospering shop.
+FIX_ROOF_SOLID = (
+    "(the roof is complete and solid, continuous unbroken tiling edge to edge, "
+    "no gaps, no holes, no missing tiles, nothing visible through the roof:1.35)"
+)
+ROOF_NEG = (
+    "holes in the roof, gaps in the roof, missing roof tiles, see-through roof, "
+    "open rafters, exposed roof beams, slatted roof, pergola, unfinished roof, "
+    "transparent roof, sky visible through roof"
+)
+FIX_CLAUSES = f"{FIX_DOORS}, {FIX_SOUND}, {FIX_ROOF_SOLID}, {FIX_2D}"  # built states
 FIX_CLAUSES_RUINED = f"{FIX_RUINED}, {FIX_2D}"  # ruin (and the shell of a wip)
 
 
@@ -263,6 +275,11 @@ def canny_for(ref_path, state: str) -> tuple[int, int]:
 def fix_for(state: str) -> str:
     """The right structural clauses for a state — ruins need the opposite."""
     return FIX_CLAUSES_RUINED if state == "ruin" else FIX_CLAUSES
+BACKDROP = (
+    "(isolated on a completely flat empty featureless neutral grey backdrop, "
+    "one uniform background colour, no wall, no floor, no room, no horizon "
+    "line, no cast background, nothing behind the building:1.3)"
+)
 FRAMING = (
     "45-degree isometric view, {subject}, standing on its own small cobblestone "
     "plinth with a thin edge of moss and grass, (a plain uncluttered neutral grey "
@@ -314,9 +331,9 @@ _GUIDE_TAIL = (
     "#cf9e6b, stone palette #897153 #b1926b #c79867, accent palette #957a3e "
     "#db862f #718c84, lantern light #f9d09b #efae5b #e29330, "
 )
-PROMPT_GUIDE = _GUIDE_HEAD + _GUIDE_ROOFY + _GUIDE_TAIL + FRAMING + ", {fix}"
-PROMPT_GUIDE_RUINED = _GUIDE_HEAD + _GUIDE_RUINED + _GUIDE_TAIL + FRAMING + ", {fix}"
-PROMPT_GUIDE_WIP = _GUIDE_HEAD + _GUIDE_WIP + _GUIDE_TAIL + FRAMING + ", {fix}"
+PROMPT_GUIDE = BACKDROP + ", " + _GUIDE_HEAD + _GUIDE_ROOFY + _GUIDE_TAIL + FRAMING + ", {fix}"
+PROMPT_GUIDE_RUINED = BACKDROP + ", " + _GUIDE_HEAD + _GUIDE_RUINED + _GUIDE_TAIL + FRAMING + ", {fix}"
+PROMPT_GUIDE_WIP = BACKDROP + ", " + _GUIDE_HEAD + _GUIDE_WIP + _GUIDE_TAIL + FRAMING + ", {fix}"
 # Neither a ruin nor a half-built shell has a roof, so neither may be told
 # about roof colour — the model has to put that teal somewhere, and with no
 # roof it lands on stonework (ruin) or in the open bays (wip).

@@ -36,6 +36,7 @@ from comfy_dialin import (  # noqa: E402 — sibling tool, path set above
     MOSS_GREEN,
     NEGATIVE,
     CN_END_RUIN,
+    ROOF_NEG,
     REPO,
     STONE_FORWARD,
     SUBJECT_CLAUSES,
@@ -102,6 +103,8 @@ def render(building: str, state: str, boards: dict[str, str], force: bool = Fals
     negative = f"{NEGATIVE}, {extra_neg}" if extra_neg else NEGATIVE
     if state == "ruin":
         negative += ", " + RUIN_NEG
+    if state in ("l1", "l2", "l3"):
+        negative += ", " + ROOF_NEG  # a restored building is never see-through
 
     ref_name = upload_image(cell_path, f"_village_{cell}")
     graph = build_graph(
