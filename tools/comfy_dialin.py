@@ -132,8 +132,8 @@ SUBJECT_CLAUSES = {
     # SYMBOL rather than a name: SDXL cannot write, and asking for lettering
     # reliably produces the illegible scribble that spoiled the first bakery.
     "blacksmith": "a village blacksmith's forge with a tall rounded stone chimney, a glowing orange furnace opening, (a heavy dark iron anvil on a timber block outside the door:1.3), (a hanging wrought-iron bracket sign painted with a bold crossed-hammers-and-anvil emblem, a simple flat pictogram of two hammers over an anvil, no letters and no words:1.45), horseshoes and tongs on the wall, a quenching barrel",
-    "bakery": "a village bakery, (a tall rounded stone chimney with white smoke curling from it:1.35), (a big domed outdoor stone bread oven beside the building with a warm glowing mouth and a long wooden bread paddle:1.35), racks of loaves, a flour sack by the door",
-    "cottage": "a small stone cottage with a warm lit window, (a low garden wall with flower boxes under the window:1.2), a plain plank door, a rounded stone chimney with curling smoke",
+    "bakery": "a village bakery, (a tall rounded stone chimney:1.3), (a big domed outdoor stone bread oven beside the building with a warm glowing mouth and a long wooden bread paddle:1.35), racks of loaves, a flour sack by the door",
+    "cottage": "a small stone cottage with a warm lit window, (a low garden wall with flower boxes under the window:1.2), a plain plank door, a rounded stone chimney",
     "workshop": "a craftsman's workshop with a wide timber-braced work opening, (a sturdy workbench with hand tools and curled wood shavings:1.25), (a hanging bracket sign bearing one bold saw pictogram, no letters and no words:1.3), a lumber rack and stacked timber",
     "quarry": "a stone quarry works with a cut rock face, (a tall timber winch frame with rope and pulley over the cut:1.3), (stacked dressed stone blocks and a loaded hand cart:1.25), chisels and stone dust",
     "market": "an open market stall building with (a striped awning over trestle tables:1.3), (crates of fresh silver fish on ice and hanging dried fish, a fishmonger's slab:1.35), baskets of produce, a barrel, a brass balance scale",
@@ -156,13 +156,13 @@ SUBJECT_CLAUSES = {
 # Materials per building, all drawn from the guide's sampled swatches. The roof
 # and timber values are deliberately IDENTICAL across the catalogue — that
 # shared palette is what makes fourteen separate renders read as one village.
-GUIDE_ROOF = "(teal blue-green slate roof tiles #45625e #355654, distinctly cool sea-green roof:1.35)"
+GUIDE_ROOF = "(the ROOF TILES ONLY are teal blue-green slate #45625e #355654:1.25)"
 GUIDE_TIMBER = "rich brown timber trim #7b4a23 #be8551, copper accents"
-GUIDE_STONE = "warm grey-brown fieldstone walls #897153 #b1926b"
+GUIDE_STONE = "(the WALLS are warm grey-brown fieldstone #897153 #b1926b, never blue, never teal:1.3)"
 MATERIALS = {
     b: f"{GUIDE_ROOF}, {GUIDE_STONE}, {GUIDE_TIMBER}" for b in SUBJECT_CLAUSES
 }
-MATERIALS["bakery"] = f"{GUIDE_ROOF}, warm cream plaster over stone #c79867, {GUIDE_TIMBER}"
+MATERIALS["bakery"] = f"{GUIDE_ROOF}, (the WALLS are warm cream plaster over stone #c79867, never blue, never teal:1.35), {GUIDE_TIMBER}"
 MATERIALS["lighthouse"] = f"{GUIDE_ROOF}, pale whitewashed stone tower #c8bda6, {GUIDE_TIMBER}"
 MATERIALS["quarry"] = (
     "(plain warm GREY cut stone and grey rock faces #897153 #b1926b, neutral "
