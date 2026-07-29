@@ -156,13 +156,13 @@ SUBJECT_CLAUSES = {
 # Materials per building, all drawn from the guide's sampled swatches. The roof
 # and timber values are deliberately IDENTICAL across the catalogue — that
 # shared palette is what makes fourteen separate renders read as one village.
-GUIDE_ROOF = "(the ROOF TILES ONLY are teal blue-green slate #45625e #355654:1.25)"
+GUIDE_ROOF = "teal slate roof tiles #45625e #355654"
 GUIDE_TIMBER = "rich brown timber trim #7b4a23 #be8551, copper accents"
-GUIDE_STONE = "(the WALLS are warm grey-brown fieldstone #897153 #b1926b, never blue, never teal:1.3)"
+GUIDE_STONE = "warm grey-brown fieldstone walls #897153 #b1926b"
 MATERIALS = {
     b: f"{GUIDE_ROOF}, {GUIDE_STONE}, {GUIDE_TIMBER}" for b in SUBJECT_CLAUSES
 }
-MATERIALS["bakery"] = f"{GUIDE_ROOF}, (the WALLS are warm cream plaster over stone #c79867, never blue, never teal:1.35), {GUIDE_TIMBER}"
+MATERIALS["bakery"] = f"{GUIDE_ROOF}, warm cream plaster over stone #c79867, {GUIDE_TIMBER}"
 MATERIALS["lighthouse"] = f"{GUIDE_ROOF}, pale whitewashed stone tower #c8bda6, {GUIDE_TIMBER}"
 MATERIALS["quarry"] = (
     "(plain warm GREY cut stone and grey rock faces #897153 #b1926b, neutral "
