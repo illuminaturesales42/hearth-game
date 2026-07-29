@@ -111,7 +111,7 @@ def render(building: str, state: str, boards: dict[str, str], force: bool = Fals
     if state == "l1":
         negative += ", " + PLAIN_L1_NEG
     if building == "quarry":
-        negative += ", " + QUARRY_NEG  # its rock kept coming out blue  # leave L2/L3 somewhere to grow to
+        negative += ", " + QUARRY_NEG  # its rock kept coming out blue
 
     ref_name = upload_image(cell_path, f"_village_{cell}")
     graph = build_graph(

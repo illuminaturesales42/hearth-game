@@ -1,0 +1,179 @@
+{
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "RealVisXL_V5.0.safetensors"
+    }
+  },
+  "2": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "_village_bakery_ref_l1.png"
+    }
+  },
+  "3": {
+    "class_type": "CannyEdgePreprocessor",
+    "inputs": {
+      "image": [
+        "2",
+        0
+      ],
+      "low_threshold": 100,
+      "high_threshold": 200,
+      "resolution": 1024
+    }
+  },
+  "4": {
+    "class_type": "ControlNetLoader",
+    "inputs": {
+      "control_net_name": "controlnet-canny-sdxl.safetensors"
+    }
+  },
+  "5": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "(the entire building including its base sits fully inside the frame with clear empty margin on all four sides, centred, nothing touching or crossing the edge of the image, comfortably zoomed out:1.4), (isolated on a completely flat empty featureless neutral grey backdrop, one uniform background colour, no wall, no floor, no room, no horizon line, no cast background, nothing behind the building:1.3), hand painted cosy warm inviting storybook game asset, soft visible brush strokes, warm highlights and cool shadows, gentle ambient occlusion, subtle colour variation, imperfections bring charm, warm light from the top right, emissive warm window glow, teal slate roof tiles, rounded stone chimneys, timber braces, copper accents, flower boxes and greenery, warm lanterns, roof palette #45625e #355654 #98472a, wood palette #7b4a23 #885425 #be8551 #cf9e6b, stone palette #897153 #b1926b #c79867, accent palette #957a3e #db862f #718c84, lantern light #f9d09b #efae5b #e29330, 45-degree isometric view, a village bakery, (a tall rounded stone chimney with white smoke curling from it:1.35), (a big domed outdoor stone bread oven beside the building with a warm glowing mouth and a long wooden bread paddle:1.35), racks of loaves, a flour sack by the door, (teal blue-green slate roof tiles #45625e #355654, distinctly cool sea-green roof:1.35), warm cream plaster over stone #c79867, rich brown timber trim #7b4a23 #be8551, copper accents, (walls are predominantly stone masonry, timber used only as trim, braces and door frames:1.25) -- (the FIRST and plainest restoration, the simplest and least decorated version of this building, bare and minimal:1.35), clean plain honest stonework, one simple sound roof, one window warmly lit, no ornament, no extensions, no decoration, modest and sparse but cared for, standing on its own small cobblestone plinth with a thin edge of moss and grass, (a plain uncluttered neutral grey backdrop, no ground plane beyond the plinth, no other buildings, no street, no sky, no scenery:1.3), (single subject, small and centred with an even ~10% empty margin on all four sides, not a close-up, not filling the frame, no part of the building touching the frame edge:1.35), (clearly defined wooden doors and windows with visible planks, iron hinges and simple frames, set squarely inside their stone openings:1.35), (structurally sound, every part properly joined and supported, signs and brackets firmly bolted, nothing floating or detached:1.3), (the roof is complete and solid, continuous unbroken tiling edge to edge, no gaps, no holes, no missing tiles, nothing visible through the roof:1.35), (hand-drawn illustrated 2D game asset, flat painted shapes, simplified stylised stonework, NOT a photograph, NOT a physical object, NOT a miniature, NOT sitting on a real surface, no photographic texture, no depth of field, no blur:1.45)",
+      "clip": [
+        "1",
+        1
+      ]
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "flat vector, sterile, 3d render, cgi render, plastic, oversaturated, photograph, product photography, studio photography, diorama, physical model, miniature model, toy, real wood grain, real material, macro photography, unreal engine, octane render, modern architecture, photoreal, hyperrealistic, people, characters, extra structures, multiple buildings, village street, town square, cropped, low quality, sky, clouds, background scenery, landscape, checkerboard, gradient background, vignette, ground plane, grass field, meadow, terrain, drop shadow, close-up, zoomed in, cut off, touching edge of frame, filling the frame, off-centre, text, watermark, signature, flat cel-shaded anime, manga, lettering, written words, illegible text, scribbled writing, shop name, painted letters, floating objects, levitating, detached, disconnected, unsupported, hovering sign, broken geometry, warped, melted, impossible construction, misaligned door, duplicated door, malformed opening, smeared detail, mushy shapes, indistinct doorway, photo, wooden shelf, mantel, table surface, indoor scene, blurry background, depth of field, bokeh, miniature, diorama, model, figurine, ornament, tilt-shift, holes in the roof, gaps in the roof, missing roof tiles, see-through roof, open rafters, exposed roof beams, slatted roof, pergola, unfinished roof, transparent roof, sky visible through roof",
+      "clip": [
+        "1",
+        1
+      ]
+    }
+  },
+  "7": {
+    "class_type": "ControlNetApplyAdvanced",
+    "inputs": {
+      "positive": [
+        "5",
+        0
+      ],
+      "negative": [
+        "6",
+        0
+      ],
+      "control_net": [
+        "4",
+        0
+      ],
+      "image": [
+        "3",
+        0
+      ],
+      "strength": 0.95,
+      "start_percent": 0.0,
+      "end_percent": 0.72
+    }
+  },
+  "8": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 1024,
+      "height": 752,
+      "batch_size": 1
+    }
+  },
+  "9": {
+    "class_type": "KSampler",
+    "inputs": {
+      "seed": 777777,
+      "steps": 40,
+      "cfg": 7.0,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0,
+      "model": [
+        "15",
+        0
+      ],
+      "positive": [
+        "7",
+        0
+      ],
+      "negative": [
+        "7",
+        1
+      ],
+      "latent_image": [
+        "8",
+        0
+      ]
+    }
+  },
+  "10": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "9",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    }
+  },
+  "20": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "10",
+        0
+      ],
+      "filename_prefix": "dialin"
+    }
+  },
+  "12": {
+    "class_type": "IPAdapterModelLoader",
+    "inputs": {
+      "ipadapter_file": "ip-adapter-plus_sdxl_vit-h.safetensors"
+    }
+  },
+  "13": {
+    "class_type": "CLIPVisionLoader",
+    "inputs": {
+      "clip_name": "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors"
+    }
+  },
+  "14": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "_village_guide_board.png"
+    }
+  },
+  "15": {
+    "class_type": "IPAdapterAdvanced",
+    "inputs": {
+      "weight": 0.45,
+      "weight_type": "style transfer",
+      "combine_embeds": "concat",
+      "start_at": 0.0,
+      "end_at": 1.0,
+      "embeds_scaling": "V only",
+      "model": [
+        "1",
+        0
+      ],
+      "ipadapter": [
+        "12",
+        0
+      ],
+      "image": [
+        "14",
+        0
+      ],
+      "clip_vision": [
+        "13",
+        0
+      ]
+    }
+  }
+}
