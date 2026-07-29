@@ -299,7 +299,7 @@ CENTERED = (
 BACKDROP = (
     "(isolated on a completely flat empty featureless neutral grey backdrop, "
     "one uniform background colour, no wall, no floor, no room, no horizon "
-    "line, no cast background, nothing behind the building:1.3)"
+    "line, no cast background, nothing behind the building except the chimney smoke rising from it:1.3)"
 )
 FRAMING = (
     "45-degree isometric view, {subject}, standing on its own small cobblestone "
