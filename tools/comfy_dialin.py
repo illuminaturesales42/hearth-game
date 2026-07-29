@@ -111,10 +111,7 @@ CANNY_RUIN = (30, 90)
 # STONE_FORWARD exists because the first guide pass came out timber-forward
 # (a framed workshop) while the guide leads with stonework and uses timber as
 # trim. Leading with the walls and demoting the beams pulls it back.
-STONE_FORWARD = (
-    "(walls are predominantly stone masonry, timber used only as trim, braces "
-    "and door frames:1.25)"
-)
+STONE_FORWARD = "(walls mostly stone masonry, timber only as trim:1.2)"
 # The guide's ruins are restrained: grey stone, green moss. Ours grew yellow
 # flowering scrub because "mossy / weeds growing through the rubble" reads as
 # wildflowers. Named greens, and the flowers pushed to the negative.
@@ -132,7 +129,7 @@ SUBJECT_CLAUSES = {
     # SYMBOL rather than a name: SDXL cannot write, and asking for lettering
     # reliably produces the illegible scribble that spoiled the first bakery.
     "blacksmith": "a village blacksmith's forge with a tall rounded stone chimney, a glowing orange furnace opening, (a heavy dark iron anvil on a timber block outside the door:1.3), (a hanging wrought-iron bracket sign painted with a bold crossed-hammers-and-anvil emblem, a simple flat pictogram of two hammers over an anvil, no letters and no words:1.45), horseshoes and tongs on the wall, a quenching barrel",
-    "bakery": "a village bakery, (a tall rounded stone chimney:1.3), (a big domed outdoor stone bread oven beside the building with a warm glowing mouth and a long wooden bread paddle:1.35), racks of loaves, a flour sack by the door",
+    "bakery": "a village bakery, a tall rounded stone chimney, (a big domed outdoor stone bread oven beside the building with a glowing mouth and a long wooden bread paddle:1.3), racks of loaves, a flour sack by the door",
     "cottage": "a small stone cottage with a warm lit window, (a low garden wall with flower boxes under the window:1.2), a plain plank door, a rounded stone chimney",
     "workshop": "a craftsman's workshop with a wide timber-braced work opening, (a sturdy workbench with hand tools and curled wood shavings:1.25), (a hanging bracket sign bearing one bold saw pictogram, no letters and no words:1.3), a lumber rack and stacked timber",
     "quarry": "a stone quarry works with a cut rock face, (a tall timber winch frame with rope and pulley over the cut:1.3), (stacked dressed stone blocks and a loaded hand cart:1.25), chisels and stone dust",
@@ -156,7 +153,7 @@ SUBJECT_CLAUSES = {
 # Materials per building, all drawn from the guide's sampled swatches. The roof
 # and timber values are deliberately IDENTICAL across the catalogue — that
 # shared palette is what makes fourteen separate renders read as one village.
-GUIDE_ROOF = "teal slate roof tiles #45625e #355654"
+GUIDE_ROOF = "(teal blue-green slate roof tiles #45625e #355654, cool sea-green roof:1.35)"
 GUIDE_TIMBER = "rich brown timber trim #7b4a23 #be8551, copper accents"
 GUIDE_STONE = "warm grey-brown fieldstone walls #897153 #b1926b"
 MATERIALS = {
@@ -211,36 +208,18 @@ STATE_L1 = (
 # three to every state produced a bakery "ruin" with a pristine hinged door in
 # a tall intact arch — the door clause (1.35) and the soundness clause (1.3)
 # were doing exactly what they were told, on a state that needs the opposite.
-FIX_DOORS = (
-    "(clearly defined wooden doors and windows with visible planks, iron hinges "
-    "and simple frames, set squarely inside their stone openings:1.35)"
-)
-FIX_SOUND = (
-    "(structurally sound, every part properly joined and supported, signs and "
-    "brackets firmly bolted, nothing floating or detached:1.3)"
-)
+FIX_DOORS = "(clear wooden doors and windows set squarely in their openings:1.3)"
+FIX_SOUND = "(structurally sound, nothing floating or detached:1.25)"
 # This one applies everywhere — and is the lever against renders drifting
 # photoreal, which the ruin did badly.
-FIX_2D = (
-    "(hand-drawn illustrated 2D game asset, flat painted shapes, simplified "
-    "stylised stonework, NOT a photograph, NOT a physical object, NOT a "
-    "miniature, NOT sitting on a real surface, no photographic texture, no "
-    "depth of field, no blur:1.45)"
-)
+FIX_2D = "(hand-painted 2D game asset, flat painted shapes, not a photo, not a miniature:1.4)"
 # What a ruin needs instead: openings that are genuinely empty, and a structure
 # that is genuinely broken and LOW rather than a dramatic standing arch.
-FIX_RUINED = (
-    "(doorways and windows are empty broken openings, no door leaf, no glass, "
-    "no intact joinery:1.4), (low broken-off wall stubs at varying heights, "
-    "collapsed and incomplete, rubble where walls have fallen:1.3)"
-)
+FIX_RUINED = "(empty broken openings, no doors or glass, low broken wall stubs, rubble:1.35)"
 # A restored building must not be see-through. The market L2 came out with a
 # slatted roof you could read the background through, which is fine for a
 # half-built shell and wrong for a prospering shop.
-FIX_ROOF_SOLID = (
-    "(the roof is complete and solid, continuous unbroken tiling edge to edge, "
-    "no gaps, no holes, no missing tiles, nothing visible through the roof:1.35)"
-)
+FIX_ROOF_SOLID = "(solid unbroken roof, no gaps or holes:1.3)"
 PLAIN_L1_NEG = (
     "flower boxes, planters, overflowing flowers, hanging baskets, bunting, "
     "banners, festival decorations, hanging lanterns, ornate carving, gilded "
@@ -291,11 +270,7 @@ def canny_for(ref_path, state: str) -> tuple[int, int]:
 def fix_for(state: str) -> str:
     """The right structural clauses for a state — ruins need the opposite."""
     return FIX_CLAUSES_RUINED if state == "ruin" else FIX_CLAUSES
-CENTERED = (
-    "(the entire building including its base sits fully inside the frame with "
-    "clear empty margin on all four sides, centred, nothing touching or "
-    "crossing the edge of the image, comfortably zoomed out:1.4)"
-)
+CENTERED = "(centred, whole building inside frame with margin on all sides:1.3)"
 BACKDROP = (
     "(isolated on a completely flat empty featureless neutral grey backdrop, "
     "one uniform background colour, no wall, no floor, no room, no horizon "
@@ -330,9 +305,8 @@ PROMPT_PAINT = (
 # mint-teal stonework. Removing it from MATERIALS alone changed nothing,
 # because this block was still shouting it.
 _GUIDE_HEAD = (
-    "hand painted cosy warm inviting storybook game asset, soft visible brush "
-    "strokes, warm highlights and cool shadows, gentle ambient occlusion, subtle "
-    "colour variation, imperfections bring charm, warm light from the top right, "
+    "hand painted cosy warm storybook game asset, soft visible brush strokes, "
+    "warm highlights and cool shadows, warm light from the top right, "
 )
 _GUIDE_ROOFY = (
     "emissive warm window glow, teal slate roof tiles, rounded stone chimneys, "
@@ -347,11 +321,7 @@ _GUIDE_WIP = (
     "rounded stone chimneys, fresh pale new-cut timber scaffolding and ladders, "
     "raw unfinished stonework, open roofless timber framing against open sky, "
 )
-_GUIDE_TAIL = (
-    "wood palette #7b4a23 #885425 #be8551 "
-    "#cf9e6b, stone palette #897153 #b1926b #c79867, accent palette #957a3e "
-    "#db862f #718c84, lantern light #f9d09b #efae5b #e29330, "
-)
+_GUIDE_TAIL = "wood #7b4a23 #be8551, stone #897153 #b1926b, warm lantern light, "
 PROMPT_GUIDE = CENTERED + ", " + BACKDROP + ", " + _GUIDE_HEAD + _GUIDE_ROOFY + _GUIDE_TAIL + FRAMING + ", {fix}"
 PROMPT_GUIDE_RUINED = CENTERED + ", " + BACKDROP + ", " + _GUIDE_HEAD + _GUIDE_RUINED + _GUIDE_TAIL + FRAMING + ", {fix}"
 PROMPT_GUIDE_WIP = CENTERED + ", " + BACKDROP + ", " + _GUIDE_HEAD + _GUIDE_WIP + _GUIDE_TAIL + FRAMING + ", {fix}"

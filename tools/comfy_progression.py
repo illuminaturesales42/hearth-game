@@ -84,54 +84,41 @@ STATES = [
         "ruin",
         "forge_ref_ruin.png",
         (1024, 840),
-        "derelict and long abandoned, crumbling bare stone, weathered, soft green "
-        "moss and grey lichen on the stone, muted sage green, empty dark openings "
-        "with no glass, "
-        "(the ground inside the walls is cold grey weathered flagstone, ashen "
-        "slate-grey paving, lichen and dust, desaturated cool stone:1.45)",
+        "derelict and abandoned, crumbling bare stone, green moss and grey lichen, "
+        "empty dark openings, (cold grey flagstone ground, lichen and dust:1.4)",
         GROUND_NEG,
     ),
     (
         "wip",
         "forge_ref_wip.png",
         (1024, 832),
-        "under active reconstruction, fresh pale new-cut timber scaffolding and "
-        "ladders, raw unfinished stonework, building materials stacked about, "
-        "(the ground inside the walls is cold grey weathered flagstone, ashen "
-        "slate-grey paving, rubble and dust, desaturated cool stone:1.45)",
+        "under reconstruction, fresh pale timber scaffolding and ladders, raw "
+        "unfinished stonework, stacked materials, (cold grey flagstone ground:1.4)",
         GROUND_NEG,
     ),
     (
         "l1",
         "forge_ref_l1.png",
         (1024, 848),
-        "(the FIRST and plainest restoration, the simplest and least decorated "
-        "version of this building, bare and minimal:1.35), clean plain honest "
-        "stonework, one simple sound roof, one window warmly lit, no ornament, "
-        "no extensions, no decoration, modest and sparse but cared for",
+        "(the FIRST and plainest stage, bare and undecorated:1.35), plain honest "
+        "stonework, one lit window, no ornament, modest",
         None,
     ),
     (
         "l2",
         "forge_ref_l2.png",
         (1024, 808),
-        "(the MIDDLE stage, clearly more developed than the first but clearly "
-        "NOT the final grandest version:1.3), comfortably established, a modest "
-        "side extension, a few flower boxes, a tidy swept yard, some windows "
-        "warmly lit, chimney smoke, still plain in its finishes, no bunting and "
-        "no gilding yet",
+        "(the MIDDLE stage, more developed than the first but NOT the grandest:1.3), "
+        "established, a modest extension, a few flower boxes, some lit windows",
         None,
     ),
     (
         "l3",
         "forge_ref_l3.png",
         (1024, 792),
-        "(the grandest and final stage, visibly the most prosperous and most "
-        "ornate version of this building:1.4), richly carved timber detailing "
-        "and moulded trim, festival bunting strung along every eave, hanging "
-        "lanterns lit, overflowing flower boxes and planters, copper and "
-        "gilded accents, every single window glowing warm, banners and "
-        "decorative finials, immaculate and thriving",
+        "(the GRANDEST final stage, the most prosperous and ornate version:1.4), "
+        "carved timber trim, bunting along the eaves, hanging lanterns, "
+        "overflowing planters, every window glowing, finials, thriving",
         None,
     ),
 ]
