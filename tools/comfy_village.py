@@ -82,7 +82,7 @@ RUIN_NEG = (
 )
 
 
-def render(building: str, state: str, boards: dict[str, str], force: bool = False) -> Path | None:
+def render(building: str, state: str, boards: dict[str, str], force: bool = False, seed_offset: int = 0) -> Path | None:
     spec = subject_spec(building)
     cell = f"{building}_ref_{state}.png"
     try:
@@ -121,6 +121,7 @@ def render(building: str, state: str, boards: dict[str, str], force: bool = Fals
         negative,
         CN_END_RUIN if state == "ruin" else (CN_END_L3 if state == "l3" else None),
         canny_for(cell_path, state),
+        seed_offset,
     )
     try:
         dest.write_bytes(queue_and_wait(graph))
@@ -138,6 +139,7 @@ def main() -> None:
     ap.add_argument("--states", default="l1", help="'l1' (default), 'all', or e.g. ruin,l1,l3")
     ap.add_argument("--cutout", action="store_true")
     ap.add_argument("--force", action="store_true", help="re-render even if the file exists")
+    ap.add_argument("--seed-offset", type=int, default=0, help="re-roll a weak draw without changing the prompt")
     args = ap.parse_args()
 
     buildings = sorted(SUBJECT_CLAUSES) if args.all else args.buildings
@@ -159,7 +161,7 @@ def main() -> None:
     made: list[tuple[str, Path]] = []
     for b in buildings:
         for s in states:
-            p = render(b, s, boards, args.force)
+            p = render(b, s, boards, args.force, args.seed_offset)
             if p:
                 made.append((f"{b} {s}" if len(states) > 1 else b, p))
 

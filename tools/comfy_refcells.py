@@ -53,6 +53,12 @@ SHEETS = Path(r"C:\Users\illum\OneDrive\Desktop\Hearth\Graphics and UI\Core\Map\
 EXTRA_BUILDINGS = {"animalshelter": "animalshelter"}
 OUT = REPO / "tools" / "comfy_out" / "refcells_canny"
 PAD_FRAC = 0.35
+# Less padding for L3 so the building FILLS more of its frame and therefore
+# renders larger. Several artist L3 cells are physically smaller than their L2
+# (townhall L3 is 1024x664 against L1's 1024x840); Canny reproduces that
+# faithfully, so "L3 should be the largest" cannot be met from the prompt side.
+# Trimming L3's margin is the honest lever — it changes framing, not geometry.
+PAD_FRAC_BY_STATE = {"l3": 0.18, "l2": 0.28}
 LONG_EDGE = 1024
 
 
@@ -60,14 +66,14 @@ def to8(v: int) -> int:
     return max(8, int(round(v / 8)) * 8)
 
 
-def cell_to_ref(cell: Image.Image) -> Image.Image:
+def cell_to_ref(cell: Image.Image, pad_frac: float = PAD_FRAC) -> Image.Image:
     """Keyed sprite -> white-matted, padded, /8-grid reference cell."""
     keyed = key_bg(cell)
     bbox = keyed.getchannel("A").getbbox()
     if bbox:
         keyed = keyed.crop(bbox)
-    pad_x = int(keyed.width * PAD_FRAC / 2)
-    pad_y = int(keyed.height * PAD_FRAC / 2)
+    pad_x = int(keyed.width * pad_frac / 2)
+    pad_y = int(keyed.height * pad_frac / 2)
     canvas = Image.new("RGBA", (keyed.width + pad_x * 2, keyed.height + pad_y * 2), (255, 255, 255, 255))
     canvas.alpha_composite(keyed, (pad_x, pad_y))
     flat = Image.new("RGB", canvas.size, (255, 255, 255))
@@ -108,7 +114,7 @@ def extract(stem: str) -> dict[str, tuple[int, int]] | None:
     sizes: dict[str, tuple[int, int]] = {}
     OUT.mkdir(parents=True, exist_ok=True)
     for state, (x0, x1) in zip(STATE_ORDER, cols):
-        ref = cell_to_ref(im.crop((x0, y0, x1, y1)))
+        ref = cell_to_ref(im.crop((x0, y0, x1, y1)), PAD_FRAC_BY_STATE.get(state, PAD_FRAC))
         dest = OUT / f"{building}_ref_{state}.png"
         ref.save(dest)
         sizes[state] = ref.size

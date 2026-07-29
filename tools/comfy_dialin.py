@@ -92,7 +92,7 @@ CN_END_RUIN = 0.86
 # worded. Releasing at 0.55 leaves the silhouette recognisable while giving the
 # model room to add the finials, bunting and ornament that make L3 read as the
 # last and grandest stage.
-CN_END_L3 = 0.55
+CN_END_L3 = 0.72
 CANNY_LOW, CANNY_HIGH, CANNY_RES = 100, 200, 1024
 # Lower thresholds for ruins. At 100/200 a broken wall's INTERIOR comes out
 # blank — the edge map is an outline around an empty triangle, so the model
@@ -162,9 +162,8 @@ MATERIALS = {
 MATERIALS["bakery"] = f"{GUIDE_ROOF}, warm cream plaster over stone #c79867, {GUIDE_TIMBER}"
 MATERIALS["lighthouse"] = f"{GUIDE_ROOF}, pale whitewashed stone tower #c8bda6, {GUIDE_TIMBER}"
 MATERIALS["quarry"] = (
-    "(plain warm GREY cut stone and grey rock faces #897153 #b1926b, neutral "
-    "stone dust colours:1.4), bare brown timber winch frames #7b4a23, only the "
-    "one small shed roof is teal, everything else grey stone and brown timber"
+    f"{GUIDE_ROOF} on the shed, (the ROCK and cut stone are plain warm GREY "
+    "#897153 #b1926b, never blue:1.35), bare brown timber winch frames #7b4a23"
 )
 QUARRY_NEG = "blue rock, blue stone, teal boulders, blue-green cliff, cyan rubble, blue gravel"
 MATERIALS["dock"] = (
@@ -480,7 +479,7 @@ def queue_and_wait(graph: dict, save_node: str = "20", timeout: int = 900) -> by
 def build_graph(
     ckpt: str, positive: str, ipa, ref_name: str, board_name: str, size,
     negative: str | None = None, cn_end: float | None = None,
-    canny: tuple[int, int] | None = None,
+    canny: tuple[int, int] | None = None, seed_offset: int = 0,
 ) -> dict:
     w, h = size
     negative = negative or NEGATIVE
@@ -517,7 +516,7 @@ def build_graph(
         "9": {
             "class_type": "KSampler",
             "inputs": {
-                "seed": SEED,
+                "seed": SEED + seed_offset,
                 "steps": STEPS,
                 "cfg": CFG,
                 "sampler_name": SAMPLER,

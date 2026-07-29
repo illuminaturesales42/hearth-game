@@ -183,6 +183,44 @@ def cutout(src: Path, size: int, pad: int) -> tuple[Image.Image, dict]:
     return im, stats
 
 
+def cutout_progression(srcs: dict[str, Path], size: int = 320, pad: int = 6) -> dict[str, tuple]:
+    """Cut a building's five states at ONE shared scale.
+
+    cutout() normalises each sprite to a fixed long edge independently, which
+    silently destroys relative size: a genuinely larger L3 gets scaled back
+    down to match L1, so "L3 should be the largest" can never be satisfied
+    however the render turns out. That was the real blocker, not the prompt.
+
+    Here every state is cut and cropped first, then all five are scaled by the
+    SAME factor — chosen so the biggest state lands on `size`. Relative growth
+    across the upgrade path is preserved exactly as rendered.
+    """
+    cut: dict[str, Image.Image] = {}
+    for state, src in srcs.items():
+        if not src.exists():
+            continue
+        im = _rembg_rgba(src)
+        a = np.asarray(im).copy()
+        a = _kill_halo(a)
+        a = _fix_colour_bleed(a)
+        a = _drop_floating_islands(a)
+        a = _despeckle(a)
+        cut[state] = _autocrop(Image.fromarray(a), pad)
+    if not cut:
+        return {}
+    scale = size / max(max(im.size) for im in cut.values())
+    out: dict[str, tuple] = {}
+    for state, im in cut.items():
+        if scale != 1.0:
+            im = im.resize((max(1, round(im.width * scale)), max(1, round(im.height * scale))), Image.LANCZOS)
+        al = np.asarray(im)[:, :, 3]
+        out[state] = (im, {
+            "size": f"{im.width}x{im.height}",
+            "corners": [int(al[0, 0]), int(al[0, -1]), int(al[-1, 0]), int(al[-1, -1])],
+        })
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("paths", nargs="+")
