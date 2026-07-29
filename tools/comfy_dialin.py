@@ -171,6 +171,15 @@ MATERIALS = {
 }
 MATERIALS["bakery"] = f"{GUIDE_ROOF}, warm cream plaster over stone #c79867, {GUIDE_TIMBER}"
 MATERIALS["lighthouse"] = f"{GUIDE_ROOF}, pale whitewashed stone tower #c8bda6, {GUIDE_TIMBER}"
+MATERIALS["quarry"] = (
+    "raw grey cut stone and rock faces #897153 #b1926b, bare timber winch frames "
+    "#7b4a23, (only the small shed has a teal roof, everything else is grey stone "
+    "and brown timber:1.3), warm dusty stone tones"
+)
+MATERIALS["dock"] = (
+    f"{GUIDE_ROOF}, weathered plank decking and timber posts #7b4a23 #be8551, "
+    "stone footings #897153"
+)
 MATERIALS["sawmill"] = f"{GUIDE_ROOF}, stone footings #897153 with plank cladding, {GUIDE_TIMBER}"
 
 
@@ -237,6 +246,11 @@ FIX_RUINED = (
 FIX_ROOF_SOLID = (
     "(the roof is complete and solid, continuous unbroken tiling edge to edge, "
     "no gaps, no holes, no missing tiles, nothing visible through the roof:1.35)"
+)
+PLAIN_L1_NEG = (
+    "flower boxes, planters, overflowing flowers, hanging baskets, bunting, "
+    "banners, festival decorations, hanging lanterns, ornate carving, gilded "
+    "trim, decorative finials, lush greenery"
 )
 ROOF_NEG = (
     "holes in the roof, gaps in the roof, missing roof tiles, see-through roof, "

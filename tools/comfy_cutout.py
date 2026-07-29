@@ -105,6 +105,37 @@ def _fix_colour_bleed(a: np.ndarray, rounds: int = 3) -> np.ndarray:
 # reliably rescued in post — the fix is the BACKDROP clause in the prompt,
 # which asks for a flat featureless field so there is no wall to keep.
 
+def _drop_floating_islands(a: np.ndarray, gap: int = 14) -> np.ndarray:
+    """Delete painted objects floating detached from the building.
+
+    The dock render contains a slab of rock hanging in the sky above the
+    jetty — the MODEL painted it; it is not background, so no amount of
+    background removal touches it. It survived _despeckle because that only
+    drops islands under 0.4% of the sprite and this one is 10%.
+
+    The right rule is proximity, not size: a building sprite is one connected
+    mass sitting on its plinth, so anything separated from the main body by a
+    clear gap is an artefact. Dilating by `gap` first means genuinely attached
+    detail (a hanging sign, a lantern on a bracket) merges with the body and
+    is kept.
+
+    Three earlier attempts failed before this one — a flatness test, a
+    border-colour flood, and the size-based despeckle — all because they
+    assumed the debris was BACKGROUND. It is foreground in the wrong place.
+    """
+    solid = a[:, :, 3] > 128
+    if solid.sum() < 100:
+        return a
+    joined = ndimage.binary_dilation(solid, iterations=gap)
+    lbl, n = ndimage.label(joined)
+    if n <= 1:
+        return a
+    sizes = ndimage.sum(solid, lbl, range(1, n + 1))
+    main = int(np.argmax(sizes)) + 1
+    a[solid & (lbl != main), 3] = 0
+    return a
+
+
 def _despeckle(a: np.ndarray) -> np.ndarray:
     mask = a[:, :, 3] > 20
     lbl, n = ndimage.label(mask)
@@ -135,6 +166,7 @@ def cutout(src: Path, size: int, pad: int) -> tuple[Image.Image, dict]:
     a = np.asarray(im).copy()
     a = _kill_halo(a)
     a = _fix_colour_bleed(a)
+    a = _drop_floating_islands(a)
     a = _despeckle(a)
     im = _autocrop(Image.fromarray(a), pad)
     if size > 0 and max(im.size) != size:
