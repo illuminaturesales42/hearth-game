@@ -113,17 +113,21 @@ STATES = [
         "l2",
         "forge_ref_l2.png",
         (1024, 808),
-        "established and well kept, flower boxes and a tidy garden, several "
-        "windows warmly lit, chimney smoke, lived-in and welcoming",
+        "comfortably established and well kept, a few flower boxes, a tidy "
+        "swept yard, some windows warmly lit, chimney smoke, modest but "
+        "cared for, still plain in its finishes",
         None,
     ),
     (
         "l3",
         "forge_ref_l3.png",
         (1024, 792),
-        "grand and prosperous, richly finished with fine detailing, festival "
-        "bunting along the eaves, every window glowing warm, immaculate and "
-        "thriving",
+        "(the grandest and final stage, visibly the most prosperous and most "
+        "ornate version of this building:1.4), richly carved timber detailing "
+        "and moulded trim, festival bunting strung along every eave, hanging "
+        "lanterns lit, overflowing flower boxes and planters, copper and "
+        "gilded accents, every single window glowing warm, banners and "
+        "decorative finials, immaculate and thriving",
         None,
     ),
 ]

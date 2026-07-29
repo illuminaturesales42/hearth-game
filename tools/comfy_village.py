@@ -35,6 +35,7 @@ from comfy_dialin import (  # noqa: E402 — sibling tool, path set above
     LOCKED_IPA_WEIGHT,
     MOSS_GREEN,
     NEGATIVE,
+    CN_END_L3,
     CN_END_RUIN,
     ROOF_NEG,
     REPO,
@@ -112,7 +113,7 @@ def render(building: str, state: str, boards: dict[str, str], force: bool = Fals
         (ROOFLESS_IPA_WEIGHT if state in ("ruin", "wip") else IPA_WEIGHT, LOCKED_IPA_TYPE), ref_name,
         boards.get(state, boards["default"]), size,
         negative,
-        CN_END_RUIN if state == "ruin" else None,
+        CN_END_RUIN if state == "ruin" else (CN_END_L3 if state == "l3" else None),
         canny_for(cell_path, state),
     )
     try:

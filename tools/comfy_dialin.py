@@ -85,6 +85,14 @@ CN_END = 0.72
 # silhouette honest. Built states keep 0.72 — they need the slack to resolve
 # door and window detail (worksheet §6).
 CN_END_RUIN = 0.86
+# Released EARLY for L3. Measured against the artist sheet, six buildings
+# (animalshelter, blacksmith, library, postoffice, quarry, well) have an L3
+# reference cell no larger than their L2 — so with ControlNet held to 0.72 the
+# final stage can never out-grow the one before it, however the prompt is
+# worded. Releasing at 0.55 leaves the silhouette recognisable while giving the
+# model room to add the finials, bunting and ornament that make L3 read as the
+# last and grandest stage.
+CN_END_L3 = 0.55
 CANNY_LOW, CANNY_HIGH, CANNY_RES = 100, 200, 1024
 # Lower thresholds for ruins. At 100/200 a broken wall's INTERIOR comes out
 # blank — the edge map is an outline around an empty triangle, so the model
@@ -155,7 +163,7 @@ SUBJECT_CLAUSES = {
 # Materials per building, all drawn from the guide's sampled swatches. The roof
 # and timber values are deliberately IDENTICAL across the catalogue — that
 # shared palette is what makes fourteen separate renders read as one village.
-GUIDE_ROOF = "teal slate roof tiles #45625e #355654"
+GUIDE_ROOF = "(teal blue-green slate roof tiles #45625e #355654, distinctly cool sea-green roof:1.35)"
 GUIDE_TIMBER = "rich brown timber trim #7b4a23 #be8551, copper accents"
 GUIDE_STONE = "warm grey-brown fieldstone walls #897153 #b1926b"
 MATERIALS = {
