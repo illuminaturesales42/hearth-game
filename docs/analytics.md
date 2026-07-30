@@ -15,6 +15,17 @@ Facade: `src/analytics.ts`. M2 sink: Firebase Analytics. Privacy rule: **no raw 
 | `chapter_complete` | `chapter` | last order of chapter |
 | `zone_stage` | `stage` | restoration stage reached |
 
+## Social
+| Event | Props | Fired when |
+|---|---|---|
+| `friend_joined` | `energy` | a new friend appears in the snapshot, or a join bonus is claimed |
+| `friend_help` | `count` | a friend's answer to a help request lands on the board |
+| `duel_end` | `won`, `streak`, `coins`, `items`, `mode` | a duel settles — `mode` is `practice` (Old Joss) or `challenge` (a real friend) |
+
+Never emitted: a friend's player id, display name, portrait, or anything about
+the friend graph's shape. These events say *that* a social thing happened and
+what it paid, never *who* was involved.
+
 ## Life energy
 | Event | Props | Fired when |
 |---|---|---|

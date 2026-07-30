@@ -59,7 +59,19 @@ import { LOG_MEDITATION, loggedMinutesToEnergy } from '../data/meditations';
 import { findRecovery, recoveryEnergy } from '../data/recovery';
 import { GRATITUDE, initialGratitude } from '../data/gratitude';
 import { KINDNESS } from '../data/kindness';
-import { askFriend, canAsk, initialSocial, invite, joinFriend, pickInviteName, takeGift } from './social';
+import {
+  adoptSnapshot,
+  canAskPair,
+  canGiftPair,
+  emptySocial,
+  findEntry,
+  markAsked,
+  markGifted,
+  queueScore,
+  removeEntry,
+  unqueueScore,
+  type SocialSnapshot,
+} from './social';
 import { STARGAZE, fullMoonBonus, phaseName } from '../data/moon';
 import { isNight } from './sun';
 import type { Coords } from './sun';
@@ -94,6 +106,7 @@ import type {
   OrderDef,
   RepositoryItem,
   Settings,
+  MailboxEntry,
   SocialState,
 } from './types';
 
@@ -154,7 +167,17 @@ export type GameEvent =
   | { type: 'decor' }
   | { type: 'settings' }
   | { type: 'avatar'; created: boolean }
-  | { type: 'duelEnd'; won: boolean; streak: number; multiplier: number; coins: number; itemCount: number }
+  | {
+      type: 'duelEnd';
+      won: boolean;
+      streak: number;
+      multiplier: number;
+      coins: number;
+      itemCount: number;
+      /** 'practice' = the race against Old Joss; 'challenge' = an async friend duel. */
+      mode: 'practice' | 'challenge';
+      opponentName?: string;
+    }
   | { type: 'minigameUnlocked'; id: string; title: string }
   | { type: 'minigameEnd'; id: string; title: string; coins: number; ember: number; itemCount: number; wish?: string }
   | { type: 'repoGiven'; who: string; chain: ChainId; level: number; coins: number }
@@ -203,7 +226,7 @@ export class Game {
       board,
       energy: initialEnergy(now),
       actions: initialActionState(now),
-      social: initialSocial(now),
+      social: emptySocial(),
       gratitude: initialGratitude(now),
       settings: { autoMerge: false },
       prefs: defaultPrefs(),
@@ -257,67 +280,127 @@ export class Game {
   }
 
   // ---------- social ----------
+  //
+  // Game holds NO transport. The controller (src/platform/social-controller.ts)
+  // talks to the service and hands the results here as plain data, so every
+  // method below stays synchronous and testable — and, more importantly, so no
+  // grant can originate on this side of the wire. The old inviteFriend /
+  // markFriendJoined / askFriendForHelp fabricated friends, energy and items
+  // locally; they are gone.
 
-  /** Invite a friend. Returns a shareable code; a pending friend is added. */
-  inviteFriend(now = Date.now()): { code: string; name: string } {
-    void now;
-    const name = pickInviteName(this.state.social);
-    const res = invite(this.state.social, name);
-    this.state = { ...this.state, social: res.state };
+  /** Adopt a server snapshot of the friend graph, inbox and duels. */
+  applySocialSnapshot(snap: SocialSnapshot): void {
+    const before = new Set(this.state.social.friends.map((f) => f.playerId));
+    this.state = { ...this.state, social: adoptSnapshot(this.state.social, snap) };
+    // Announce anyone new. The energy that comes with a new friendship arrives
+    // separately, as a join_bonus letter — this event is the greeting, not the
+    // grant, so it reports 0.
+    for (const f of snap.friends) {
+      if (!before.has(f.playerId) && before.size > 0) this.emit({ type: 'friendJoined', name: f.name, energy: 0 });
+    }
     this.emit({ type: 'social' });
-    return {
-      code: res.friend.id.toUpperCase() + Math.abs(hashCode(res.friend.id)).toString(36).slice(0, 4).toUpperCase(),
-      name,
-    };
   }
 
-  /** Simulate a friend accepting the invite (real backend fires this on their join). */
-  markFriendJoined(id: string): void {
-    const res = joinFriend(this.state.social, id);
-    this.state = { ...this.state, social: res.state };
-    if (res.bonus > 0) this.state = { ...this.state, energy: grant(this.state.energy, res.bonus) };
-    this.emit({ type: 'friendJoined', name: res.name, energy: res.bonus });
+  /**
+   * Apply a letter the server has just handed us in exchange for a claim. This
+   * is the ONLY path by which social energy or items enter the game, and it
+   * runs after the server has already marked the letter claimed — so a repeat
+   * can never reach here.
+   */
+  applyClaim(entry: MailboxEntry): void {
+    const p = entry.payload;
+    if (p.kind === 'join_bonus') {
+      this.state = {
+        ...this.state,
+        social: removeEntry(this.state.social, entry.id),
+        energy: grant(this.state.energy, p.energy),
+      };
+      this.emit({ type: 'friendJoined', name: entry.fromName, energy: p.energy });
+      this.emit({ type: 'social' });
+      return;
+    }
+    if (p.kind === 'gift' || p.kind === 'help_fulfil') {
+      const count = p.kind === 'help_fulfil' ? p.count : 1;
+      const level = p.kind === 'gift' ? p.level : 0;
+      const empties = emptyIndices(this.state.board);
+      if (empties.length < count) {
+        // Keep the letter — it is already claimed server-side, but the mirror
+        // holds it so the player can tidy the board and place it in a moment.
+        this.emit({ type: 'reject', index: -1, reason: 'full' });
+        return;
+      }
+      let board = this.state.board;
+      let uid = this.state.nextUid;
+      const placed: number[] = [];
+      for (let i = 0; i < count; i++) {
+        const index = empties[i]!;
+        board = withItem(board, index, { chain: p.chain, level, uid: uid++ });
+        placed.push(index);
+      }
+      this.undoSnapshot = null;
+      this.state = {
+        ...this.state,
+        social: removeEntry(this.state.social, entry.id),
+        board,
+        nextUid: uid,
+      };
+      for (const index of placed) this.emit({ type: 'spawn', index });
+      if (p.kind === 'help_fulfil') this.emit({ type: 'help', from: entry.fromName, count });
+      this.emit({ type: 'social' });
+      return;
+    }
+    if (p.kind === 'duel_result') {
+      this.applyDuelResult(entry, p.won, p.tie);
+      return;
+    }
+    // help_request and duel_challenge carry no value — claiming them just files
+    // them away (the fulfil / play action is the real response).
+    this.state = { ...this.state, social: removeEntry(this.state.social, entry.id) };
+    this.emit({ type: 'social' });
+  }
+
+  /** Drop a letter from the local mirror without granting anything. */
+  dismissEntry(id: string): void {
+    this.state = { ...this.state, social: removeEntry(this.state.social, id) };
     this.emit({ type: 'social' });
   }
 
   canAskFriend(id: string, now = Date.now()): boolean {
-    return canAsk(this.state.social, id, now);
+    return canAskPair(this.state.social, id, now);
   }
 
-  /** Ask a friend for help; they send starter items of the current task's chain. */
-  askFriendForHelp(id: string, now = Date.now()): void {
-    const chain: ChainId = this.currentOrder().need.chain;
-    const res = askFriend(this.state.social, id, chain, now);
-    if (res.gifts.length === 0) {
-      this.emit({ type: 'social' });
-      return;
-    }
-    this.state = { ...this.state, social: res.state };
-    this.emit({ type: 'help', from: res.name, count: res.gifts.length });
+  canGiftFriend(id: string, now = Date.now()): boolean {
+    return canGiftPair(this.state.social, id, now);
+  }
+
+  /** Record that we asked / gifted, so the button greys out before the next poll. */
+  noteAsked(id: string, now = Date.now()): void {
+    this.state = { ...this.state, social: markAsked(this.state.social, id, now) };
     this.emit({ type: 'social' });
   }
 
-  /** Place a received gift onto the first empty board cell. */
-  claimGift(giftId: string): void {
-    const gift = this.state.social.gifts.find((g) => g.id === giftId);
-    if (!gift) return;
-    const empties = emptyIndices(this.state.board);
-    if (empties.length === 0) {
-      this.emit({ type: 'reject', index: -1, reason: 'full' });
-      return;
-    }
-    const res = takeGift(this.state.social, giftId);
-    const index = empties[0]!;
-    const item: Item = { chain: gift.chain, level: gift.level, uid: this.state.nextUid };
-    this.undoSnapshot = null;
-    this.state = {
-      ...this.state,
-      social: res.state,
-      board: withItem(this.state.board, index, item),
-      nextUid: this.state.nextUid + 1,
-    };
-    this.emit({ type: 'spawn', index });
+  noteGifted(id: string, now = Date.now()): void {
+    this.state = { ...this.state, social: markGifted(this.state.social, id, now) };
     this.emit({ type: 'social' });
+  }
+
+  /** The chain a help request or gift should carry: whatever the story needs now. */
+  currentChain(): ChainId {
+    return this.currentOrder().need.chain;
+  }
+
+  entryById(id: string): MailboxEntry | undefined {
+    return findEntry(this.state.social, id);
+  }
+
+  /** Park a score we could not submit; the controller flushes these on refresh. */
+  queueDuelScore(duelId: string, score: number, moves: number): void {
+    this.state = { ...this.state, social: queueScore(this.state.social, { duelId, score, moves }) };
+    this.emit({ type: 'social' });
+  }
+
+  clearQueuedScore(duelId: string): void {
+    this.state = { ...this.state, social: unqueueScore(this.state.social, duelId) };
   }
 
   subscribe(fn: Listener): () => void {
@@ -1140,9 +1223,10 @@ export class Game {
   }
 
   /**
-   * Settle a finished duel. If the local player won, the board spoils are banked
-   * into the Repository, a streak-multiplied coin reward is paid, and the win
-   * streak grows. A loss or tie resets the streak (no other penalty).
+   * Settle a finished PRACTICE duel (the race against Old Joss). If the local
+   * player won, the board spoils are banked into the Repository, a
+   * streak-multiplied coin reward is paid, and the win streak grows. A loss or
+   * tie resets the streak (no other penalty).
    */
   finishDuel(playerWon: boolean, spoils: readonly { chain: ChainId; level: number }[], score: number): void {
     this.beginDay(Date.now());
@@ -1164,11 +1248,75 @@ export class Game {
         duelStreak: streak,
         coins: this.state.coins + coins,
       };
-      this.emit({ type: 'duelEnd', won: true, streak, multiplier: mult, coins, itemCount: banked.length });
+      this.emit({
+        type: 'duelEnd',
+        won: true,
+        streak,
+        multiplier: mult,
+        coins,
+        itemCount: banked.length,
+        mode: 'practice',
+      });
     } else {
       this.state = { ...this.state, duelStreak: 0 };
-      this.emit({ type: 'duelEnd', won: false, streak: 0, multiplier: 1, coins: 0, itemCount: 0 });
+      this.emit({
+        type: 'duelEnd',
+        won: false,
+        streak: 0,
+        multiplier: 1,
+        coins: 0,
+        itemCount: 0,
+        mode: 'practice',
+      });
     }
+  }
+
+  /**
+   * Settle an ASYNC duel against a friend, from the server's result letter.
+   *
+   * Coins only — no spoils. Each player raced their own private copy of the
+   * same board, so "bank whatever is left on it" would mint two sets of items
+   * from one board; that reward belongs to practice mode, where the leftover
+   * board is real. The payout still passes the shared daily cap, so a duelling
+   * pair cannot out-earn a solo player, and it is never energy.
+   */
+  private applyDuelResult(entry: MailboxEntry, won: boolean, tie: boolean): void {
+    this.beginDay(Date.now());
+    const social = removeEntry(this.state.social, entry.id);
+    const score = entry.payload.kind === 'duel_result' ? entry.payload.yourScore : 0;
+    if (won) {
+      const dayWins = this.state.stats.dayDuelWins ?? 0;
+      const rewarded = dayWins < DUEL_DAILY_REWARD_CAP;
+      this.bumpStat({ duelWins: this.state.stats.duelWins + 1, dayDuelWins: dayWins + 1 });
+      const streak = this.state.duelStreak + 1;
+      const mult = duelMultiplier(streak);
+      const coins = rewarded ? Math.round(score * mult) : 0;
+      this.state = { ...this.state, social, duelStreak: streak, coins: this.state.coins + coins };
+      this.emit({
+        type: 'duelEnd',
+        won: true,
+        streak,
+        multiplier: mult,
+        coins,
+        itemCount: 0,
+        mode: 'challenge',
+        opponentName: entry.fromName,
+      });
+    } else {
+      // A tie keeps the streak (nobody lost); a loss resets it, as in practice.
+      this.state = { ...this.state, social, duelStreak: tie ? this.state.duelStreak : 0 };
+      this.emit({
+        type: 'duelEnd',
+        won: false,
+        streak: this.state.duelStreak,
+        multiplier: 1,
+        coins: 0,
+        itemCount: 0,
+        mode: 'challenge',
+        opponentName: entry.fromName,
+      });
+    }
+    this.emit({ type: 'social' });
   }
 
   /** Whether the Repository holds the item the current story order needs. */

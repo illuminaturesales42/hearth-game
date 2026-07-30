@@ -67,7 +67,7 @@ F  Multiplayer          — largest; needs a backend
 
 What the surveys found, so future sessions don't re-research it:
 
-**Real and well-built:** villager bonds/memories/greetings, town requests, the minigames (8 now, all substantial, seeded, no-fail), true lunar phase (`src/data/moon.ts`), real geolocation-derived season/daylight (`src/ui/weather.ts`), day-spanning weather memory with wetness/snow accumulation (`src/core/weather-history.ts`), the local hot-seat Bonfire Duel, and the share-card composer.
+**Real and well-built:** villager bonds/memories/greetings, town requests, the minigames (8 now, all substantial, seeded, no-fail), true lunar phase (`src/data/moon.ts`), real geolocation-derived season/daylight (`src/ui/weather.ts`), day-spanning weather memory with wetness/snow accumulation (`src/core/weather-history.ts`), the Bonfire Duel (practice vs Old Joss, plus async friend challenges), and the share-card composer.
 
 **Stubbed / simulated (labelled as such in-code):**
 - Multiplayer/social — client-side simulation; "They joined" is a tester-gated free-energy faucet (`src/core/social.ts:2`, `src/ui/social-screen.ts:47`).

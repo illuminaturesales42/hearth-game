@@ -70,6 +70,39 @@ anonymous device key, so there is no separate API deploy, domain, or CORS
 setup to maintain. Inspect data with
 `pnpm exec wrangler d1 execute hearth-saves --remote --command "SELECT device_key, rev, updated_at, length(save) FROM saves"`.
 
+## Database migrations (required before deploying schema changes)
+
+Schema lives in [`migrations/`](migrations) and is applied by wrangler, not by
+hand. **The order matters:** functions deploy atomically with the site, so a
+deploy that lands before its migration leaves the new endpoints querying tables
+that do not exist. Clients degrade to offline rather than break, but the window
+is avoidable — migrate first.
+
+```bash
+pnpm db:remote   # apply pending migrations to production
+pnpm deploy      # then ship the code that needs them
+```
+
+Locally, `pnpm db:local` seeds the miniflare database under `.wrangler/`, and
+`pnpm dev:full` runs the Pages Functions alongside Vite so `/v1/*` is real in
+development. Plain `pnpm dev` still works — it uses the in-memory social
+provider instead (see `src/platform/social-provider.ts`).
+
+## Social + duels (the /v1 social API)
+
+The rest of `functions/v1/` — player, social, invites, friends, gifts, help,
+mailbox, duels — ships the same way as cloud saves: same origin, same anonymous
+device-key bearer auth, no separate deploy. Two rules are worth remembering when
+touching it:
+
+- **Nothing of value moves without a `mailbox` row the server wrote.** Clients
+  claim letters; they never assert that a gift or a bonus arrived.
+- **Every mailbox id is derived, not random** (`jb:`/`g:`/`hr:`/`hf:`/`dc:`/`dr:`),
+  so a retried request collides on the primary key instead of granting twice.
+
+Inspect the friend graph with
+`pnpm exec wrangler d1 execute hearth-saves --remote --command "SELECT COUNT(*) FROM friendships"`.
+
 ## Service worker
 
 The service worker is the normal offline-first PWA: `registerType: 'prompt'`

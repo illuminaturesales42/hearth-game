@@ -121,6 +121,48 @@ describe('migrations', () => {
     store.set('hearth:save', '{corrupt');
     expect(loadState()).toBeNull();
   });
+
+  // v19 → v20 retires the social SIMULATION. The old shape carried fabricated
+  // friends and locally-minted gifts; carrying either into a real friends list
+  // would put invented people beside real ones, so the migration clears it.
+  it('v19 → v20 retires the simulated friends and starts an empty, real village', () => {
+    const v19 = {
+      ...Game.freshState(1000),
+      version: 19,
+      social: {
+        friends: [
+          { id: 'f1', name: 'Maya', avatar: 1, status: 'joined' },
+          { id: 'f9', name: 'Invited', avatar: 3, status: 'pending' },
+        ],
+        gifts: [{ id: 'g1', from: 'Maya', chain: 'wood', level: 0 }],
+        joinBonusGiven: ['f1'],
+        nextId: 10,
+      },
+    } as unknown;
+
+    const migrated = migrateState(v19);
+    expect(migrated).not.toBeNull();
+    expect(migrated!.version).toBe(CURRENT_VERSION);
+    expect(migrated!.social.friends).toEqual([]);
+    expect(migrated!.social.inbox).toEqual([]);
+    expect(migrated!.social.playerId).toBeNull();
+    expect(migrated!.social.syncedAt).toBe(0);
+    // The screen shows a one-time line explaining where the old names went.
+    expect(migrated!.social.migratedNote).toBe(true);
+    // Everything outside the social block is untouched.
+    expect(migrated!.coins).toBe(Game.freshState(1000).coins);
+  });
+
+  it('rejects a v20-stamped save still carrying the old social shape', () => {
+    // `!s.social` cannot tell the two apart — both are truthy objects — so the
+    // guard checks a field only the mirror has. Without this, a save that
+    // skipped migration 19 would load with friends the code reads as undefined.
+    const impostor = {
+      ...Game.freshState(1000),
+      social: { friends: [], gifts: [], joinBonusGiven: [], nextId: 1 },
+    } as unknown;
+    expect(migrateState(impostor)).toBeNull();
+  });
 });
 
 describe('export / import', () => {
