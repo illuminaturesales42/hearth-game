@@ -2,11 +2,11 @@
  * Drives the social provider and feeds results into the (pure, synchronous)
  * Game reducers — the same split as sync-controller.ts.
  *
- * Cadence: there are no sockets, no push and no timers. We refresh at launch,
- * when the Villagers screen opens, after any action that changes something
- * server-side, and when the browser comes back online. For a game people open
- * once or twice a day that is the whole delivery mechanism, and it costs
- * nothing while idle (docs/multiplayer-spec.md F4).
+ * Cadence: there are no sockets, no push and no timers. We refresh when the
+ * Villagers screen opens, after any action that changes something server-side,
+ * and when the browser comes back online. For a game people open once or twice
+ * a day that is the whole delivery mechanism, and it costs nothing while idle
+ * (docs/multiplayer-spec.md F4). Notably NOT at boot — see ensureStarted().
  *
  * Failure is always silent degradation: the mirror simply stays as it was and
  * `syncedAt` lets the screen say when it last managed to look. Nothing here can
@@ -28,28 +28,39 @@ export class SocialController {
     private provider: SocialProvider,
   ) {}
 
-  /** Register with the service, then pull once. Safe to call more than once. */
-  async start(): Promise<void> {
-    if (this.started) return;
-    this.started = true;
+  /**
+   * Register this device with the service — lazily, on the first thing that
+   * actually needs the network.
+   *
+   * Deliberately NOT called at boot. A player who never opens the Villagers
+   * screen has no reason to talk to a social service at all, and a build served
+   * without the Pages Functions runtime (a plain static host, or `vite preview`)
+   * would otherwise log a failed request on every launch. Returns false when the
+   * handshake did not land, so callers can give up quietly and retry later.
+   */
+  private async ensureStarted(): Promise<boolean> {
+    if (this.started) return true;
     const me = this.game.avatar;
     const hello = await this.provider.hello({
       name: me.name || 'A villager',
       portrait: me.portrait,
     });
-    if (!hello.ok) return; // offline at launch is normal; the next refresh retries
-    await this.refresh();
+    if (!hello.ok) return false; // offline is normal; the next attempt retries
+    this.started = true;
     if (typeof window !== 'undefined') window.addEventListener('online', () => void this.refresh());
+    return true;
   }
 
   /**
    * Pull a snapshot, flush anything queued offline, and claim the letters that
-   * should land by themselves. Concurrent calls collapse into one.
+   * should land by themselves. Concurrent calls collapse into one. This is the
+   * entry point everything else goes through, so it owns the handshake.
    */
   async refresh(): Promise<void> {
     if (this.busy) return;
     this.busy = true;
     try {
+      if (!(await this.ensureStarted())) return;
       await this.flushPendingScores();
       const snap = await this.provider.snapshot();
       if (!snap.ok) return;
@@ -79,12 +90,14 @@ export class SocialController {
   }
 
   async createInvite(): Promise<SocialResult<{ url: string; expiresAt: number }>> {
+    if (!(await this.ensureStarted())) return { ok: false, error: 'offline' };
     const res = await this.provider.createInvite();
     if (res.ok) await this.refresh();
     return res;
   }
 
   async redeemInvite(token: string): Promise<SocialResult<{ friend: { name: string } | null }>> {
+    if (!(await this.ensureStarted())) return { ok: false, error: 'offline' };
     const res = await this.provider.redeemInvite(token);
     if (res.ok) await this.refresh(); // pulls the friend in AND claims the join bonus
     return res;

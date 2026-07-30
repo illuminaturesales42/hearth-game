@@ -43,7 +43,10 @@ const socialProvider = useHttpSocial ? new HttpSocialProvider() : new MemorySoci
 const social = new SocialController(game, socialProvider);
 
 new AppShell(game, metrics, social);
-void social.start().then(() => void redeemPendingInvite(social));
+// No boot-time handshake: the controller registers lazily on the first thing
+// that needs it (opening Villagers, or accepting an invite), so a solo player
+// never touches the network and a static build logs nothing.
+void redeemPendingInvite(social);
 
 // Village Life: building mini-games, launched from the map building cards via a
 // 'hearth:play-minigame' event (unlock at story-complete; attempts from living well).
