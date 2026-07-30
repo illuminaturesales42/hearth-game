@@ -148,8 +148,162 @@ NEW_PLOTS = {
     "town_quarry": ("quarry", "town_cottage"),
 }
 
+# The island as shipped cannot hold either of them, and that is measurable
+# rather than a matter of taste: 43% of it is pine forest and the rest is
+# threaded with cart tracks, so the largest patch of open ground anywhere has
+# 26px of clearance when a plot needs about 106. At the shelter's latitude the
+# treeline runs from x=0.168 to x=0.843 — its anchor is not near the forest, it
+# is deep inside it.
+#
+# So the landmass grows, westward, where the frame has sea to spare. The
+# existing fifteen plots are east of the band and are untouched.
+#
+# The growth is an OFFSET OF THE COASTLINE, not a shape pasted over it. Drawing
+# three overlapping ellipses gave a scalloped blob that read as pasted at the
+# wrong angle: the island is a foreshortened dome, so land at a given longitude
+# sits in a particular y-range, and a flat screen-space ellipse does not. Shifting
+# the island's own mask west and unioning it grows every west-facing coast by a
+# fixed distance, so the new coast is a translation of the real one — same
+# scalloped boulder character, same perspective, by construction.
+WEST_BAND = (0.235, 0.575)      # latitudes that grow, tapering to nothing at both ends
+WEST_GROWTH = 0.095             # peak growth, as a fraction of plate width
+WEST_MARGIN = 0.035             # sea left between the new coast and the frame edge
 
-def carve_new_plots(out, island, lum, np, ndimage):
+
+def _grow_west(island, np):
+    """Extend every west-facing coast, tapering to zero at the band's ends.
+
+    Per-row growth is capped by how much open sea that row actually has, so the
+    headland can never run off the left edge of the frame — at the island's
+    widest latitude there are only 127px of sea to work with.
+    """
+    h, w = island.shape
+    lo, hi = WEST_BAND
+    yy = np.arange(h) / h
+    win = np.where((yy > lo) & (yy < hi),
+                   np.sin(np.pi * np.clip((yy - lo) / (hi - lo), 0, 1)) ** 0.7, 0.0)
+
+    want = win * WEST_GROWTH * w
+    coast = np.full(h, w, float)
+    rows = np.nonzero(island.any(axis=1))[0]
+    coast[rows] = np.argmax(island[rows], axis=1)
+    dx = np.minimum(want, np.maximum(0.0, coast - WEST_MARGIN * w)).astype(int)
+
+    grown = island.copy()
+    for d in range(1, int(dx.max()) + 1):
+        shifted = np.zeros_like(island)
+        shifted[:, : w - d] = island[:, d:]
+        grown |= shifted & (dx >= d)[:, None]
+    return grown
+# New land alone is a strip too narrow for a 212px plot, so each new plot also
+# gets a clearing felled around it. Clearing pine to open a quarry and fence a
+# pasture is what a village would actually do, and it is the other half of
+# "not in the water or the forest".
+# Sized by measurement, not by eye. A plot needs ~106px of clearance from the
+# nearest tree or waterline; growth alone got the widest open patch from 26px to
+# 81px, still short. At rx 0.150 both new plots clear 117px and 116px.
+CLEARINGS = [
+    (0.230, 0.318, 0.150, 0.085),
+    (0.215, 0.470, 0.150, 0.082),
+]
+
+
+def _ellipse_mask(spec, w, h, np):
+    im = Image.new("L", (w, h), 0)
+    d = ImageDraw.Draw(im)
+    for cx, cy, rx, ry in spec:
+        d.ellipse([(cx - rx) * w, (cy - ry) * h, (cx + rx) * w, (cy + ry) * h], fill=255)
+    return np.array(im) > 127
+
+
+def expand_island(out, island, tree, shore, np, ndimage):
+    """Push the west coast seaward, and fell the two clearings.
+
+    Returns (painted array, grown island mask, open-ground mask).
+
+    The new land is not invented from nothing: its grass is tiled from a block of
+    the plate's OWN interior, already pre-graded, so it arrives in the same
+    palette and at the same texture scale as the ground it joins. A rock-and-sand
+    fringe is derived from the grown coastline the same way the original beach
+    was, and the west edge is shaded down because the plate is lit from the top
+    right. What the sampler then has to do is blend a seam, not imagine a
+    headland.
+    """
+    h, w = island.shape
+    # NO closing on the union. Closing it fills every small concavity along a
+    # coastline that is deliberately speckled with boulders, so `fresh` came
+    # back with a thin fringe right round the island and the rock edging below
+    # drew a jagged brown staircase over the whole thing.
+    grown = _grow_west(island, np)
+    fresh = grown & ~island
+    zone = ndimage.binary_dilation(fresh, iterations=18)   # the only region touched
+
+    # --- new ground. An earlier version tiled a block of the plate's interior to
+    # borrow its texture, and tiled its cart tracks and pine trees along with it —
+    # repeating path fragments across the headland. The sampler adds real texture
+    # at denoise 0.55, so a clean graded fill is both safer and enough.
+    xx = np.arange(w)[None, :] / w
+    rng = np.random.default_rng(20260730)
+    grain = rng.normal(0.0, 0.028, (h, w))[..., None]
+    shade = np.clip(0.82 + 0.26 * xx, 0.0, 1.06)[..., None]   # lit from the top right
+    ground = np.array(TARGET["grass"], np.float32) * (shade + grain)
+    out = np.where(fresh[..., None], np.clip(ground, 0, 255), out)
+
+    # --- the new coast gets the same rock-then-sand edge as the old one, and
+    # ONLY the new coast: both bands are masked to the lobe zone.
+    rim = ndimage.binary_dilation(grown, iterations=2) & ~ndimage.binary_erosion(grown, iterations=5)
+    beach = ndimage.binary_erosion(grown, iterations=6) & ~ndimage.binary_erosion(grown, iterations=17)
+    out = np.where((beach & zone & fresh)[..., None], np.array(TARGET["sand"], np.float32) * 0.97, out)
+    out = np.where((rim & zone)[..., None], np.array(TARGET["rock"], np.float32) * 0.92, out)
+
+    # --- the old west shore is now inland, so its boulders and beach have to go
+    inland = zone & island & ~ndimage.binary_dilation(~grown, iterations=20)
+    out = np.where((inland & shore)[..., None], np.clip(ground, 0, 255), out)
+
+    # --- fell the clearings: pine becomes meadow
+    felled = _ellipse_mask(CLEARINGS, w, h, np) & grown & tree
+    out = np.where(felled[..., None], np.array(TARGET["grass"], np.float32) * 0.97, out)
+
+    # --- dress the new land. Left as a smooth graded fill it rendered as a flat
+    # pale plateau even at denoise 0.65: the rest of the island gives Canny
+    # hundreds of edges from trees, tracks and boulders, and the headland gave it
+    # none, so the sampler had nothing to elaborate and simply smoothed it. The
+    # same failure as the first generated island, for the same reason.
+    out = _dress(out, fresh, ndimage, np)
+
+    open_ground = grown & ~(tree & ~felled)
+    return out, grown, open_ground
+
+
+def _dress(out, fresh, ndimage, np):
+    """Scatter pine, scrub and boulders across the new headland."""
+    import random
+
+    h, w = fresh.shape
+    rng = random.Random(20260731)
+    im = Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
+    d = ImageDraw.Draw(im, "RGBA")
+    inner = ndimage.binary_erosion(fresh, iterations=16)
+    coastal = fresh & ~ndimage.binary_erosion(fresh, iterations=11)
+    yy = np.arange(h)[:, None] / h
+
+    for zone, n, rad, colour in (
+        (inner & (yy < 0.40), 26, 13, (*TARGET["tree"], 255)),      # pine, blending north
+        (inner, 55, 9, (118, 136, 84, 210)),                        # scrub clumps
+        (inner, 70, 5, (150, 164, 108, 170)),                       # tussocks
+        (coastal, 40, 7, (*TARGET["rock"], 235)),                   # shore boulders
+    ):
+        ys, xs = np.nonzero(zone)
+        if not len(xs):
+            continue
+        for i in rng.sample(range(len(xs)), min(n, len(xs))):
+            x, y = int(xs[i]), int(ys[i])
+            r = rad * (1 + 0.4 * (rng.random() * 2 - 1))
+            d.ellipse([x - r, y - r * 0.7, x + r, y + r * 0.7], fill=colour)
+    return np.array(im).astype(np.float32)[..., :3]
+
+
+def carve_new_plots(out, open_ground, lum, np, ndimage):
     """Cut a pasture and a quarry into the plate, each joined to the roads.
 
     Drawn on the PRE-GRADED array, in the palette the rest of the plate now
@@ -167,7 +321,7 @@ def carve_new_plots(out, island, lum, np, ndimage):
     from PIL import ImageFilter
 
     h, w = lum.shape
-    edge = ndimage.distance_transform_edt(island)
+    edge = ndimage.distance_transform_edt(open_ground)
     im = Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
     d = ImageDraw.Draw(im, "RGBA")
     edit = Image.new("L", (w, h), 0)
@@ -304,7 +458,8 @@ def pregrade(dest: Path) -> Path:
         keep = KEEP.get(name, 0.13)
         out[mask] = tinted * (1 - keep) + a[mask] * keep
 
-    out, moved = carve_new_plots(out, island, lum, np, ndimage)
+    out, grown, open_ground = expand_island(out, island, tree, sand | rock, np, ndimage)
+    out, moved = carve_new_plots(out, open_ground, lum, np, ndimage)
     Image.fromarray(np.clip(out, 0, 255).astype(np.uint8)).save(dest)
     for name, (nx, ny) in sorted(moved.items()):
         ox, oy, _ = ANCHORS[name]
