@@ -100,7 +100,8 @@ function buildMusic(ac: AudioContext): void {
  * (110/165.4) and the music pad layers (110/165), so nothing beats or clashes;
  * it is also ducked to silence while the drone itself plays.
  */
-type StemName = 'calmPad' | 'rain' | 'chatter' | 'wind' | 'surf' | 'birds' | 'crickets' | 'frogs' | 'roofRain' | 'fireplace';
+type StemName =
+  'calmPad' | 'rain' | 'chatter' | 'wind' | 'surf' | 'birds' | 'crickets' | 'frogs' | 'roofRain' | 'fireplace';
 const STEM_NAMES: readonly StemName[] = [
   'calmPad',
   'rain',

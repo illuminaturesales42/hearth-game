@@ -7,7 +7,15 @@ import { chainDef } from '../core/board';
 import { artUrl, portraitFor, itemIconInline } from './art';
 import { avatarPortraitHTML } from './avatar-render';
 import { openAvatarCreator } from './avatar-creator';
-import { effectiveWeather, getSkyPref, isLiveSky, latestAccumulation, latestSunTimes, latestWeather, presetAccumulation } from './weather';
+import {
+  effectiveWeather,
+  getSkyPref,
+  isLiveSky,
+  latestAccumulation,
+  latestSunTimes,
+  latestWeather,
+  presetAccumulation,
+} from './weather';
 import type { WeatherKind } from '../core/world-mood';
 import { computeEnvironment } from '../core/environment';
 import { MOOD_CAPTION } from '../core/weather-mood';
@@ -372,7 +380,13 @@ export class Home {
 
     // micro weather overlay by mood
     const fx =
-      mood === 'storm-watch' || mood === 'cosy-rain' ? 'rain' : mood === 'snow-glow' ? 'snow' : mood === 'misty' ? 'fog' : '';
+      mood === 'storm-watch' || mood === 'cosy-rain'
+        ? 'rain'
+        : mood === 'snow-glow'
+          ? 'snow'
+          : mood === 'misty'
+            ? 'fog'
+            : '';
     L.fx.className = `wx-fx${fx ? ` wx-fx-${fx}` : ''}`;
   }
 

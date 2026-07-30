@@ -3944,7 +3944,14 @@ export class MapView {
    * winter. Emberhollow breathes with the season the player is actually living
    * in. Caller already guards reduced motion.
    */
-  private drawSeason(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, night: boolean, mood: WorldMood): void {
+  private drawSeason(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    t: number,
+    night: boolean,
+    mood: WorldMood,
+  ): void {
     const season = seasonForMonth(new Date().getMonth(), this.weather?.southern ?? false);
     // Winter's white flecks only make sense when snow is actually falling —
     // ambient snow under a clear winter sky read as mystery floating circles.

@@ -518,7 +518,14 @@ export class Compositor {
   }
 
   /** State for the hearthGl() console helper — remote diagnosis. */
-  get info(): { alive: boolean; degraded: boolean; proven: boolean; frames: number; avgCostMs: number; retiredBecause: string } {
+  get info(): {
+    alive: boolean;
+    degraded: boolean;
+    proven: boolean;
+    frames: number;
+    avgCostMs: number;
+    retiredBecause: string;
+  } {
     return {
       alive: !this.dead,
       degraded: this.degraded,

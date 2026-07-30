@@ -231,7 +231,7 @@ export function computeEnvironment(
     sunAltitude,
     sunAzimuth,
     windKph: Math.max(0, weather?.windKph ?? 0),
-    windDeg: ((weather?.windDir ?? 0) % 360 + 360) % 360,
+    windDeg: (((weather?.windDir ?? 0) % 360) + 360) % 360,
     precip,
     thunderRisk,
     visibility: visibilityFor(weather, precip),
