@@ -187,11 +187,15 @@ export function mintSeed(): number {
 /** Strip control characters and clamp — display names render on other players' screens. */
 export function cleanName(raw: unknown, max: number = CAPS.nameMaxLen): string {
   if (typeof raw !== 'string') return '';
-  // eslint-disable-next-line no-control-regex
-  return raw
-    .replace(/[\u0000-\u001f\u007f]/g, '')
-    .trim()
-    .slice(0, max);
+  // Filtered by code point rather than a regex: control characters inside a
+  // character class are the kind of thing linters (rightly) flag, and this
+  // reads as what it means — printable characters only.
+  let out = '';
+  for (const ch of raw) {
+    const code = ch.codePointAt(0) ?? 0;
+    if (code >= 32 && code !== 127) out += ch;
+  }
+  return out.trim().slice(0, max);
 }
 
 export function isChain(v: unknown): boolean {
@@ -414,7 +418,7 @@ export async function resolveExpiredDuels(db: D1Like, playerId: string, now: num
  * to call from two racing requests: only one transition to 'resolved' lands,
  * and the mailbox ids (dr:<duel>:<player>) absorb any duplicate letters.
  */
-export async function finaliseDuel(db: D1Like, d: DuelRow, winner: string | 'tie', now: number): Promise<DuelRow> {
+export async function finaliseDuel(db: D1Like, d: DuelRow, winner: string, now: number): Promise<DuelRow> {
   const applied = await db
     .prepare(
       'UPDATE duels SET status = ?, winner = ?, resolved_at = ? WHERE duel_id = ? AND status = ? RETURNING duel_id',

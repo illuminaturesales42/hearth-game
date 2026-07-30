@@ -117,7 +117,7 @@ export class MemorySocialWorld {
     }
   }
 
-  private settle(d: Rec['duels'][number], winner: string | 'tie'): void {
+  private settle(d: Rec['duels'][number], winner: string): void {
     d.status = 'resolved';
     d.winner = winner;
     const letter = (to: string, mine: number | null, theirs: number | null) =>

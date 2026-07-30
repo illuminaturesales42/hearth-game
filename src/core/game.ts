@@ -1694,12 +1694,6 @@ export class Game {
   }
 }
 
-function hashCode(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
-  return h;
-}
-
 export function pickSpawnChain(
   rand: () => number,
   table: readonly { chain: Item['chain']; weight: number }[] = SPAWN_TABLE,
