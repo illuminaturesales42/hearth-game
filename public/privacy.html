@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f1626" />
+    <title>Privacy — Hearth: Merge &amp; Mystery</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <style>
+      :root {
+        --navy-1: #0f1626;
+        --panel: #1b2138;
+        --ember: #f4a63b;
+        --cream: #f4ecd8;
+        --cream-dim: #b7ac93;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 2rem 1.25rem 4rem;
+        background: var(--navy-1);
+        color: var(--cream);
+        font: 16px/1.65 system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+      main {
+        max-width: 42rem;
+        margin: 0 auto;
+      }
+      h1,
+      h2 {
+        font-family: Georgia, 'Iowan Old Style', serif;
+        color: var(--ember);
+        line-height: 1.25;
+      }
+      h1 {
+        font-size: 1.9rem;
+        margin-bottom: 0.25rem;
+      }
+      h2 {
+        font-size: 1.2rem;
+        margin-top: 2.25rem;
+      }
+      .updated {
+        color: var(--cream-dim);
+        font-size: 0.9rem;
+        margin-top: 0;
+      }
+      ul {
+        padding-left: 1.2rem;
+      }
+      li {
+        margin-bottom: 0.4rem;
+      }
+      a {
+        color: var(--ember);
+      }
+      .panel {
+        background: var(--panel);
+        border-radius: 18px;
+        padding: 1rem 1.25rem;
+        margin: 1.5rem 0;
+      }
+      footer {
+        margin-top: 3rem;
+        color: var(--cream-dim);
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Privacy in Hearth</h1>
+      <p class="updated">Last updated 7 August 2026</p>
+
+      <p>
+        Hearth is a wellness game about restoring a village. Some of what you put into it is
+        personal, so here is exactly what happens to it — in plain language, with no exceptions
+        hidden further down.
+      </p>
+
+      <div class="panel">
+        <strong>The short version:</strong> your game lives on your own device. We do not sell
+        data, we do not run ads, and there is no advertising or tracking network anywhere in
+        Hearth. Nothing you write is read by us for any purpose other than storing and returning
+        it to you.
+      </div>
+
+      <h2>What stays on your device</h2>
+      <p>
+        Your entire save — your town, your progress, your streaks, your settings, and anything you
+        write in the gratitude journal — is stored in your browser's local storage on the device
+        you play on. If you never enable cloud save, it never leaves that device.
+      </p>
+
+      <h2>What cloud save sends, if you turn it on</h2>
+      <p>
+        Cloud save exists because mobile browsers delete site storage after about a week of not
+        playing, which would erase your village. When it is on, your save file is uploaded to our
+        server (Cloudflare D1) so it can be restored.
+      </p>
+      <p>
+        <strong>That save file includes the text of your gratitude journal entries.</strong> They
+        are stored as ordinary text, not encrypted, in the same record as the rest of your game
+        state. Please keep that in mind before writing anything you would not want stored on a
+        server.
+      </p>
+      <ul>
+        <li>The upload is identified by a random key your device generates. There is no account, no email address attached to it, and no name.</li>
+        <li>We do not use the contents of your save for anything except giving it back to your device.</li>
+        <li>Because the key is the only identifier, anyone who obtains your device's key could read that save — treat it like a password.</li>
+      </ul>
+
+      <h2>Health and wellness data</h2>
+      <p>
+        Hearth converts real-world wellness actions into in-game energy. On the web version you
+        record these yourself; the game stores the fact that an action was logged and when. If you
+        later use a version that connects to Apple Health or Google Fit, that data is read on your
+        device to award energy and is not uploaded to us.
+      </p>
+
+      <h2>Weather</h2>
+      <p>
+        The sky in your town reflects real weather. To do this the game may request a forecast from
+        <a href="https://open-meteo.com/" rel="noopener noreferrer">Open-Meteo</a>, optionally
+        using your approximate location if you grant permission. Location is used for that request
+        only and is not stored on our servers.
+      </p>
+
+      <h2>Analytics</h2>
+      <p>
+        We may collect anonymous gameplay events (for example: a day was completed, a chapter was
+        reached) to understand whether the game is working. These events contain no journal text,
+        no health details, and no advertising identifiers.
+      </p>
+
+      <h2>What we never do</h2>
+      <ul>
+        <li>No advertising, and no ad or tracking SDKs of any kind.</li>
+        <li>No selling or sharing of your data with third parties.</li>
+        <li>No selling of in-game energy — the game's core pillar.</li>
+      </ul>
+
+      <h2>Your control</h2>
+      <ul>
+        <li><strong>Export:</strong> Settings → Export gives you your entire save as a file you keep.</li>
+        <li><strong>Delete:</strong> clearing site data in your browser erases the local copy completely.</li>
+        <li><strong>Delete from the server:</strong> email us at the address below and we will remove the stored save for your device key.</li>
+      </ul>
+
+      <h2>Children</h2>
+      <p>
+        Hearth is not directed at children under 13, and we do not knowingly collect data from
+        them.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        Questions, or a deletion request:
+        <a href="mailto:illuminature.sales@gmail.com">illuminature.sales@gmail.com</a>.
+      </p>
+
+      <footer>
+        <p><a href="/">← Back to Hearth</a></p>
+      </footer>
+    </main>
+  </body>
+</html>

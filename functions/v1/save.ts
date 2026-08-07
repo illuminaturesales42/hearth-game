@@ -10,9 +10,12 @@
  *
  * Auth is an anonymous bearer device key the client generates once and keeps
  * in localStorage — the key IS the account for the test fleet; real accounts
- * later become a login that returns the same key. No personal data lives
- * here: the payload is the player's own export JSON (game state only, never
- * health data — Apple 5.1.3 stays easy to honour).
+ * later become a login that returns the same key. The payload is the player's
+ * own export JSON: no health data (Apple 5.1.3 stays easy to honour) and no
+ * name or email, but it is NOT free of personal content — GameState carries
+ * the gratitude journal's free text (`GratitudeEntry.text`, src/core/types.ts),
+ * so this table holds user-written prose in plaintext. public/privacy.html
+ * discloses that; encrypting the envelope client-side is the standing fix.
  *
  * Conflict policy mirrors src/platform/sync-provider.ts resolveSync(): the
  * server refuses only STALE writes (rev <= stored); who-wins reconciliation
