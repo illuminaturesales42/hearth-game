@@ -6,9 +6,14 @@ funnel URL is **https://hearth-5q8.pages.dev** (hand testers that + `?tester`).
 > ⚠️ **Use `hearth-5q8.pages.dev`, never `hearth.pages.dev`.** Cloudflare
 > `*.pages.dev` names are globally first-come; the bare `hearth` was already
 > taken by an unrelated account (it serves a parked/affiliate page), so ours
-> got the `-5q8` suffix. The project is named `hearth-5q8` in
-> [`wrangler.toml`](wrangler.toml) — keep it that way so `pnpm deploy` updates
-> the existing site instead of minting a new URL.
+> got the `-5q8` suffix.
+>
+> ⚠️ **The project name and the URL differ.** The Pages project is named
+> **`hearth`**; only its subdomain carries the `-5q8`. `wrangler pages deploy`
+> matches on the project name, so [`wrangler.toml`](wrangler.toml) must say
+> `name = "hearth"` — with `hearth-5q8` there, every deploy dies on
+> "Project not found [code: 8000007]". Confirm with
+> `pnpm exec wrangler pages project list`.
 
 Everything below is already wired: `wrangler` is a dev dependency,
 [`wrangler.toml`](wrangler.toml) names the project and points at `dist`, the

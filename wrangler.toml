@@ -3,16 +3,18 @@
 # `cloudflared` quick tunnels that die on PC sleep.
 #
 # The live site is https://hearth-5q8.pages.dev  (append ?tester for testers).
-# This name MUST match that existing Cloudflare Pages project so `pnpm deploy`
-# UPDATES the site testers already have — do not change it, or you'll create a
-# new URL and orphan the old link.
 #
-# (Aside: the bare `hearth.pages.dev` is a DIFFERENT, unrelated account's parked
-# page — *.pages.dev names are globally first-come, so ours got the -5q8 suffix.
-# Never hand testers hearth.pages.dev.)
+# CAREFUL — the project NAME and the URL are not the same string. The Pages
+# project is called `hearth`; its assigned subdomain is `hearth-5q8.pages.dev`
+# (the bare `hearth.pages.dev` was already taken by an unrelated account —
+# *.pages.dev names are globally first-come — so Cloudflare suffixed ours).
+# `wrangler pages deploy` matches on the PROJECT NAME, so this must stay
+# `hearth`; setting it to `hearth-5q8` makes every deploy fail with
+# "Project not found" (or offer to mint a second project and orphan the link
+# testers already have). Never hand testers hearth.pages.dev.
 #
 # One-time human setup and the deploy commands live in DEPLOY.md.
-name = "hearth-5q8"
+name = "hearth"
 compatibility_date = "2026-07-08"
 pages_build_output_dir = "dist"
 
