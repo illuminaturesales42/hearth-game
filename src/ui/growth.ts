@@ -11,6 +11,7 @@ import type { Game } from '../core/game';
 import { RESTORE_ORDERS } from '../data/economy';
 import { skyStamp } from './weather';
 import { toast } from './toast';
+import { installer } from './install';
 
 /** Swap for a real list address/endpoint when one exists. */
 const LIST_EMAIL = 'illuminature.sales@gmail.com';
@@ -21,19 +22,11 @@ export const EXPORT_STAMP_KEY = 'hearth:lastExportAt';
 
 const DAY = 24 * 60 * 60 * 1000;
 
-interface InstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-}
-
 export class GrowthUI {
-  private installEvt: InstallPromptEvent | null = null;
-
   constructor(private game: Game) {
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      this.installEvt = e as InstallPromptEvent;
-      this.renderKeepsafe();
-    });
+    // The prompt is a single-use event shared with the Settings row, so it
+    // lives in one controller — repaint whenever its availability changes.
+    installer.subscribe(() => this.renderKeepsafe());
     this.wireEmailCard();
     this.wireShare();
     this.renderEmailCard();
@@ -190,7 +183,7 @@ export class GrowthUI {
 
     const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent);
     const isMobile = isIos || /Android/i.test(navigator.userAgent) || window.matchMedia('(pointer: coarse)').matches;
-    const needsInstall = !standalone && (isIos || this.installEvt !== null);
+    const needsInstall = !standalone && (isIos || installer.canPrompt);
     // On mobile, surface the "install the app" prompt straight away (testers land
     // on the web link and should be offered the installed app immediately); the
     // desktop / export-safety nudge still waits until the player is invested.
@@ -198,7 +191,7 @@ export class GrowthUI {
     card.hidden = !show;
     if (!show) return;
 
-    if (needsInstall && isIos && !this.installEvt) {
+    if (needsInstall && isIos && !installer.canPrompt) {
       text.textContent =
         'iPhones clear browser saves after a week away. Add Hearth to your Home Screen (Share → Add to Home Screen) to keep Emberhollow safe — and export a copy in Settings.';
       btn.hidden = true;
@@ -206,9 +199,7 @@ export class GrowthUI {
       text.textContent = 'Install Hearth to keep your village safe between visits — and export a copy in Settings.';
       btn.hidden = false;
       btn.onclick = () => {
-        void this.installEvt?.prompt();
-        this.installEvt = null;
-        this.renderKeepsafe();
+        void installer.prompt().then(() => this.renderKeepsafe());
       };
     } else {
       text.textContent =

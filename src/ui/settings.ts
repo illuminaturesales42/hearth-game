@@ -14,6 +14,7 @@ import { requestGeolocation, setLocationByCity, latestLocationLabel, getSkyPref,
 import type { SkyPref } from './weather';
 import { openAvatarCreator } from './avatar-creator';
 import { avatarPortraitHTML } from './avatar-render';
+import { installer } from './install';
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
 
@@ -59,10 +60,34 @@ export class SettingsUI {
       b.addEventListener('click', () => this.chooseSky(b.dataset.sky as SkyPref));
     });
 
+    el<HTMLButtonElement>('set-install')?.addEventListener('click', () => void this.install());
+    // The prompt can arrive after the sheet is already built, and is consumed
+    // by whichever surface uses it first — repaint on every change.
+    installer.subscribe(() => this.renderInstall());
+
     game.subscribe((ev) => {
       if (ev.type === 'settings') this.apply();
     });
     this.apply();
+  }
+
+  /** The always-available "Get the app" row — every browser gets real steps. */
+  private renderInstall(): void {
+    const advice = installer.advice();
+    const title = el('set-install-title');
+    const body = el('set-install-body');
+    const actions = el('set-install-actions');
+    const btn = el<HTMLButtonElement>('set-install');
+    if (title) title.textContent = advice.title;
+    if (body) body.textContent = advice.body;
+    if (actions) actions.hidden = advice.button === null;
+    if (btn && advice.button) btn.textContent = advice.button;
+  }
+
+  private async install(): Promise<void> {
+    const accepted = await installer.prompt();
+    if (accepted) toast('Hearth is on your home screen — open it from there.');
+    this.renderInstall();
   }
 
   /** Apply prefs to the document + audio engine. Called on boot and change. */
@@ -89,6 +114,7 @@ export class SettingsUI {
     this.resetArmed = false;
     const reset = el<HTMLButtonElement>('set-reset');
     if (reset) reset.textContent = 'Reset everything';
+    this.renderInstall(); // re-read each open: they may have installed since
     this.paint();
     el('settings-panel')!.hidden = false;
   }
