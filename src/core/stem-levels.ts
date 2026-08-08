@@ -25,6 +25,12 @@ export interface StemLevels {
   birds: number;
   /** Night crickets — a quiet bed once it's really dark. */
   crickets: number;
+  /** Frog chorus off the wet ground — dusk and night after real rain. */
+  frogs: number;
+  /** Rain-on-the-roof patter — a brighter percussive layer over heavy rain. */
+  roofRain: number;
+  /** Hearth crackle — cold, stormy or sauna-warmed nights glow indoors. */
+  fireplace: number;
 }
 
 const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x);
@@ -41,8 +47,18 @@ export function stemLevels(m: WorldMood, phase?: PhaseWeights | null): StemLevel
   const rain = wet ? clamp01(m.precip + (m.weather === 'storm' ? 0.15 : 0)) : 0;
   const dawn = phase?.dawn ?? 0;
   const night = phase?.night ?? 0;
+  const evening = phase?.evening ?? 0;
+  const darkHalf = clamp01(night + evening * 0.8);
   // Birds and crickets hush under heavy weather (they don't sing in a downpour).
   const fair = clamp01(1 - m.precip);
+  // Frogs are rain's answer, not its victim: they sing off WET ground (during
+  // and after real rain) once the light fails — the classic post-shower chorus.
+  const frogs = clamp01(m.wetness * 1.4) * darkHalf * (m.weather === 'storm' ? 0.4 : 1);
+  // Roof patter only earns its place over genuinely heavy rain.
+  const roofRain = wet ? clamp01((m.precip - 0.4) / 0.6) : 0;
+  // The hearth answers cold, storms and cosy rain after dark — and a sauna day.
+  const chill = clamp01(Math.max(m.frost, m.weather === 'storm' ? 0.5 : 0, m.precip * 0.5, m.saunaWarm ? 0.6 : 0));
+  const fireplace = chill * darkHalf;
   return {
     calmPad: m.calm ? 1 : 0,
     rain,
@@ -51,5 +67,8 @@ export function stemLevels(m: WorldMood, phase?: PhaseWeights | null): StemLevel
     surf: clamp01(m.sea),
     birds: clamp01(dawn * fair),
     crickets: clamp01(night * fair),
+    frogs,
+    roofRain,
+    fireplace,
   };
 }
