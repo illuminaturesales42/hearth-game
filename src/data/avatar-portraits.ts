@@ -30,7 +30,17 @@ export interface FaceTypeDef {
   readonly name: string;
 }
 
-/** The 12 base characters (face/identity). Names are picker labels, not lore-bound. */
+/** The base characters (face/identity). Names are picker labels, not lore-bound.
+ *
+ *  13-16 were added because the original twelve had no East Asian, South-East
+ *  Asian or South Asian face in them. That was a spec gap rather than a
+ *  rendering one: the twelve faces are described purely morphologically and the
+ *  only ethnic signal in the prompt is a weighted skin-tone clause, so the model
+ *  returned its default European face with a tan on it. Skin tone is not
+ *  ethnicity. See tools/comfy_avatar.py, which states ethnicity explicitly.
+ *
+ *  Added rather than regenerated: portrait ids are persisted in player saves, so
+ *  re-rendering character 03 would silently change the face of anyone wearing it. */
 export const FACE_TYPES: readonly FaceTypeDef[] = [
   { characterId: 1, name: 'Gardener' },
   { characterId: 2, name: 'Dockhand' },
@@ -44,7 +54,17 @@ export const FACE_TYPES: readonly FaceTypeDef[] = [
   { characterId: 10, name: 'Carpenter' },
   { characterId: 11, name: 'Newcomer' },
   { characterId: 12, name: 'Postmaster' },
+  { characterId: 13, name: 'Weaver' },
+  { characterId: 14, name: 'Netmender' },
+  { characterId: 15, name: 'Cook' },
+  { characterId: 16, name: 'Apothecary' },
 ] as const;
+
+const SKIN_COUNT = 4;
+/** 7-8 are straight styles. The original six (curly updo through capped) contain
+ *  no straight option at all, which is part of why skin-tone alone could never
+ *  produce a credible East Asian portrait. */
+const HAIR_COUNT = 8;
 
 const SKIN_LABELS: Record<number, string> = { 1: 'light', 2: 'medium', 3: 'tan', 4: 'deep' };
 const HAIR_LABELS: Record<number, string> = {
@@ -54,12 +74,16 @@ const HAIR_LABELS: Record<number, string> = {
   4: 'wavy',
   5: 'coils',
   6: 'capped',
+  7: 'long straight',
+  8: 'straight bob',
 };
 
-/** The 12×4×6 modular catalogue — 288 full painted portraits, grouped by characterId. */
+/** The modular catalogue, grouped by characterId. Every id is generated whether
+ *  or not its art exists yet — `availableVariationsFor` filters on art presence,
+ *  so a combination simply does not appear in the picker until its PNG lands. */
 const CATALOGUE: readonly PortraitDef[] = FACE_TYPES.flatMap((face) =>
-  Array.from({ length: 4 }, (_, si) => si + 1).flatMap((skin) =>
-    Array.from({ length: 6 }, (_, hi) => hi + 1).map((hair) => {
+  Array.from({ length: SKIN_COUNT }, (_, si) => si + 1).flatMap((skin) =>
+    Array.from({ length: HAIR_COUNT }, (_, hi) => hi + 1).map((hair) => {
       const cc = String(face.characterId).padStart(2, '0');
       const hh = String(hair).padStart(2, '0');
       return {
