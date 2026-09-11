@@ -31,7 +31,12 @@ Hearth's differentiator isn't "merge + wellness" — it's that **the real world 
 
 **Auto-merge:** a toggle on the game screen automatically joins matching items one pair at a time (off by default; `Game.autoMergeOnce`, `src/ui/auto-merge.ts`).
 
-**Bonfire Duel (PvP):** shared-board merge battle (Match Masters model). The board starts **full**; two players take **alternating turns** making merges on the *same* board — no producers, no refill, so every merge you take may deny your opponent. Most points when no merges remain wins and takes **all board items into their Repository**. `src/core/duel.ts` (pure, seeded/deterministic), `src/ui/duel.ts` (hot-seat pass-and-play prototype). Phasing: hot-seat now → async-with-friends (M3 backend behind `Game.finishDuel`) → optional real-time later. Rewards are coins + banked items, **never energy** (energy stays earned from real life) and **no pay-to-win**.
+**Bonfire Duel:** a full board, no producers and no refill — a race to take the pairs before they run out. Two modes share one engine (`src/core/duel.ts`, pure and seeded; `src/ui/duel.ts`).
+
+- **Practice** — race **Old Joss**, a greedy local opponent on a quickening clock. The winner banks the leftover board into their Repository.
+- **Challenge (async, real friends)** — the server deals ONE seed and both players race that identical board alone, whenever they like; the higher score wins. Coins only, no spoils: each raced a private copy, so banking both boards would mint the items twice. Results arrive as a letter in the mailbox. `mode` on the duel row is the seam a real-time variant would slot into later.
+
+Rewards are coins + (practice only) banked items, **never energy** (energy stays earned from real life) and **no pay-to-win**.
 
 - **Repository:** items won from duels bank here (`GameState.repository`) and can be **delivered straight to the current story order** (`Game.deliverFromRepository`) — duels feed story progress.
 - **Win streak → multiplier:** consecutive duel wins raise a reward multiplier (`duelMultiplier`, +15%/win, cap 1.9×) applied to coin rewards; a loss/tie resets it (no other penalty).

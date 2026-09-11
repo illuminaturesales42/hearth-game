@@ -22,7 +22,7 @@ The code is candid: *"client-side simulation stub for the real multiplayer backe
 ### Real (do not break)
 - **Villager bonds** — hearts, memories, greetings (`src/core/relationships.ts`, `VILLAGER_DEFS`). This is the emotional core and is entirely local/NPC.
 - **Town requests** — real economy.
-- **Bonfire Duel** — a genuine local **hot-seat** 2-player game (`src/core/duel.ts`, `src/ui/duel.ts`). Same device, no network needed.
+- **Bonfire Duel** — the practice race against Old Joss (`src/core/duel.ts`, `src/ui/duel.ts`). Fully local, no network needed. (This entry used to read "hot-seat 2-player"; the mode chooser was removed in commit `8d0d36d` and the spec had not caught up.)
 
 ### The key architectural gift
 > *"The Game API is the real contract; swapping in a server later doesn't touch this screen."* — `src/ui/social-screen.ts:7`
@@ -105,17 +105,37 @@ The repo already deploys on **Cloudflare** (`wrangler.toml`, `functions/`) — t
 ---
 
 ## Acceptance checklist
-- [ ] No client path can mint energy or items; all grants server-verified and idempotent
-- [ ] Invite → accept → both see each other; bonus paid once per friendship
-- [ ] Game fully playable offline; social failures never block play
-- [ ] Rate limits, friend caps, block/remove, token expiry all enforced
-- [ ] Simulation code + "simulated in this build" copy removed; existing fake friends handled gracefully
-- [ ] Friends display real avatar portraits
-- [ ] Villager bonds, town requests and hot-seat Duel **unaffected**
-- [ ] `npx tsc --noEmit`, `npx vitest run` green
+
+**Built (2026-07-30).** Endpoints in `functions/v1/`, schema in `migrations/0002_social.sql`,
+client seam in `src/platform/social-provider.ts` + `social-controller.ts`.
+
+- [x] No client path can mint energy or items; all grants server-verified and idempotent
+      — every grant is a `mailbox` row the server wrote, claimed by one conditional
+      `UPDATE ... WHERE claimed_at IS NULL`; ids are derived (`jb:`/`g:`/`hr:`/`hf:`/`dc:`/`dr:`)
+- [x] Invite → accept → both see each other; bonus paid once per friendship
+      — the id `jb:<a>:<b>:<recipient>` makes a second bonus structurally impossible
+- [x] Game fully playable offline; social failures never block play
+      — the provider never throws; failures degrade to a stale mirror and `syncedAt` copy
+- [x] Rate limits, friend caps, remove-friend, token expiry all enforced (`CAPS` in `functions/v1/_lib.ts`)
+- [x] Simulation code + "simulated in this build" copy removed; existing fake friends handled
+      gracefully — save migration v19 → v20 clears them and flags a one-time explanation
+- [x] Friends display real avatar portraits
+- [x] Villager bonds, town requests and the practice Duel **unaffected**
+- [x] `npx tsc --noEmit`, `npx vitest run` green (485 tests)
+- [ ] Blocking a player (remove is implemented; block is not)
+- [ ] Account logins for cross-device play and recovery — deferred; identity is still the
+      anonymous device key, and `players.player_id` is already the durable id a login would attach to
+
+### Deliberately not built
+- **Real-time duels.** Async on a shared seed is the shipped model (no sockets, per F4); the
+  `mode` column and the duel status machine are the seam a live variant would use.
+- **Push notifications.** Challenges and gifts surface on the next launch or Villagers-screen poll.
+- **Server-verified duel scores.** Scores are client-asserted between consenting friends,
+  bounded (`duelMaxScore`/`duelMaxMoves`), coins-only, and still inside the shared 3-wins-a-day
+  cap. Replaying the board server-side is the upgrade path if it ever matters.
 
 ---
 
-## Recommendation
+## Recommendation (as written before the work; kept for the record)
 
 Do this **last**. It is the highest-impact but highest-cost track, needs a real backend and ongoing operational care (abuse, moderation, uptime), and — unlike every other track — it cannot be shipped incrementally behind an art gate. Tracks A–E all make the game better for a solo player today; F only pays off once there is a player base to be social with.

@@ -8,8 +8,9 @@ import type { GameState, MinigameState } from './types';
 import { localDayKey } from './energy';
 import { initialMinigames } from './minigames';
 import { defaultAvatar } from './avatar';
+import { emptySocial } from './social';
 
-export const CURRENT_VERSION = 19;
+export const CURRENT_VERSION = 20;
 
 const KEY = 'hearth:save';
 /** Older builds wrote the version into the key. Read them once, then adopt KEY. */
@@ -82,6 +83,13 @@ const MIGRATIONS: Record<number, (s: LooseState) => LooseState> = {
   // existing player keeps a gentle traveller bust until they choose to visit the
   // creator — no forced interruption. Optional field, so no presence-guard change.
   18: (s) => ({ ...s, version: 19, avatar: defaultAvatar() }),
+  // v19 → v20: real multiplayer. The old social state was a simulation —
+  // fabricated friends (Maya, Tomas and whoever the invite button had minted),
+  // locally-invented gifts, a client-side energy bonus. None of it maps onto a
+  // server-owned graph, and pretending it did would carry fake people into a
+  // real friends list. So it is retired wholesale and replaced with an empty
+  // village, flagged so the screen can explain itself once.
+  19: (s) => ({ ...s, version: 20, social: { ...emptySocial(), migratedNote: true } }),
 };
 
 /** Upgrade any historical state to CURRENT_VERSION, or null if unrecognizable. */
@@ -130,6 +138,11 @@ export function migrateState(raw: unknown): GameState | null {
   for (const key of ['coins', 'xp', 'orderIndex', 'duelStreak', 'nextUid', 'nextDecorId'] as const) {
     if (typeof (s as Record<string, unknown>)[key] !== 'number') return null;
   }
+  // `!s.social` cannot tell the v19 simulation shape from the v20 mirror — both
+  // are truthy objects. Check a field only the new shape has, so a save that
+  // somehow skipped migration 19 is rejected rather than loaded with a friends
+  // list the rest of the code would read as undefined.
+  if (typeof s.social.syncedAt !== 'number' || !Array.isArray(s.social.friends)) return null;
   return s;
 }
 

@@ -16,10 +16,14 @@ import type { HealthSnapshot } from './health/health-provider';
 import { pickHealthProvider } from './platform/providers';
 import { HttpSyncProvider, LocalMirrorSyncProvider, deviceKey } from './platform/sync-provider';
 import { SyncController } from './platform/sync-controller';
+import { HttpSocialProvider } from './platform/social-provider';
+import { MemorySocialProvider, MemorySocialWorld } from './platform/social-memory';
+import { SocialController } from './platform/social-controller';
 import { Metrics, exposeMetricsConsole } from './platform/metrics';
 import { computeMood, meditatedToday } from './core/world-mood';
 import { registerSW } from 'virtual:pwa-register';
 
+stashInviteToken();
 const game = new Game();
 
 // Retention & funnel metrics: mark today active, expose the dev dashboard
@@ -29,7 +33,20 @@ const metrics = new Metrics();
 exposeMetricsConsole(metrics);
 metrics.reportSession();
 
-new AppShell(game, metrics);
+// Friends, gifts and duels are server-owned. In production that is the game's
+// own /v1/* Pages Functions; in plain `pnpm dev` there is no Functions runtime,
+// so an in-memory world stands in — it enforces the same rules and starts
+// empty, rather than inventing the friends the old simulation used to.
+// (`pnpm dev:full` runs wrangler alongside Vite if you want the real thing.)
+const useHttpSocial = import.meta.env.PROD || import.meta.env.VITE_SOCIAL_HTTP === '1';
+const socialProvider = useHttpSocial ? new HttpSocialProvider() : new MemorySocialProvider(new MemorySocialWorld());
+const social = new SocialController(game, socialProvider);
+
+new AppShell(game, metrics, social);
+// No boot-time handshake: the controller registers lazily on the first thing
+// that needs it (opening Villagers, or accepting an invite), so a solo player
+// never touches the network and a static build logs nothing.
+void redeemPendingInvite(social);
 
 // Village Life: building mini-games, launched from the map building cards via a
 // 'hearth:play-minigame' event (unlock at story-complete; attempts from living well).
@@ -213,7 +230,15 @@ game.subscribe((ev) => {
       track('daily_quest_done', { label: ev.label, coins: ev.coins });
       break;
     case 'duelEnd':
-      track('duel_end', { won: ev.won, streak: ev.streak, coins: ev.coins, items: ev.itemCount });
+      // `mode` separates the practice race from a real friend duel — without it
+      // the retention read cannot tell solo play from social play.
+      track('duel_end', {
+        won: ev.won,
+        streak: ev.streak,
+        coins: ev.coins,
+        items: ev.itemCount,
+        mode: ev.mode,
+      });
       break;
     case 'minigameUnlocked':
       track('minigame_unlocked', { id: ev.id });
@@ -384,4 +409,80 @@ if (testerMode) {
   window.hearthEvents = () => {
     console.table(recentEvents().map((e) => ({ name: e.name, ...e.props })));
   };
+}
+
+// ---------- invite redemption ----------
+
+const PENDING_JOIN = 'hearth:pending-join';
+const JOIN_TOKEN_RE = /^[A-Za-z0-9_-]{22}$/;
+
+/**
+ * Someone opened a friend's invite link. `functions/join/[token].ts` bounces
+ * `/join/<token>` to `/?join=<token>`; the path form is handled too, for the
+ * case where an installed service worker answers before the redirect can run.
+ *
+ * The token is stashed rather than redeemed on the spot, because a brand-new
+ * player lands in the FTUE and must not be interrupted mid-tutorial — and
+ * because redeeming needs the device to be registered first. It is cleared from
+ * the URL immediately so a shared screenshot or a back-button press cannot
+ * replay it.
+ */
+function stashInviteToken(): void {
+  try {
+    const url = new URL(location.href);
+    const fromQuery = url.searchParams.get('join');
+    const fromPath = /^\/join\/([A-Za-z0-9_-]{22})$/.exec(url.pathname)?.[1];
+    const token = fromQuery ?? fromPath;
+    if (!token || !JOIN_TOKEN_RE.test(token)) return;
+    localStorage.setItem(PENDING_JOIN, token);
+    url.searchParams.delete('join');
+    history.replaceState(null, '', `${url.origin}/${url.search}${url.hash}`);
+  } catch {
+    // A malformed URL is simply not an invite.
+  }
+}
+
+async function redeemPendingInvite(social: SocialController): Promise<void> {
+  let token: string | null = null;
+  try {
+    token = localStorage.getItem(PENDING_JOIN);
+  } catch {
+    return;
+  }
+  if (!token) return;
+  // Wait for the tutorial to finish before asking anything of a new player.
+  if (!game.snapshot.flags.ftueDone) return;
+
+  const yes = await confirmDialog({
+    title: 'A friend has invited you',
+    message: 'Accept, and you will both feel your hearths flare a little brighter.',
+    confirmLabel: 'Accept',
+    cancelLabel: 'Not now',
+  });
+  if (!yes) {
+    try {
+      localStorage.removeItem(PENDING_JOIN);
+    } catch {
+      /* nothing to clear */
+    }
+    return;
+  }
+  const res = await social.redeemInvite(token);
+  if (res.ok) {
+    try {
+      localStorage.removeItem(PENDING_JOIN);
+    } catch {
+      /* nothing to clear */
+    }
+    toast(`${res.value.friend?.name ?? 'Your friend'} is by your hearth now.`);
+  } else if (res.error !== 'offline') {
+    // Anything the server has already decided (used, expired, self-invite) is
+    // final — keeping the token would re-ask on every launch.
+    try {
+      localStorage.removeItem(PENDING_JOIN);
+    } catch {
+      /* nothing to clear */
+    }
+    if (res.error === 'expired') toast('That invite has already been used.');
+  }
 }

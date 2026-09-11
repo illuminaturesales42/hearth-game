@@ -1,81 +1,118 @@
 /**
- * Social layer (client-side simulation stub for the real multiplayer backend).
- * Invite friends → they join → you both get a hearth boost. Ask a joined friend
- * for help → they send starter items to your Gifts inbox to speed a task.
+ * Social state — the LOCAL MIRROR of a server-owned graph.
  *
- * Pure state transitions; the game orchestrator wires energy + board effects.
+ * This module used to be a simulation: it invented friends from a name list,
+ * minted energy when you pressed "they joined", and fabricated gift items on
+ * your own device while attributing them to someone who had never been
+ * contacted. All of that is gone. Nothing here creates value; the server writes
+ * letters, the client claims them, and these functions only fold the results
+ * into state.
+ *
+ * Pure transitions, as before — the orchestrator (Game) wires energy and board
+ * effects, and the transport lives in src/platform/social-provider.ts.
  */
-import type { ChainId, Friend, Gift, SocialState } from './types';
-import { localDayKey } from './energy';
-import { FRIEND_NAMES } from '../data/friends';
+import type { DuelChallenge, MailboxEntry, RemoteFriend, SocialState } from './types';
 
-export const JOIN_BONUS = 15;
-export const HELP_ITEMS = 2; // items a friend sends per "ask for help"
+/** Per-pair cooldowns the server enforces; mirrored locally to grey the buttons out. */
+export const ASK_COOLDOWN_MS = 86_400_000;
+export const GIFT_COOLDOWN_MS = 86_400_000;
 
-export function initialSocial(now: number): SocialState {
-  void now;
+export interface SocialSnapshot {
+  playerId: string;
+  friends: readonly RemoteFriend[];
+  inbox: readonly MailboxEntry[];
+  duels: readonly DuelChallenge[];
+  invite: { url: string; expiresAt: number } | null;
+  syncedAt: number;
+}
+
+/** A village with nobody in it yet — the honest starting state. */
+export function emptySocial(): SocialState {
   return {
-    friends: [
-      { id: 'f1', name: 'Maya', avatar: 1, status: 'joined' },
-      { id: 'f2', name: 'Tomas', avatar: 4, status: 'joined' },
-    ],
-    gifts: [],
-    joinBonusGiven: ['f1', 'f2'],
-    nextId: 3,
+    playerId: null,
+    friends: [],
+    inbox: [],
+    duels: [],
+    inviteUrl: null,
+    inviteExpiresAt: null,
+    syncedAt: 0,
+    askedPair: {},
+    giftedPair: {},
+    pendingScores: [],
   };
 }
 
-export function pickInviteName(state: SocialState): string {
-  return FRIEND_NAMES[state.nextId % FRIEND_NAMES.length] ?? 'Friend';
-}
-
-export function invite(state: SocialState, name: string): { state: SocialState; friend: Friend } {
-  const friend: Friend = { id: `f${state.nextId}`, name, avatar: (state.nextId % 6) + 1, status: 'pending' };
-  return { state: { ...state, friends: [...state.friends, friend], nextId: state.nextId + 1 }, friend };
-}
-
-export function joinFriend(state: SocialState, id: string): { state: SocialState; bonus: number; name: string } {
-  const target = state.friends.find((f) => f.id === id);
-  if (!target || target.status === 'joined') return { state, bonus: 0, name: target?.name ?? '' };
-  const friends = state.friends.map((f) => (f.id === id ? { ...f, status: 'joined' as const } : f));
-  const bonus = state.joinBonusGiven.includes(id) ? 0 : JOIN_BONUS;
-  const joinBonusGiven = bonus > 0 ? [...state.joinBonusGiven, id] : state.joinBonusGiven;
-  return { state: { ...state, friends, joinBonusGiven }, bonus, name: target.name };
-}
-
-export function canAsk(state: SocialState, id: string, now: number): boolean {
-  const f = state.friends.find((x) => x.id === id);
-  return !!f && f.status === 'joined' && f.askedDay !== localDayKey(now);
-}
-
-export function askFriend(
-  state: SocialState,
-  id: string,
-  chain: ChainId,
-  now: number,
-): { state: SocialState; gifts: Gift[]; name: string } {
-  const f = state.friends.find((x) => x.id === id);
-  if (!f || !canAsk(state, id, now)) return { state, gifts: [], name: f?.name ?? '' };
-  const gifts: Gift[] = Array.from({ length: HELP_ITEMS }, (_, i) => ({
-    id: `g${state.nextId}-${i}`,
-    from: f.name,
-    chain,
-    level: 0,
-  }));
-  const friends = state.friends.map((x) => (x.id === id ? { ...x, askedDay: localDayKey(now) } : x));
+/**
+ * Adopt a server snapshot. The server wins on everything it owns; the two
+ * cooldown mirrors and the offline score queue are local bookkeeping and
+ * survive, because they describe requests we made rather than facts the server
+ * has told us.
+ */
+export function adoptSnapshot(state: SocialState, snap: SocialSnapshot): SocialState {
   return {
-    state: { ...state, friends, gifts: [...state.gifts, ...gifts], nextId: state.nextId + 1 },
-    gifts,
-    name: f.name,
+    ...state,
+    playerId: snap.playerId,
+    friends: snap.friends,
+    inbox: snap.inbox,
+    duels: snap.duels,
+    inviteUrl: snap.invite?.url ?? null,
+    inviteExpiresAt: snap.invite?.expiresAt ?? null,
+    syncedAt: snap.syncedAt,
   };
 }
 
-export function takeGift(state: SocialState, giftId: string): { state: SocialState; gift: Gift | undefined } {
-  const gift = state.gifts.find((g) => g.id === giftId);
-  if (!gift) return { state, gift: undefined };
-  return { state: { ...state, gifts: state.gifts.filter((g) => g.id !== giftId) }, gift };
+/** Drop a claimed letter from the mirror. The grant itself happens in Game. */
+export function removeEntry(state: SocialState, id: string): SocialState {
+  return { ...state, inbox: state.inbox.filter((e) => e.id !== id) };
 }
 
-export function joinedCount(state: SocialState): number {
-  return state.friends.filter((f) => f.status === 'joined').length;
+export function findEntry(state: SocialState, id: string): MailboxEntry | undefined {
+  return state.inbox.find((e) => e.id === id);
+}
+
+/**
+ * Absence means "never asked", which is always allowed — deliberately checked
+ * rather than defaulting the timestamp to 0, because `now - 0 >= COOLDOWN` is
+ * only accidentally true for real clock values and reads as "on cooldown" for
+ * any small `now`.
+ */
+export function canAskPair(state: SocialState, friendId: string, now: number): boolean {
+  const last = state.askedPair[friendId];
+  return last === undefined || now - last >= ASK_COOLDOWN_MS;
+}
+
+export function canGiftPair(state: SocialState, friendId: string, now: number): boolean {
+  const last = state.giftedPair[friendId];
+  return last === undefined || now - last >= GIFT_COOLDOWN_MS;
+}
+
+export function markAsked(state: SocialState, friendId: string, now: number): SocialState {
+  return { ...state, askedPair: { ...state.askedPair, [friendId]: now } };
+}
+
+export function markGifted(state: SocialState, friendId: string, now: number): SocialState {
+  return { ...state, giftedPair: { ...state.giftedPair, [friendId]: now } };
+}
+
+/**
+ * Park a finished run that could not be submitted. Scores are deterministic and
+ * the duel is identified by id, so replaying the queue later is safe — and the
+ * server refuses a second, different score for the same duel anyway.
+ */
+export function queueScore(state: SocialState, entry: { duelId: string; score: number; moves: number }): SocialState {
+  if (state.pendingScores.some((p) => p.duelId === entry.duelId)) return state;
+  return { ...state, pendingScores: [...state.pendingScores, entry] };
+}
+
+export function unqueueScore(state: SocialState, duelId: string): SocialState {
+  return { ...state, pendingScores: state.pendingScores.filter((p) => p.duelId !== duelId) };
+}
+
+/** Open duels waiting on this player to take their turn at the board. */
+export function duelsToPlay(state: SocialState): DuelChallenge[] {
+  return state.duels.filter((d) => d.status === 'open' && d.myScore === null);
+}
+
+export function friendCount(state: SocialState): number {
+  return state.friends.length;
 }

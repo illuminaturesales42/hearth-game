@@ -22,7 +22,7 @@ Dev console helpers: `hearthReset()` wipes the save · `hearthHealthSim(12500, 8
 - **Hearth Energy** — earned from real life: steps, stairs, sleep (tiered), water, photos (sunrise/sunset gated by the actual sun), squats/stretch/breaths, guided meditations, cold plunge & sauna logging, stargazing (real moon phase), a kind word to a stranger (+selfie bonus), and the gratitude journal with flashbacks.
 - **Chronicle** — each night the village writes your day into prose. Never numbers.
 - **Streaks** — sunrise New Day claim, streak-scaled daily bonus, chest every 3 active days, journal multiplier. Missing a day is never punished.
-- **Social (local preview)** — invite/gift simulation and the hot-seat **Bonfire Duel** (shared-board PvP; winner banks the board into the Repository, which can deliver story orders). Online friends arrive with the M3 backend.
+- **Social (real)** — server-backed friends via share links, costless gifts, "ask for help", and **async Bonfire Duels**: the server deals one seed, both friends race that identical board in their own time, and the higher score wins. Practice against Old Joss any time; his board still banks its spoils into the Repository, which can deliver story orders. Energy is never mintable client-side — every grant is a server-written letter the client claims once.
 - **Achievements & Collections** — 10 quiet recognitions on the Collect screen.
 - **Settings** — volumes, text size, high contrast, reduce motion, save export/import, diagnostics, reset.
 - **PWA** — installable, fully offline after first load.

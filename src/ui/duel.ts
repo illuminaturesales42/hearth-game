@@ -1,13 +1,21 @@
 /**
- * Bonfire Duel — a RACE, not turns. The board deals full; you and Old Joss
- * both hunt pairs on the same board at the same time. Tap an item, then its
- * twin, to take the merge; Joss snatches the biggest pair on his own clock
- * (which quickens as the round goes on). When no pairs remain, the higher
- * score wins the board's spoils into the Repository — duels feed the story.
+ * Bonfire Duel, in two modes that share one board engine.
+ *
+ * PRACTICE — a race against Old Joss. The board deals full; you and Joss both
+ * hunt pairs at the same time, and he snatches the biggest one on his own
+ * quickening clock. The winner banks the leftover board into the Repository.
+ *
+ * CHALLENGE — an async duel with a real friend. The server deals ONE seed and
+ * both of you race that identical board alone, whenever you like; the higher
+ * score wins. Joss stays out of it and there are no spoils (you each raced a
+ * private copy, so banking both boards would mint items twice) — the reward is
+ * coins, settled when the result letter arrives.
  */
 import type { Game } from '../core/game';
 import { bestDuelMove, boardSpoils, createDuel, duelWinner, raceMerge } from '../core/duel';
 import type { DuelState } from '../core/duel';
+import type { DuelChallenge } from '../core/types';
+import type { SocialController } from '../platform/social-controller';
 import { tileMarkup } from './art';
 import { feedback } from './feedback';
 
@@ -21,11 +29,22 @@ const AI_FLOOR_MS = 1100;
 export class DuelUI {
   private state: DuelState | null = null;
   private selected = -1;
-  private seed = 12345;
+  /**
+   * Seeded per session rather than from a constant. It used to be a hard-coded
+   * 12345, so the first duel of every launch — and the whole rematch sequence
+   * after it — dealt the same board every time.
+   */
+  private seed = Date.now() & 0x7fffffff || 1;
   private aiTimer = 0;
   private aiDelay = AI_START_MS;
+  /** null = practice against Joss; otherwise the friend duel being played. */
+  private challenge: DuelChallenge | null = null;
+  private submitted = false;
 
-  constructor(private game: Game) {
+  constructor(
+    private game: Game,
+    private social: SocialController | null = null,
+  ) {
     const close = el<HTMLButtonElement>('duel-close');
     if (close) close.onclick = () => this.close();
     const rematch = el<HTMLButtonElement>('duel-rematch');
@@ -36,31 +55,56 @@ export class DuelUI {
     if (deliver) deliver.onclick = () => this.game.deliverFromRepository();
   }
 
-  /** Open the overlay and deal the race board. */
+  /** Open the overlay and race Old Joss. */
   start(): void {
+    this.challenge = null;
+    const overlay = el('duel-overlay');
+    if (overlay) overlay.hidden = false;
+    this.beginMatch();
+  }
+
+  /** Open a friend's challenge: same board they will face, no Joss, no clock. */
+  startChallenge(duel: DuelChallenge): void {
+    this.challenge = duel;
+    this.submitted = false;
     const overlay = el('duel-overlay');
     if (overlay) overlay.hidden = false;
     this.beginMatch();
   }
 
   private beginMatch(): void {
-    this.seed = (this.seed * 1103515245 + 12345) & 0x7fffffff;
-    this.state = createDuel(this.seed);
+    if (this.challenge) {
+      // The seed comes from the server, so both players deal the same board.
+      this.state = createDuel(this.challenge.seed);
+      this.submitted = false;
+    } else {
+      this.seed = (this.seed * 1103515245 + 12345) & 0x7fffffff;
+      this.state = createDuel(this.seed);
+    }
     this.selected = -1;
     this.aiDelay = AI_START_MS;
     const results = el('duel-results');
     if (results) results.hidden = true;
     const opp = el('duel-opp-name');
-    if (opp) opp.textContent = 'Old Joss';
+    if (opp) opp.textContent = this.challenge ? this.challenge.opponentName : 'Old Joss';
+    const rematch = el<HTMLButtonElement>('duel-rematch');
+    // A challenge board is dealt once, by the server. There is nothing to redeal.
+    if (rematch) rematch.hidden = this.challenge !== null;
     this.buildGrid();
     this.render();
-    this.scheduleAi();
+    if (!this.challenge) this.scheduleAi();
   }
 
   private close(): void {
+    // Walking out of a practice round used to cost nothing, so a player losing
+    // badly could tap ✕ and keep their win streak. It counts as the loss it is.
+    if (!this.challenge && this.state && !this.state.over) this.game.finishDuel(false, [], 0);
+    // A challenge left unfinished stays open — the friend's board is still
+    // waiting, and the duel expires on the server's clock if nobody returns.
     const overlay = el('duel-overlay');
     if (overlay) overlay.hidden = true;
     this.state = null;
+    this.challenge = null;
     clearTimeout(this.aiTimer);
   }
 
@@ -147,26 +191,52 @@ export class DuelUI {
         cell.innerHTML = '';
       }
     }
-    el('duel-turn')!.textContent = s.over ? 'The field is bare' : 'Race — most pairs wins!';
+    el('duel-turn')!.textContent = s.over
+      ? 'The field is bare'
+      : this.challenge
+        ? 'Your run — the highest score wins'
+        : 'Race — most pairs wins!';
     el('duel-turn')!.className = 'duel-turn race';
     el('duel-score-0')!.textContent = String(s.scores[0]);
-    el('duel-score-1')!.textContent = String(s.scores[1]);
+    // In a challenge the opponent races their own copy in their own time, so
+    // there is no live number to show — and showing one would be a lie.
+    el('duel-score-1')!.textContent = this.challenge ? '—' : String(s.scores[1]);
   }
 
   private showResults(): void {
     if (!this.state) return;
     clearTimeout(this.aiTimer);
-    const w = duelWinner(this.state);
-    const spoils = boardSpoils(this.state.board);
-    const playerWon = w === 0;
-    // Only the local player banks (streak/Repository belong to the account).
-    this.game.finishDuel(playerWon, spoils, this.state.scores[0]);
-
     const results = el('duel-results');
     const title = el('duel-result-title');
     const body = el('duel-result-body');
     const deliver = el<HTMLButtonElement>('duel-deliver');
     if (!results || !title || !body || !deliver) return;
+
+    if (this.challenge) {
+      const score = this.state.scores[0];
+      const moves = this.state.moves[0];
+      const opponent = this.challenge.opponentName;
+      title.textContent = 'Your run is done';
+      body.innerHTML =
+        `<p>You scored <b>${score}</b> on ${opponent}’s board.</p>` +
+        `<p class="duel-hint">They race the same board in their own time — the result finds you when they do.</p>`;
+      if (!this.submitted) {
+        this.submitted = true;
+        const duelId = this.challenge.duelId;
+        // A failed submit is parked in the save and replayed on the next
+        // refresh; the score is deterministic, so nothing is lost.
+        void this.social?.submitScore(duelId, score, moves);
+      }
+      deliver.hidden = true;
+      results.hidden = false;
+      return;
+    }
+
+    const w = duelWinner(this.state);
+    const spoils = boardSpoils(this.state.board);
+    const playerWon = w === 0;
+    // Only the local player banks (streak/Repository belong to the account).
+    this.game.finishDuel(playerWon, spoils, this.state.scores[0]);
 
     if (w === -1) {
       title.textContent = 'A dead heat by the fire';

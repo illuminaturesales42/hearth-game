@@ -23,7 +23,14 @@ pages_build_output_dir = "dist"
 #   wrangler d1 execute hearth-saves --remote --command "CREATE TABLE IF NOT
 #     EXISTS saves (device_key TEXT PRIMARY KEY, rev INTEGER NOT NULL,
 #     updated_at INTEGER NOT NULL, save TEXT NOT NULL)"
+#
+# Schema now lives in migrations/ rather than in hand-run commands. 0001 recreates
+# the saves table with IF NOT EXISTS, so applying it to the live database simply
+# records what is already there; 0002 adds the social tables.
+#   pnpm db:local    (dev, against .wrangler state)
+#   pnpm db:remote   (production — run BEFORE `pnpm deploy`, see DEPLOY.md)
 [[d1_databases]]
 binding = "DB"
 database_name = "hearth-saves"
 database_id = "c36c19cc-07fd-48a2-887a-24625d74c249"
+migrations_dir = "migrations"
