@@ -23,3 +23,6 @@ tools/_build_preview/
 
 tools/__pycache__/
 .wrangler/
+
+# regenerable ComfyUI building-art output
+tools/comfy_out/
