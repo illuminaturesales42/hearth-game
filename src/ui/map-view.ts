@@ -41,9 +41,12 @@ import {
   effectiveWeather,
   presetAccumulation,
   getSkyPref,
+  isLiveSky,
   latestCoords,
 } from './weather';
 import { sunPosition } from '../core/sun';
+import { computeEnvironment, type WorldEnvironment } from '../core/environment';
+import { EnvironmentDamper } from '../core/environment-damper';
 
 /** The sun's screen-side key for the lighting washes, or null with no location. */
 type SunKey = { dx: number; dy: number; lowness: number } | null;
@@ -126,6 +129,11 @@ export class MapView {
   /** Real weather outside the window (best-effort; null renders clear). */
   private weather: WeatherNow | null = null;
   private weatherAskedAt = 0;
+  /** The WebGL compositing pass (Living Weather spec §3) — null on Tier C. */
+  private compositor: import('../render/compositor').Compositor | null = null;
+  private compositorTried = false;
+  /** computeEnvironment cached ~1s — the compositor reads it every frame. */
+  private envCache: { at: number; value: WorldEnvironment } | null = null;
   /** Decorate mode: pick a piece from the tray, tap the town to place it. */
   private decorMode = false;
   private decorPick: string | null = null;
@@ -405,12 +413,13 @@ export class MapView {
 
   private mood(): WorldMood {
     const s = this.game.snapshot;
-    // "Pick your sky": a chosen mood overrides the real weather (opt-out for
-    // grey-climate players) while the solar clock still tracks the real sunrise.
+    // Mirror / Interpret / Sanctuary: the live modes render the real reading
+    // (Interpret softly capped); a Sanctuary preset paints a chosen sky. The
+    // solar clock always tracks the real sunrise either way.
     const pref = getSkyPref();
     const weather = effectiveWeather(this.weather, pref);
-    const accumulation = pref === 'real' ? this.accumulation() : presetAccumulation(pref);
-    return computeMood({
+    const accumulation = isLiveSky(pref) ? this.accumulation() : presetAccumulation(pref);
+    const raw = computeMood({
       weather,
       meditatedToday: meditatedToday(s.actions.counts),
       lastCalmDay: s.wellbeing.lastCalmDay,
@@ -421,6 +430,74 @@ export class MapView {
       streak: s.actions.streak,
       accumulation,
     });
+    return this.dampMood(raw, weather);
+  }
+
+  /** The transition engine (Living Weather spec §4.2): weather refreshes set
+   *  TARGETS; the damper eases the rendered channels toward them, so rain
+   *  arrives over ~12s and leaves over ~25s instead of popping every 30 min.
+   *  Reduced motion snaps — its single static frame is already correct. */
+  private damper = new EnvironmentDamper();
+  private lastDampAt = 0;
+  private dampMood(raw: WorldMood, weather: WeatherNow | null): WorldMood {
+    const now = Date.now();
+    const dt = this.lastDampAt ? Math.min(2, (now - this.lastDampAt) / 1000) : 0;
+    this.lastDampAt = now;
+    const targets = {
+      cloudCover: raw.cloudCover,
+      windKph: Math.max(0, weather?.windKph ?? 6),
+      windDeg: (((weather?.windDir ?? 0) % 360) + 360) % 360,
+      precip: raw.precip,
+      fog: raw.weather === 'fog' ? 1 : 0,
+      thunderRisk: raw.weather === 'storm' ? 1 : 0,
+      wetness: raw.wetness,
+      snowDepth: raw.snowDepth,
+    };
+    const d = this.reduce || dt === 0 ? this.damper.snap(targets) : this.damper.advance(targets, dt);
+    return {
+      ...raw,
+      cloudCover: d.cloudCover,
+      precip: d.precip,
+      wind: Math.min(1, Math.max(0, d.windKph / 40)),
+      wetness: d.wetness,
+      snowDepth: d.snowDepth,
+    };
+  }
+
+  /**
+   * Mount the WebGL compositing pass (lazy: Tier C never downloads the module).
+   * Any failure — no WebGL2, shader trouble, later context loss — leaves the 2D
+   * pipeline exactly as shipped; the pass is pure enhancement.
+   */
+  private async ensureCompositor(): Promise<void> {
+    if (this.compositorTried || !this.canvas) return;
+    this.compositorTried = true;
+    try {
+      const { Compositor } = await import('../render/compositor');
+      this.compositor = Compositor.create(this.canvas);
+      if (this.compositor && this.reduce && this.visible) this.draw(0); // first static frame gets composed too
+    } catch {
+      this.compositor = null;
+    }
+  }
+
+  /**
+   * The live WorldEnvironment for the compositor (mood, night, golden hour) —
+   * same "pick your sky" override path as mood(), cached ~1s so the 30fps loop
+   * isn't recomputing solar blends every frame.
+   */
+  private liveEnvironment(): WorldEnvironment {
+    const now = Date.now();
+    if (this.envCache && now - this.envCache.at < 1000) return this.envCache.value;
+    const pref = getSkyPref();
+    const weather = effectiveWeather(this.weather, pref);
+    const accumulation = isLiveSky(pref) ? this.accumulation() : presetAccumulation(pref);
+    const value = computeEnvironment(now, this.sunTimesFromWeather(), weather, {
+      coords: latestCoords(),
+      accumulation,
+    });
+    this.envCache = { at: now, value };
+    return value;
   }
 
   private accumCache: { at: number; value: ReturnType<typeof latestAccumulation> } | null = null;
@@ -463,6 +540,7 @@ export class MapView {
       this.refreshWeather();
       this.renderList();
       this.resize();
+      void this.ensureCompositor();
       if (this.reduce) this.draw(0);
       else this.loop();
       this.maybeShowRecap();
@@ -626,7 +704,9 @@ export class MapView {
     if (!this.visible) return;
     this.stemsCheckedAt = Date.now();
     const { weights } = phaseForTime(Date.now(), this.sunTimesFromWeather());
-    const levels = stemLevels(this.mood(), weights);
+    const mood = this.mood();
+    this.maybeRingBell(mood);
+    const levels = stemLevels(mood, weights);
     const last = this.lastStems;
     const same =
       last &&
@@ -636,7 +716,10 @@ export class MapView {
       last.wind === levels.wind &&
       last.surf === levels.surf &&
       last.birds === levels.birds &&
-      last.crickets === levels.crickets;
+      last.crickets === levels.crickets &&
+      last.frogs === levels.frogs &&
+      last.roofRain === levels.roofRain &&
+      last.fireplace === levels.fireplace;
     if (same) return;
     this.lastStems = levels;
     feedback.setStem('calmPad', levels.calmPad);
@@ -646,6 +729,25 @@ export class MapView {
     feedback.setStem('surf', levels.surf);
     feedback.setStem('birds', levels.birds);
     feedback.setStem('crickets', levels.crickets);
+    feedback.setStem('frogs', levels.frogs);
+    feedback.setStem('roofRain', levels.roofRain);
+    feedback.setStem('fireplace', levels.fireplace);
+  }
+
+  private lastBellHour = -1;
+  /**
+   * The village bell marks the daytime hours (08:00–20:00 local), skipped in a
+   * storm — thunder owns that sky (Living Weather spec §7). At most one ring
+   * per hour, and only while the map is actually being watched.
+   */
+  private maybeRingBell(mood: WorldMood): void {
+    const hour = new Date().getHours();
+    if (hour === this.lastBellHour) return;
+    const wasFirst = this.lastBellHour === -1;
+    this.lastBellHour = hour;
+    if (wasFirst) return; // never ring just because the map opened
+    if (hour < 8 || hour > 20 || mood.weather === 'storm') return;
+    feedback.bell();
   }
 
   /**
@@ -1152,6 +1254,7 @@ export class MapView {
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(h * dpr);
     this.ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.compositor?.resize();
     this.clampCam();
   }
 
@@ -1376,6 +1479,27 @@ export class MapView {
       const rainbow = this.rainbowStrength(mood);
       if (rainbow > 0) this.drawRainbow(ctx, W, H, rainbow);
       if (!this.reduce) this.applyStormFx(ctx, W, H, t, mood);
+      // The WebGL pass composes the finished 2D frame: mood grade, window/lantern
+      // bloom, golden-hour god rays, vignette + grain. Driven from here so it
+      // inherits the 30fps cap, hidden-tab pause, and reduce-motion's single
+      // static frame. Tier C (no compositor) simply shows this canvas as-is.
+      if (this.compositor?.active) {
+        const env = this.liveEnvironment();
+        this.compositor.render({
+          mood: env.mood,
+          nightAmount: env.nightAmount,
+          goldenHour: env.goldenHour,
+          cloudFlat: env.cloudFlat,
+          sunX: SKY_ANCHORS.godRays.x,
+          sunY: SKY_ANCHORS.godRays.y,
+          reduced: this.reduce,
+          timeMs: t,
+          cloudCover: mood.cloudCover,
+          daylight: env.daylight,
+          windKph: env.windKph,
+          windDeg: env.windDeg,
+        });
+      }
       this.updateBar(prog, stage, mood);
       return;
     }
@@ -3709,7 +3833,7 @@ export class MapView {
     mood: WorldMood,
     stage: number,
   ): void {
-    this.drawSeason(ctx, W, H, t, night);
+    this.drawSeason(ctx, W, H, t, night, mood);
     // Dawn owns the mist: low white banks clinging to the coast that burn off
     // as the sun climbs, and dew glinting in the meadows at first light.
     const dawnW = phaseForTime(Date.now(), this.sunTimesFromWeather()).weights.dawn;
@@ -3820,8 +3944,19 @@ export class MapView {
    * winter. Emberhollow breathes with the season the player is actually living
    * in. Caller already guards reduced motion.
    */
-  private drawSeason(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, night: boolean): void {
+  private drawSeason(
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    t: number,
+    night: boolean,
+    mood: WorldMood,
+  ): void {
     const season = seasonForMonth(new Date().getMonth(), this.weather?.southern ?? false);
+    // Winter's white flecks only make sense when snow is actually falling —
+    // ambient snow under a clear winter sky read as mystery floating circles.
+    // (Real snowfall also draws the dedicated precip flakes; these just add body.)
+    if (season === 'winter' && !(mood.weather === 'snow' && mood.precip > 0.02)) return;
     // Summer's twinkle is the night fireflies already drawn — keep day light.
     const n = season === 'winter' ? 30 : season === 'summer' ? 12 : 18;
     const fallMs = season === 'winter' ? 11000 : season === 'autumn' ? 7500 : 13000;

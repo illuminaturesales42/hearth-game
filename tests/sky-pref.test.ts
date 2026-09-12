@@ -50,6 +50,29 @@ describe('effectiveWeather — "pick your sky" overrides weather, keeps the sola
   });
 });
 
+describe("'interpret' — reality, softened (Mirror / Interpret / Sanctuary)", () => {
+  it('keeps the weather KIND but caps the oppressive tail', () => {
+    const wild: WeatherNow = { ...real, kind: 'storm', cloudCover: 1, windKph: 60, precipMm: 8 };
+    const soft = effectiveWeather(wild, 'interpret')!;
+    expect(soft.kind).toBe('storm'); // safe drama survives
+    expect(soft.cloudCover).toBeLessThanOrEqual(0.85);
+    expect(soft.windKph).toBeLessThanOrEqual(32);
+    expect(soft.precipMm).toBeLessThanOrEqual(2.2);
+    // the honest bits stay real
+    expect(soft.sunriseMs).toBe(500);
+    expect(soft.southern).toBe(true);
+  });
+
+  it('leaves gentle weather completely untouched', () => {
+    const mild: WeatherNow = { ...real, kind: 'clouds', cloudCover: 0.4, windKph: 12, precipMm: 0 };
+    expect(effectiveWeather(mild, 'interpret')).toEqual(mild);
+  });
+
+  it('invents nothing — no reading stays no reading', () => {
+    expect(effectiveWeather(null, 'interpret')).toBeNull();
+  });
+});
+
 describe('presetAccumulation — a chosen mood shows a settled, believable amount', () => {
   it('rain leaves the ground wet, snow lays a blanket, clear is dry', () => {
     expect(presetAccumulation('rain').wetness).toBeGreaterThan(0.5);

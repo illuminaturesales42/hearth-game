@@ -1,0 +1,242 @@
+# Hearth Buildings — style dial-in rig
+
+*Written 2026-07-28. The buildings generated on 07-26 had good structure but
+the wrong look: they don't read as the same world as the 288 avatar portraits.
+This rig finds the recipe that does, by rendering one building across every
+candidate setting and putting the results side by side.*
+
+---
+
+## What was actually wrong
+
+Structure was **not** the main problem — the Canny-locked workflow in
+`comfy-building-worksheet.md` solved that (edge map from the artist's own
+reference cell, ControlNet strength 0.95 released at 0.72). Style was, and the
+forensics are unambiguous:
+
+| | Avatar portraits (the target look) | Buildings (07-26) |
+|---|---|---|
+| Checkpoint | `RealVisXL_V5.0` | `Juggernaut-XL_v9` |
+| Prompt dialect | *soft painterly brushwork, visible brushstrokes* | *confident visible ink and pencil linework* |
+| Palette words | driftwood brown cream sage muted teal rust | seven hex codes |
+| Style reference | a real portrait via IPAdapter | a 90×90 bust, or the building's own last output |
+| IPAdapter model | `ip-adapter-plus-face` (face-trained) | same face model, on architecture |
+
+Two different recipes were being asked to produce one world.
+
+**The fix under test:** speak the portraits' dialect, on the portraits'
+checkpoint, with an IPAdapter that is actually built for general imagery
+(`ip-adapter-plus_sdxl_vit-h`, installed 07-28) pointed at a **style board
+composited from four real portraits** out of the catalogue.
+
+---
+
+---
+
+## CURRENT VERDICT (2026-07-28, sweep 2) — `g2_realvis_guide_gb045`
+
+Supersedes the sweep-1 verdict below. Dialled against the **Building Style
+Guide** (`Graphics and UI/New  Style.png`), which is now the authority.
+
+**RealVisXL_V5.0 · the guide's own prompt vocabulary and sampled palette ·
+guide-board IPAdapter at 0.45 · the Canny spine (0.95 strength, released at
+0.72, seed 777777, denoise 1.0).**
+
+### The IPAdapter earned its place this time
+
+Sweep 1 rejected it because a board of *portraits* transferred their cream
+parchment background instead of their brushwork. Sweep 2's board is different
+in the way that matters: it is **buildings matted onto the render backdrop
+grey** (`comfy_style_guide.matte_panel`), so the background signal it carries
+is the one we want. At 0.45 it adds the warmth and lived-in density that
+prompt-alone lacks — compare `g2_realvis_guide_noipa`, which came out dark and
+moody. Juggernaut disqualified itself again: four of its six cells had
+parchment washes invading the backdrop.
+
+Lesson worth keeping: an IPAdapter transfers *everything* about its reference,
+background included. Judge the reference, not the technique.
+
+### The style contract (constrained)
+
+Defined once in `comfy_dialin.py` and shared by all 17 buildings, so a change
+moves the whole catalogue together:
+
+| Constant | Job |
+|---|---|
+| `GUIDE_ROOF` / `GUIDE_STONE` / `GUIDE_TIMBER` | the guide's sampled hexes. Roof and timber are **identical across every building** — that shared palette is what makes separate renders read as one village |
+| `STONE_FORWARD` | the first guide pass came out timber-forward (a framed workshop) where the guide leads with stonework and uses timber as trim |
+| `MOSS_GREEN` + `FLOWER_NEG` | our ruins grew yellow flowering scrub, because "mossy / weeds through the rubble" reads as wildflowers. Greens named, flowers negated |
+| `SUBJECT_CLAUSES` / `MATERIALS` | the only per-building variation |
+
+### Tooling
+
+| Tool | Job |
+|---|---|
+| `comfy_style_guide.py` | samples the guide's palette, builds the matted style boards + TARGET cell; `--compare TAG` lays the guide's progression row above ours |
+| `comfy_refcells.py` | cuts Canny reference cells for any building from the artist matrix sheets, reusing the importer's own grid detection |
+| `comfy_village.py` | renders many buildings on the locked recipe and sheets them together |
+| `comfy_progression.py` | the five-state upgrade path for one building |
+| `comfy_cutout.py` | render → transparent game sprite |
+
+---
+
+## Sweep 1 verdict (superseded) — `realvis_paint_noipa`
+
+**RealVisXL_V5.0 + the portrait-derived painterly dialect + no IPAdapter.**
+Locked as `WINNER` in `tools/comfy_dialin.py`.
+
+### The sweep's real finding: the IPAdapter had to go
+
+Pointing an IPAdapter at a board of avatar portraits **transfers their cream
+parchment background, not their brushwork.** Every adapter cell inherited paper
+texture, stains and a vignette. At the higher weights it got actively
+destructive — cloud blobs in the corners, and in the Juggernaut rows the forge
+ended up sitting on a *wooden plank surface*, which is precisely the
+"photographed miniature on a table" failure `comfy-building-workflow.md`
+recorded months ago.
+
+Only the no-adapter column renders on a plain backdrop that keys cleanly. So
+the style match now comes entirely from the prompt dialect and the checkpoint.
+
+**Known gap:** the winner reads as polished game-asset illustration rather than
+the portraits' loose visible brushstrokes — the prompt closes maybe two-thirds
+of the distance. A style LoRA trained on the 288 portraits is the honest fix
+(see the escalation list at the bottom).
+
+---
+
+## Making it a game asset — the cutout stage
+
+SDXL can't emit alpha, so every render lands on a painted backdrop with a cast
+shadow. `tools/comfy_cutout.py` is the stage that fixes that:
+
+```
+rembg u2net   saliency alpha — correctly leaves the cast shadow behind
+halo kill     drop the semi-transparent low-saturation grey fringe the backdrop
+              bleeds into edge pixels (saturated warm windows survive)
+colour bleed  push solid colour outward into what fringe remains, so the sprite
+              reads on ANY background instead of ringing with the grey it was
+              cut from  <- this is what lets one sprite sit on the day plate
+              and the night plate without a visible seam
+despeckle     drop keyed islands far smaller than the sprite body
+autocrop      tight alpha bbox + a small even pad
+downscale     320 px long edge (matches the shipped town_* sprites)
+verify        assert all four corners are fully transparent
+```
+
+The halo/despeckle logic mirrors `tools/clean_building_edges.py`, which solves
+the same problem for the importer's near-white keying.
+
+**Interpreter matters:** rembg and the cached `u2net.onnx` live in the ComfyUI
+venv, not system Python. Render and cut in one pass with:
+
+```
+F:/sandbox/sulphur-2/ComfyUI/venv/Scripts/python.exe tools/comfy_dialin.py \
+    --subject bakery --winner --cutout
+```
+
+Standalone, on any existing render:
+
+```
+F:/sandbox/sulphur-2/ComfyUI/venv/Scripts/python.exe tools/comfy_cutout.py \
+    <png>... --out tools/comfy_out/cutout --contact
+```
+
+`--contact` writes a magenta-backed proof sheet — the fastest way to spot a
+grey halo, since grey rings scream against magenta.
+
+Measured on the approved forge: 320×234, corners fully clear, and the residual
+fringe carries the sprite's own dark stone colour (mean RGB 80/73/62) rather
+than the light backdrop it was cut from.
+
+---
+
+## The sweep
+
+`python tools/comfy_dialin.py` — 16 renders (~4 min each, ~1 hour), subject is
+the Forge L1 cell, everything structural held constant.
+
+| Axis | Values |
+|---|---|
+| Checkpoint | `realvis` · `jugg` |
+| Prompt dialect | `paint` (portrait-derived) · `ink` (07-26 control) |
+| IPAdapter | `noipa` control · `style055` · `style085` · `strong070` |
+
+Weight types are exactly what this ComfyUI build exposes — `style transfer
+precise` does **not** exist here (it 400s the queue); the available strong
+option is `strong style transfer`.
+
+Output: `tools/comfy_out/dialin/<recipe>.png` plus **`contact_sheet.png`**, a
+labelled grid — the one file to actually look at.
+
+Locked across every cell (from the worksheet §3, do not re-open while judging
+style): seed 777777 · 40 steps · cfg 7.0 · dpmpp_2m/karras · denoise 1.0 ·
+Canny 100/200/1024 · ControlNet 0.95 strength, end 0.72 · latent matched to
+the cell aspect (L1 = 1024×848).
+
+### How to judge
+
+In this order — a cell that fails an earlier test can't be rescued by a later one:
+
+1. **Does it look like the portraits?** Painterly, visible strokes, soft warm
+   light. Not inked, not vector, not photographed.
+2. **Did the geometry survive?** Compare against `forge_ref_l1.png`: same
+   massing, chimney, roofline, door placement.
+3. **Palette** — inside the art-bible swatches; warm stone, muted teal, cream.
+4. **Cut-out viability** — clean silhouette against the backdrop, nothing
+   fading into it.
+
+Known artefact in the first render: the style board carries the portraits'
+*cream parchment* background, so scenes can inherit a papery vignette. It cuts
+away with the building, but if it dominates, add a plain-backdrop clause or
+crop the board tighter to the faces.
+
+---
+
+## The interactive workflow
+
+`python tools/comfy_make_workflow.py` installs **`hearth_building_dialin`** on
+the running ComfyUI (Workflow → Browse). Same graph, hand-drivable, with the
+three dials titled and an on-canvas README note.
+
+It is *generated from the server's own `/object_info`*, not hand-written, so
+slot order always matches the running build — the usual cause of a workflow
+that opens with broken links.
+
+Two gotchas it also handles:
+
+- **The live :8188 may be Comfy Desktop**, whose `input/`/`output/` are *not*
+  `F:\sandbox\sulphur-2\ComfyUI\…`. Every 07-26 script hardcodes those paths
+  and fails silently. Both new tools use the HTTP API instead
+  (`POST /upload/image`, `GET /view`, `POST /userdata/...`).
+- Reference cells therefore have to be **uploaded** to the server before the
+  UI graph can see them. `comfy_dialin.py` does this automatically; all five
+  Forge state cells are already up.
+
+---
+
+## Once a recipe wins
+
+1. Re-run it on a second building to confirm it generalises:
+   `python tools/comfy_dialin.py --subject bakery --only <recipe-id>`
+   (needs `bakery_ref_l1.png` — crop the midday row of its sheet per
+   worksheet §3).
+2. Fold the winner into the worksheet's §1/§3 as the new locked block.
+3. Generate **L1 first** for each building (identity anchor), approve it, then
+   the other four states with that L1 as the IPAdapter identity reference —
+   the generation order in worksheet §0 still applies.
+4. Cut out with `tools/comfy_cutout.py` (or `--cutout` on the render), then
+   drop the result into `public/art/` and run
+   `python tools/import_map_v2.py --manifest-only`.
+
+## If the sweep isn't good enough
+
+In escalating order of effort:
+
+- **Tighter style board** — crop to faces/brushwork only, drop the parchment.
+- **`controlnet-union-sdxl-promax`** (~2.5 GB) adds depth/lineart/softedge;
+  softedge is gentler than Canny on painterly subjects and may free the model
+  to paint while still holding massing.
+- **Train a style LoRA on the 288 portraits** — the real endgame lock, and the
+  only approach that makes style a property of the *model* rather than of a
+  prompt. Needs kohya on ROCm (WSL); a session of its own.

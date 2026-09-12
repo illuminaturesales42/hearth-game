@@ -1,6 +1,7 @@
 import { Game } from './core/game';
 import { clearSave } from './core/save';
 import { setPhaseOverride } from './core/time-of-day';
+import { setMoodOverride, MOOD_FEELING, WEATHER_MOODS, type WeatherMood } from './core/weather-mood';
 import { stageFor } from './data/economy';
 import { feedback } from './ui/feedback';
 import { toast } from './ui/toast';
@@ -279,6 +280,8 @@ declare global {
     hearthTestGames: () => void;
     hearthMood: () => unknown;
     hearthSky: (mode?: string) => void;
+    hearthEnv: (opts?: { phase?: string; mood?: string } | string) => void;
+    hearthGl: () => Promise<unknown>;
   }
 }
 // Tester hooks (hearthSeeTown, hearthReset, …). Always on in dev; in the
@@ -371,6 +374,47 @@ if (testerMode) {
         ? `Sky forced to ${mode?.toUpperCase()} — light, shadows and colour all swing to it. hearthSky('real') to return.`
         : 'Sky following your real sun again.',
     );
+  };
+  // The full environment scrubber (Living Weather spec §10): force any
+  // phase + art-directed mood combination for visual/QA inspection.
+  //   hearthEnv({ phase: 'dusk', mood: 'storm-watch' })
+  //   hearthEnv('cosy-rain')          — mood only
+  //   hearthEnv('real') / hearthEnv() — back to the real sky
+  window.hearthEnv = (opts?: { phase?: string; mood?: string } | string) => {
+    const o = typeof opts === 'string' ? (opts === 'real' ? {} : { mood: opts }) : (opts ?? {});
+    const reset = !o.phase && !o.mood;
+    if (reset) {
+      setPhaseOverride(null);
+      setMoodOverride(null);
+      document.dispatchEvent(new CustomEvent('hearth:sky-updated'));
+      console.info('Environment following your real sky again.');
+      return;
+    }
+    if (o.mood) {
+      const m = o.mood.toLowerCase() as WeatherMood;
+      if (!WEATHER_MOODS.includes(m)) {
+        console.info(`hearthEnv: unknown mood '${o.mood}'. Moods: ${WEATHER_MOODS.join(' / ')}`);
+        return;
+      }
+      setMoodOverride(m);
+      console.info(`Mood forced to ${m} — "${MOOD_FEELING[m]}".`);
+    }
+    if (o.phase) window.hearthSky(o.phase);
+    else document.dispatchEvent(new CustomEvent('hearth:sky-updated'));
+  };
+  // WebGL compositor diagnosis: hearthGl() → alive/degraded/frames/cost, and
+  // WHY it retired to the 2D map if it did. For remote bug reports.
+  window.hearthGl = async () => {
+    try {
+      const mod = await import('./render/compositor');
+      const info = mod.lastCompositor?.info ?? 'compositor never created (no WebGL2, or map not opened yet)';
+      console.info(info);
+      return info;
+    } catch (err: unknown) {
+      const msg = `compositor module failed to load: ${err instanceof Error ? err.message : String(err)}`;
+      console.info(msg);
+      return msg;
+    }
   };
   window.hearthHealthSim = (steps: number, sleepHours?: number, flights?: number) => {
     const snap: HealthSnapshot = {

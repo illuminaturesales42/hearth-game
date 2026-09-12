@@ -74,6 +74,78 @@ describe('computeEnvironment — the world truth', () => {
   });
 });
 
+describe('computeEnvironment v2 — weather channels + mood', () => {
+  afterEach(() => setPhaseOverride(null));
+
+  it('carries wind, precip curve, humidity, visibility and a resolved mood', () => {
+    const noon = T + 7 * H;
+    const e = computeEnvironment(noon, sun, {
+      kind: 'rain',
+      cloudCover: 0.9,
+      windKph: 18,
+      precipMm: 1.2,
+      windDir: 250,
+      humidity: 0.88,
+      fetchedAt: noon,
+    });
+    expect(e.windKph).toBe(18);
+    expect(e.windDeg).toBe(250);
+    expect(e.precip).toBeCloseTo(0.3, 5); // 1.2mm / 4
+    expect(e.humidity).toBeCloseTo(0.88, 5);
+    expect(e.visibility).toBeLessThan(1);
+    expect(e.mood).toBe('cosy-rain');
+  });
+
+  it('no weather at all still yields a full, sane v2 state', () => {
+    const e = computeEnvironment(T + 7 * H, sun, null);
+    expect(e.mood).toBe('bright-day');
+    expect(e.precip).toBe(0);
+    expect(e.thunderRisk).toBe(0);
+    expect(e.visibility).toBeGreaterThan(0.9);
+    expect(e.wetness).toBe(0);
+    expect(e.snowDepth).toBe(0);
+  });
+
+  it('real coords give a real sun; without them the proxy still points sensibly', () => {
+    const noon = T + 7 * H;
+    const real = computeEnvironment(noon, sun, null, { coords: { lat: -27.5, lng: 153 } });
+    expect(Number.isFinite(real.sunAltitude)).toBe(true);
+    expect(Number.isFinite(real.sunAzimuth)).toBe(true);
+    const proxy = computeEnvironment(noon, sun, null);
+    expect(proxy.sunAltitude).toBeGreaterThan(0); // daytime → above horizon
+    const midnight = T + 14 * H + 5 * H;
+    expect(computeEnvironment(midnight, sun, null).sunAltitude).toBeLessThan(0);
+  });
+
+  it('accumulation memory and frost flow through', () => {
+    const noon = T + 7 * H;
+    const e = computeEnvironment(
+      noon,
+      sun,
+      { kind: 'clear', cloudCover: 0.1, windKph: 5, precipMm: 0, tempC: -2, fetchedAt: noon },
+      { accumulation: { wetness: 0.4, snowDepth: 0.55 } },
+    );
+    expect(e.wetness).toBeCloseTo(0.4, 5);
+    expect(e.snowDepth).toBeCloseTo(0.55, 5);
+    expect(e.frost).toBeGreaterThan(0.5);
+    expect(e.mood).toBe('snow-glow'); // lying snow reads as snow even under clear sky
+  });
+
+  it('storms resolve to storm-watch with full thunder risk', () => {
+    const noon = T + 7 * H;
+    const e = computeEnvironment(noon, sun, {
+      kind: 'storm',
+      cloudCover: 1,
+      windKph: 38,
+      precipMm: 5,
+      fetchedAt: noon,
+    });
+    expect(e.mood).toBe('storm-watch');
+    expect(e.thunderRisk).toBe(1);
+    expect(e.precip).toBeGreaterThan(0.9);
+  });
+});
+
 describe('lerpHex', () => {
   it('interpolates endpoints and midpoints', () => {
     expect(lerpHex('#000000', '#ffffff', 0)).toBe('#000000');

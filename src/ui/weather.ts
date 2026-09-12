@@ -189,7 +189,7 @@ export async function currentWeather(): Promise<WeatherNow | null> {
     // Attribution: weather data by Open-Meteo.com (CC BY 4.0).
     const url =
       `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat.toFixed(3)}&longitude=${coords.lng.toFixed(3)}` +
-      `&current=weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,precipitation,is_day,temperature_2m,apparent_temperature` +
+      `&current=weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,precipitation,is_day,temperature_2m,apparent_temperature,relative_humidity_2m` +
       `&daily=sunrise,sunset&timezone=auto&timeformat=unixtime&wind_speed_unit=kmh`;
     const res = await fetch(url);
     if (!res.ok) return cached;
@@ -203,6 +203,7 @@ export async function currentWeather(): Promise<WeatherNow | null> {
         is_day?: number;
         temperature_2m?: number;
         apparent_temperature?: number;
+        relative_humidity_2m?: number;
       };
       daily?: { sunrise?: number[]; sunset?: number[] };
     };
@@ -217,6 +218,7 @@ export async function currentWeather(): Promise<WeatherNow | null> {
     if (typeof c.wind_direction_10m === 'number') extra.windDir = c.wind_direction_10m;
     if (typeof c.temperature_2m === 'number') extra.tempC = c.temperature_2m;
     if (typeof c.apparent_temperature === 'number') extra.feelsLikeC = c.apparent_temperature;
+    if (typeof c.relative_humidity_2m === 'number') extra.humidity = c.relative_humidity_2m / 100;
     extra.southern = coords.lat < 0; // hemisphere bit only — flips the seasons
     const now = weatherFromWmo(
       c.weather_code,
@@ -289,23 +291,34 @@ export function latestCoords(): { lat: number; lng: number } | null {
   return null;
 }
 
-// ---------- "pick your sky" — the opt-out for grey-climate players ----------
-// Real-weather sync is the magic, but a player stuck under a fortnight of drizzle
-// deserves a way out (the Animal Crossing time-travel lesson). A chosen mood keeps
-// the real *solar clock* (dawn/day/dusk/night still track the player's true
-// sunrise/sunset — that stays honest and lovely) but paints a preferred weather.
+// ------- Mirror / Interpret / Sanctuary — who directs the island's sky -------
+// Real-weather sync is the magic, but reality can be relentless (the Animal
+// Crossing time-travel lesson). Three modes (Living Weather spec §8):
+//   'real'      — Mirror: the sky exactly as it is outside.
+//   'interpret' — the DEFAULT: real weather as inspiration, extremes softened —
+//                 a storm keeps its drama but never turns oppressive; cloud,
+//                 wind and rain are gently capped so Emberhollow always finds
+//                 the beauty in the player's day.
+//   'clear'/'rain'/'snow' — Sanctuary: a chosen, steady atmosphere.
+// Every mode keeps the real *solar clock* (dawn/day/dusk/night still track the
+// player's true sunrise/sunset — that stays honest and lovely).
 
-export type SkyPref = 'real' | 'clear' | 'rain' | 'snow';
+export type SkyPref = 'real' | 'interpret' | 'clear' | 'rain' | 'snow';
 
-const SKY_PREFS: readonly SkyPref[] = ['real', 'clear', 'rain', 'snow'];
+const SKY_PREFS: readonly SkyPref[] = ['real', 'interpret', 'clear', 'rain', 'snow'];
 
-/** The player's sky preference (default: follow the real weather). */
+/** Modes that render the LIVE reading (vs a Sanctuary preset). */
+export function isLiveSky(pref: SkyPref): boolean {
+  return pref === 'real' || pref === 'interpret';
+}
+
+/** The player's sky preference (default: Interpret — reality, softened). */
 export function getSkyPref(): SkyPref {
   try {
     const v = localStorage.getItem(SKY_PREF_KEY);
-    return SKY_PREFS.includes(v as SkyPref) ? (v as SkyPref) : 'real';
+    return SKY_PREFS.includes(v as SkyPref) ? (v as SkyPref) : 'interpret';
   } catch {
-    return 'real';
+    return 'interpret';
   }
 }
 
@@ -326,6 +339,18 @@ export function setSkyPref(p: SkyPref): void {
  */
 export function effectiveWeather(real: WeatherNow | null, pref: SkyPref = getSkyPref()): WeatherNow | null {
   if (pref === 'real') return real;
+  if (pref === 'interpret') {
+    // Reality, softened: same weather KIND (a storm is still a storm — safe
+    // drama survives), but the oppressive tail is capped so a hard day outside
+    // never turns Emberhollow bleak. Nothing is invented, only gentled.
+    if (!real) return null;
+    return {
+      ...real,
+      cloudCover: Math.min(real.cloudCover, 0.85),
+      windKph: Math.min(real.windKph, 32),
+      precipMm: Math.min(real.precipMm, 2.2),
+    };
+  }
   const base: WeatherNow = real
     ? { ...real }
     : { kind: 'clear', cloudCover: 0.2, windKph: 6, precipMm: 0, fetchedAt: Date.now() };
@@ -342,5 +367,6 @@ export function effectiveWeather(real: WeatherNow | null, pref: SkyPref = getSky
 export function presetAccumulation(pref: SkyPref): Accumulation {
   if (pref === 'rain') return { wetness: 0.7, snowDepth: 0 };
   if (pref === 'snow') return { wetness: 0, snowDepth: 0.7 };
-  return { wetness: 0, snowDepth: 0 }; // clear
+  if (pref === 'clear') return { wetness: 0, snowDepth: 0 };
+  return latestAccumulation(); // live modes remember the real weather
 }

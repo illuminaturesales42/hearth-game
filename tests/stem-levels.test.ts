@@ -58,4 +58,28 @@ describe('stemLevels — ambience derived from mood + real time of day (additive
     expect(stemLevels(mood({ villagersOut: 0.6 })).chatter).toBe(0.6);
     expect(stemLevels(mood({ villagersOut: 1 })).chatter).toBe(1);
   });
+
+  const nightW = { dawn: 0, day: 0, dusk: 0, evening: 0, night: 1 };
+  const noonW = { dawn: 0, day: 1, dusk: 0, evening: 0, night: 0 };
+
+  it('frogs sing off wet ground after dark — never at noon, hushed in a storm', () => {
+    const wetNight = stemLevels(mood({ wetness: 0.6 }), nightW).frogs;
+    expect(wetNight).toBeGreaterThan(0.5);
+    expect(stemLevels(mood({ wetness: 0.6 }), noonW).frogs).toBe(0);
+    expect(stemLevels(mood({ wetness: 0 }), nightW).frogs).toBe(0); // dry night, no chorus
+    expect(stemLevels(mood({ weather: 'storm', wetness: 0.6 }), nightW).frogs).toBeLessThan(wetNight);
+  });
+
+  it('roof patter earns its place only over genuinely heavy rain', () => {
+    expect(stemLevels(mood({ weather: 'rain', precip: 0.3 })).roofRain).toBe(0);
+    expect(stemLevels(mood({ weather: 'rain', precip: 1 })).roofRain).toBeCloseTo(1);
+    expect(stemLevels(mood({ weather: 'clear', precip: 0 })).roofRain).toBe(0);
+  });
+
+  it('the hearth answers cold, storms and cosy rain after dark', () => {
+    expect(stemLevels(mood({ frost: 0.8 }), nightW).fireplace).toBeGreaterThan(0.5);
+    expect(stemLevels(mood({ weather: 'storm' }), nightW).fireplace).toBeGreaterThan(0.3);
+    expect(stemLevels(mood({ frost: 0.8 }), noonW).fireplace).toBe(0); // daylight, no hearth bed
+    expect(stemLevels(mood({}), nightW).fireplace).toBe(0); // mild dry night stays quiet
+  });
 });

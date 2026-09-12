@@ -15,7 +15,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "deploy": "pnpm build && wrangler pages deploy",
+    "deploy": "pnpm build && wrangler pages deploy --branch main",
     "deploy:preview": "pnpm build && wrangler pages deploy --branch preview"
   },
   "devDependencies": {
