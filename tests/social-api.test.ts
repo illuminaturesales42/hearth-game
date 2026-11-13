@@ -1,0 +1,533 @@
+/**
+ * The social Pages Functions, exercised against the multi-table fake D1.
+ *
+ * The tests that matter most are the idempotency ones: every grant in the game
+ * flows through a mailbox row whose id is derived rather than random, and the
+ * claim is a conditional UPDATE. If either of those regressed, a retried
+ * request would mint a second gift or a second helping of energy — which is
+ * exactly the failure the whole design exists to prevent.
+ */
+import { describe, expect, it } from 'vitest';
+import { fakeSocialDb, player, socialReq, type FakeState } from './helpers/fake-social-db';
+import { CAPS, CHAIN_IDS, cleanName, deviceKeyFrom, mintSeed, pairKey } from '../functions/v1/_lib';
+import { onRequestPost as postPlayer } from '../functions/v1/player';
+import { onRequestGet as getSocial } from '../functions/v1/social';
+import { onRequestPost as postInvite } from '../functions/v1/invites/index';
+import { onRequestPost as postRedeem } from '../functions/v1/invites/redeem';
+import { onRequestDelete as deleteFriend } from '../functions/v1/friends/[playerId]';
+import { onRequestPost as postGift } from '../functions/v1/gifts';
+import { onRequestPost as postHelpRequest } from '../functions/v1/help/request';
+import { onRequestPost as postHelpFulfil } from '../functions/v1/help/fulfil';
+import { onRequestPost as postClaim } from '../functions/v1/mailbox/[id]/claim';
+import { onRequestPost as postDuel } from '../functions/v1/duels/index';
+import { onRequestPost as postScore } from '../functions/v1/duels/[id]/score';
+import { onRequestGet as getDuel } from '../functions/v1/duels/[id]/index';
+import { onRequestGet as getJoin } from '../functions/join/[token]';
+import type { ChainId } from '../src/core/types';
+
+const KEY_A = 'aaaaaaaa-bbbb-cccc-dddd-eeeeffff0000';
+const KEY_B = 'bbbbbbbb-cccc-dddd-eeee-ffff00001111';
+const A = 'p_aaaaaaaaaaaaaaaa';
+const B = 'p_bbbbbbbbbbbbbbbb';
+
+/** Two registered, already-befriended players — the usual starting point. */
+function twoFriends(extra: Partial<FakeState> = {}) {
+  const [a, b] = pairKey(A, B);
+  return fakeSocialDb({
+    players: [player(A, KEY_A, 'Ada'), player(B, KEY_B, 'Bo')],
+    friendships: [{ a, b, created_at: 1000, via_token: null }],
+    ...extra,
+  });
+}
+
+const body = async (res: Response) => (await res.json()) as Record<string, unknown>;
+
+describe('_lib — pure helpers', () => {
+  it('the chain allowlist matches ChainId exactly', () => {
+    // A drifted list would let a client request an item the game cannot render,
+    // so this asserts both directions rather than just length.
+    const typed: Record<ChainId, true> = {
+      wood: true,
+      harvest: true,
+      hearthfire: true,
+      keepsake: true,
+      stone: true,
+      clay: true,
+      seeds: true,
+      flowers: true,
+      water: true,
+      copper: true,
+      fish: true,
+      seaweed: true,
+      honey: true,
+      herbs: true,
+      wool: true,
+      books: true,
+      music: true,
+      homestead: true,
+      greenhouse: true,
+      smithy: true,
+      apothecary: true,
+    };
+    expect([...CHAIN_IDS].sort()).toEqual(Object.keys(typed).sort());
+  });
+
+  it('cleanName strips control characters and clamps length', () => {
+    expect(cleanName('  Ada\x00\x1f  ')).toBe('Ada');
+    expect(cleanName('x'.repeat(50)).length).toBe(CAPS.nameMaxLen);
+    expect(cleanName(42)).toBe('');
+  });
+
+  it('deviceKeyFrom rejects anything that is not a plausible bearer key', () => {
+    expect(deviceKeyFrom(`Bearer ${KEY_A}`)).toBe(KEY_A);
+    expect(deviceKeyFrom('Bearer short')).toBeNull();
+    expect(deviceKeyFrom(null)).toBeNull();
+  });
+
+  it('mintSeed stays inside the positive 31-bit range createDuel needs', () => {
+    for (let i = 0; i < 200; i++) {
+      const s = mintSeed();
+      expect(s).toBeGreaterThan(0);
+      expect(s).toBeLessThanOrEqual(2_147_483_647);
+    }
+  });
+});
+
+describe('POST /v1/player — identity', () => {
+  it('registers once per device key and refreshes the profile afterwards', async () => {
+    const { db, state } = fakeSocialDb();
+    const first = await postPlayer({
+      request: socialReq('POST', '/v1/player', { body: { name: 'Ada', portrait: 'c01' } }),
+      env: { DB: db },
+    });
+    expect(first.status).toBe(200);
+    const id = (await body(first)).playerId as string;
+    expect(id).toMatch(/^p_[a-z2-7]{16}$/);
+    expect(state.players).toHaveLength(1);
+
+    const again = await postPlayer({
+      request: socialReq('POST', '/v1/player', { body: { name: 'Ada of the Hearth', portrait: 'c02' } }),
+      env: { DB: db },
+    });
+    expect((await body(again)).playerId).toBe(id); // same identity, not a second player
+    expect(state.players).toHaveLength(1);
+    expect(state.players[0]?.name).toBe('Ada of the Hearth');
+  });
+
+  it('refuses a missing or malformed device key', async () => {
+    const { db } = fakeSocialDb();
+    const res = await postPlayer({
+      request: socialReq('POST', '/v1/player', { body: {}, key: null }),
+      env: { DB: db },
+    });
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('GET /v1/social — the snapshot', () => {
+  it('403s an unregistered key and never leaks a device key for a friend', async () => {
+    const { db } = fakeSocialDb();
+    const stranger = await getSocial({ request: socialReq('GET', '/v1/social'), env: { DB: db } });
+    expect(stranger.status).toBe(403);
+
+    const two = twoFriends();
+    const res = await getSocial({ request: socialReq('GET', '/v1/social'), env: { DB: two.db } });
+    expect(res.status).toBe(200);
+    const snap = await body(res);
+    expect(snap.playerId).toBe(A);
+    expect(snap.friends).toEqual([{ playerId: B, name: 'Bo', portrait: 'c01', lastSeen: 1000 }]);
+    expect(JSON.stringify(snap)).not.toContain(KEY_B);
+  });
+});
+
+describe('invites — two-sided consent', () => {
+  async function mintInvite(db: FakeState extends never ? never : Parameters<typeof postInvite>[0]['env']['DB']) {
+    const res = await postInvite({ request: socialReq('POST', '/v1/invites'), env: { DB: db } });
+    return (await body(res)) as { token: string; url: string; expiresAt: number };
+  }
+
+  it('mints a link on the request origin (not a domain nobody owns)', async () => {
+    const { db } = fakeSocialDb({ players: [player(A, KEY_A, 'Ada')] });
+    const inv = await mintInvite(db);
+    expect(inv.url).toBe(`https://hearth.test/join/${inv.token}`);
+    expect(inv.token).toMatch(/^[A-Za-z0-9_-]{22}$/);
+  });
+
+  it('caps open invites', async () => {
+    const { db } = fakeSocialDb({ players: [player(A, KEY_A, 'Ada')] });
+    for (let i = 0; i < CAPS.invitesActive; i++) await mintInvite(db);
+    const over = await postInvite({ request: socialReq('POST', '/v1/invites'), env: { DB: db } });
+    expect(over.status).toBe(429);
+  });
+
+  it('redeeming makes friends and posts exactly one join bonus per side, ever', async () => {
+    const { db, state } = fakeSocialDb({
+      players: [player(A, KEY_A, 'Ada'), player(B, KEY_B, 'Bo')],
+    });
+    const inv = await mintInvite(db);
+
+    const res = await postRedeem({
+      request: socialReq('POST', '/v1/invites/redeem', { body: { token: inv.token }, key: KEY_B }),
+      env: { DB: db },
+    });
+    expect(res.status).toBe(200);
+    expect((await body(res)).friend).toMatchObject({ playerId: A, name: 'Ada' });
+    expect(state.friendships).toHaveLength(1);
+
+    const bonuses = state.mailbox.filter((m) => m.kind === 'join_bonus');
+    expect(bonuses).toHaveLength(2);
+    expect(bonuses.map((m) => m.to_player).sort()).toEqual([A, B].sort());
+    expect(JSON.parse(bonuses[0]!.payload)).toEqual({
+      kind: 'join_bonus',
+      energy: CAPS.joinBonusEnergy,
+    });
+
+    // A second attempt on the same token must not mint a second friendship or
+    // a second pair of bonuses — the token is spent and the ids collide.
+    const twice = await postRedeem({
+      request: socialReq('POST', '/v1/invites/redeem', { body: { token: inv.token }, key: KEY_B }),
+      env: { DB: db },
+    });
+    expect(twice.status).toBe(410);
+    expect(state.mailbox.filter((m) => m.kind === 'join_bonus')).toHaveLength(2);
+  });
+
+  it('rejects your own invite, an unknown token, and an expired one', async () => {
+    const { db } = fakeSocialDb({
+      players: [player(A, KEY_A, 'Ada'), player(B, KEY_B, 'Bo')],
+      invites: [
+        {
+          token: 'x'.repeat(22),
+          from_player: A,
+          created_at: 1,
+          expires_at: 2,
+          redeemed_by: null,
+          redeemed_at: null,
+        },
+      ],
+    });
+    const own = await postInvite({ request: socialReq('POST', '/v1/invites'), env: { DB: db } });
+    const mine = (await body(own)) as { token: string };
+    const self = await postRedeem({
+      request: socialReq('POST', '/v1/invites/redeem', { body: { token: mine.token } }),
+      env: { DB: db },
+    });
+    expect(self.status).toBe(409);
+
+    const unknown = await postRedeem({
+      request: socialReq('POST', '/v1/invites/redeem', { body: { token: 'y'.repeat(22) }, key: KEY_B }),
+      env: { DB: db },
+    });
+    expect(unknown.status).toBe(404);
+
+    const expired = await postRedeem({
+      request: socialReq('POST', '/v1/invites/redeem', { body: { token: 'x'.repeat(22) }, key: KEY_B }),
+      env: { DB: db },
+    });
+    expect(expired.status).toBe(410);
+  });
+});
+
+describe('DELETE /v1/friends/:id', () => {
+  it('severs the friendship both ways, and 404s when there was none', async () => {
+    const { db, state } = twoFriends();
+    const ctx = { request: socialReq('DELETE', `/v1/friends/${B}`), env: { DB: db }, params: { playerId: B } };
+    expect((await deleteFriend(ctx)).status).toBe(200);
+    expect(state.friendships).toHaveLength(0);
+    expect((await deleteFriend(ctx)).status).toBe(404);
+  });
+});
+
+describe('gifts — free to give, capped, server-minted', () => {
+  it('mints into the recipient inbox and is idempotent on retry', async () => {
+    const { db, state } = twoFriends();
+    const send = () =>
+      postGift({
+        request: socialReq('POST', '/v1/gifts', {
+          body: { to: B, chain: 'wood', level: 0, clientKey: 'ck-1' },
+        }),
+        env: { DB: db },
+      });
+    expect((await send()).status).toBe(200);
+    expect((await send()).status).toBe(200); // retry: accepted, but...
+    expect(state.mailbox.filter((m) => m.kind === 'gift')).toHaveLength(1); // ...still one gift
+    expect(JSON.parse(state.mailbox[0]!.payload)).toEqual({ kind: 'gift', chain: 'wood', level: 0 });
+  });
+
+  it('refuses strangers, bad chains, over-level items and a second gift to the same friend today', async () => {
+    const { db } = twoFriends();
+    const gift = (over: Record<string, unknown>, key = KEY_A) =>
+      postGift({
+        request: socialReq('POST', '/v1/gifts', {
+          body: { to: B, chain: 'wood', level: 0, clientKey: 'k', ...over },
+          key,
+        }),
+        env: { DB: db },
+      });
+
+    expect((await gift({ chain: 'gems' })).status).toBe(422);
+    expect((await gift({ level: 9 })).status).toBe(422);
+    expect((await gift({ to: 'p_zzzzzzzzzzzzzzzz', clientKey: 'k2' })).status).toBe(403);
+    expect((await gift({ to: A, clientKey: 'k3' })).status).toBe(409);
+
+    expect((await gift({ clientKey: 'first' })).status).toBe(200);
+    const second = await gift({ clientKey: 'second' });
+    expect(second.status).toBe(429); // one per friend per day
+  });
+});
+
+describe('help — ask, then a friend chooses to answer', () => {
+  it('an ask reaches the friend, and fulfilling mints items back exactly once', async () => {
+    const { db, state } = twoFriends();
+
+    const ask = await postHelpRequest({
+      request: socialReq('POST', '/v1/help/request', {
+        body: { to: B, chain: 'stone', clientKey: 'ask-1' },
+      }),
+      env: { DB: db },
+    });
+    expect(ask.status).toBe(200);
+    const letter = state.mailbox.find((m) => m.kind === 'help_request')!;
+    expect(letter.to_player).toBe(B);
+
+    const fulfil = () =>
+      postHelpFulfil({
+        request: socialReq('POST', '/v1/help/fulfil', { body: { mailboxId: letter.id }, key: KEY_B }),
+        env: { DB: db },
+      });
+    expect((await fulfil()).status).toBe(200);
+    const gifts = state.mailbox.filter((m) => m.kind === 'help_fulfil');
+    expect(gifts).toHaveLength(1);
+    expect(JSON.parse(gifts[0]!.payload)).toEqual({
+      kind: 'help_fulfil',
+      chain: 'stone',
+      count: CAPS.helpItems,
+    });
+    expect(letter.claimed_at).not.toBeNull(); // handled: leaves Bo's inbox
+
+    await fulfil(); // pressing again cannot mint a second helping
+    expect(state.mailbox.filter((m) => m.kind === 'help_fulfil')).toHaveLength(1);
+  });
+
+  it('only the addressee can fulfil a request', async () => {
+    const { db, state } = twoFriends();
+    await postHelpRequest({
+      request: socialReq('POST', '/v1/help/request', { body: { to: B, chain: 'wood', clientKey: 'a1' } }),
+      env: { DB: db },
+    });
+    const letter = state.mailbox.find((m) => m.kind === 'help_request')!;
+    const wrong = await postHelpFulfil({
+      request: socialReq('POST', '/v1/help/fulfil', { body: { mailboxId: letter.id }, key: KEY_A }),
+      env: { DB: db },
+    });
+    expect(wrong.status).toBe(403);
+  });
+});
+
+describe('mailbox claim — the grant gate', () => {
+  it('pays out once and reports alreadyClaimed on every retry', async () => {
+    const { db, state } = twoFriends({
+      mailbox: [
+        {
+          id: 'g:one',
+          to_player: A,
+          from_player: B,
+          kind: 'gift',
+          payload: JSON.stringify({ kind: 'gift', chain: 'wood', level: 0 }),
+          created_at: 10,
+          claimed_at: null,
+        },
+      ],
+    });
+    const ctx = {
+      request: socialReq('POST', '/v1/mailbox/g:one/claim'),
+      env: { DB: db },
+      params: { id: 'g:one' },
+    };
+    const first = await postClaim(ctx);
+    expect(first.status).toBe(200);
+    expect((await body(first)).payload).toEqual({ kind: 'gift', chain: 'wood', level: 0 });
+
+    const again = await postClaim(ctx);
+    expect(again.status).toBe(200);
+    expect((await body(again)).alreadyClaimed).toBe(true);
+    expect(state.mailbox[0]?.claimed_at).toBe(first ? state.mailbox[0]?.claimed_at : null);
+  });
+
+  it("404s someone else's letter rather than revealing it exists", async () => {
+    const { db } = twoFriends({
+      mailbox: [
+        {
+          id: 'g:theirs',
+          to_player: B,
+          from_player: A,
+          kind: 'gift',
+          payload: '{}',
+          created_at: 10,
+          claimed_at: null,
+        },
+      ],
+    });
+    const res = await postClaim({
+      request: socialReq('POST', '/v1/mailbox/g:theirs/claim'),
+      env: { DB: db },
+      params: { id: 'g:theirs' },
+    });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('duels — async score, same seed both sides', () => {
+  async function challenge(db: Parameters<typeof postDuel>[0]['env']['DB']) {
+    const res = await postDuel({
+      request: socialReq('POST', '/v1/duels', { body: { opponent: B } }),
+      env: { DB: db },
+    });
+    return { res, view: await body(res) };
+  }
+
+  const submit = (db: Parameters<typeof postScore>[0]['env']['DB'], id: string, score: number, key: string) =>
+    postScore({
+      request: socialReq('POST', `/v1/duels/${id}/score`, { body: { score, moves: 12 }, key }),
+      env: { DB: db },
+      params: { id },
+    });
+
+  it('deals one seed, hides the opponent score until both are in, then resolves', async () => {
+    const { db, state } = twoFriends();
+    const { res, view } = await challenge(db);
+    expect(res.status).toBe(200);
+    const id = view.duelId as string;
+    expect(view.seed).toBeGreaterThan(0);
+    expect(view.myScore).toBeNull();
+    expect(state.mailbox.filter((m) => m.kind === 'duel_challenge')).toHaveLength(1);
+
+    const mine = await submit(db, id, 120, KEY_A);
+    const afterMine = await body(mine);
+    expect(afterMine.status).toBe('open');
+    expect(afterMine.myScore).toBe(120);
+    expect(afterMine.theirScore).toBeNull(); // no aiming at a target
+
+    const theirs = await submit(db, id, 90, KEY_B);
+    const resolved = await body(theirs);
+    expect(resolved.status).toBe('resolved');
+    expect(resolved.winner).toBe('them'); // from Bo's side: Ada won
+    expect(resolved.theirScore).toBe(120);
+
+    const letters = state.mailbox.filter((m) => m.kind === 'duel_result');
+    expect(letters).toHaveLength(2);
+    const forAda = JSON.parse(letters.find((m) => m.to_player === A)!.payload) as Record<string, unknown>;
+    expect(forAda).toMatchObject({ won: true, tie: false, yourScore: 120, theirScore: 90 });
+  });
+
+  it('a resent identical score is a no-op; a different one is refused', async () => {
+    const { db } = twoFriends();
+    const { view } = await challenge(db);
+    const id = view.duelId as string;
+    expect((await submit(db, id, 50, KEY_A)).status).toBe(200);
+    expect((await submit(db, id, 50, KEY_A)).status).toBe(200);
+    expect((await submit(db, id, 999, KEY_A)).status).toBe(409);
+  });
+
+  it('range-checks the asserted score and refuses non-participants', async () => {
+    const { db } = twoFriends({ players: [player(A, KEY_A, 'Ada'), player(B, KEY_B, 'Bo')] });
+    const { view } = await challenge(db);
+    const id = view.duelId as string;
+    const tooBig = await postScore({
+      request: socialReq('POST', `/v1/duels/${id}/score`, {
+        body: { score: CAPS.duelMaxScore + 1, moves: 1 },
+      }),
+      env: { DB: db },
+      params: { id },
+    });
+    expect(tooBig.status).toBe(422);
+    const tooManyMoves = await postScore({
+      request: socialReq('POST', `/v1/duels/${id}/score`, {
+        body: { score: 10, moves: CAPS.duelMaxMoves + 1 },
+      }),
+      env: { DB: db },
+      params: { id },
+    });
+    expect(tooManyMoves.status).toBe(422);
+  });
+
+  it('allows only one open duel per pair', async () => {
+    const { db } = twoFriends();
+    expect((await challenge(db)).res.status).toBe(200);
+    expect((await challenge(db)).res.status).toBe(429);
+  });
+
+  it('an expired duel that one side played is a forfeit win for whoever showed up', async () => {
+    const now = Date.now();
+    const { db, state } = twoFriends({
+      duels: [
+        {
+          duel_id: 'd_aaaaaaaaaaaaaaaa',
+          mode: 'async_score',
+          seed: 7,
+          challenger: A,
+          opponent: B,
+          status: 'open',
+          challenger_score: 80,
+          challenger_moves: 10,
+          opponent_score: null,
+          opponent_moves: null,
+          winner: null,
+          created_at: now - 999_999,
+          expires_at: now - 1,
+          resolved_at: null,
+        },
+      ],
+    });
+    const res = await getDuel({
+      request: socialReq('GET', '/v1/duels/d_aaaaaaaaaaaaaaaa'),
+      env: { DB: db },
+      params: { id: 'd_aaaaaaaaaaaaaaaa' },
+    });
+    expect(res.status).toBe(200);
+    expect(state.duels[0]?.status).toBe('resolved');
+    expect(state.duels[0]?.winner).toBe(A);
+    expect(state.mailbox.filter((m) => m.kind === 'duel_result')).toHaveLength(2);
+  });
+
+  it('an expired duel nobody played simply lapses, with no result letters', async () => {
+    const now = Date.now();
+    const { db, state } = twoFriends({
+      duels: [
+        {
+          duel_id: 'd_bbbbbbbbbbbbbbbb',
+          mode: 'async_score',
+          seed: 7,
+          challenger: A,
+          opponent: B,
+          status: 'open',
+          challenger_score: null,
+          challenger_moves: null,
+          opponent_score: null,
+          opponent_moves: null,
+          winner: null,
+          created_at: now - 999_999,
+          expires_at: now - 1,
+          resolved_at: null,
+        },
+      ],
+    });
+    await getSocial({ request: socialReq('GET', '/v1/social'), env: { DB: db } });
+    expect(state.duels[0]?.status).toBe('expired');
+    expect(state.mailbox.filter((m) => m.kind === 'duel_result')).toHaveLength(0);
+  });
+});
+
+describe('GET /join/:token', () => {
+  it('bounces a good token into the app and a bad one to the front page', () => {
+    const good = getJoin({
+      request: socialReq('GET', '/join/abc'),
+      params: { token: 'z'.repeat(22) },
+    });
+    expect(good.status).toBe(302);
+    expect(good.headers.get('location')).toBe(`https://hearth.test/?join=${'z'.repeat(22)}`);
+
+    const bad = getJoin({ request: socialReq('GET', '/join/x'), params: { token: 'nope' } });
+    expect(bad.headers.get('location')).toBe('https://hearth.test');
+  });
+});

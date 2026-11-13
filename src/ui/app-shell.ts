@@ -14,6 +14,7 @@ import { SocialScreen } from './social-screen';
 import { AutoMergeController } from './auto-merge';
 import { StargazeUI } from './stargaze';
 import { DuelUI } from './duel';
+import type { SocialController } from '../platform/social-controller';
 import { KindnessUI } from './kindness';
 import { SettingsUI } from './settings';
 import { artUrl, actionArt } from './art';
@@ -38,6 +39,7 @@ export class AppShell {
   constructor(
     private game: Game,
     private metrics?: Metrics,
+    private socialCtl: SocialController | null = null,
   ) {
     const boardEl = document.getElementById('board');
     if (!boardEl) throw new Error('Missing #board');
@@ -46,8 +48,17 @@ export class AppShell {
     this.energy = new EnergyPanel(game);
     this.screens = new Screens(game);
     this.map = new MapView(game);
-    const duel = new DuelUI(game);
-    this.social = new SocialScreen(game, () => duel.start());
+    const duel = new DuelUI(game, socialCtl);
+    // Playing a friend's challenge deals the server's seed instead of a fresh one.
+    this.social = new SocialScreen(
+      game,
+      () => duel.start(),
+      socialCtl,
+      (duelId) => {
+        const challenge = game.socialState.duels.find((d) => d.duelId === duelId);
+        if (challenge) duel.startChallenge(challenge);
+      },
+    );
     const meditation = new MeditationUI(game);
     const recovery = new RecoveryUI(game);
     const stargaze = new StargazeUI(game);
@@ -172,8 +183,13 @@ export class AppShell {
     });
     // The map (on Home) animates only while Home is showing.
     this.map.setVisible(id === 'home');
-    // Social/villagers re-renders on every view (friend + gift state changes).
-    if (id === 'villagers') this.social.render();
+    // Social/villagers re-renders on every view (friend + gift state changes),
+    // and asks the service for anything new — this poll IS the delivery
+    // mechanism for gifts and challenges, since there is no push.
+    if (id === 'villagers') {
+      this.social.render();
+      void this.socialCtl?.refresh();
+    }
     if (!this.rendered.has(id)) {
       this.rendered.add(id);
       if (id === 'journal') this.screens.renderJournal();

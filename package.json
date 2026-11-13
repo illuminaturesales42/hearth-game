@@ -6,6 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:full": "wrangler pages dev -- pnpm dev",
+    "db:local": "wrangler d1 migrations apply hearth-saves --local",
+    "db:remote": "wrangler d1 migrations apply hearth-saves --remote",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
