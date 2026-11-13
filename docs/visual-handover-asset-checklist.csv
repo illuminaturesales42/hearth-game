@@ -1,0 +1,1171 @@
+id,category,work_package,status,current_px,current_mode,current_kb,target,action,notes
+action_breathe,wellness medallion,WP5,existing,73x63,RGBA,10,256x256 RGBA,redraw,
+action_cold_plunge,wellness medallion,WP5,existing,73x55,RGBA,9,256x256 RGBA,redraw,
+action_exercise,wellness medallion,WP5,existing,65x59,RGBA,8,256x256 RGBA,redraw,
+action_journal,wellness medallion,WP5,existing,74x58,RGBA,9,256x256 RGBA,redraw,
+action_kindness,wellness medallion,WP5,existing,73x55,RGBA,9,256x256 RGBA,redraw,
+action_meditate,wellness medallion,WP5,existing,75x63,RGBA,9,256x256 RGBA,redraw,
+action_nature,wellness medallion,WP5,existing,73x58,RGBA,9,256x256 RGBA,redraw,
+action_photo,wellness medallion,WP5,existing,72x58,RGBA,9,256x256 RGBA,redraw,
+action_reading,wellness medallion,WP5,existing,74x55,RGBA,9,256x256 RGBA,redraw,
+action_sauna,wellness medallion,WP5,existing,72x55,RGBA,8,256x256 RGBA,redraw,
+action_sleep,wellness medallion,WP5,existing,74x55,RGBA,8,256x256 RGBA,redraw,
+action_streak_reward,wellness medallion,WP5,existing,67x59,RGBA,9,256x256 RGBA,redraw,
+action_stretch,wellness medallion,WP5,existing,73x63,RGBA,9,256x256 RGBA,redraw,
+action_sunrise,wellness medallion,WP5,existing,74x58,RGBA,9,256x256 RGBA,redraw,
+action_sunset,wellness medallion,WP5,existing,73x58,RGBA,9,256x256 RGBA,redraw,
+action_walk,wellness medallion,WP5,existing,72x63,RGBA,9,256x256 RGBA,redraw,
+action_water,wellness medallion,WP5,existing,72x63,RGBA,9,256x256 RGBA,redraw,
+animal_cat,map prop / nature,WP2,existing,68x78,RGBA,5,256 long edge RGBA,redraw,bottom-centre ground anchor
+animal_dog,map prop / nature,WP2,existing,66x80,RGBA,7,256 long edge RGBA,redraw,bottom-centre ground anchor
+animal_gull,map prop / nature,WP2,existing,86x74,RGBA,3,256 long edge RGBA,redraw,bottom-centre ground anchor
+app_icon,branding,WP7,existing,512x512,RGBA,468,"app icon 1024, others 2x current",review,
+avatar_1,legacy avatar,WP3,existing,387x413,RGBA,300,512x512,review,legacy friend avatars
+avatar_2,legacy avatar,WP3,existing,381x412,RGBA,280,512x512,review,legacy friend avatars
+avatar_3,legacy avatar,WP3,existing,381x412,RGBA,287,512x512,review,legacy friend avatars
+avatar_4,legacy avatar,WP3,existing,377x416,RGBA,285,512x512,review,legacy friend avatars
+avatar_5,legacy avatar,WP3,existing,376x416,RGBA,286,512x512,review,legacy friend avatars
+avatar_6,legacy avatar,WP3,existing,377x415,RGBA,294,512x512,review,legacy friend avatars
+avatar_c01_skin1_hair01,player portrait,WP3,existing,512x512,RGB,394,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin1_hair02,player portrait,WP3,existing,512x512,RGB,387,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin1_hair03,player portrait,WP3,existing,512x512,RGB,400,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin1_hair04,player portrait,WP3,existing,512x512,RGB,402,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin1_hair05,player portrait,WP3,existing,512x512,RGB,396,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin1_hair06,player portrait,WP3,existing,512x512,RGB,395,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin2_hair01,player portrait,WP3,existing,512x512,RGB,407,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin2_hair02,player portrait,WP3,existing,512x512,RGB,402,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin2_hair03,player portrait,WP3,existing,512x512,RGB,409,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin2_hair04,player portrait,WP3,existing,512x512,RGB,416,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin2_hair05,player portrait,WP3,existing,512x512,RGB,397,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin2_hair06,player portrait,WP3,existing,512x512,RGB,398,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin3_hair01,player portrait,WP3,existing,512x512,RGB,426,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin3_hair02,player portrait,WP3,existing,512x512,RGB,421,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin3_hair03,player portrait,WP3,existing,512x512,RGB,429,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin3_hair04,player portrait,WP3,existing,512x512,RGB,426,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin3_hair05,player portrait,WP3,existing,512x512,RGB,422,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin3_hair06,player portrait,WP3,existing,512x512,RGB,419,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin4_hair01,player portrait,WP3,existing,512x512,RGB,390,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin4_hair02,player portrait,WP3,existing,512x512,RGB,377,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin4_hair03,player portrait,WP3,existing,512x512,RGB,390,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin4_hair04,player portrait,WP3,existing,512x512,RGB,387,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin4_hair05,player portrait,WP3,existing,512x512,RGB,383,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c01_skin4_hair06,player portrait,WP3,existing,512x512,RGB,384,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin1_hair01,player portrait,WP3,existing,512x512,RGB,398,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin1_hair02,player portrait,WP3,existing,512x512,RGB,396,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin1_hair03,player portrait,WP3,existing,512x512,RGB,392,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin1_hair04,player portrait,WP3,existing,512x512,RGB,403,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin1_hair05,player portrait,WP3,existing,512x512,RGB,401,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin1_hair06,player portrait,WP3,existing,512x512,RGB,397,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin2_hair01,player portrait,WP3,existing,512x512,RGB,421,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin2_hair02,player portrait,WP3,existing,512x512,RGB,429,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin2_hair03,player portrait,WP3,existing,512x512,RGB,441,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin2_hair04,player portrait,WP3,existing,512x512,RGB,438,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin2_hair05,player portrait,WP3,existing,512x512,RGB,435,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin2_hair06,player portrait,WP3,existing,512x512,RGB,427,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin3_hair01,player portrait,WP3,existing,512x512,RGB,436,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin3_hair02,player portrait,WP3,existing,512x512,RGB,438,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin3_hair03,player portrait,WP3,existing,512x512,RGB,439,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin3_hair04,player portrait,WP3,existing,512x512,RGB,450,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin3_hair05,player portrait,WP3,existing,512x512,RGB,444,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin3_hair06,player portrait,WP3,existing,512x512,RGB,448,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin4_hair01,player portrait,WP3,existing,512x512,RGB,415,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin4_hair02,player portrait,WP3,existing,512x512,RGB,405,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin4_hair03,player portrait,WP3,existing,512x512,RGB,416,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin4_hair04,player portrait,WP3,existing,512x512,RGB,417,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin4_hair05,player portrait,WP3,existing,512x512,RGB,411,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c02_skin4_hair06,player portrait,WP3,existing,512x512,RGB,398,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin1_hair01,player portrait,WP3,existing,512x512,RGB,394,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin1_hair02,player portrait,WP3,existing,512x512,RGB,390,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin1_hair03,player portrait,WP3,existing,512x512,RGB,405,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin1_hair04,player portrait,WP3,existing,512x512,RGB,406,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin1_hair05,player portrait,WP3,existing,512x512,RGB,398,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin1_hair06,player portrait,WP3,existing,512x512,RGB,399,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin2_hair01,player portrait,WP3,existing,512x512,RGB,432,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin2_hair02,player portrait,WP3,existing,512x512,RGB,429,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin2_hair03,player portrait,WP3,existing,512x512,RGB,433,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin2_hair04,player portrait,WP3,existing,512x512,RGB,442,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin2_hair05,player portrait,WP3,existing,512x512,RGB,431,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin2_hair06,player portrait,WP3,existing,512x512,RGB,433,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin3_hair01,player portrait,WP3,existing,512x512,RGB,430,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin3_hair02,player portrait,WP3,existing,512x512,RGB,421,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin3_hair03,player portrait,WP3,existing,512x512,RGB,423,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin3_hair04,player portrait,WP3,existing,512x512,RGB,439,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin3_hair05,player portrait,WP3,existing,512x512,RGB,435,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin3_hair06,player portrait,WP3,existing,512x512,RGB,431,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin4_hair01,player portrait,WP3,existing,512x512,RGB,417,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin4_hair02,player portrait,WP3,existing,512x512,RGB,393,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin4_hair03,player portrait,WP3,existing,512x512,RGB,412,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin4_hair04,player portrait,WP3,existing,512x512,RGB,417,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin4_hair05,player portrait,WP3,existing,512x512,RGB,407,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c03_skin4_hair06,player portrait,WP3,existing,512x512,RGB,407,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin1_hair01,player portrait,WP3,existing,512x512,RGB,421,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin1_hair02,player portrait,WP3,existing,512x512,RGB,416,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin1_hair03,player portrait,WP3,existing,512x512,RGB,423,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin1_hair04,player portrait,WP3,existing,512x512,RGB,423,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin1_hair05,player portrait,WP3,existing,512x512,RGB,424,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin1_hair06,player portrait,WP3,existing,512x512,RGB,419,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin2_hair01,player portrait,WP3,existing,512x512,RGB,447,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin2_hair02,player portrait,WP3,existing,512x512,RGB,443,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin2_hair03,player portrait,WP3,existing,512x512,RGB,442,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin2_hair04,player portrait,WP3,existing,512x512,RGB,449,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin2_hair05,player portrait,WP3,existing,512x512,RGB,448,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin2_hair06,player portrait,WP3,existing,512x512,RGB,438,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin3_hair01,player portrait,WP3,existing,512x512,RGB,455,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin3_hair02,player portrait,WP3,existing,512x512,RGB,450,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin3_hair03,player portrait,WP3,existing,512x512,RGB,457,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin3_hair04,player portrait,WP3,existing,512x512,RGB,456,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin3_hair05,player portrait,WP3,existing,512x512,RGB,455,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin3_hair06,player portrait,WP3,existing,512x512,RGB,438,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin4_hair01,player portrait,WP3,existing,512x512,RGB,430,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin4_hair02,player portrait,WP3,existing,512x512,RGB,423,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin4_hair03,player portrait,WP3,existing,512x512,RGB,425,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin4_hair04,player portrait,WP3,existing,512x512,RGB,429,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin4_hair05,player portrait,WP3,existing,512x512,RGB,428,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c04_skin4_hair06,player portrait,WP3,existing,512x512,RGB,431,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin1_hair01,player portrait,WP3,existing,512x512,RGB,406,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin1_hair02,player portrait,WP3,existing,512x512,RGB,385,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin1_hair03,player portrait,WP3,existing,512x512,RGB,404,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin1_hair04,player portrait,WP3,existing,512x512,RGB,411,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin1_hair05,player portrait,WP3,existing,512x512,RGB,396,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin1_hair06,player portrait,WP3,existing,512x512,RGB,401,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin2_hair01,player portrait,WP3,existing,512x512,RGB,426,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin2_hair02,player portrait,WP3,existing,512x512,RGB,417,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin2_hair03,player portrait,WP3,existing,512x512,RGB,419,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin2_hair04,player portrait,WP3,existing,512x512,RGB,418,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin2_hair05,player portrait,WP3,existing,512x512,RGB,435,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin2_hair06,player portrait,WP3,existing,512x512,RGB,422,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin3_hair01,player portrait,WP3,existing,512x512,RGB,426,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin3_hair02,player portrait,WP3,existing,512x512,RGB,425,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin3_hair03,player portrait,WP3,existing,512x512,RGB,425,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin3_hair04,player portrait,WP3,existing,512x512,RGB,430,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin3_hair05,player portrait,WP3,existing,512x512,RGB,433,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin3_hair06,player portrait,WP3,existing,512x512,RGB,423,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin4_hair01,player portrait,WP3,existing,512x512,RGB,289,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin4_hair02,player portrait,WP3,existing,512x512,RGB,387,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin4_hair03,player portrait,WP3,existing,512x512,RGB,386,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin4_hair04,player portrait,WP3,existing,512x512,RGB,401,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin4_hair05,player portrait,WP3,existing,512x512,RGB,388,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c05_skin4_hair06,player portrait,WP3,existing,512x512,RGB,411,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin1_hair01,player portrait,WP3,existing,512x512,RGB,392,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin1_hair02,player portrait,WP3,existing,512x512,RGB,373,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin1_hair03,player portrait,WP3,existing,512x512,RGB,393,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin1_hair04,player portrait,WP3,existing,512x512,RGB,403,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin1_hair05,player portrait,WP3,existing,512x512,RGB,385,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin1_hair06,player portrait,WP3,existing,512x512,RGB,382,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin2_hair01,player portrait,WP3,existing,512x512,RGB,411,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin2_hair02,player portrait,WP3,existing,512x512,RGB,401,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin2_hair03,player portrait,WP3,existing,512x512,RGB,406,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin2_hair04,player portrait,WP3,existing,512x512,RGB,414,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin2_hair05,player portrait,WP3,existing,512x512,RGB,399,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin2_hair06,player portrait,WP3,existing,512x512,RGB,404,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin3_hair01,player portrait,WP3,existing,512x512,RGB,394,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin3_hair02,player portrait,WP3,existing,512x512,RGB,390,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin3_hair03,player portrait,WP3,existing,512x512,RGB,385,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin3_hair04,player portrait,WP3,existing,512x512,RGB,423,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin3_hair05,player portrait,WP3,existing,512x512,RGB,399,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin3_hair06,player portrait,WP3,existing,512x512,RGB,422,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin4_hair01,player portrait,WP3,existing,512x512,RGB,377,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin4_hair02,player portrait,WP3,existing,512x512,RGB,366,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin4_hair03,player portrait,WP3,existing,512x512,RGB,408,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin4_hair04,player portrait,WP3,existing,512x512,RGB,402,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin4_hair05,player portrait,WP3,existing,512x512,RGB,370,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c06_skin4_hair06,player portrait,WP3,existing,512x512,RGB,403,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin1_hair01,player portrait,WP3,existing,512x512,RGB,403,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin1_hair02,player portrait,WP3,existing,512x512,RGB,400,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin1_hair03,player portrait,WP3,existing,512x512,RGB,415,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin1_hair04,player portrait,WP3,existing,512x512,RGB,415,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin1_hair05,player portrait,WP3,existing,512x512,RGB,416,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin1_hair06,player portrait,WP3,existing,512x512,RGB,405,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin2_hair01,player portrait,WP3,existing,512x512,RGB,440,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin2_hair02,player portrait,WP3,existing,512x512,RGB,446,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin2_hair03,player portrait,WP3,existing,512x512,RGB,439,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin2_hair04,player portrait,WP3,existing,512x512,RGB,441,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin2_hair05,player portrait,WP3,existing,512x512,RGB,449,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin2_hair06,player portrait,WP3,existing,512x512,RGB,439,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin3_hair01,player portrait,WP3,existing,512x512,RGB,441,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin3_hair02,player portrait,WP3,existing,512x512,RGB,442,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin3_hair03,player portrait,WP3,existing,512x512,RGB,453,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin3_hair04,player portrait,WP3,existing,512x512,RGB,451,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin3_hair05,player portrait,WP3,existing,512x512,RGB,455,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin3_hair06,player portrait,WP3,existing,512x512,RGB,434,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin4_hair01,player portrait,WP3,existing,512x512,RGB,404,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin4_hair02,player portrait,WP3,existing,512x512,RGB,400,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin4_hair03,player portrait,WP3,existing,512x512,RGB,406,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin4_hair04,player portrait,WP3,existing,512x512,RGB,414,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin4_hair05,player portrait,WP3,existing,512x512,RGB,408,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c07_skin4_hair06,player portrait,WP3,existing,512x512,RGB,398,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin1_hair01,player portrait,WP3,existing,512x512,RGB,399,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin1_hair02,player portrait,WP3,existing,512x512,RGB,400,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin1_hair03,player portrait,WP3,existing,512x512,RGB,407,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin1_hair04,player portrait,WP3,existing,512x512,RGB,414,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin1_hair05,player portrait,WP3,existing,512x512,RGB,410,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin1_hair06,player portrait,WP3,existing,512x512,RGB,407,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin2_hair01,player portrait,WP3,existing,512x512,RGB,433,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin2_hair02,player portrait,WP3,existing,512x512,RGB,426,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin2_hair03,player portrait,WP3,existing,512x512,RGB,431,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin2_hair04,player portrait,WP3,existing,512x512,RGB,447,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin2_hair05,player portrait,WP3,existing,512x512,RGB,434,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin2_hair06,player portrait,WP3,existing,512x512,RGB,416,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin3_hair01,player portrait,WP3,existing,512x512,RGB,415,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin3_hair02,player portrait,WP3,existing,512x512,RGB,421,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin3_hair03,player portrait,WP3,existing,512x512,RGB,431,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin3_hair04,player portrait,WP3,existing,512x512,RGB,443,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin3_hair05,player portrait,WP3,existing,512x512,RGB,432,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin3_hair06,player portrait,WP3,existing,512x512,RGB,405,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin4_hair01,player portrait,WP3,existing,512x512,RGB,402,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin4_hair02,player portrait,WP3,existing,512x512,RGB,402,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin4_hair03,player portrait,WP3,existing,512x512,RGB,412,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin4_hair04,player portrait,WP3,existing,512x512,RGB,408,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin4_hair05,player portrait,WP3,existing,512x512,RGB,401,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c08_skin4_hair06,player portrait,WP3,existing,512x512,RGB,391,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin1_hair01,player portrait,WP3,existing,512x512,RGB,397,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin1_hair02,player portrait,WP3,existing,512x512,RGB,380,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin1_hair03,player portrait,WP3,existing,512x512,RGB,390,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin1_hair04,player portrait,WP3,existing,512x512,RGB,401,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin1_hair05,player portrait,WP3,existing,512x512,RGB,388,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin1_hair06,player portrait,WP3,existing,512x512,RGB,393,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin2_hair01,player portrait,WP3,existing,512x512,RGB,427,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin2_hair02,player portrait,WP3,existing,512x512,RGB,425,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin2_hair03,player portrait,WP3,existing,512x512,RGB,425,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin2_hair04,player portrait,WP3,existing,512x512,RGB,420,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin2_hair05,player portrait,WP3,existing,512x512,RGB,425,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin2_hair06,player portrait,WP3,existing,512x512,RGB,416,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin3_hair01,player portrait,WP3,existing,512x512,RGB,419,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin3_hair02,player portrait,WP3,existing,512x512,RGB,412,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin3_hair03,player portrait,WP3,existing,512x512,RGB,409,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin3_hair04,player portrait,WP3,existing,512x512,RGB,414,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin3_hair05,player portrait,WP3,existing,512x512,RGB,413,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin3_hair06,player portrait,WP3,existing,512x512,RGB,405,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin4_hair01,player portrait,WP3,existing,512x512,RGB,392,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin4_hair02,player portrait,WP3,existing,512x512,RGB,379,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin4_hair03,player portrait,WP3,existing,512x512,RGB,383,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin4_hair04,player portrait,WP3,existing,512x512,RGB,390,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin4_hair05,player portrait,WP3,existing,512x512,RGB,382,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c09_skin4_hair06,player portrait,WP3,existing,512x512,RGB,386,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin1_hair01,player portrait,WP3,existing,512x512,RGB,419,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin1_hair02,player portrait,WP3,existing,512x512,RGB,414,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin1_hair03,player portrait,WP3,existing,512x512,RGB,424,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin1_hair04,player portrait,WP3,existing,512x512,RGB,409,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin1_hair05,player portrait,WP3,existing,512x512,RGB,418,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin1_hair06,player portrait,WP3,existing,512x512,RGB,398,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin2_hair01,player portrait,WP3,existing,512x512,RGB,440,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin2_hair02,player portrait,WP3,existing,512x512,RGB,426,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin2_hair03,player portrait,WP3,existing,512x512,RGB,426,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin2_hair04,player portrait,WP3,existing,512x512,RGB,426,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin2_hair05,player portrait,WP3,existing,512x512,RGB,428,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin2_hair06,player portrait,WP3,existing,512x512,RGB,424,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin3_hair01,player portrait,WP3,existing,512x512,RGB,440,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin3_hair02,player portrait,WP3,existing,512x512,RGB,431,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin3_hair03,player portrait,WP3,existing,512x512,RGB,435,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin3_hair04,player portrait,WP3,existing,512x512,RGB,429,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin3_hair05,player portrait,WP3,existing,512x512,RGB,436,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin3_hair06,player portrait,WP3,existing,512x512,RGB,433,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin4_hair01,player portrait,WP3,existing,512x512,RGB,411,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin4_hair02,player portrait,WP3,existing,512x512,RGB,405,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin4_hair03,player portrait,WP3,existing,512x512,RGB,414,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin4_hair04,player portrait,WP3,existing,512x512,RGB,412,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin4_hair05,player portrait,WP3,existing,512x512,RGB,412,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c10_skin4_hair06,player portrait,WP3,existing,512x512,RGB,412,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin1_hair01,player portrait,WP3,existing,512x512,RGB,326,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin1_hair02,player portrait,WP3,existing,512x512,RGB,327,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin1_hair03,player portrait,WP3,existing,512x512,RGB,327,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin1_hair04,player portrait,WP3,existing,512x512,RGB,337,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin1_hair05,player portrait,WP3,existing,512x512,RGB,328,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin1_hair06,player portrait,WP3,existing,512x512,RGB,315,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin2_hair01,player portrait,WP3,existing,512x512,RGB,394,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin2_hair02,player portrait,WP3,existing,512x512,RGB,394,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin2_hair03,player portrait,WP3,existing,512x512,RGB,367,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin2_hair04,player portrait,WP3,existing,512x512,RGB,374,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin2_hair05,player portrait,WP3,existing,512x512,RGB,369,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin2_hair06,player portrait,WP3,existing,512x512,RGB,361,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin3_hair01,player portrait,WP3,existing,512x512,RGB,373,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin3_hair02,player portrait,WP3,existing,512x512,RGB,379,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin3_hair03,player portrait,WP3,existing,512x512,RGB,367,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin3_hair04,player portrait,WP3,existing,512x512,RGB,359,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin3_hair05,player portrait,WP3,existing,512x512,RGB,366,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin3_hair06,player portrait,WP3,existing,512x512,RGB,362,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin4_hair01,player portrait,WP3,existing,512x512,RGB,342,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin4_hair02,player portrait,WP3,existing,512x512,RGB,323,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin4_hair03,player portrait,WP3,existing,512x512,RGB,338,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin4_hair04,player portrait,WP3,existing,512x512,RGB,333,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin4_hair05,player portrait,WP3,existing,512x512,RGB,331,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c11_skin4_hair06,player portrait,WP3,existing,512x512,RGB,332,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin1_hair01,player portrait,WP3,existing,512x512,RGB,409,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin1_hair02,player portrait,WP3,existing,512x512,RGB,401,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin1_hair03,player portrait,WP3,existing,512x512,RGB,421,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin1_hair04,player portrait,WP3,existing,512x512,RGB,416,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin1_hair05,player portrait,WP3,existing,512x512,RGB,409,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin1_hair06,player portrait,WP3,existing,512x512,RGB,405,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin2_hair01,player portrait,WP3,existing,512x512,RGB,439,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin2_hair02,player portrait,WP3,existing,512x512,RGB,437,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin2_hair03,player portrait,WP3,existing,512x512,RGB,427,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin2_hair04,player portrait,WP3,existing,512x512,RGB,438,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin2_hair05,player portrait,WP3,existing,512x512,RGB,438,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin2_hair06,player portrait,WP3,existing,512x512,RGB,430,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin3_hair01,player portrait,WP3,existing,512x512,RGB,447,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin3_hair02,player portrait,WP3,existing,512x512,RGB,438,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin3_hair03,player portrait,WP3,existing,512x512,RGB,441,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin3_hair04,player portrait,WP3,existing,512x512,RGB,438,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin3_hair05,player portrait,WP3,existing,512x512,RGB,444,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin3_hair06,player portrait,WP3,existing,512x512,RGB,427,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin4_hair01,player portrait,WP3,existing,512x512,RGB,420,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin4_hair02,player portrait,WP3,existing,512x512,RGB,414,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin4_hair03,player portrait,WP3,existing,512x512,RGB,423,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin4_hair04,player portrait,WP3,existing,512x512,RGB,418,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin4_hair05,player portrait,WP3,existing,512x512,RGB,420,512x512 opaque RGB,review,re-render only where style drifts
+avatar_c12_skin4_hair06,player portrait,WP3,existing,512x512,RGB,420,512x512 opaque RGB,review,re-render only where style drifts
+badge_event_1,achievement badge,WP5,existing,61x60,RGBA,8,256x256 RGBA,redraw,
+badge_event_2,achievement badge,WP5,existing,61x60,RGBA,7,256x256 RGBA,redraw,
+badge_event_3,achievement badge,WP5,existing,62x60,RGBA,10,256x256 RGBA,redraw,
+badge_event_4,achievement badge,WP5,existing,61x60,RGBA,10,256x256 RGBA,redraw,
+badge_event_5,achievement badge,WP5,existing,62x60,RGBA,8,256x256 RGBA,redraw,
+badge_event_6,achievement badge,WP5,existing,61x60,RGBA,6,256x256 RGBA,redraw,
+badge_event_7,achievement badge,WP5,existing,61x60,RGBA,7,256x256 RGBA,redraw,
+badge_habit_hero,achievement badge,WP5,existing,74x73,RGBA,9,256x256 RGBA,redraw,
+badge_hearth_guardian,achievement badge,WP5,existing,74x73,RGBA,9,256x256 RGBA,redraw,
+badge_master_builder,achievement badge,WP5,existing,76x73,RGBA,8,256x256 RGBA,redraw,
+badge_merge_master,achievement badge,WP5,existing,74x73,RGBA,9,256x256 RGBA,redraw,
+board_grass,board frame / turf,WP5,existing,399x260,RGBA,196,"frame 1080x1400, turf 256",redraw,
+boat_fishing_m,map prop / nature,WP2,existing,118x69,RGBA,11,256 long edge RGBA,redraw,bottom-centre ground anchor
+boat_fishing_s,map prop / nature,WP2,existing,110x69,RGBA,8,256 long edge RGBA,redraw,bottom-centre ground anchor
+boat_row,map prop / nature,WP2,existing,88x55,RGBA,7,256 long edge RGBA,redraw,bottom-centre ground anchor
+boat_sail_s,map prop / nature,WP2,existing,94x77,RGBA,9,256 long edge RGBA,redraw,bottom-centre ground anchor
+btn_disabled,UI chrome,WP5,existing,157x40,RGBA,10,"9-slice safe, 2x current",redraw,only panel_parchment is wired in code
+btn_primary,UI chrome,WP5,existing,157x41,RGBA,11,"9-slice safe, 2x current",redraw,only panel_parchment is wired in code
+btn_secondary,UI chrome,WP5,existing,157x40,RGBA,11,"9-slice safe, 2x current",redraw,only panel_parchment is wired in code
+chapter_1,chapter splash,WP7,existing,489x413,RGBA,423,1024 long edge,redraw,
+chapter_2,chapter splash,WP7,existing,480x413,RGBA,354,1024 long edge,redraw,
+chapter_3,chapter splash,WP7,existing,497x410,RGBA,363,1024 long edge,redraw,
+chapter_4,chapter splash,WP7,existing,489x395,RGBA,366,1024 long edge,redraw,
+chapter_5,chapter splash,WP7,existing,503x394,RGBA,416,1024 long edge,redraw,
+chapter_6,chapter splash,WP7,existing,498x394,RGBA,454,1024 long edge,redraw,
+char_bran_bust,villager bust,WP3,existing,90x90,RGBA,21,512x512 RGBA,redraw,
+char_joss_bust,villager bust,WP3,existing,90x90,RGBA,20,512x512 RGBA,redraw,
+char_marta_bust,villager bust,WP3,existing,90x90,RGBA,20,512x512 RGBA,redraw,
+char_mayor_bust,villager bust,WP3,existing,90x90,RGBA,19,512x512 RGBA,redraw,
+char_sorin_bust,villager bust,WP3,existing,90x90,RGBA,20,512x512 RGBA,redraw,
+char_wren_bust,villager bust,WP3,existing,90x90,RGBA,20,512x512 RGBA,redraw,
+debris_a,map prop / nature,WP2,existing,108x63,RGBA,12,256 long edge RGBA,redraw,bottom-centre ground anchor
+debris_b,map prop / nature,WP2,existing,94x66,RGBA,9,256 long edge RGBA,redraw,bottom-centre ground anchor
+debris_c,map prop / nature,WP2,existing,74x70,RGBA,10,256 long edge RGBA,redraw,bottom-centre ground anchor
+debris_d,map prop / nature,WP2,existing,80x70,RGBA,10,256 long edge RGBA,redraw,bottom-centre ground anchor
+debris_e,map prop / nature,WP2,existing,88x73,RGBA,10,256 long edge RGBA,redraw,bottom-centre ground anchor
+dock_corner,map prop / nature,WP2,existing,78x49,RGBA,7,256 long edge RGBA,redraw,bottom-centre ground anchor
+dock_end,map prop / nature,WP2,existing,65x49,RGBA,4,256 long edge RGBA,redraw,bottom-centre ground anchor
+dock_small,map prop / nature,WP2,existing,64x49,RGBA,4,256 long edge RGBA,redraw,bottom-centre ground anchor
+dock_straight,map prop / nature,WP2,existing,78x49,RGBA,6,256 long edge RGBA,redraw,bottom-centre ground anchor
+energy_empty,energy state,WP5,existing,61x43,RGBA,5,256 long edge RGBA,redraw,"ember-heart, never a lightning bolt"
+energy_full,energy state,WP5,existing,52x43,RGBA,5,256 long edge RGBA,redraw,"ember-heart, never a lightning bolt"
+energy_heart,energy state,WP5,existing,47x57,RGBA,5,256 long edge RGBA,redraw,"ember-heart, never a lightning bolt"
+energy_low,energy state,WP5,existing,52x43,RGBA,4,256 long edge RGBA,redraw,"ember-heart, never a lightning bolt"
+energy_med,energy state,WP5,existing,55x43,RGBA,5,256 long edge RGBA,redraw,"ember-heart, never a lightning bolt"
+feature_graphic,branding,WP7,existing,1600x781,RGB,1994,"app icon 1024, others 2x current",review,
+fence_wood,map prop / nature,WP2,existing,96x68,RGBA,4,256 long edge RGBA,redraw,bottom-centre ground anchor
+flag_boat,map prop / nature,WP2,existing,65x85,RGBA,10,256 long edge RGBA,redraw,bottom-centre ground anchor
+flag_build,map prop / nature,WP2,existing,105x87,RGBA,11,256 long edge RGBA,redraw,bottom-centre ground anchor
+flag_event,map prop / nature,WP2,existing,110x86,RGBA,13,256 long edge RGBA,redraw,bottom-centre ground anchor
+flag_nature,map prop / nature,WP2,existing,67x86,RGBA,11,256 long edge RGBA,redraw,bottom-centre ground anchor
+flag_shop,map prop / nature,WP2,existing,55x80,RGBA,9,256 long edge RGBA,redraw,bottom-centre ground anchor
+fx_energy_orb,effect sprite,WP6,existing,96x72,RGBA,12,256 long edge RGBA,redraw,
+fx_flame_beacon,animation strip,WP6,existing,1232x86,RGBA,99,"one-row strip, equal frames",redraw,frame count fixed by code
+fx_flame_fireplace,animation strip,WP6,existing,1232x85,RGBA,158,"one-row strip, equal frames",redraw,frame count fixed by code
+fx_flame_forge,animation strip,WP6,existing,931x91,RGBA,164,"one-row strip, equal frames",redraw,frame count fixed by code
+fx_flame_lantern,animation strip,WP6,existing,1232x85,RGBA,104,"one-row strip, equal frames",redraw,frame count fixed by code
+fx_flame_large,animation strip,WP6,existing,1232x85,RGBA,140,"one-row strip, equal frames",redraw,frame count fixed by code
+fx_flame_medium,animation strip,WP6,existing,1232x86,RGBA,110,"one-row strip, equal frames",redraw,frame count fixed by code
+fx_flame_small,animation strip,WP6,existing,1232x85,RGBA,82,"one-row strip, equal frames",redraw,frame count fixed by code
+fx_flame_tiny,animation strip,WP6,existing,1232x67,RGBA,35,"one-row strip, equal frames",redraw,frame count fixed by code
+fx_heartfire,animation strip,WP6,existing,1232x85,RGBA,131,"one-row strip, equal frames",redraw,frame count fixed by code
+fx_merge_sparkle,effect sprite,WP6,existing,96x80,RGBA,13,256 long edge RGBA,redraw,
+fx_spark,animation strip,WP6,existing,1232x63,RGBA,69,"one-row strip, equal frames",redraw,frame count fixed by code
+icon_back,UI icon,WP5,existing,75x54,RGBA,6,128x128 RGBA,redraw,not wired in code yet
+icon_bag,UI icon,WP5,existing,76x54,RGBA,7,128x128 RGBA,redraw,not wired in code yet
+icon_calendar,UI icon,WP5,existing,75x54,RGBA,7,128x128 RGBA,redraw,not wired in code yet
+icon_camera,UI icon,WP5,existing,76x54,RGBA,7,128x128 RGBA,redraw,not wired in code yet
+icon_check,UI icon,WP5,existing,75x52,RGBA,6,128x128 RGBA,redraw,not wired in code yet
+icon_close,UI icon,WP5,existing,76x54,RGBA,7,128x128 RGBA,redraw,not wired in code yet
+icon_edit,UI icon,WP5,existing,76x52,RGBA,6,128x128 RGBA,redraw,not wired in code yet
+icon_filter,UI icon,WP5,existing,76x52,RGBA,5,128x128 RGBA,redraw,not wired in code yet
+icon_friends,UI icon,WP5,existing,76x54,RGBA,7,128x128 RGBA,redraw,not wired in code yet
+icon_help,UI icon,WP5,existing,76x52,RGBA,7,128x128 RGBA,redraw,not wired in code yet
+icon_info,UI icon,WP5,existing,76x52,RGBA,6,128x128 RGBA,redraw,not wired in code yet
+icon_lock,UI icon,WP5,existing,76x52,RGBA,6,128x128 RGBA,redraw,not wired in code yet
+icon_mail,UI icon,WP5,existing,76x54,RGBA,7,128x128 RGBA,redraw,not wired in code yet
+icon_quest,UI icon,WP5,existing,76x54,RGBA,7,128x128 RGBA,redraw,not wired in code yet
+icon_search,UI icon,WP5,existing,75x52,RGBA,6,128x128 RGBA,redraw,not wired in code yet
+icon_settings,UI icon,WP5,existing,76x54,RGBA,7,128x128 RGBA,redraw,not wired in code yet
+icon_sort,UI icon,WP5,existing,76x52,RGBA,6,128x128 RGBA,redraw,not wired in code yet
+icon_trash,UI icon,WP5,existing,76x52,RGBA,6,128x128 RGBA,redraw,not wired in code yet
+icon_trophy,UI icon,WP5,existing,76x54,RGBA,7,128x128 RGBA,redraw,not wired in code yet
+icon_unlock,UI icon,WP5,existing,76x52,RGBA,6,128x128 RGBA,redraw,not wired in code yet
+item_apothecary_0,merge item,WP4,existing,183x183,RGBA,49,512x512 RGBA,redraw,
+item_apothecary_1,merge item,WP4,existing,156x156,RGBA,30,512x512 RGBA,redraw,
+item_apothecary_2,merge item,WP4,existing,185x185,RGBA,44,512x512 RGBA,redraw,
+item_apothecary_3,merge item,WP4,existing,208x208,RGBA,55,512x512 RGBA,redraw,
+item_apothecary_4,merge item,WP4,existing,204x204,RGBA,58,512x512 RGBA,redraw,
+item_apothecary_5,merge item,WP4,existing,228x228,RGBA,51,512x512 RGBA,redraw,
+item_apothecary_6,merge item,WP4,existing,370x370,RGBA,198,512x512 RGBA,redraw,
+item_books_0,merge item,WP4,existing,211x211,RGBA,63,512x512 RGBA,redraw,
+item_books_1,merge item,WP4,existing,261x261,RGBA,75,512x512 RGBA,redraw,
+item_books_2,merge item,WP4,existing,260x260,RGBA,91,512x512 RGBA,redraw,
+item_books_3,merge item,WP4,existing,254x254,RGBA,113,512x512 RGBA,redraw,
+item_books_4,merge item,WP4,existing,309x309,RGBA,103,512x512 RGBA,redraw,
+item_books_5,merge item,WP4,existing,272x272,RGBA,134,512x512 RGBA,redraw,
+item_books_6,merge item,WP4,existing,548x548,RGBA,452,512x512 RGBA,redraw,
+item_clay_0,merge item,WP4,existing,315x315,RGBA,91,512x512 RGBA,redraw,
+item_clay_1,merge item,WP4,existing,285x285,RGBA,97,512x512 RGBA,redraw,
+item_clay_2,merge item,WP4,existing,251x251,RGBA,115,512x512 RGBA,redraw,
+item_clay_3,merge item,WP4,existing,254x254,RGBA,113,512x512 RGBA,redraw,
+item_clay_4,merge item,WP4,existing,302x302,RGBA,123,512x512 RGBA,redraw,
+item_clay_5,merge item,WP4,existing,284x284,RGBA,122,512x512 RGBA,redraw,
+item_clay_6,merge item,WP4,existing,318x318,RGBA,115,512x512 RGBA,redraw,
+item_copper_0,merge item,WP4,existing,296x296,RGBA,122,512x512 RGBA,redraw,
+item_copper_1,merge item,WP4,existing,237x237,RGBA,61,512x512 RGBA,redraw,
+item_copper_2,merge item,WP4,existing,309x309,RGBA,93,512x512 RGBA,redraw,
+item_copper_3,merge item,WP4,existing,271x271,RGBA,81,512x512 RGBA,redraw,
+item_copper_4,merge item,WP4,existing,294x294,RGBA,63,512x512 RGBA,redraw,
+item_copper_5,merge item,WP4,existing,331x331,RGBA,91,512x512 RGBA,redraw,
+item_copper_6,merge item,WP4,existing,337x337,RGBA,102,512x512 RGBA,redraw,
+item_fish_0,merge item,WP4,existing,293x293,RGBA,46,512x512 RGBA,redraw,
+item_fish_1,merge item,WP4,existing,290x290,RGBA,80,512x512 RGBA,redraw,
+item_fish_2,merge item,WP4,existing,433x433,RGBA,54,512x512 RGBA,redraw,
+item_fish_3,merge item,WP4,existing,257x257,RGBA,131,512x512 RGBA,redraw,
+item_fish_4,merge item,WP4,existing,112x55,RGBA,15,512x512 RGBA,redraw,
+item_fish_5,merge item,WP4,existing,556x556,RGBA,253,512x512 RGBA,redraw,
+item_fish_6,merge item,WP4,existing,382x382,RGBA,180,512x512 RGBA,redraw,
+item_flowers_0,merge item,WP4,existing,232x232,RGBA,28,512x512 RGBA,redraw,
+item_flowers_1,merge item,WP4,existing,233x233,RGBA,59,512x512 RGBA,redraw,
+item_flowers_2,merge item,WP4,existing,300x300,RGBA,107,512x512 RGBA,redraw,
+item_flowers_3,merge item,WP4,existing,295x295,RGBA,123,512x512 RGBA,redraw,
+item_flowers_4,merge item,WP4,existing,353x353,RGBA,154,512x512 RGBA,redraw,
+item_flowers_5,merge item,WP4,existing,286x286,RGBA,116,512x512 RGBA,redraw,
+item_flowers_6,merge item,WP4,existing,320x320,RGBA,170,512x512 RGBA,redraw,
+item_greenhouse_0,merge item,WP4,existing,268x268,RGBA,51,512x512 RGBA,redraw,
+item_greenhouse_1,merge item,WP4,existing,268x268,RGBA,75,512x512 RGBA,redraw,
+item_greenhouse_2,merge item,WP4,existing,270x270,RGBA,77,512x512 RGBA,redraw,
+item_greenhouse_3,merge item,WP4,existing,268x268,RGBA,81,512x512 RGBA,redraw,
+item_greenhouse_4,merge item,WP4,existing,268x268,RGBA,104,512x512 RGBA,redraw,
+item_greenhouse_5,merge item,WP4,existing,270x270,RGBA,127,512x512 RGBA,redraw,
+item_harvest_0,merge item,WP4,existing,300x300,RGBA,99,512x512 RGBA,redraw,
+item_harvest_1,merge item,WP4,existing,255x255,RGBA,111,512x512 RGBA,redraw,
+item_harvest_2,merge item,WP4,existing,271x271,RGBA,113,512x512 RGBA,redraw,
+item_harvest_3,merge item,WP4,existing,279x279,RGBA,123,512x512 RGBA,redraw,
+item_harvest_4,merge item,WP4,existing,284x284,RGBA,148,512x512 RGBA,redraw,
+item_harvest_5,merge item,WP4,existing,344x344,RGBA,155,512x512 RGBA,redraw,
+item_harvest_6,merge item,WP4,existing,296x296,RGBA,121,512x512 RGBA,redraw,
+item_hearthfire_0,merge item,WP4,existing,451x451,RGBA,99,512x512 RGBA,redraw,
+item_hearthfire_1,merge item,WP4,existing,582x582,RGBA,152,512x512 RGBA,redraw,
+item_hearthfire_2,merge item,WP4,existing,510x510,RGBA,164,512x512 RGBA,redraw,
+item_hearthfire_3,merge item,WP4,existing,595x595,RGBA,227,512x512 RGBA,redraw,
+item_herbs_0,merge item,WP4,existing,169x169,RGBA,39,512x512 RGBA,redraw,
+item_herbs_1,merge item,WP4,existing,194x194,RGBA,55,512x512 RGBA,redraw,
+item_herbs_2,merge item,WP4,existing,230x230,RGBA,84,512x512 RGBA,redraw,
+item_herbs_3,merge item,WP4,existing,275x275,RGBA,114,512x512 RGBA,redraw,
+item_herbs_4,merge item,WP4,existing,334x334,RGBA,155,512x512 RGBA,redraw,
+item_herbs_5,merge item,WP4,existing,539x539,RGBA,200,512x512 RGBA,redraw,
+item_herbs_6,merge item,WP4,existing,295x295,RGBA,125,512x512 RGBA,redraw,
+item_homestead_0,merge item,WP4,existing,305x305,RGBA,60,512x512 RGBA,redraw,
+item_homestead_1,merge item,WP4,existing,324x324,RGBA,70,512x512 RGBA,redraw,
+item_homestead_2,merge item,WP4,existing,374x374,RGBA,118,512x512 RGBA,redraw,
+item_homestead_3,merge item,WP4,existing,391x391,RGBA,173,512x512 RGBA,redraw,
+item_homestead_4,merge item,WP4,existing,414x414,RGBA,178,512x512 RGBA,redraw,
+item_honey_0,merge item,WP4,existing,235x235,RGBA,70,512x512 RGBA,redraw,
+item_honey_1,merge item,WP4,existing,239x239,RGBA,74,512x512 RGBA,redraw,
+item_honey_2,merge item,WP4,existing,330x330,RGBA,141,512x512 RGBA,redraw,
+item_honey_3,merge item,WP4,existing,320x320,RGBA,100,512x512 RGBA,redraw,
+item_honey_4,merge item,WP4,existing,270x270,RGBA,100,512x512 RGBA,redraw,
+item_honey_5,merge item,WP4,existing,246x246,RGBA,99,512x512 RGBA,redraw,
+item_honey_6,merge item,WP4,existing,262x262,RGBA,118,512x512 RGBA,redraw,
+item_keepsake_0,merge item,WP4,existing,252x252,RGBA,74,512x512 RGBA,redraw,
+item_keepsake_1,merge item,WP4,existing,274x274,RGBA,107,512x512 RGBA,redraw,
+item_keepsake_2,merge item,WP4,existing,272x272,RGBA,102,512x512 RGBA,redraw,
+item_keepsake_3,merge item,WP4,existing,296x296,RGBA,114,512x512 RGBA,redraw,
+item_keepsake_4,merge item,WP4,existing,299x299,RGBA,125,512x512 RGBA,redraw,
+item_keepsake_5,merge item,WP4,existing,363x363,RGBA,149,512x512 RGBA,redraw,
+item_keepsake_6,merge item,WP4,existing,354x354,RGBA,134,512x512 RGBA,redraw,
+item_music_0,merge item,WP4,existing,134x134,RGBA,14,512x512 RGBA,redraw,
+item_music_1,merge item,WP4,existing,216x216,RGBA,34,512x512 RGBA,redraw,
+item_music_2,merge item,WP4,existing,286x286,RGBA,87,512x512 RGBA,redraw,
+item_music_3,merge item,WP4,existing,251x251,RGBA,67,512x512 RGBA,redraw,
+item_music_4,merge item,WP4,existing,279x279,RGBA,86,512x512 RGBA,redraw,
+item_music_5,merge item,WP4,existing,328x328,RGBA,161,512x512 RGBA,redraw,
+item_music_6,merge item,WP4,existing,316x316,RGBA,113,512x512 RGBA,redraw,
+item_seeds_0,merge item,WP4,existing,143x143,RGBA,25,512x512 RGBA,redraw,
+item_seeds_1,merge item,WP4,existing,300x300,RGBA,71,512x512 RGBA,redraw,
+item_seeds_2,merge item,WP4,existing,217x217,RGBA,64,512x512 RGBA,redraw,
+item_seeds_3,merge item,WP4,existing,185x185,RGBA,40,512x512 RGBA,redraw,
+item_seeds_4,merge item,WP4,existing,328x328,RGBA,92,512x512 RGBA,redraw,
+item_seeds_5,merge item,WP4,existing,396x396,RGBA,145,512x512 RGBA,redraw,
+item_seeds_6,merge item,WP4,existing,400x400,RGBA,219,512x512 RGBA,redraw,
+item_smithy_0,merge item,WP4,existing,280x280,RGBA,80,512x512 RGBA,redraw,
+item_smithy_1,merge item,WP4,existing,211x211,RGBA,56,512x512 RGBA,redraw,
+item_smithy_2,merge item,WP4,existing,188x188,RGBA,64,512x512 RGBA,redraw,
+item_smithy_3,merge item,WP4,existing,283x283,RGBA,96,512x512 RGBA,redraw,
+item_smithy_4,merge item,WP4,existing,230x214,RGBA,146,512x512 RGBA,redraw,
+item_smithy_5,merge item,WP4,existing,302x302,RGBA,139,512x512 RGBA,redraw,
+item_stone_0,merge item,WP4,existing,294x294,RGBA,55,512x512 RGBA,redraw,
+item_stone_1,merge item,WP4,existing,333x333,RGBA,129,512x512 RGBA,redraw,
+item_stone_2,merge item,WP4,existing,373x373,RGBA,204,512x512 RGBA,redraw,
+item_stone_3,merge item,WP4,existing,275x275,RGBA,130,512x512 RGBA,redraw,
+item_stone_4,merge item,WP4,existing,366x366,RGBA,175,512x512 RGBA,redraw,
+item_stone_5,merge item,WP4,existing,504x504,RGBA,261,512x512 RGBA,redraw,
+item_stone_6,merge item,WP4,existing,402x402,RGBA,203,512x512 RGBA,redraw,
+item_water_0,merge item,WP4,existing,182x182,RGBA,25,512x512 RGBA,redraw,
+item_water_1,merge item,WP4,existing,309x309,RGBA,75,512x512 RGBA,redraw,
+item_water_2,merge item,WP4,existing,315x315,RGBA,88,512x512 RGBA,redraw,
+item_water_3,merge item,WP4,existing,293x293,RGBA,123,512x512 RGBA,redraw,
+item_water_4,merge item,WP4,existing,326x326,RGBA,144,512x512 RGBA,redraw,
+item_water_5,merge item,WP4,existing,466x466,RGBA,203,512x512 RGBA,redraw,
+item_water_6,merge item,WP4,existing,430x430,RGBA,214,512x512 RGBA,redraw,
+item_wood_0,merge item,WP4,existing,239x239,RGBA,60,512x512 RGBA,redraw,
+item_wood_1,merge item,WP4,existing,258x258,RGBA,90,512x512 RGBA,redraw,
+item_wood_2,merge item,WP4,existing,307x307,RGBA,104,512x512 RGBA,redraw,
+item_wood_3,merge item,WP4,existing,223x223,RGBA,56,512x512 RGBA,redraw,
+item_wood_4,merge item,WP4,existing,255x255,RGBA,79,512x512 RGBA,redraw,
+item_wood_5,merge item,WP4,existing,257x257,RGBA,110,512x512 RGBA,redraw,
+item_wood_6,merge item,WP4,existing,314x314,RGBA,177,512x512 RGBA,redraw,
+item_wool_0,merge item,WP4,existing,256x256,RGBA,60,512x512 RGBA,redraw,
+item_wool_1,merge item,WP4,existing,295x295,RGBA,86,512x512 RGBA,redraw,
+item_wool_2,merge item,WP4,existing,289x289,RGBA,94,512x512 RGBA,redraw,
+item_wool_3,merge item,WP4,existing,243x243,RGBA,85,512x512 RGBA,redraw,
+item_wool_4,merge item,WP4,existing,378x378,RGBA,117,512x512 RGBA,redraw,
+item_wool_5,merge item,WP4,existing,389x389,RGBA,108,512x512 RGBA,redraw,
+item_wool_6,merge item,WP4,existing,352x352,RGBA,147,512x512 RGBA,redraw,
+loc_bakery,location art,WP7,existing,446x440,RGBA,332,1024 long edge,redraw,
+loc_cove,location art,WP7,existing,488x380,RGBA,351,1024 long edge,redraw,
+loc_docks,location art,WP7,existing,459x359,RGBA,329,1024 long edge,redraw,
+loc_lighthouse,location art,WP7,existing,454x464,RGBA,302,1024 long edge,redraw,
+loc_market,location art,WP7,existing,503x398,RGBA,399,1024 long edge,redraw,
+loc_pier,location art,WP7,existing,451x354,RGBA,284,1024 long edge,redraw,
+map_island_plate,island plate,WP2,existing,1369x1149,RGB,2463,"v3 plate, opaque RGB",redraw,all phases pixel-registered
+map_island_plate_dawn,island plate,WP2,existing,1370x1148,RGB,2615,"v3 plate, opaque RGB",redraw,all phases pixel-registered
+map_island_plate_dusk,island plate,WP2,existing,1370x1148,RGB,2472,"v3 plate, opaque RGB",redraw,all phases pixel-registered
+map_island_plate_evening,island plate,WP2,existing,1370x1148,RGB,2162,"v3 plate, opaque RGB",redraw,all phases pixel-registered
+map_island_plate_night,island plate,WP2,existing,1370x1148,RGB,2260,"v3 plate, opaque RGB",redraw,all phases pixel-registered
+mg_bg_beacon,minigame backdrop,WP2,existing,880x1120,RGB,1011,880x1120 opaque RGB,redraw,
+mg_bg_catch,minigame backdrop,WP2,existing,880x1120,RGB,999,880x1120 opaque RGB,redraw,
+mg_bg_forage,minigame backdrop,WP2,existing,880x1120,RGB,1058,880x1120 opaque RGB,redraw,
+mg_bg_forge,minigame backdrop,WP2,existing,880x1120,RGB,936,880x1120 opaque RGB,redraw,
+mg_bg_sawmill,minigame backdrop,WP2,existing,880x1120,RGB,1750,880x1120 opaque RGB,redraw,
+mg_bg_stacks,minigame backdrop,WP2,existing,880x1120,RGB,843,880x1120 opaque RGB,redraw,
+mg_bg_well,minigame backdrop,WP2,existing,880x1120,RGB,1149,880x1120 opaque RGB,redraw,
+mg_forage_clearing,minigame sprite,WP5,existing,802x600,RGBA,1157,256 long edge RGBA,redraw,
+mg_forage_coin,minigame sprite,WP5,existing,128x128,RGBA,26,256 long edge RGBA,redraw,
+mg_forage_ember,minigame sprite,WP5,existing,128x128,RGBA,20,256 long edge RGBA,redraw,
+mg_forage_honeycomb,minigame sprite,WP5,existing,128x128,RGBA,23,256 long edge RGBA,redraw,
+mg_forage_leaf,minigame sprite,WP5,existing,128x128,RGBA,18,256 long edge RGBA,redraw,
+mg_forge_hammer,minigame sprite,WP5,existing,484x488,RGBA,445,256 long edge RGBA,redraw,
+mg_forge_lump,minigame sprite,WP5,existing,482x441,RGBA,482,256 long edge RGBA,redraw,
+mg_peg_brass,minigame sprite,WP5,existing,304x272,RGBA,167,256 long edge RGBA,redraw,
+mg_peg_gold,minigame sprite,WP5,existing,321x287,RGBA,181,256 long edge RGBA,redraw,
+mg_sawmill_blade,minigame sprite,WP5,existing,586x555,RGBA,690,256 long edge RGBA,redraw,
+mg_sawmill_log_v,minigame sprite,WP5,existing,299x807,RGBA,636,256 long edge RGBA,redraw,
+nav_home,nav icon,WP5,existing,63x64,RGBA,8,128x128 RGBA,redraw,must read as a silhouette at 26 px
+nav_journal,nav icon,WP5,existing,64x64,RGBA,8,128x128 RGBA,redraw,must read as a silhouette at 26 px
+nav_map,nav icon,WP5,existing,64x64,RGBA,8,128x128 RGBA,redraw,must read as a silhouette at 26 px
+nav_shop,nav icon,WP5,existing,63x64,RGBA,8,128x128 RGBA,redraw,must read as a silhouette at 26 px
+nav_villagers,nav icon,WP5,existing,64x64,RGBA,8,128x128 RGBA,redraw,must read as a silhouette at 26 px
+npc_bran,villager full-body,WP3,existing,90x233,RGBA,34,512 tall RGBA,hold,not drawn by the game today
+npc_child,villager full-body,WP3,existing,204x380,RGBA,90,512 tall RGBA,hold,not drawn by the game today
+npc_joss,villager full-body,WP3,existing,90x233,RGBA,31,512 tall RGBA,hold,not drawn by the game today
+npc_man,villager full-body,WP3,existing,196x420,RGBA,111,512 tall RGBA,hold,not drawn by the game today
+npc_marta,villager full-body,WP3,existing,90x230,RGBA,29,512 tall RGBA,hold,not drawn by the game today
+npc_sorin,villager full-body,WP3,existing,90x233,RGBA,32,512 tall RGBA,hold,not drawn by the game today
+npc_woman,villager full-body,WP3,existing,72x156,RGBA,13,512 tall RGBA,hold,not drawn by the game today
+npc_wren,villager full-body,WP3,existing,90x230,RGBA,30,512 tall RGBA,hold,not drawn by the game today
+panel_large,UI chrome,WP5,existing,190x116,RGBA,35,"9-slice safe, 2x current",redraw,only panel_parchment is wired in code
+panel_parch,UI chrome,WP5,existing,158x130,RGBA,39,"9-slice safe, 2x current",redraw,only panel_parchment is wired in code
+panel_parchment,UI chrome,WP5,existing,174x64,RGBA,18,"9-slice safe, 2x current",redraw,only panel_parchment is wired in code
+panel_wood,UI chrome,WP5,existing,154x124,RGBA,34,"9-slice safe, 2x current",redraw,only panel_parchment is wired in code
+pin_forest,map prop / nature,WP2,existing,110x107,RGBA,13,256 long edge RGBA,redraw,bottom-centre ground anchor
+pin_harbor,map prop / nature,WP2,existing,94x108,RGBA,13,256 long edge RGBA,redraw,bottom-centre ground anchor
+pin_home,map prop / nature,WP2,existing,63x85,RGBA,11,256 long edge RGBA,redraw,bottom-centre ground anchor
+pin_mystery,map prop / nature,WP2,existing,94x108,RGBA,12,256 long edge RGBA,redraw,bottom-centre ground anchor
+pin_quest,map prop / nature,WP2,existing,59x81,RGBA,9,256 long edge RGBA,redraw,bottom-centre ground anchor
+popup_window,UI chrome,WP5,existing,147x150,RGBA,35,"9-slice safe, 2x current",redraw,only panel_parchment is wired in code
+prop_barrel,map prop / nature,WP2,existing,48x75,RGBA,3,256 long edge RGBA,redraw,bottom-centre ground anchor
+prop_bench,map prop / nature,WP2,existing,80x87,RGBA,5,256 long edge RGBA,redraw,bottom-centre ground anchor
+prop_crate,map prop / nature,WP2,existing,46x70,RGBA,3,256 long edge RGBA,redraw,bottom-centre ground anchor
+prop_lamp,map prop / nature,WP2,existing,72x95,RGBA,3,256 long edge RGBA,redraw,bottom-centre ground anchor
+prop_lighthouse,building,WP1,existing,307x391,RGBA,133,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_dawn,building,WP1,existing,307x391,RGBA,126,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_dusk,building,WP1,existing,307x391,RGBA,134,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_l2,building,WP1,existing,313x418,RGBA,147,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_l2_dawn,building,WP1,existing,313x418,RGBA,142,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_l2_dusk,building,WP1,existing,313x418,RGBA,150,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_l2_night,building,WP1,existing,313x418,RGBA,136,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_l3,building,WP1,existing,323x424,RGBA,154,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_l3_dawn,building,WP1,existing,323x424,RGBA,150,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_l3_dusk,building,WP1,existing,323x424,RGBA,158,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_l3_night,building,WP1,existing,323x424,RGBA,148,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_night,building,WP1,existing,307x391,RGBA,122,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_ruin,building,WP1,existing,353x304,RGBA,126,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_ruin_dawn,building,WP1,existing,353x304,RGBA,116,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_ruin_dusk,building,WP1,existing,353x304,RGBA,140,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_ruin_night,building,WP1,existing,353x304,RGBA,124,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_wip,building,WP1,existing,333x381,RGBA,173,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_wip_dawn,building,WP1,existing,333x381,RGBA,164,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_wip_dusk,building,WP1,existing,333x381,RGBA,180,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_lighthouse_wip_night,building,WP1,existing,333x381,RGBA,163,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_rock,map prop / nature,WP2,existing,64x73,RGBA,4,256 long edge RGBA,redraw,bottom-centre ground anchor
+prop_shorerock,map prop / nature,WP2,existing,91x109,RGBA,10,256 long edge RGBA,redraw,bottom-centre ground anchor
+prop_sign,map prop / nature,WP2,existing,64x95,RGBA,3,256 long edge RGBA,redraw,bottom-centre ground anchor
+prop_tidepool,map prop / nature,WP2,existing,130x84,RGBA,21,256 long edge RGBA,redraw,bottom-centre ground anchor
+prop_well,building,WP1,existing,257x234,RGBA,89,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_dawn,building,WP1,existing,257x234,RGBA,90,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_dusk,building,WP1,existing,257x234,RGBA,85,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_l2,building,WP1,existing,262x239,RGBA,101,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_l2_dawn,building,WP1,existing,262x239,RGBA,102,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_l2_dusk,building,WP1,existing,262x239,RGBA,96,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_l2_night,building,WP1,existing,262x239,RGBA,91,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_l3,building,WP1,existing,258x256,RGBA,101,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_l3_dawn,building,WP1,existing,258x256,RGBA,104,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_l3_dusk,building,WP1,existing,258x256,RGBA,98,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_l3_night,building,WP1,existing,258x256,RGBA,91,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_night,building,WP1,existing,257x234,RGBA,79,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_ruin,building,WP1,existing,262x167,RGBA,73,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_ruin_dawn,building,WP1,existing,262x167,RGBA,73,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_ruin_dusk,building,WP1,existing,262x167,RGBA,70,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_ruin_night,building,WP1,existing,262x167,RGBA,69,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_wip,building,WP1,existing,271x230,RGBA,93,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_wip_dawn,building,WP1,existing,271x230,RGBA,95,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_wip_dusk,building,WP1,existing,271x230,RGBA,90,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+prop_well_wip_night,building,WP1,existing,271x230,RGBA,83,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+res_book,resource / currency,WP5,existing,40x29,RGBA,3,256 long edge RGBA,redraw,
+res_chest_closed,resource / currency,WP5,existing,67x60,RGBA,8,256 long edge RGBA,redraw,
+res_chest_open,resource / currency,WP5,existing,98x62,RGBA,9,256 long edge RGBA,redraw,
+res_clay,resource / currency,WP5,existing,51x47,RGBA,5,256 long edge RGBA,redraw,
+res_coin,resource / currency,WP5,existing,39x40,RGBA,4,256 long edge RGBA,redraw,
+res_copper,resource / currency,WP5,existing,49x44,RGBA,5,256 long edge RGBA,redraw,
+res_energy,resource / currency,WP5,existing,85x53,RGBA,4,256 long edge RGBA,redraw,
+res_fish,resource / currency,WP5,existing,44x35,RGBA,3,256 long edge RGBA,redraw,
+res_flowers,resource / currency,WP5,existing,50x49,RGBA,5,256 long edge RGBA,redraw,
+res_gift,resource / currency,WP5,existing,47x60,RGBA,6,256 long edge RGBA,redraw,
+res_herbs,resource / currency,WP5,existing,44x40,RGBA,4,256 long edge RGBA,redraw,
+res_honey,resource / currency,WP5,existing,38x52,RGBA,5,256 long edge RGBA,redraw,
+res_iron,resource / currency,WP5,existing,53x45,RGBA,5,256 long edge RGBA,redraw,
+res_key,resource / currency,WP5,existing,74x32,RGBA,3,256 long edge RGBA,redraw,
+res_rope,resource / currency,WP5,existing,46x43,RGBA,4,256 long edge RGBA,redraw,
+res_scroll,resource / currency,WP5,existing,76x31,RGBA,4,256 long edge RGBA,redraw,
+res_seeds,resource / currency,WP5,existing,49x32,RGBA,4,256 long edge RGBA,redraw,
+res_star,resource / currency,WP5,existing,41x40,RGBA,3,256 long edge RGBA,redraw,
+res_stone,resource / currency,WP5,existing,57x51,RGBA,5,256 long edge RGBA,redraw,
+res_water,resource / currency,WP5,existing,41x53,RGBA,4,256 long edge RGBA,redraw,
+res_wood,resource / currency,WP5,existing,52x49,RGBA,5,256 long edge RGBA,redraw,
+reward_chest,resource / currency,WP5,existing,76x70,RGBA,13,256 long edge RGBA,redraw,
+splash_emblem,branding,WP7,existing,250x238,RGBA,112,"app icon 1024, others 2x current",review,
+stage_0,homestead stage,WP1,existing,187x234,RGBA,90,512 long edge RGBA,redraw,
+stage_1,homestead stage,WP1,existing,188x234,RGBA,97,512 long edge RGBA,redraw,
+stage_2,homestead stage,WP1,existing,187x234,RGBA,94,512 long edge RGBA,redraw,
+stage_3,homestead stage,WP1,existing,188x234,RGBA,98,512 long edge RGBA,redraw,
+stage_4,homestead stage,WP1,existing,188x234,RGBA,95,512 long edge RGBA,redraw,
+stake_anchor,map prop / nature,WP2,existing,58x85,RGBA,10,256 long edge RGBA,redraw,bottom-centre ground anchor
+stake_exclaim,map prop / nature,WP2,existing,59x87,RGBA,10,256 long edge RGBA,redraw,bottom-centre ground anchor
+stake_star,map prop / nature,WP2,existing,57x86,RGBA,10,256 long edge RGBA,redraw,bottom-centre ground anchor
+stake_tree,map prop / nature,WP2,existing,57x85,RGBA,10,256 long edge RGBA,redraw,bottom-centre ground anchor
+terrain_bush,map prop / nature,WP2,existing,72x46,RGBA,4,256 long edge RGBA,redraw,bottom-centre ground anchor
+terrain_flowers1,map prop / nature,WP2,existing,77x47,RGBA,6,256 long edge RGBA,redraw,bottom-centre ground anchor
+terrain_flowers2,map prop / nature,WP2,existing,80x47,RGBA,6,256 long edge RGBA,redraw,bottom-centre ground anchor
+terrain_grass,map prop / nature,WP2,existing,80x45,RGBA,7,256 long edge RGBA,redraw,bottom-centre ground anchor
+terrain_path,map prop / nature,WP2,existing,102x52,RGBA,8,256 long edge RGBA,redraw,bottom-centre ground anchor
+terrain_rocks,map prop / nature,WP2,existing,120x75,RGBA,10,256 long edge RGBA,redraw,bottom-centre ground anchor
+terrain_trees_l,map prop / nature,WP2,existing,86x73,RGBA,4,256 long edge RGBA,redraw,bottom-centre ground anchor
+terrain_trees_s,map prop / nature,WP2,existing,92x63,RGBA,3,256 long edge RGBA,redraw,bottom-centre ground anchor
+time_badge_midday,time-of-day badge,WP5,existing,487x463,RGBA,486,512 long edge RGBA,review,
+time_badge_night,time-of-day badge,WP5,existing,492x440,RGBA,439,512 long edge RGBA,review,
+time_badge_sunrise,time-of-day badge,WP5,existing,489x464,RGBA,471,512 long edge RGBA,review,
+time_badge_sunset,time-of-day badge,WP5,existing,489x440,RGBA,441,512 long edge RGBA,review,
+town_bakery,building,WP1,existing,262x216,RGBA,75,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_dawn,building,WP1,existing,262x216,RGBA,74,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_dusk,building,WP1,existing,262x216,RGBA,74,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_l2,building,WP1,existing,277x229,RGBA,87,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_l2_dawn,building,WP1,existing,277x229,RGBA,87,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_l2_dusk,building,WP1,existing,277x229,RGBA,85,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_l2_night,building,WP1,existing,277x229,RGBA,83,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_l3,building,WP1,existing,281x230,RGBA,91,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_l3_dawn,building,WP1,existing,281x230,RGBA,93,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_l3_dusk,building,WP1,existing,281x230,RGBA,92,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_l3_night,building,WP1,existing,281x230,RGBA,89,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_night,building,WP1,existing,262x216,RGBA,71,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_ruin,building,WP1,existing,253x177,RGBA,61,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_ruin_dawn,building,WP1,existing,253x177,RGBA,61,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_ruin_dusk,building,WP1,existing,253x177,RGBA,59,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_ruin_night,building,WP1,existing,253x177,RGBA,58,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_wip,building,WP1,existing,275x191,RGBA,77,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_wip_dawn,building,WP1,existing,275x191,RGBA,76,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_wip_dusk,building,WP1,existing,275x191,RGBA,75,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_bakery_wip_night,building,WP1,existing,275x191,RGBA,73,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith,building,WP1,existing,272x234,RGBA,101,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_dawn,building,WP1,existing,272x234,RGBA,102,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_dusk,building,WP1,existing,272x234,RGBA,97,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_l2,building,WP1,existing,287x240,RGBA,117,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_l2_dawn,building,WP1,existing,287x240,RGBA,117,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_l2_dusk,building,WP1,existing,287x240,RGBA,111,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_l2_night,building,WP1,existing,287x240,RGBA,111,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_l3,building,WP1,existing,291x258,RGBA,122,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_l3_dawn,building,WP1,existing,291x258,RGBA,123,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_l3_dusk,building,WP1,existing,291x258,RGBA,116,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_l3_night,building,WP1,existing,291x258,RGBA,115,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_night,building,WP1,existing,272x234,RGBA,95,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_ruin,building,WP1,existing,276x199,RGBA,85,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_ruin_dawn,building,WP1,existing,276x199,RGBA,85,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_ruin_dusk,building,WP1,existing,276x199,RGBA,82,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_ruin_night,building,WP1,existing,276x199,RGBA,80,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_wip,building,WP1,existing,277x232,RGBA,104,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_wip_dawn,building,WP1,existing,277x232,RGBA,104,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_wip_dusk,building,WP1,existing,277x232,RGBA,99,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_blacksmith_wip_night,building,WP1,existing,277x232,RGBA,97,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage,building,WP1,existing,280x225,RGBA,82,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_dawn,building,WP1,existing,280x225,RGBA,80,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_dusk,building,WP1,existing,280x225,RGBA,79,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_l2,building,WP1,existing,284x232,RGBA,84,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_l2_dawn,building,WP1,existing,284x232,RGBA,84,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_l2_dusk,building,WP1,existing,284x232,RGBA,86,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_l2_night,building,WP1,existing,284x232,RGBA,84,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_l3,building,WP1,existing,282x225,RGBA,91,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_l3_dawn,building,WP1,existing,282x225,RGBA,92,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_l3_dusk,building,WP1,existing,282x225,RGBA,93,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_l3_night,building,WP1,existing,282x225,RGBA,91,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_night,building,WP1,existing,280x225,RGBA,77,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_ruin,building,WP1,existing,277x200,RGBA,69,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_ruin_dawn,building,WP1,existing,277x200,RGBA,68,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_ruin_dusk,building,WP1,existing,277x200,RGBA,70,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_ruin_night,building,WP1,existing,277x200,RGBA,69,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_wip,building,WP1,existing,288x205,RGBA,84,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_wip_dawn,building,WP1,existing,288x205,RGBA,79,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_wip_dusk,building,WP1,existing,288x205,RGBA,81,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_cottage_wip_night,building,WP1,existing,288x205,RGBA,80,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock,building,WP1,existing,300x211,RGBA,87,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_dawn,building,WP1,existing,300x211,RGBA,96,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_dusk,building,WP1,existing,300x211,RGBA,80,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_l2,building,WP1,existing,309x255,RGBA,104,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_l2_dawn,building,WP1,existing,309x255,RGBA,111,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_l2_dusk,building,WP1,existing,309x255,RGBA,96,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_l2_night,building,WP1,existing,309x255,RGBA,102,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_l3,building,WP1,existing,324x257,RGBA,115,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_l3_dawn,building,WP1,existing,324x257,RGBA,125,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_l3_dusk,building,WP1,existing,324x257,RGBA,103,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_l3_night,building,WP1,existing,324x257,RGBA,125,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_night,building,WP1,existing,300x211,RGBA,81,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_ruin,building,WP1,existing,282x186,RGBA,72,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_ruin_dawn,building,WP1,existing,282x186,RGBA,80,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_ruin_dusk,building,WP1,existing,282x186,RGBA,70,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_ruin_night,building,WP1,existing,282x186,RGBA,54,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_wip,building,WP1,existing,305x255,RGBA,91,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_wip_dawn,building,WP1,existing,305x255,RGBA,98,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_wip_dusk,building,WP1,existing,305x255,RGBA,86,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_dock_wip_night,building,WP1,existing,305x255,RGBA,91,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm,building,WP1,existing,266x204,RGBA,83,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_dawn,building,WP1,existing,266x204,RGBA,84,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_dusk,building,WP1,existing,266x204,RGBA,80,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_l2,building,WP1,existing,285x210,RGBA,102,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_l2_dawn,building,WP1,existing,285x210,RGBA,103,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_l2_dusk,building,WP1,existing,285x210,RGBA,97,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_l2_night,building,WP1,existing,285x210,RGBA,98,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_l3,building,WP1,existing,307x239,RGBA,114,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_l3_dawn,building,WP1,existing,307x239,RGBA,117,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_l3_dusk,building,WP1,existing,307x239,RGBA,109,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_l3_night,building,WP1,existing,307x239,RGBA,111,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_night,building,WP1,existing,266x204,RGBA,81,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_ruin,building,WP1,existing,272x202,RGBA,77,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_ruin_dawn,building,WP1,existing,272x202,RGBA,77,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_ruin_dusk,building,WP1,existing,272x202,RGBA,74,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_ruin_night,building,WP1,existing,272x202,RGBA,79,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_wip,building,WP1,existing,259x204,RGBA,79,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_wip_dawn,building,WP1,existing,259x204,RGBA,80,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_wip_dusk,building,WP1,existing,259x204,RGBA,75,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_farm_wip_night,building,WP1,existing,259x204,RGBA,78,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut,building,WP1,existing,300x226,RGBA,94,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_dawn,building,WP1,existing,300x226,RGBA,105,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_dusk,building,WP1,existing,300x226,RGBA,81,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_l2,building,WP1,existing,309x229,RGBA,102,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_l2_dawn,building,WP1,existing,309x229,RGBA,116,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_l2_dusk,building,WP1,existing,309x229,RGBA,90,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_l2_night,building,WP1,existing,309x229,RGBA,66,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_l3,building,WP1,existing,341x257,RGBA,110,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_l3_dawn,building,WP1,existing,341x257,RGBA,126,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_l3_dusk,building,WP1,existing,341x257,RGBA,99,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_l3_night,building,WP1,existing,341x257,RGBA,104,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_night,building,WP1,existing,300x226,RGBA,59,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_ruin,building,WP1,existing,302x203,RGBA,89,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_ruin_dawn,building,WP1,existing,302x203,RGBA,96,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_ruin_dusk,building,WP1,existing,302x203,RGBA,77,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_ruin_night,building,WP1,existing,302x203,RGBA,52,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_wip,building,WP1,existing,306x224,RGBA,97,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_wip_dawn,building,WP1,existing,306x224,RGBA,109,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_wip_dusk,building,WP1,existing,306x224,RGBA,84,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_fisherhut_wip_night,building,WP1,existing,306x224,RGBA,53,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden,building,WP1,existing,274x204,RGBA,78,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_dawn,building,WP1,existing,274x204,RGBA,78,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_dusk,building,WP1,existing,274x204,RGBA,76,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_l2,building,WP1,existing,284x216,RGBA,95,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_l2_dawn,building,WP1,existing,284x216,RGBA,93,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_l2_dusk,building,WP1,existing,284x216,RGBA,91,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_l2_night,building,WP1,existing,284x216,RGBA,93,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_l3,building,WP1,existing,293x218,RGBA,101,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_l3_dawn,building,WP1,existing,293x218,RGBA,101,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_l3_dusk,building,WP1,existing,293x218,RGBA,98,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_l3_night,building,WP1,existing,293x218,RGBA,100,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_night,building,WP1,existing,274x204,RGBA,77,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_ruin,building,WP1,existing,266x198,RGBA,69,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_ruin_dawn,building,WP1,existing,266x198,RGBA,68,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_ruin_dusk,building,WP1,existing,266x198,RGBA,68,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_ruin_night,building,WP1,existing,266x198,RGBA,68,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_wip,building,WP1,existing,271x208,RGBA,78,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_wip_dawn,building,WP1,existing,271x208,RGBA,77,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_wip_dusk,building,WP1,existing,271x208,RGBA,76,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_garden_wip_night,building,WP1,existing,271x208,RGBA,77,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library,building,WP1,existing,313x308,RGBA,124,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_dawn,building,WP1,existing,313x308,RGBA,121,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_dusk,building,WP1,existing,313x308,RGBA,127,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_l2,building,WP1,existing,357x328,RGBA,169,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_l2_dawn,building,WP1,existing,357x328,RGBA,165,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_l2_dusk,building,WP1,existing,357x328,RGBA,155,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_l2_night,building,WP1,existing,357x328,RGBA,151,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_l3,building,WP1,existing,382x386,RGBA,185,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_l3_dawn,building,WP1,existing,382x386,RGBA,181,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_l3_dusk,building,WP1,existing,382x386,RGBA,187,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_l3_night,building,WP1,existing,382x386,RGBA,178,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_night,building,WP1,existing,313x308,RGBA,127,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_ruin,building,WP1,existing,332x261,RGBA,107,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_ruin_dawn,building,WP1,existing,332x261,RGBA,106,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_ruin_dusk,building,WP1,existing,332x261,RGBA,107,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_ruin_night,building,WP1,existing,332x261,RGBA,107,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_wip,building,WP1,existing,312x306,RGBA,132,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_wip_dawn,building,WP1,existing,312x306,RGBA,130,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_wip_dusk,building,WP1,existing,312x306,RGBA,130,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_library_wip_night,building,WP1,existing,312x306,RGBA,128,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market,building,WP1,existing,260x215,RGBA,82,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_dawn,building,WP1,existing,260x215,RGBA,82,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_dusk,building,WP1,existing,260x215,RGBA,78,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_l2,building,WP1,existing,276x223,RGBA,95,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_l2_dawn,building,WP1,existing,276x223,RGBA,95,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_l2_dusk,building,WP1,existing,276x223,RGBA,92,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_l2_night,building,WP1,existing,276x223,RGBA,91,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_l3,building,WP1,existing,280x231,RGBA,102,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_l3_dawn,building,WP1,existing,280x231,RGBA,103,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_l3_dusk,building,WP1,existing,280x231,RGBA,99,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_l3_night,building,WP1,existing,280x231,RGBA,98,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_night,building,WP1,existing,260x215,RGBA,77,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_ruin,building,WP1,existing,250x167,RGBA,65,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_ruin_dawn,building,WP1,existing,250x167,RGBA,65,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_ruin_dusk,building,WP1,existing,250x167,RGBA,62,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_ruin_night,building,WP1,existing,250x167,RGBA,61,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_wip,building,WP1,existing,267x201,RGBA,87,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_wip_dawn,building,WP1,existing,267x201,RGBA,86,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_wip_dusk,building,WP1,existing,267x201,RGBA,83,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_market_wip_night,building,WP1,existing,267x201,RGBA,81,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice,building,WP1,existing,255x213,RGBA,83,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_dawn,building,WP1,existing,255x213,RGBA,83,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_dusk,building,WP1,existing,255x213,RGBA,80,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_l2,building,WP1,existing,281x224,RGBA,101,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_l2_dawn,building,WP1,existing,281x224,RGBA,102,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_l2_dusk,building,WP1,existing,281x224,RGBA,98,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_l2_night,building,WP1,existing,281x224,RGBA,92,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_l3,building,WP1,existing,285x232,RGBA,103,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_l3_dawn,building,WP1,existing,285x232,RGBA,104,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_l3_dusk,building,WP1,existing,285x232,RGBA,99,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_l3_night,building,WP1,existing,285x232,RGBA,95,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_night,building,WP1,existing,255x213,RGBA,75,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_ruin,building,WP1,existing,251x195,RGBA,76,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_ruin_dawn,building,WP1,existing,251x195,RGBA,76,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_ruin_dusk,building,WP1,existing,251x195,RGBA,72,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_ruin_night,building,WP1,existing,251x195,RGBA,68,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_wip,building,WP1,existing,271x216,RGBA,92,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_wip_dawn,building,WP1,existing,271x216,RGBA,91,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_wip_dusk,building,WP1,existing,271x216,RGBA,89,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_postoffice_wip_night,building,WP1,existing,271x216,RGBA,84,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry,building,WP1,existing,275x209,RGBA,83,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_dawn,building,WP1,existing,275x209,RGBA,82,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_dusk,building,WP1,existing,275x209,RGBA,81,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_l2,building,WP1,existing,298x221,RGBA,102,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_l2_dawn,building,WP1,existing,298x221,RGBA,102,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_l2_dusk,building,WP1,existing,298x221,RGBA,100,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_l2_night,building,WP1,existing,298x221,RGBA,99,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_l3,building,WP1,existing,314x233,RGBA,108,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_l3_dawn,building,WP1,existing,314x233,RGBA,108,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_l3_dusk,building,WP1,existing,314x233,RGBA,106,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_l3_night,building,WP1,existing,314x233,RGBA,107,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_night,building,WP1,existing,275x209,RGBA,80,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_ruin,building,WP1,existing,266x172,RGBA,69,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_ruin_dawn,building,WP1,existing,266x172,RGBA,68,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_ruin_dusk,building,WP1,existing,266x172,RGBA,66,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_ruin_night,building,WP1,existing,266x172,RGBA,65,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_wip,building,WP1,existing,267x212,RGBA,84,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_wip_dawn,building,WP1,existing,267x212,RGBA,83,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_wip_dusk,building,WP1,existing,267x212,RGBA,81,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_quarry_wip_night,building,WP1,existing,267x212,RGBA,80,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_ruin_0,generic ruin / wip pool,WP1,existing,202x157,RGBA,83,-,retire,superseded by per-building _ruin / _wip states
+town_ruin_1,generic ruin / wip pool,WP1,existing,202x157,RGBA,87,-,retire,superseded by per-building _ruin / _wip states
+town_ruin_2,generic ruin / wip pool,WP1,existing,202x130,RGBA,75,-,retire,superseded by per-building _ruin / _wip states
+town_ruin_3,generic ruin / wip pool,WP1,existing,202x137,RGBA,80,-,retire,superseded by per-building _ruin / _wip states
+town_ruin_4,generic ruin / wip pool,WP1,existing,202x120,RGBA,66,-,retire,superseded by per-building _ruin / _wip states
+town_ruin_5,generic ruin / wip pool,WP1,existing,202x122,RGBA,71,-,retire,superseded by per-building _ruin / _wip states
+town_ruin_6,generic ruin / wip pool,WP1,existing,202x120,RGBA,71,-,retire,superseded by per-building _ruin / _wip states
+town_ruin_7,generic ruin / wip pool,WP1,existing,202x123,RGBA,73,-,retire,superseded by per-building _ruin / _wip states
+town_sawmill,building,WP1,existing,274x203,RGBA,87,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_dawn,building,WP1,existing,274x203,RGBA,87,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_dusk,building,WP1,existing,274x203,RGBA,83,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_l2,building,WP1,existing,299x228,RGBA,105,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_l2_dawn,building,WP1,existing,299x228,RGBA,106,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_l2_dusk,building,WP1,existing,299x228,RGBA,100,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_l2_night,building,WP1,existing,299x228,RGBA,103,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_l3,building,WP1,existing,319x242,RGBA,127,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_l3_dawn,building,WP1,existing,319x242,RGBA,126,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_l3_dusk,building,WP1,existing,319x242,RGBA,120,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_l3_night,building,WP1,existing,319x242,RGBA,124,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_night,building,WP1,existing,274x203,RGBA,85,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_ruin,building,WP1,existing,276x209,RGBA,86,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_ruin_dawn,building,WP1,existing,276x209,RGBA,85,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_ruin_dusk,building,WP1,existing,276x209,RGBA,81,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_ruin_night,building,WP1,existing,276x209,RGBA,86,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_wip,building,WP1,existing,276x211,RGBA,96,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_wip_dawn,building,WP1,existing,276x211,RGBA,96,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_wip_dusk,building,WP1,existing,276x211,RGBA,91,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_sawmill_wip_night,building,WP1,existing,276x211,RGBA,94,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall,building,WP1,existing,254x227,RGBA,72,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_dawn,building,WP1,existing,254x227,RGBA,73,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_dusk,building,WP1,existing,254x227,RGBA,70,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_l2,building,WP1,existing,291x241,RGBA,89,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_l2_dawn,building,WP1,existing,291x241,RGBA,89,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_l2_dusk,building,WP1,existing,291x241,RGBA,85,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_l2_night,building,WP1,existing,291x241,RGBA,87,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_l3,building,WP1,existing,320x246,RGBA,103,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_l3_dawn,building,WP1,existing,320x246,RGBA,103,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_l3_dusk,building,WP1,existing,320x246,RGBA,98,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_l3_night,building,WP1,existing,320x246,RGBA,102,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_night,building,WP1,existing,254x227,RGBA,70,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_ruin,building,WP1,existing,270x203,RGBA,73,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_ruin_dawn,building,WP1,existing,270x203,RGBA,72,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_ruin_dusk,building,WP1,existing,270x203,RGBA,71,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_ruin_night,building,WP1,existing,270x203,RGBA,72,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_wip,building,WP1,existing,283x224,RGBA,91,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_wip_dawn,building,WP1,existing,283x224,RGBA,92,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_wip_dusk,building,WP1,existing,283x224,RGBA,86,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_townhall_wip_night,building,WP1,existing,283x224,RGBA,88,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_wip_0,generic ruin / wip pool,WP1,existing,188x148,RGBA,74,-,retire,superseded by per-building _ruin / _wip states
+town_wip_1,generic ruin / wip pool,WP1,existing,188x135,RGBA,66,-,retire,superseded by per-building _ruin / _wip states
+town_wip_2,generic ruin / wip pool,WP1,existing,188x122,RGBA,65,-,retire,superseded by per-building _ruin / _wip states
+town_wip_3,generic ruin / wip pool,WP1,existing,188x116,RGBA,59,-,retire,superseded by per-building _ruin / _wip states
+town_wip_4,generic ruin / wip pool,WP1,existing,188x114,RGBA,58,-,retire,superseded by per-building _ruin / _wip states
+town_wip_5,generic ruin / wip pool,WP1,existing,188x112,RGBA,54,-,retire,superseded by per-building _ruin / _wip states
+town_wip_6,generic ruin / wip pool,WP1,existing,188x94,RGBA,50,-,retire,superseded by per-building _ruin / _wip states
+town_wip_7,generic ruin / wip pool,WP1,existing,188x114,RGBA,59,-,retire,superseded by per-building _ruin / _wip states
+town_workshop,building,WP1,existing,277x219,RGBA,82,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_dawn,building,WP1,existing,277x219,RGBA,83,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_dusk,building,WP1,existing,277x219,RGBA,82,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_l2,building,WP1,existing,275x225,RGBA,93,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_l2_dawn,building,WP1,existing,275x225,RGBA,90,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_l2_dusk,building,WP1,existing,275x225,RGBA,90,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_l2_night,building,WP1,existing,275x225,RGBA,90,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_l3,building,WP1,existing,287x217,RGBA,101,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_l3_dawn,building,WP1,existing,287x217,RGBA,99,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_l3_dusk,building,WP1,existing,287x217,RGBA,96,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_l3_night,building,WP1,existing,287x217,RGBA,98,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_night,building,WP1,existing,277x219,RGBA,79,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_ruin,building,WP1,existing,271x190,RGBA,76,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_ruin_dawn,building,WP1,existing,271x190,RGBA,74,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_ruin_dusk,building,WP1,existing,271x190,RGBA,73,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_ruin_night,building,WP1,existing,271x190,RGBA,72,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_wip,building,WP1,existing,272x209,RGBA,87,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_wip_dawn,building,WP1,existing,272x209,RGBA,86,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_wip_dusk,building,WP1,existing,272x209,RGBA,84,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+town_workshop_wip_night,building,WP1,existing,272x209,RGBA,83,">=512 px wide, 20 files on one canvas",redraw,bottom-centre ground anchor
+tree_bush,map prop / nature,WP2,existing,76x69,RGBA,4,256 long edge RGBA,redraw,bottom-centre ground anchor
+tree_dead_a,map prop / nature,WP2,existing,108x152,RGBA,32,256 long edge RGBA,redraw,bottom-centre ground anchor
+tree_dead_b,map prop / nature,WP2,existing,100x168,RGBA,41,256 long edge RGBA,redraw,bottom-centre ground anchor
+tree_dead_c,map prop / nature,WP2,existing,118x152,RGBA,43,256 long edge RGBA,redraw,bottom-centre ground anchor
+tree_flowerbush,map prop / nature,WP2,existing,90x72,RGBA,9,256 long edge RGBA,redraw,bottom-centre ground anchor
+tree_oak,map prop / nature,WP2,existing,78x82,RGBA,5,256 long edge RGBA,redraw,bottom-centre ground anchor
+tree_pine,map prop / nature,WP2,existing,62x80,RGBA,3,256 long edge RGBA,redraw,bottom-centre ground anchor
+turf_dark,board frame / turf,WP5,existing,70x59,RGBA,9,"frame 1080x1400, turf 256",redraw,
+turf_light,board frame / turf,WP5,existing,70x59,RGBA,10,"frame 1080x1400, turf 256",redraw,
+ui_repository_header,screen header,WP5,existing,1200x300,RGB,540,1200x300 opaque RGB,review,
+ui_villagelife_header,screen header,WP5,existing,1200x300,RGB,753,1200x300 opaque RGB,review,
+wordmark_hearth,branding,WP7,existing,304x94,RGBA,19,"app icon 1024, others 2x current",review,
+town_tailor_ruin,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_ruin_dawn,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_ruin_dusk,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_ruin_night,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_wip,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_wip_dawn,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_wip_dusk,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_wip_night,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_dawn,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_dusk,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_night,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_l2,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_l2_dawn,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_l2_dusk,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_l2_night,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_l3,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_l3_dawn,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_l3_dusk,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_tailor_l3_night,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,building is hidden in game until this art exists
+town_animalshelter_ruin,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_ruin_dawn,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_ruin_dusk,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_ruin_night,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_wip,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_wip_dawn,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_wip_dusk,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_wip_night,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_dawn,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_dusk,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_night,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_l2,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_l2_dawn,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_l2_dusk,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_l2_night,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_l3,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_l3_dawn,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_l3_dusk,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_animalshelter_l3_night,building,WP1,missing,,,,">=512 px wide, 20 files on one canvas",new,new building; needs layout + story code before it shows; reference matrix exists
+town_beacon_south,late-game building,WP1,missing,,,,~512x512 RGBA,new,single state per art-todo P1
+town_school,late-game building,WP1,missing,,,,~512x512 RGBA,new,single state per art-todo P1
+town_cottage_wed,late-game building,WP1,missing,,,,~512x512 RGBA,new,single state per art-todo P1
+map_island_plate_v3,island plate,WP2,missing,,,,"larger than 1370x1148, opaque RGB",new,"neutral even daylight, no baked time of day; quarry + animal shelter clearings"
+map_island_plate_v3_night,island plate,WP2,missing,,,,same canvas as v3 plate,new,lit-night variant; emissive masks are derived from it
+map_island_plate_v3_dawn,island plate,WP2,missing,,,,same canvas as v3 plate,new,owner decision: needed only if painted phases are kept
+map_island_plate_v3_dusk,island plate,WP2,missing,,,,same canvas as v3 plate,new,owner decision: needed only if painted phases are kept
+art_sky_strip,sky layer,WP2,missing,,,,tall strip (ref render 832x1216),new,living-weather L0
+art_far_band,parallax band,WP2,missing,,,,"plate width, transparent top",new,living-weather L1 / L4
+art_near_band,parallax band,WP2,missing,,,,"plate width, transparent top",new,living-weather L1 / L4
+mask_depth_island,mask,WP2,missing,,,,"plate size, greyscale",new,near to far depth; can be derived
+light_key_se,sun-key overlay,WP2,missing,,,,"plate size, soft highlight",new,_e and _w are lowest priority
+light_key_s,sun-key overlay,WP2,missing,,,,"plate size, soft highlight",new,_e and _w are lowest priority
+light_key_sw,sun-key overlay,WP2,missing,,,,"plate size, soft highlight",new,_e and _w are lowest priority
+light_key_e,sun-key overlay,WP2,missing,,,,"plate size, soft highlight",new,_e and _w are lowest priority
+light_key_w,sun-key overlay,WP2,missing,,,,"plate size, soft highlight",new,_e and _w are lowest priority
+decor_fountain,beauty decor,WP2,missing,,,,256-320 px long edge RGBA,new,bottom-centre anchor
+decor_statue,beauty decor,WP2,missing,,,,256-320 px long edge RGBA,new,bottom-centre anchor
+decor_arch,beauty decor,WP2,missing,,,,256-320 px long edge RGBA,new,bottom-centre anchor
+decor_gazebo,beauty decor,WP2,missing,,,,256-320 px long edge RGBA,new,bottom-centre anchor
+decor_monument,beauty decor,WP2,missing,,,,256-320 px long edge RGBA,new,bottom-centre anchor
+decor_planter,beauty decor,WP2,missing,,,,256-320 px long edge RGBA,new,bottom-centre anchor
+decor_birdbath,beauty decor,WP2,missing,,,,256-320 px long edge RGBA,new,bottom-centre anchor
+decor_lantern_post,beauty decor,WP2,missing,,,,256-320 px long edge RGBA,new,bottom-centre anchor
+tree_pine_snow,seasonal prop,WP2,missing,,,,~256x256-280 RGBA,new,
+tree_oak_snow,seasonal prop,WP2,missing,,,,~256x256-280 RGBA,new,
+tree_blossom,seasonal prop,WP2,missing,,,,~256x256-280 RGBA,new,
+prop_snowman,seasonal prop,WP2,missing,,,,~200x256-320 RGBA,new,
+prop_brazier,seasonal prop,WP2,missing,,,,~200x256-320 RGBA,new,
+prop_maypole,seasonal prop,WP2,missing,,,,~200x256-320 RGBA,new,
+prop_wreath,seasonal / festival prop,WP2,missing,,,,160-320 px long edge RGBA,new,
+prop_icicles,seasonal / festival prop,WP2,missing,,,,160-320 px long edge RGBA,new,
+terrain_snow_patch,seasonal / festival prop,WP2,missing,,,,160-320 px long edge RGBA,new,
+terrain_snowdrops,seasonal / festival prop,WP2,missing,,,,160-320 px long edge RGBA,new,
+prop_wedding_arch,seasonal / festival prop,WP2,missing,,,,160-320 px long edge RGBA,new,
+prop_bunting,seasonal / festival prop,WP2,missing,,,,160-320 px long edge RGBA,new,
+prop_flower_garland,seasonal / festival prop,WP2,missing,,,,160-320 px long edge RGBA,new,
+prop_market_stall,seasonal / festival prop,WP2,missing,,,,160-320 px long edge RGBA,new,
+prop_lantern_string,seasonal / festival prop,WP2,missing,,,,160-320 px long edge RGBA,new,
+prop_flower_arch,seasonal / festival prop,WP2,missing,,,,160-320 px long edge RGBA,new,
+prop_banquet_table,seasonal / festival prop,WP2,missing,,,,160-320 px long edge RGBA,new,
+dock_pier_long,map prop / nature,WP2,missing,,,,~700x450 RGBA,new,
+dock_pier_end,map prop / nature,WP2,missing,,,,~360x360 RGBA,new,
+shore_transition_sand_a,map prop / nature,WP2,missing,,,,~420x220 RGBA,new,
+shore_transition_sand_b,map prop / nature,WP2,missing,,,,~420x220 RGBA,new,
+shore_transition_sand_c,map prop / nature,WP2,missing,,,,~420x220 RGBA,new,
+town_market_awning,map prop / nature,WP2,missing,,,,match town_market awning width,new,
+town_market_awning_furled,map prop / nature,WP2,missing,,,,match town_market awning width,new,
+prop_firering,map prop / nature,WP2,missing,,,,~300x220 RGBA,new,
+prop_firering_lit,map prop / nature,WP2,missing,,,,~300x220 RGBA,new,
+mg_bg_bakery,minigame backdrop,WP2,missing,,,,880x1120 opaque RGB,new,bakery minigame has no backdrop
+mg_bake_loaf,minigame sprite,WP5,missing,,,,256 long edge RGBA,new,falls back to an emoji today
+char_blacksmith_bust,villager bust,WP3,missing,,,,512x512 RGBA,new,char_pell is the tailor; char_child vs char_seachild naming is unresolved
+char_fisherman_bust,villager bust,WP3,missing,,,,512x512 RGBA,new,char_pell is the tailor; char_child vs char_seachild naming is unresolved
+char_librarian_bust,villager bust,WP3,missing,,,,512x512 RGBA,new,char_pell is the tailor; char_child vs char_seachild naming is unresolved
+char_child_bust,villager bust,WP3,missing,,,,512x512 RGBA,new,char_pell is the tailor; char_child vs char_seachild naming is unresolved
+char_pell_bust,villager bust,WP3,missing,,,,512x512 RGBA,new,char_pell is the tailor; char_child vs char_seachild naming is unresolved
+npc_child_grown,villager full-body,WP3,missing,,,,~256x512 RGBA,new,hold: walkers are not drawn by the game today
+npc_elder_keeper,villager full-body,WP3,missing,,,,~256x512 RGBA,new,hold: walkers are not drawn by the game today
+npc_visitor_1,villager full-body,WP3,missing,,,,~256x512 RGBA,new,hold: walkers are not drawn by the game today
+npc_visitor_2,villager full-body,WP3,missing,,,,~256x512 RGBA,new,hold: walkers are not drawn by the game today
+npc_visitor_3,villager full-body,WP3,missing,,,,~256x512 RGBA,new,hold: walkers are not drawn by the game today
+item_seaweed_0,merge item,WP4,missing,,,,512x512 RGBA,new,chain shows emoji today
+item_seaweed_1,merge item,WP4,missing,,,,512x512 RGBA,new,chain shows emoji today
+item_seaweed_2,merge item,WP4,missing,,,,512x512 RGBA,new,chain shows emoji today
+item_seaweed_3,merge item,WP4,missing,,,,512x512 RGBA,new,chain shows emoji today
+nav_create,nav icon,WP5,missing,,,,128x128 RGBA,new,Create tab borrows item_wood_3 today
+wx_clear,weather glyph,WP5,missing,,,,128x128 RGBA,new,must read at 30 px
+wx_clouds,weather glyph,WP5,missing,,,,128x128 RGBA,new,must read at 30 px
+wx_overcast,weather glyph,WP5,missing,,,,128x128 RGBA,new,must read at 30 px
+wx_fog,weather glyph,WP5,missing,,,,128x128 RGBA,new,must read at 30 px
+wx_rain,weather glyph,WP5,missing,,,,128x128 RGBA,new,must read at 30 px
+wx_storm,weather glyph,WP5,missing,,,,128x128 RGBA,new,must read at 30 px
+wx_snow,weather glyph,WP5,missing,,,,128x128 RGBA,new,must read at 30 px
+time_badge_evening,time-of-day badge,WP5,missing,,,,512 long edge RGBA,new,
+ui_hud_bar,UI chrome,WP5,missing,,,,"1024x128, 9-slice friendly",new,keep the left 120 px clear
+ui_hud_portrait_ring,UI chrome,WP5,missing,,,,"128x128, transparent centre",new,
+ui_hud_divider,UI chrome,WP5,missing,,,,8x64 transparent,new,
+avatar_frame,UI chrome,WP5,missing,,,,"512x512, transparent centre",new,
+board_frame,board frame / turf,WP5,missing,,,,1080x1400 RGBA,new,6x7 merge board frame
+turf_autumn,board frame / turf,WP5,missing,,,,256x256 seamless,new,
+turf_twilight,board frame / turf,WP5,missing,,,,256x256 seamless,new,
+turf_rose,board frame / turf,WP5,missing,,,,256x256 seamless,new,
+turf_frost,board frame / turf,WP5,missing,,,,256x256 seamless,new,
+badge_event_8,achievement badge,WP5,missing,,,,256x256 RGBA,new,proposed ids: three achievements reuse a badge today
+badge_event_9,achievement badge,WP5,missing,,,,256x256 RGBA,new,proposed ids: three achievements reuse a badge today
+badge_event_10,achievement badge,WP5,missing,,,,256x256 RGBA,new,proposed ids: three achievements reuse a badge today
+crest_timberline,crest,WP5,missing,,,,256x256 RGBA,new,
+crest_harvest,crest,WP5,missing,,,,256x256 RGBA,new,
+crest_hearthfire,crest,WP5,missing,,,,256x256 RGBA,new,
+crest_keepsakes,crest,WP5,missing,,,,256x256 RGBA,new,
+crest_builders,crest,WP5,missing,,,,256x256 RGBA,new,
+marker_order,map marker,WP5,missing,,,,128x128 RGBA,new,
+marker_quest,map marker,WP5,missing,,,,128x128 RGBA,new,
+marker_glow,map marker,WP5,missing,,,,128x128 RGBA,new,
+marker_new,map marker,WP5,missing,,,,128x128 RGBA,new,
+reward_streak_3,resource / currency,WP5,missing,,,,512x512 RGBA,new,
+reward_streak_7,resource / currency,WP5,missing,,,,512x512 RGBA,new,
+reward_streak_30,resource / currency,WP5,missing,,,,512x512 RGBA,new,
+energy_ember_01,ember-heart animation frame,WP6,missing,,,,512x512 RGBA,new,8-frame ember-heart loop
+energy_ember_02,ember-heart animation frame,WP6,missing,,,,512x512 RGBA,new,8-frame ember-heart loop
+energy_ember_03,ember-heart animation frame,WP6,missing,,,,512x512 RGBA,new,8-frame ember-heart loop
+energy_ember_04,ember-heart animation frame,WP6,missing,,,,512x512 RGBA,new,8-frame ember-heart loop
+energy_ember_05,ember-heart animation frame,WP6,missing,,,,512x512 RGBA,new,8-frame ember-heart loop
+energy_ember_06,ember-heart animation frame,WP6,missing,,,,512x512 RGBA,new,8-frame ember-heart loop
+energy_ember_07,ember-heart animation frame,WP6,missing,,,,512x512 RGBA,new,8-frame ember-heart loop
+energy_ember_08,ember-heart animation frame,WP6,missing,,,,512x512 RGBA,new,8-frame ember-heart loop
+fx_levelup,effect sprite / strip,WP6,missing,,,,"one-row strip, equal frames",new,needs wiring in code
+fx_burst_1,effect sprite / strip,WP6,missing,,,,"one-row strip, equal frames",new,needs wiring in code
+fx_burst_2,effect sprite / strip,WP6,missing,,,,"one-row strip, equal frames",new,needs wiring in code
+fx_burst_3,effect sprite / strip,WP6,missing,,,,"one-row strip, equal frames",new,needs wiring in code
+fx_burst_4,effect sprite / strip,WP6,missing,,,,"one-row strip, equal frames",new,needs wiring in code
+fx_ring,effect sprite / strip,WP6,missing,,,,"one-row strip, equal frames",new,needs wiring in code
+fx_orb_trail,effect sprite / strip,WP6,missing,,,,"one-row strip, equal frames",new,needs wiring in code
+fx_wave_foam_wash,animation strip,WP6,missing,,,,10 frames x 192x56 = 1920x56,new,loops
+fx_wave_lap,animation strip,WP6,missing,,,,8 frames x 128x40 = 1024x40,new,loops
+fx_wave_cap,animation strip,WP6,missing,,,,6 frames x 64x32 = 384x32,new,loops
+fx_flame_hearth,animation strip,WP6,missing,,,,7 frames x 48x64 = 336x64,new,loops
+fx_lantern_string,animation strip,WP6,missing,,,,7 frames x 96x32 = 672x32,new,loops
+fx_sea_tile,tileable texture,WP6,missing,,,,"1024x1024 opaque, seamless",new,
+fx_sea_tile_b,tileable texture,WP6,missing,,,,"1024x1024 opaque, seamless",new,optional
+fx_sea_tile_night,tileable texture,WP6,missing,,,,"1024x1024 opaque, seamless",new,optional
+fx_rain_streaks,particle atlas,WP6,missing,,,,512x512 tileable,new,
+fx_snow_flakes,particle atlas,WP6,missing,,,,512x512 tileable,new,
+fx_fog_band,particle atlas,WP6,missing,,,,512x512 tileable,new,
+fx_leaf,particle atlas,WP6,missing,,,,256x256 RGBA,new,replaces code-drawn dots
+fx_blossom,particle atlas,WP6,missing,,,,256x256 RGBA,new,replaces code-drawn dots
+fx_firefly,particle atlas,WP6,missing,,,,256x256 RGBA,new,replaces code-drawn dots
+fx_pollen,particle atlas,WP6,missing,,,,256x256 RGBA,new,replaces code-drawn dots
+fx_splash,particle atlas,WP6,missing,,,,256x256 RGBA,new,replaces code-drawn dots
+story_clue_key,story clue,WP7,missing,,,,512x512 RGBA,new,
+story_clue_bolt,story clue,WP7,missing,,,,512x512 RGBA,new,
+story_clue_chart,story clue,WP7,missing,,,,512x512 RGBA,new,
+story_clue_oilskin,story clue,WP7,missing,,,,512x512 RGBA,new,
+story_clue_coin,story clue,WP7,missing,,,,512x512 RGBA,new,
+story_clue_bootprints,story clue,WP7,missing,,,,512x512 RGBA,new,
+story_clue_ledger,story clue,WP7,missing,,,,512x512 RGBA,new,
+story_clue_strongbox,story clue,WP7,missing,,,,512x512 RGBA,new,
+story_photo_old,story clue,WP7,missing,,,,512x512 RGBA,new,
+story_bg_warm,story background,WP7,missing,,,,720x480 opaque (1440x960 preferred),new,
+story_bg_night,story background,WP7,missing,,,,720x480 opaque (1440x960 preferred),new,
+story_bg_sea,story background,WP7,missing,,,,720x480 opaque (1440x960 preferred),new,
+story_bg_winter,story background,WP7,missing,,,,720x480 opaque (1440x960 preferred),new,
+story_bg_spring,story background,WP7,missing,,,,720x480 opaque (1440x960 preferred),new,
+event_beacon_fair,event banner,WP7,missing,,,,880x360 opaque,new,
+ftue_arrival,story background,WP7,missing,,,,~1200x800 opaque,new,first-run arrival scene
