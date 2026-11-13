@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Game } from '../src/core/game';
+import type { GameState } from '../src/core/types';
 import {
   CURRENT_VERSION,
   clearSave,
@@ -38,6 +39,54 @@ describe('save round-trip (P0 regression)', () => {
     const energyAfter = g.snapshot.energy.current;
     const g2 = new Game(2000);
     expect(g2.snapshot.energy.current).toBe(energyAfter);
+  });
+
+  // The v20 social mirror is server-owned data cached in the save. Every field
+  // of it — friends, unclaimed letters, open duels, offline scores, cooldowns —
+  // has to come back byte-for-byte, or a reload silently drops a gift or a
+  // duel score the player has not flushed yet.
+  it('a populated social mirror survives save→load unchanged', () => {
+    const state: GameState = {
+      ...Game.freshState(1000),
+      social: {
+        playerId: 'p_me',
+        friends: [{ playerId: 'p_ada', name: 'Ada', portrait: 'traveller', lastSeen: 900 }],
+        inbox: [
+          {
+            id: 'm1',
+            from: 'p_ada',
+            fromName: 'Ada',
+            createdAt: 950,
+            payload: { kind: 'gift', chain: 'wood', level: 1 },
+          },
+        ],
+        duels: [
+          {
+            duelId: 'd1',
+            mode: 'async_score',
+            seed: 42,
+            opponentId: 'p_ada',
+            opponentName: 'Ada',
+            status: 'open',
+            myScore: 12,
+            theirScore: null,
+            winner: null,
+            expiresAt: 5000,
+          },
+        ],
+        inviteUrl: 'https://example.test/join/abc',
+        inviteExpiresAt: 9000,
+        syncedAt: 1000,
+        askedPair: { p_ada: 800 },
+        giftedPair: { p_ada: 850 },
+        pendingScores: [{ duelId: 'd1', score: 12, moves: 30 }],
+      },
+    };
+    saveState(state);
+    const loaded = loadState();
+    expect(loaded).not.toBeNull();
+    expect(loaded!.version).toBe(CURRENT_VERSION);
+    expect(loaded!.social).toEqual(state.social);
   });
 });
 
@@ -151,6 +200,28 @@ describe('migrations', () => {
     expect(migrated!.social.migratedNote).toBe(true);
     // Everything outside the social block is untouched.
     expect(migrated!.coins).toBe(Game.freshState(1000).coins);
+  });
+
+  // Chain contiguity: a save stamped with ANY supported historical version must
+  // reach CURRENT_VERSION. A missing or duplicated-over step (say, two branches
+  // each claiming the same version number and one being dropped in a merge)
+  // strands every save at or below the gap — migrateState returns null and the
+  // village is gone. Start from each rung, not only from v8.
+  it('every version from v8 up has a step — no gap anywhere in the chain', () => {
+    for (let v = 8; v < CURRENT_VERSION; v++) {
+      const old = { ...Game.freshState(1000), version: v } as unknown;
+      const migrated = migrateState(old);
+      expect(migrated, `a v${v} save must migrate`).not.toBeNull();
+      expect(migrated!.version).toBe(CURRENT_VERSION);
+      // The last rung always runs, so the social block always ends as the mirror.
+      expect(typeof migrated!.social.syncedAt).toBe('number');
+      expect(Array.isArray(migrated!.social.inbox)).toBe(true);
+    }
+  });
+
+  it('a save stamped newer than this build is rejected, not half-loaded', () => {
+    const future = { ...Game.freshState(1000), version: CURRENT_VERSION + 1 } as unknown;
+    expect(migrateState(future)).toBeNull();
   });
 
   it('rejects a v20-stamped save still carrying the old social shape', () => {
