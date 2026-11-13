@@ -109,28 +109,89 @@ export interface HealthLedgerState {
   sleepGranted: number;
 }
 
-export interface Friend {
-  id: string;
+/**
+ * A real other player. `playerId` is the server's public id — never the device
+ * key, which is a bearer secret. Name and portrait are snapshots the server
+ * keeps so a friend list can render faces without reading anyone else's save;
+ * they are the ONLY things about a player another player ever sees.
+ */
+export interface RemoteFriend {
+  playerId: string;
   name: string;
-  avatar: number; // 1-6, selects a palette for the placeholder portrait
-  status: 'pending' | 'joined';
-  /** local day key of the last "ask for help", for the once-per-day cooldown. */
-  askedDay?: string;
+  portrait: string;
+  lastSeen: number;
 }
 
-export interface Gift {
+/**
+ * What a letter carries. Every one of these is written by the SERVER and
+ * granted when the client claims it — nothing here can be asserted locally,
+ * which is what keeps energy unmintable (docs/multiplayer-spec.md F3).
+ */
+export type MailboxPayload =
+  | { kind: 'gift'; chain: ChainId; level: number }
+  | { kind: 'help_request'; chain: ChainId }
+  | { kind: 'help_fulfil'; chain: ChainId; count: number }
+  | { kind: 'join_bonus'; energy: number }
+  | { kind: 'duel_challenge'; duelId: string }
+  | {
+      kind: 'duel_result';
+      duelId: string;
+      won: boolean;
+      tie: boolean;
+      yourScore: number;
+      theirScore: number;
+    };
+
+export interface MailboxEntry {
   id: string;
   from: string;
-  chain: ChainId;
-  level: number;
+  fromName: string;
+  createdAt: number;
+  payload: MailboxPayload;
 }
 
+/**
+ * An async duel: the server deals ONE seed and both players race the identical
+ * board alone, whenever they like. `theirScore` stays null while the duel is
+ * open so nobody can play to a target.
+ */
+export interface DuelChallenge {
+  duelId: string;
+  /** 'async_score' today; the field exists so a live mode can slot in later. */
+  mode: string;
+  seed: number;
+  opponentId: string;
+  opponentName: string;
+  status: 'open' | 'resolved' | 'expired';
+  myScore: number | null;
+  theirScore: number | null;
+  winner: 'me' | 'them' | 'tie' | null;
+  expiresAt: number;
+}
+
+/**
+ * The local mirror of server-owned social state. The client never invents any
+ * of it: `applySocialSnapshot` overwrites the server-owned fields wholesale,
+ * and only the cooldown mirrors and the offline score queue are ours to keep.
+ */
 export interface SocialState {
-  friends: readonly Friend[];
-  gifts: readonly Gift[];
-  /** friend ids that have already paid their one-time join bonus. */
-  joinBonusGiven: readonly string[];
-  nextId: number;
+  /** null until the first successful hello — i.e. we have never reached the service. */
+  playerId: string | null;
+  friends: readonly RemoteFriend[];
+  /** Unclaimed letters. Claiming is what actually grants anything. */
+  inbox: readonly MailboxEntry[];
+  duels: readonly DuelChallenge[];
+  inviteUrl: string | null;
+  inviteExpiresAt: number | null;
+  /** epoch ms of the last successful snapshot; 0 = never. Drives "last checked" copy. */
+  syncedAt: number;
+  /** friendId -> epoch ms, an optimistic mirror of the server's per-pair cooldowns. */
+  askedPair: Record<string, number>;
+  giftedPair: Record<string, number>;
+  /** Scores played offline, flushed on the next refresh. Deterministic, so nothing is lost. */
+  pendingScores: readonly { duelId: string; score: number; moves: number }[];
+  /** One-time note that the old placeholder friends were retired. */
+  migratedNote?: boolean;
 }
 
 export interface GratitudeEntry {
