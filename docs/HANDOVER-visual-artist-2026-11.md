@@ -60,7 +60,7 @@ Hard bans:
 
 The style-lock guide predates two rulings. It shows a purple gem currency and text labels; ignore both.
 
-**Style north star (Owner to confirm).** The shipped art is not one style. The building matrices (samples 01, 02 and 11) and the painted player portraits (sample 05, lower rows) are the newest work and are the target. Older sets drift. Villager busts are flatter and more cartoon than the player portraits. Merge items are cleaner and less textured than the buildings. The icon kit and several badges sit on unkeyed backgrounds. The redraw brings everything to the building and portrait standard.
+**Style north star (confirmed by the owner, 2026-11-13).** The shipped art is not one style. The building matrices (samples 01, 02 and 11) and the painted player portraits (sample 05, lower rows) are the newest work and are the target. Older sets drift. Villager busts are flatter and more cartoon than the player portraits. Merge items are cleaner and less textured than the buildings. The icon kit and several badges sit on unkeyed backgrounds. The redraw brings everything to the building and portrait standard.
 
 ## 3. What ships today
 
@@ -382,7 +382,6 @@ Feedback comes back per id as accept or revise, with a note. Two revision rounds
 
 ## 9. Open questions for the owner
 
-- Is the building and player-portrait standard the right style north star?
 - Is the locked workflow file, not the written recipe docs, the reference?
 - Island plate master size: is 2048 px on the long edge right?
 - Are `map_island_plate_v3_dawn` and `_dusk` painted, or graded in code?
